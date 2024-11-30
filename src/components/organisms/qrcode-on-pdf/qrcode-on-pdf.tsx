@@ -167,9 +167,9 @@ export const QrCodeOnPdf = () => {
 
           firstPage.drawImage(qrCodeImageEmbed, {
             x: position.x * 0.75,
-            y: firstPage.getHeight() - position.y * 0.75 - 100,
-            width: 100,
-            height: 100,
+            y: firstPage.getHeight() - position.y * 0.75 - 75,
+            width: 80,
+            height: 80,
           });
 
           const modifiedPdfBytes = await pdfDoc.save();
