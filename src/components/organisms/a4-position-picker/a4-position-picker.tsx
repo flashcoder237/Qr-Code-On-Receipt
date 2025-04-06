@@ -14,7 +14,8 @@ interface IProps {
 
 export const A4PositionPicker = ({
   value: position,
-  onChange: setPosition,
+  orientation: orientation,
+  onChange: setPosition
 }: IProps) => {
   const [pdfImage, setPdfImage] = useState<string | null>(null); // Image convertie du PDF
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -68,14 +69,14 @@ export const A4PositionPicker = ({
     <Sheet>
       <SheetTrigger asChild>
         <Button>
-          Choisir la position du QR Code ({position.x}, {position.y})
+          Choisir la position du QR Code ({Math.round(position.x)}, {Math.round(position.y)})
         </Button>
       </SheetTrigger>
       <SheetContent className="min-w-[70vw] max-h-screen py-4 overflow-y-auto">
         <div
           style={{
-            width: "210mm", // A4 width
-            height: "297mm", // A4 height
+            width: (orientation==="portrait" ? "210mm" : "297mm"), // A4 width
+            height: (orientation==="portrait" ? "297mm" : "210mm"), // A4 height
             border: "1px solid #ccc",
             position: "relative",
             overflow: "hidden",
@@ -85,8 +86,7 @@ export const A4PositionPicker = ({
         >
           {/* Affichage de l'image du PDF si disponible */}
           {pdfImage ? (
-  <>
-    {console.log("Affichage de l'image :", pdfImage)}
+  <div>
     <img
       src={pdfImage}
       alt="Aperçu PDF"
@@ -100,7 +100,7 @@ export const A4PositionPicker = ({
         zIndex: 0,
       }}
     />
-  </>
+  </div>
 ) : (
   <div
     style={{

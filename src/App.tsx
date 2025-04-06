@@ -1,69 +1,127 @@
-import { useState } from "react";
-import { authenticate } from "./lib/licence/google-auth";
-import { fetchLicenses, updateLicense } from "./lib/licence/drive-utils";
-import { useReadLocalStorage } from "usehooks-ts";
+// app.tsx
+import React, { useState, useEffect } from "react";
+import { fetchLicenses, updateAndDecrementLicense } from "./lib/licence/drive-utils";
+import LicenseDB from "./lib/licence/database";
 import "./App.css";
 import { AppSidebar } from "./components/organisms/app-sidebar";
 import { AppToolbar, AppToolbarProvider } from "./components/organisms/app-toolbar";
 import { SidebarProvider } from "./components/ui/sidebar";
 import { menuItems } from "./lib/constants/menu";
-import { OAuth2Client } from "google-auth-library";
+import { Input } from "./components/ui/input";
+import { Button } from "./components/ui/button";
+import { useReadLocalStorage } from "usehooks-ts";
 
-const App = () => {
+// Typage des licences
+interface Licenses {
+  [key: string]: {
+    status: "unused" | "used";
+  };
+}
+
+const App: React.FC = () => {
   const path = useReadLocalStorage<string>("current_path");
-  const [licenseKey, setLicenseKey] = useState("");
-  const [isLicensed, setIsLicensed] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [licenseKey, setLicenseKey] = useState<string>("");
+  const [isLicensed, setIsLicensed] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const handleActivateLicense = async () => {
+  useEffect(() => {
+    const checkStoredLicense = async () => {
+      setIsLoading(true);
+      try {
+        const storedLicense = await LicenseDB.get();
+        if (storedLicense) { 
+            setIsLicensed(true);
+            setLicenseKey(storedLicense);     }     
+          //  else {
+          //   
+          // }
+        }
+      catch (error) {
+        console.error("Erreur vérification licence:", error);
+      }
+      setIsLoading(false);
+    };
+  
+    checkStoredLicense();
+  }, []);
+  
+  const handleActivateLicense = async (): Promise<void> => {
+    setIsLoading(true);
     try {
-      // Assurez-vous que 'authenticate' renvoie un OAuth2Client
-      const auth: OAuth2Client = await authenticate();
-      const licenses = await fetchLicenses(auth);
-
+      const licenses = await fetchLicenses();
+  
       if (licenses[licenseKey]?.status === "unused") {
-        const success = await updateLicense(auth, licenseKey);
+        const success = await updateAndDecrementLicense(licenseKey);
+  
         if (success) {
+          await LicenseDB.save(licenseKey); // Sauvegarde locale de la licence
           setIsLicensed(true);
           alert("Licence activée avec succès !");
         } else {
-          setErrorMessage("Erreur lors de l'activation de la licence.");
+          setErrorMessage("Erreur lors de l'activation ou licence déjà utilisée.");
         }
       } else {
         setErrorMessage("Licence invalide ou déjà utilisée.");
       }
     } catch (error) {
-      console.error("Erreur :", error);
-      setErrorMessage("Une erreur est survenue.");
+      console.error("Erreur activation:", error);
+      setErrorMessage("Une erreur est survenue lors de l'activation.");
     }
+    setIsLoading(false);
   };
-
-  if (!isLicensed) {
-    return (
-      <div>
-        <h2>Entrez votre clé de licence :</h2>
-        <input
-          type="text"
-          value={licenseKey}
-          onChange={(e) => setLicenseKey(e.target.value)}
-          placeholder="Clé de licence"
-        />
-        <button onClick={handleActivateLicense}>Activer</button>
-        {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
-      </div>
-    );
-  }
+  
+  
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <AppToolbarProvider>
-        <main className="px-3 w-full">
-          <AppToolbar />
-          <div>{menuItems.find((m) => m.url === path)?.component}</div>
-        </main>
-      </AppToolbarProvider>
-    </SidebarProvider>
+    <>
+      {isLoading ? (
+        <div className="flex items-center justify-center min-h-screen bg-gray-100">
+          <p className="text-lg font-semibold text-gray-600">Chargement...</p>
+        </div>
+      ) : !isLicensed ? (
+        <div className="flex items-center justify-center min-h-screen bg-gray-100">
+          <div className="bg-white shadow-lg rounded-lg p-6 w-full max-w-md text-center">
+            <div className="w-20 mx-auto mb-4">
+              <img src="./logo.png" alt="Logo" className="w-full" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-700 mb-4">
+              Entrez votre clé de licence :
+            </h2>
+            <Input
+              className="w-full px-4 py-2 border rounded-lg text-center text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              type="text"
+              value={licenseKey}
+              onChange={(e) => setLicenseKey(e.target.value)}
+              placeholder="Clé de licence"
+            />
+            <Button
+              onClick={handleActivateLicense}
+              className="mt-4 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            >
+              Activer la licence
+            </Button>
+            <p className="italic text-xs text-blue-400">
+              Pour l'activation du logiciel, veuillez à ce que votre ordinateur
+              soit connecté à Internet.
+            </p>
+            {errorMessage && (
+              <p className="text-sm text-red-500 mt-2">{errorMessage}</p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <SidebarProvider>
+          <AppSidebar />
+          <AppToolbarProvider>
+            <main className="px-3 w-full">
+              <AppToolbar />
+              <div>{menuItems.find((m) => m.url === path)?.component}</div>
+            </main>
+          </AppToolbarProvider>
+        </SidebarProvider>
+      )}
+    </>
   );
 };
 

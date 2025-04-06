@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,6 @@ import {
 import { generateQrCode, StudentExcelRecord } from "@/lib/helpers/qrcode";
 import JSZip from "jszip";
 import { PDFDocument } from "pdf-lib";
-import React, { useRef, useState } from "react";
 import pdfToText from "react-pdftotext";
 import { useLocalStorage } from "usehooks-ts";
 import * as XLSX from "xlsx";
@@ -27,6 +26,7 @@ interface PdfInfo {
 }
 
 export const QrCodeOnPdf = () => {
+  // window.localStorage.clear();
   const [pdfFiles, setPdfFiles] = useState<PdfInfo[]>([]);
   const [excelData, setExcelData] = useState<StudentExcelRecord[]>([]);
   const [matriculeStatus, setMatriculeStatus] = useState<
@@ -35,13 +35,44 @@ export const QrCodeOnPdf = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
+  const [successNotification, setSuccessNotification] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [position, setPosition] = useLocalStorage("qrcode-position", {
     x: 0,
     y: 0,
   });
-
+  const [documentType, setDocumentType] = useLocalStorage<"releve" | "attestation" | "diplome">(
+    "releve"
+  );
+  const [orientation, setOrientation] = useLocalStorage<"portrait" | "paysage">(
+    "portrait"
+  );
+  const handleSetDocumentType = (element) => {
+    if (documentType !== element) {
+      // Cas où le type de document change
+      const isSwitchingBetweenReleveOrAttestation =
+        (documentType === "attestation" || documentType === "releve") &&
+        (element === "attestation" || element === "releve");
+  
+      if (!isSwitchingBetweenReleveOrAttestation) {
+        // Changement spécifique vers ou depuis "diplome"
+        const isDiplome = element === "diplome";
+  
+        setOrientation(isDiplome ? "paysage" : "portrait");
+  
+        // Inverser les positions x et y
+        if(isDiplome){
+          setPosition({ x: (position.x*1023)/694, y: (position.y*694)/1023 });
+        }else{
+          setPosition({ x: (position.x*694)/1023, y: (position.y*1023)/694 });
+        }
+      }
+    }
+  
+    // Mise à jour du type de document
+    setDocumentType(element);
+  };
   const handlePdfChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -144,6 +175,7 @@ export const QrCodeOnPdf = () => {
 
     try {
       setIsLoading(true);
+      setSuccessNotification(false);
       const zip = new JSZip();
       let processedCount = 0;
 
@@ -158,7 +190,7 @@ export const QrCodeOnPdf = () => {
         if (!pdfFile) continue;
 
         try {
-          const qrCodeImage = await generateQrCode(student);
+          const qrCodeImage = await generateQrCode(student, documentType);
           const arrayBuffer = await pdfFile.file.arrayBuffer();
           const pdfDoc = await PDFDocument.load(arrayBuffer);
 
@@ -192,6 +224,11 @@ export const QrCodeOnPdf = () => {
       link.download = "documents_with_qrcodes.zip";
       link.click();
       window.URL.revokeObjectURL(url);
+
+      setSuccessNotification(true);
+      setTimeout(() => {
+        setSuccessNotification(false);
+      }, 10000);
     } catch (err) {
       console.error("Erreur lors de la création du ZIP", err);
       setError("Erreur lors de la création du fichier ZIP");
@@ -208,6 +245,41 @@ export const QrCodeOnPdf = () => {
           <CardTitle>Traitement PDF par lots et Ajout de QR Codes</CardTitle>
         </CardHeader>
         <CardContent className="space-y-8">
+          <div className="space-y-2">
+            <Label>Type de document</Label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="documentType"
+                  value="relevé"
+                  checked={documentType === "releve"}
+                  onChange={() => handleSetDocumentType("releve")}
+                />
+                Relevé
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="documentType"
+                  value="attestation"
+                  checked={documentType === "attestation"}
+                  onChange={() => handleSetDocumentType("attestation")}
+                />
+                Attestation
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="documentType"
+                  value="diplome"
+                  checked={documentType === "diplome"}
+                  onChange={() => handleSetDocumentType("diplome")}
+                />
+                Diplome
+              </label>
+            </div>
+          </div>
           <div className="flex flex-col gap-6 justify-center">
             <div className="space-y-2">
               <Label>Fichier Excel de recaps</Label>
@@ -270,10 +342,15 @@ export const QrCodeOnPdf = () => {
               </Button>
             )}
 
-            <A4PositionPicker value={position} onChange={setPosition} />
+            <A4PositionPicker value={position} orientation={orientation} onChange={setPosition} />
           </div>
         </CardContent>
       </Card>
+      {successNotification && (
+        <div className="fixed top-14 right-6 bg-green-500 text-white p-3 rounded shadow">
+          Les QR codes ont été ajoutés avec succès !
+        </div>
+      )}
 
       <div className="mt-4">
         <Table>
