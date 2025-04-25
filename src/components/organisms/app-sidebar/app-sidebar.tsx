@@ -27,7 +27,7 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     isActive={item.url === path}
                     onClick={() => setPath(item.url)}
-                    disabled={!item.url.includes('qrcode')}
+                    // disabled={!item.url.includes('qrcode')}
                   >
                     <item.icon />
                     <span>{item.title}</span>
