@@ -74,7 +74,7 @@ const SettingForm: React.FC = () => {
   });
 
   return (
-    <Card className="w-full max-w-3xl mx-auto">
+    <Card className="w-full max-w-3xl mx-auto my-10">
       <CardHeader>
         <CardTitle>Formulaire de Paramètres</CardTitle>
         <CardDescription>
