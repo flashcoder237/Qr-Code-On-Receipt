@@ -97,7 +97,7 @@ export const QrCodeOnPdf = () => {
         newPdfFiles.push({ file, text });
 
         excelData.forEach((student) => {
-          if (text.toLowerCase().includes(student.MATRICULE.toLowerCase())) {
+          if (text.toLowerCase().includes(student.MATRICULE.toLowerCase().split("-")[0])) {
             newMatriculeStatus[student.MATRICULE] = {
               found: true,
               fileName: file.name,
@@ -184,7 +184,7 @@ export const QrCodeOnPdf = () => {
         if (!status?.found) continue;
 
         const pdfFile = pdfFiles.find((pdf) =>
-          pdf.text.toLowerCase().includes(student.MATRICULE.toLowerCase())
+          pdf.text.toLowerCase().includes(student.MATRICULE.toLowerCase().split("-")[0])
         );
 
         if (!pdfFile) continue;
