@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, FileUp, Download, Eye } from "lucide-react";
+import { Loader2, Download, Eye } from "lucide-react";
 import * as XLSX from "xlsx";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import JSZip from "jszip";
 import { calculateGrade, calculateStatistics, calculateMGP } from "@/lib/helpers/grades";
+
+// Import the extracted components
+import { ConfigurationSelector } from "./ConfigurationSelector";
+import { ExcelUploader } from "./ExcelUploader";
+import { ColumnMappingEditor } from "./ColumnMappingEditor";
+import { TranscriptPreview } from "./TranscriptPreview";
 
 // Types
 type EC = {
@@ -457,6 +460,10 @@ export const ReleveGenerator = () => {
     return ecList;
   };
 
+  const handleBackFromPreview = () => {
+    setActiveTab("mapping");
+  };
+
   return (
     <div className="container mx-auto">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -472,39 +479,17 @@ export const ReleveGenerator = () => {
               <CardTitle>Configuration des relevés de notes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="config-select">Configuration de classe</Label>
-                <Select 
-                  value={selectedConfigId || ""} 
-                  onValueChange={handleConfigChange}
-                  disabled={isLoading}
-                >
-                  <SelectTrigger id="config-select">
-                    <SelectValue placeholder="Sélectionnez une configuration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {configs.map((cfg) => (
-                      <SelectItem key={cfg.id} value={cfg.id}>
-                        {cfg.name} ({cfg.academicYear})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <ConfigurationSelector 
+                configs={configs}
+                selectedConfigId={selectedConfigId}
+                isLoading={isLoading}
+                onConfigChange={handleConfigChange}
+              />
               
-              <div className="space-y-2">
-                <Label htmlFor="excel-file">Fichier Excel des étudiants</Label>
-                <div className="flex items-center gap-2">
-                  <Input 
-                    id="excel-file"
-                    type="file" 
-                    accept=".xlsx,.xls" 
-                    onChange={handleExcelUpload} 
-                    disabled={isLoading} 
-                  />
-                  <FileUp className="text-gray-500" size={20} />
-                </div>
-              </div>
+              <ExcelUploader 
+                isLoading={isLoading}
+                onExcelUpload={handleExcelUpload}
+              />
 
               {error && (
                 <Alert variant="destructive">
@@ -552,37 +537,13 @@ export const ReleveGenerator = () => {
               <CardTitle>Correspondance des colonnes Excel aux ECs</CardTitle>
             </CardHeader>
             <CardContent>
-              {selectedConfigId && excelColumns.length > 0 ? (
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-600">Associez chaque élément constitutif (EC) à une colonne Excel</p>
-                  
-                  <div className="space-y-2 max-h-96 overflow-y-auto border rounded-md p-2">
-                    {getAvailableECs().map((ec) => (
-                      <div key={ec.id} className="flex items-center gap-2 my-2 p-2 bg-gray-50 rounded">
-                        <Label className="w-1/2 text-sm">{ec.fullName}</Label>
-                        <Select 
-                          value={columnMapping[ec.id] || ""} 
-                          onValueChange={(value) => handleMappingChange(ec.id, value)}
-                        >
-                          <SelectTrigger className="w-1/2">
-                            <SelectValue placeholder="Sélectionner une colonne" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">-- Aucun --</SelectItem>
-                            {excelColumns.map((col) => (
-                              <SelectItem key={col} value={col}>{col}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-10 text-gray-500">
-                  Veuillez d'abord sélectionner une configuration et charger un fichier Excel
-                </div>
-              )}
+              <ColumnMappingEditor
+                selectedConfigId={selectedConfigId}
+                excelColumns={excelColumns}
+                columnMapping={columnMapping}
+                getAvailableECs={getAvailableECs}
+                onMappingChange={handleMappingChange}
+              />
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button 
@@ -613,54 +574,13 @@ export const ReleveGenerator = () => {
         </TabsContent>
         
         <TabsContent value="preview">
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                Prévisualisation du relevé
-                {previewStudent && ` - ${previewStudent.NOM} ${previewStudent.PRENOM}`}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {previewPdfUrl ? (
-                <div className="w-full h-screen max-h-[70vh]">
-                  <iframe 
-                    src={previewPdfUrl} 
-                    className="w-full h-full border rounded"
-                    title="Prévisualisation du relevé"
-                  />
-                </div>
-              ) : (
-                <div className="text-center py-10 text-gray-500">
-                  Aucune prévisualisation disponible
-                </div>
-              )}
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button 
-                onClick={() => setActiveTab("mapping")} 
-                variant="outline"
-              >
-                Retour
-              </Button>
-              
-              <Button 
-                onClick={processAndDownloadAll} 
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Génération en cours...
-                  </>
-                ) : (
-                  <>
-                    <Download className="mr-2 h-4 w-4" />
-                    Générer tous les relevés
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
+          <TranscriptPreview
+            previewStudent={previewStudent}
+            previewPdfUrl={previewPdfUrl}
+            isLoading={isLoading}
+            onBack={handleBackFromPreview}
+            onGenerateAll={processAndDownloadAll}
+          />
         </TabsContent>
       </Tabs>
     </div>
