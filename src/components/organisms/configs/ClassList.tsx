@@ -18,7 +18,7 @@ export const ClassList: React.FC<ClassListProps> = ({ configs, selectedConfigId,
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center">
-          <GraduationCap className="mr-2 h-5 w-5 text-blue-600" />
+          <GraduationCap className="mr-2 h-5 w-5 text-gray-600" />
           Classes
         </CardTitle>
       </CardHeader>
@@ -37,15 +37,15 @@ export const ClassList: React.FC<ClassListProps> = ({ configs, selectedConfigId,
                     variant={selectedConfigId === cfg.id ? "default" : "outline"}
                     className={`w-full justify-between group ${
                       selectedConfigId === cfg.id 
-                        ? "bg-blue-600 hover:bg-blue-700" 
-                        : "hover:bg-blue-50"
+                        ? "bg-gray-600 hover:bg-gray-700" 
+                        : "hover:bg-gray-50"
                     }`}
                     onClick={() => onSelect(cfg.id)}
                   >
                     <div className="flex flex-col items-start">
                       <span className="font-medium">{cfg.name}</span>
                       {cfg.academicYear && (
-                        <span className={`text-xs ${selectedConfigId === cfg.id ? "text-blue-100" : "text-gray-500"}`}>
+                        <span className={`text-xs ${selectedConfigId === cfg.id ? "text-gray-100" : "text-gray-500"}`}>
                           {cfg.academicYear}
                         </span>
                       )}
@@ -54,7 +54,7 @@ export const ClassList: React.FC<ClassListProps> = ({ configs, selectedConfigId,
                       variant="ghost"
                       size="sm"
                       className={`opacity-0 group-hover:opacity-100 h-8 w-8 p-0 ${
-                        selectedConfigId === cfg.id ? "text-blue-100 hover:text-white hover:bg-blue-700" : "text-red-400 hover:text-red-600 hover:bg-transparent"
+                        selectedConfigId === cfg.id ? "text-gray-100 hover:text-white hover:bg-gray-700" : "text-red-400 hover:text-red-600 hover:bg-transparent"
                       }`}
                       onClick={(e) => {
                         e.stopPropagation();

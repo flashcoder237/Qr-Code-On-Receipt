@@ -171,7 +171,7 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
 
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium flex items-center">
-            <BookOpen className="mr-2 h-5 w-5 text-blue-600" />
+            <BookOpen className="mr-2 h-5 w-5 text-gray-600" />
             Semestres
           </h3>
           {isEditing && (

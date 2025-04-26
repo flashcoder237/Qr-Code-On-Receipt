@@ -10,6 +10,7 @@ import { menuItems } from "./lib/constants/menu";
 import { Input } from "./components/ui/input";
 import { Button } from "./components/ui/button";
 import { useReadLocalStorage } from "usehooks-ts";
+import { PageLayout } from "./components/layouts/PageLayout";
 
 // Typage des licences
 interface Licenses {
@@ -74,7 +75,7 @@ const App: React.FC = () => {
   
 
   return (
-    <>
+    <PageLayout>
       {isLoading ? (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
           <p className="text-lg font-semibold text-gray-600">Chargement...</p>
@@ -89,7 +90,7 @@ const App: React.FC = () => {
               Entrez votre clé de licence :
             </h2>
             <Input
-              className="w-full px-4 py-2 border rounded-lg text-center text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border rounded-lg text-center text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
               type="text"
               value={licenseKey}
               onChange={(e) => setLicenseKey(e.target.value)}
@@ -97,11 +98,11 @@ const App: React.FC = () => {
             />
             <Button
               onClick={handleActivateLicense}
-              className="mt-4 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+              className="mt-4 w-full bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
             >
               Activer la licence
             </Button>
-            <p className="italic text-xs text-blue-400">
+            <p className="italic text-xs text-gray-400">
               Pour l'activation du logiciel, veuillez à ce que votre ordinateur
               soit connecté à Internet.
             </p>
@@ -121,7 +122,7 @@ const App: React.FC = () => {
           </AppToolbarProvider>
         </SidebarProvider>
       )}
-    </>
+    </PageLayout>
   );
 };
 
