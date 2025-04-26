@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Download, Eye } from "lucide-react";
 import * as XLSX from "xlsx";
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { PDFDocument } from "pdf-lib";
 import JSZip from "jszip";
 import { calculateGrade, calculateStatistics, calculateMGP } from "@/lib/helpers/grades";
-import { SemesterSelector } from "./SemesterSelector"
-import { generateTranscriptPDF } from "@/lib/pdfGenerator";
+import { generateTranscriptPDFWithPDFKit } from "@/lib/pdfGenerator";
 
-// Import the extracted components
+// Import des composants
 import { ConfigurationSelector } from "./ConfigurationSelector";
 import { ExcelUploader } from "./ExcelUploader";
 import { ColumnMappingEditor } from "./ColumnMappingEditor";
 import { TranscriptPreview } from "./TranscriptPreview";
+import { SemesterSelector } from "./SemesterSelector";
 
 // Types
 type EC = {
@@ -44,9 +44,9 @@ type ClassConfig = {
   semesters: Semester[];
 };
 
-// Inversé: EC id comme clé, Excel column comme valeur
+// Type pour la correspondance entre EC et colonnes Excel
 type ColumnMapping = {
-  [ecId: string]: string; // key: EC id, value: Excel column name
+  [ecId: string]: string; // clé: ID de l'EC, valeur: nom de la colonne Excel
 };
 
 type StudentRecord = {
@@ -70,46 +70,41 @@ type StudentRecord = {
   }[];
 };
 
+// Constantes
 const LOCAL_STORAGE_KEY = "academicConfigs";
 const MAPPING_STORAGE_KEY = "columnMappings";
 
-export const ReleveGenerator = () => {
+// Hook personnalisé pour gérer les configurations
+const useClassConfigurations = () => {
   const [configs, setConfigs] = useState<ClassConfig[]>([]);
-  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
-  const [columnMapping, setColumnMapping] = useState<ColumnMapping>({});
-  const [savedMappings, setSavedMappings] = useState<Record<string, ColumnMapping>>({});
-  const [mappingName, setMappingName] = useState<string>("");
-  const [excelColumns, setExcelColumns] = useState<string[]>([]);
-  const [excelData, setExcelData] = useState<any[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [successNotification, setSuccessNotification] = useState(false);
-  const [previewStudent, setPreviewStudent] = useState<StudentRecord | null>(null);
-  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("configuration");
-  const [selectedSemesterId, setSelectedSemesterId] = useState<string | null>(null);
-  const [availableSemesters, setAvailableSemesters] = useState<{id: string; name: string}[]>([]);
-
-  // Load academic configs from localStorage
+  
   useEffect(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    console.log("Loading configs from localStorage:", stored ? "data found" : "no data");
-    
-    if (stored) {
-      try {
-        const parsedConfigs = JSON.parse(stored);
-        console.log("Parsed configs:", parsedConfigs.length);
-        setConfigs(parsedConfigs);
-      } catch (error) {
-        console.error("Error parsing configs:", error);
-        setConfigs([]);
+    const loadConfigs = () => {
+      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsedConfigs = JSON.parse(stored);
+          setConfigs(parsedConfigs);
+        } catch (error) {
+          console.error("Erreur lors du parsing des configurations:", error);
+          setConfigs([]);
+        }
       }
-    }
+    };
+    
+    loadConfigs();
   }, []);
+  
+  return { configs };
+};
 
+// Hook personnalisé pour gérer les mappings de colonnes
+const useColumnMapping = (selectedConfigId: string | null) => {
+  const [columnMapping, setColumnMapping] = useState<ColumnMapping>({});
+  
+  // Charger le mapping depuis le localStorage quand la configuration change
   useEffect(() => {
     if (selectedConfigId) {
-      // Récupérer les mappings
       const storedMapping = localStorage.getItem(`${MAPPING_STORAGE_KEY}_${selectedConfigId}`);
       if (storedMapping) {
         try {
@@ -120,8 +115,83 @@ export const ReleveGenerator = () => {
       } else {
         setColumnMapping({});
       }
-      
-      // Récupérer les semestres disponibles pour cette configuration
+    }
+  }, [selectedConfigId]);
+  
+  // Sauvegarder le mapping dans le localStorage quand il change
+  useEffect(() => {
+    if (selectedConfigId) {
+      localStorage.setItem(`${MAPPING_STORAGE_KEY}_${selectedConfigId}`, JSON.stringify(columnMapping));
+    }
+  }, [columnMapping, selectedConfigId]);
+  
+  const handleMappingChange = useCallback((ecId: string, excelCol: string) => {
+    setColumnMapping(prev => ({
+      ...prev,
+      [ecId]: excelCol,
+    }));
+  }, []);
+  
+  return { columnMapping, handleMappingChange };
+};
+
+// Hook personnalisé pour gérer les données Excel
+const useExcelData = () => {
+  const [excelData, setExcelData] = useState<any[]>([]);
+  const [excelColumns, setExcelColumns] = useState<string[]>([]);
+  
+  const handleExcelUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+  
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true }) as any[];
+  
+        setExcelData(jsonData);
+        if (jsonData.length > 0) {
+          const cols = Object.keys(jsonData[0]);
+          setExcelColumns(cols);
+        } else {
+          setExcelColumns([]);
+          throw new Error("Aucune donnée trouvée dans le fichier Excel");
+        }
+      } catch (err) {
+        console.error("Erreur lors de la lecture du fichier Excel:", err);
+        throw err;
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }, []);
+  
+  return { excelData, excelColumns, handleExcelUpload };
+};
+
+export const ReleveGenerator: React.FC = () => {
+  // États locaux
+  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
+  const [selectedSemesterId, setSelectedSemesterId] = useState<string | null>(null);
+  const [availableSemesters, setAvailableSemesters] = useState<{id: string; name: string}[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [successNotification, setSuccessNotification] = useState(false);
+  const [previewStudent, setPreviewStudent] = useState<StudentRecord | null>(null);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("configuration");
+
+  // Hooks personnalisés
+  const { configs } = useClassConfigurations();
+  const { excelData, excelColumns, handleExcelUpload: handleExcelUploadBase } = useExcelData();
+  const { columnMapping, handleMappingChange } = useColumnMapping(selectedConfigId);
+
+  // Mettre à jour les semestres disponibles quand la configuration change
+  useEffect(() => {
+    if (selectedConfigId) {
       const config = configs.find(c => c.id === selectedConfigId);
       if (config) {
         const semesters = config.semesters.map(sem => ({
@@ -136,22 +206,7 @@ export const ReleveGenerator = () => {
     }
   }, [selectedConfigId, configs]);
 
-  const handleSemesterChange = (value: string) => {
-    setSelectedSemesterId(value);
-    setError(null);
-    setPreviewStudent(null);
-    setPreviewPdfUrl(null);
-  };
-  
-
-  // Save column mappings on change
-  useEffect(() => {
-    if (selectedConfigId) {
-      localStorage.setItem(`${MAPPING_STORAGE_KEY}_${selectedConfigId}`, JSON.stringify(columnMapping));
-    }
-  }, [columnMapping, selectedConfigId]);
-
-  // Cleanup preview PDF URL when component unmounts
+  // Nettoyer l'URL du PDF de prévisualisation
   useEffect(() => {
     return () => {
       if (previewPdfUrl) {
@@ -160,15 +215,37 @@ export const ReleveGenerator = () => {
     };
   }, [previewPdfUrl]);
 
-  const handleConfigChange = (value: string) => {
-    setSelectedConfigId(value);
-    setColumnMapping({});
+  // Handler pour l'upload d'Excel avec gestion d'erreur
+  const handleExcelUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
     setPreviewStudent(null);
     setPreviewPdfUrl(null);
-  };
+    
+    try {
+      handleExcelUploadBase(event);
+    } catch (err) {
+      setError((err as Error).message || "Erreur lors de la lecture du fichier Excel");
+    }
+  }, [handleExcelUploadBase]);
 
-  const handleConfigureMapping = () => {
+  // Handler pour le changement de configuration
+  const handleConfigChange = useCallback((value: string) => {
+    setSelectedConfigId(value);
+    setError(null);
+    setPreviewStudent(null);
+    setPreviewPdfUrl(null);
+  }, []);
+
+  // Handler pour le changement de semestre
+  const handleSemesterChange = useCallback((value: string) => {
+    setSelectedSemesterId(value);
+    setError(null);
+    setPreviewStudent(null);
+    setPreviewPdfUrl(null);
+  }, []);
+
+  // Handler pour configurer le mapping
+  const handleConfigureMapping = useCallback(() => {
     if (!selectedConfigId) {
       setError("Veuillez d'abord sélectionner une configuration");
       return;
@@ -190,183 +267,44 @@ export const ReleveGenerator = () => {
     }
     
     setActiveTab("mapping");
-  };
+  }, [selectedConfigId, selectedSemesterId, excelColumns]);
 
-  const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-  
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: "array" });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true }) as any[];
-  
-        setExcelData(jsonData);
-        if (jsonData.length > 0) {
-          // S'assurer que nous avons des colonnes
-          const cols = Object.keys(jsonData[0]);
-          console.log("Excel columns detected:", cols);
-          setExcelColumns(cols);
-        } else {
-          console.log("No data found in Excel file");
-          setExcelColumns([]);
-          setError("Aucune donnée trouvée dans le fichier Excel");
-        }
-        setError(null);
-        setPreviewStudent(null);
-        setPreviewPdfUrl(null);
-      } catch (err) {
-        console.error("Error parsing Excel:", err);
-        setError("Erreur lors de la lecture du fichier Excel");
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  };
+  // Handler pour naviguer de la prévisualisation au mapping
+  const handleBackFromPreview = useCallback(() => {
+    setActiveTab("mapping");
+  }, []);
 
-  const handleMappingChange = (ecId: string, excelCol: string) => {
-    setColumnMapping((prev) => ({
-      ...prev,
-      [ecId]: excelCol,
-    }));
-  };
-
-  const generateTranscriptPDF = async (student: StudentRecord) => {
-    const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([595, 842]); // A4 size in points (portrait)
-    const { width, height } = page.getSize();
-
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-    const fontSizeTitle = 16;
-    const fontSizeHeader = 10;
-    const fontSizeText = 9;
-    const margin = 40;
-
-    // Header
-    page.drawText("RELEVE DE NOTES / TRANSCRIPT", {
-      x: margin,
-      y: height - margin,
-      size: fontSizeTitle,
-      font: fontBold,
-      color: rgb(0, 0, 0),
+  // Obtenir la liste des ECs disponibles 
+  const getAvailableECs = useCallback(() => {
+    if (!selectedConfigId || !selectedSemesterId) return [];
+    
+    const config = configs.find((c) => c.id === selectedConfigId);
+    if (!config) return [];
+    
+    const semester = config.semesters.find(sem => sem.id === selectedSemesterId);
+    if (!semester) return [];
+    
+    const ecList: { id: string; fullName: string }[] = [];
+    
+    semester.ues.forEach((ue) => {
+      ue.ecs.forEach((ec) => {
+        ecList.push({
+          id: ec.id,
+          fullName: `${ue.name} / ${ec.name}`
+        });
+      });
     });
+    
+    return ecList;
+  }, [selectedConfigId, selectedSemesterId, configs]);
 
-    // University and ministry info (simplified for brevity)
-    const headerLines = [
-      "REPUBLIQUE DU CAMEROUN",
-      "Paix – Travail – Patrie",
-      "MINISTERE DE L'ENSEIGNEMENT SUPERIEUR",
-      "UNIVERSITE DE DOUALA",
-      "FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES",
-      "INSTITUT SUPERIEUR DES SCIENCES, ARTS ET METIERS",
-    ];
-    let y = height - margin - fontSizeTitle - 10;
-    headerLines.forEach((line) => {
-      page.drawText(line, { x: margin, y, size: fontSizeHeader, font });
-      y -= fontSizeHeader + 2;
-    });
-
-    // Student info
-    y -= 10;
-    const studentInfoLines = [
-      `Nom et prénom: ${student.NOM} ${student.PRENOM}`,
-      `Matricule: ${student.MATRICULE}`,
-      `Date de naissance: ${student["DATE DE NAISSANCE"]}`,
-      `Lieu de naissance: ${student["LIEU DE NAISSANCE"]}`,
-      `Niveau: ${student.NIVEAU || ""}`,
-      `Semestre: ${student.SEMESTRE || ""}`,
-      `Année académique: ${student["ANNEE ACADÉMIQUE"] || ""}`,
-      `Filière: ${student.FILIERE || ""}`,
-      `Option: ${student.OPTION || ""}`,
-    ];
-    studentInfoLines.forEach((line) => {
-      page.drawText(line, { x: margin, y, size: fontSizeText, font });
-      y -= fontSizeText + 4;
-    });
-
-    // Table header
-    y -= 10;
-    const tableX = margin;
-    const colWidths = [60, 200, 50, 50, 50];
-    const headers = ["CODE", "UNITE D'ENSEIGNEMENT", "NOTE/20", "MOYENNE", "CREDIT"];
-    let x = tableX;
-    headers.forEach((header, i) => {
-      page.drawText(header, { x, y, size: fontSizeText, font: fontBold });
-      x += colWidths[i];
-    });
-    y -= fontSizeText + 6;
-
-    // Table rows
-    student.COURSES?.forEach((course) => {
-      x = tableX;
-      page.drawText(course.CODE, { x, y, size: fontSizeText, font });
-      x += colWidths[0];
-      page.drawText(course.INTITULE, { x, y, size: fontSizeText, font });
-      x += colWidths[1];
-      page.drawText(course.NOTE.toFixed(2), { x, y, size: fontSizeText, font });
-      x += colWidths[2];
-      page.drawText(course.MOYENNE.toFixed(2), { x, y, size: fontSizeText, font });
-      x += colWidths[3];
-      page.drawText(course.CREDIT.toString(), { x, y, size: fontSizeText, font });
-      y -= fontSizeText + 4;
-    });
-
-    // Calculate statistics
-    const stats = calculateStatistics(
-      student.COURSES?.map((c) => ({ credits: c.CREDIT, grade: c.NOTE })) || []
-    );
-    const mgp = calculateMGP(stats.grade);
-    const gradeLetter = calculateGrade(stats.average);
-
-    y -= 20;
-    page.drawText(`TOTAL CREDITS: ${stats.totalCredits}`, { x: margin, y, size: fontSizeText, font: fontBold });
-    y -= fontSizeText + 4;
-    page.drawText(`MOYENNE SEMESTRIELLE: ${stats.average.toFixed(2)}`, { x: margin, y, size: fontSizeText, font: fontBold });
-    y -= fontSizeText + 4;
-    page.drawText(`MGP: ${mgp.toFixed(2)}`, { x: margin, y, size: fontSizeText, font: fontBold });
-    y -= fontSizeText + 4;
-    page.drawText(`GRADE: ${gradeLetter}`, { x: margin, y, size: fontSizeText, font: fontBold });
-    y -= fontSizeText + 4;
-    page.drawText(`DECISION DU JURY: ${stats.grade === "Pass" ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE"}`, { x: margin, y, size: fontSizeText, font: fontBold });
-
-    // Footer with signatures and legend (simplified)
-    y -= 50;
-    page.drawText("Le Doyen FMSP", { x: margin, y, size: fontSizeText, font });
-    page.drawText("Le Directeur de l'Institut Supérieur des Sciences Arts et Métiers", { x: margin + 300, y, size: fontSizeText, font });
-
-    y -= 40;
-    const legendLines = [
-      "Grade    Note/4     Appréciation    Moy /20",
-      "A+ 4.0 Excellent [18-20]",
-      "A 3.7 Très Bien [16-18[",
-      "B+ 3.3 Bien [14-16[",
-      "B 3 Assez Bien [13-14[",
-      "B- 2.7 Assez Bien [12-13[",
-      "C+ 2.3 Passable [11-12[",
-      "C 2.0 Passable [10-11[",
-      "C- 1.7 Insuffisant [09-10[",
-      "D 1.3 Faible [08-09[",
-      "E 1.0 Très Faible [06-08[",
-      "F 0.0 Nul [00-06[",
-    ];
-    legendLines.forEach((line, idx) => {
-      page.drawText(line, { x: margin, y: y - idx * (fontSizeText + 2), size: fontSizeText, font });
-    });
-
-    const pdfBytes = await pdfDoc.save();
-    return pdfBytes;
-  };
-
-  const processStudentData = () => {
+  // Mémoiser le traitement des données étudiants
+  const processStudentData = useCallback(() => {
     if (excelData.length === 0 || !selectedConfigId || !selectedSemesterId) {
       return [];
     }
 
-    // Group students by MATRICULE
+    // Grouper les étudiants par MATRICULE
     const studentsMap: { [matricule: string]: StudentRecord } = {};
 
     excelData.forEach((row) => {
@@ -390,79 +328,86 @@ export const ReleveGenerator = () => {
         };
       }
 
-      // Map ECs to Excel columns using columnMapping
+      // Mapper les ECs aux colonnes Excel
       Object.entries(columnMapping).forEach(([ecId, excelCol]) => {
-        if (row[excelCol] !== undefined) {
-          // Find EC info from config
-          const config = configs.find((c) => c.id === selectedConfigId);
-          if (!config) return;
-          let ecName = "";
-          let ecCredits = 0;
-          let ueCode = "";
-          let ueName = "";
-          for (const sem of config.semesters) {
-            for (const ue of sem.ues) {
-              const ec = ue.ecs.find((e) => e.id === ecId);
-              if (ec) {
-                ecName = ec.name;
-                ecCredits = ec.credits;
-                ueCode = ue.id;
-                ueName = ue.name;
-                break;
-              }
+        if (!excelCol || row[excelCol] === undefined) return;
+        
+        // Trouver les informations de l'EC depuis la config
+        const config = configs.find((c) => c.id === selectedConfigId);
+        if (!config) return;
+        
+        let ecInfo: { name: string, credits: number, ueCode: string, ueName: string } | null = null;
+        
+        // Recherche efficace de l'EC
+        outerLoop: for (const sem of config.semesters) {
+          for (const ue of sem.ues) {
+            const ec = ue.ecs.find((e) => e.id === ecId);
+            if (ec) {
+              ecInfo = {
+                name: ec.name,
+                credits: ec.credits,
+                ueCode: ue.id,
+                ueName: ue.name
+              };
+              break outerLoop;
             }
           }
-          if (ecName) {
-            studentsMap[matricule].COURSES?.push({
-              CODE: ueCode,
-              INTITULE: ecName,
-              NOTE: Number(row[excelCol]) || 0,
-              MOYENNE: Number(row[excelCol]) || 0,
-              CREDIT: ecCredits,
-            });
-          }
+        }
+        
+        if (ecInfo) {
+          studentsMap[matricule].COURSES?.push({
+            CODE: ecInfo.ueCode,
+            INTITULE: ecInfo.name,
+            NOTE: Number(row[excelCol]) || 0,
+            MOYENNE: Number(row[excelCol]) || 0,
+            CREDIT: ecInfo.credits,
+          });
         }
       });
     });
 
     return Object.values(studentsMap);
-  };
+  }, [excelData, selectedConfigId, selectedSemesterId, columnMapping, configs]);
 
+  // Handler pour prévisualiser un relevé
   const handlePreviewReleve = async () => {
     if (!selectedSemesterId) {
       setError("Veuillez sélectionner un semestre");
       return;
     }
-    const students = processStudentData();
-    if (students.length === 0) {
-      setError("Aucune donnée d'étudiant à prévisualiser");
-      return;
-    }
-
+    
     setIsLoading(true);
+    setError(null);
+    
     try {
-      // Preview the first student
+      const students = processStudentData();
+      if (students.length === 0) {
+        throw new Error("Aucune donnée d'étudiant à prévisualiser");
+      }
+
+      // Prévisualiser le premier étudiant
       const student = students[0];
       setPreviewStudent(student);
       
-      const pdfBytes = await generateTranscriptPDF(student);
+      const pdfBytes = await generateTranscriptPDFWithPDFKit(student);
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
       
-      // Cleanup previous URL
+      // Nettoyer l'URL précédente
       if (previewPdfUrl) {
         URL.revokeObjectURL(previewPdfUrl);
       }
       
+      const url = URL.createObjectURL(blob);
       setPreviewPdfUrl(url);
       setActiveTab("preview");
     } catch (err) {
-      setError("Erreur lors de la génération de la prévisualisation");
+      setError((err as Error).message || "Erreur lors de la génération de la prévisualisation");
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Handler pour générer et télécharger tous les relevés
   const processAndDownloadAll = async () => {
     if (!selectedSemesterId) {
       setError("Veuillez sélectionner un semestre");
@@ -483,56 +428,38 @@ export const ReleveGenerator = () => {
 
     try {
       const students = processStudentData();
+      if (students.length === 0) {
+        throw new Error("Aucune donnée d'étudiant valide");
+      }
+      
       const zip = new JSZip();
 
       for (const student of students) {
-        const pdfBytes = await generateTranscriptPDF(student);
-        zip.file(`${student.MATRICULE}_releve.pdf`, pdfBytes);
+        try {
+          const pdfBytes = await generateTranscriptPDFWithPDFKit(student);
+          zip.file(`${student.MATRICULE}_releve.pdf`, pdfBytes);
+        } catch (err) {
+          console.error(`Erreur pour l'étudiant ${student.MATRICULE}:`, err);
+          // Continue malgré l'erreur pour un étudiant
+        }
       }
 
       const zipContent = await zip.generateAsync({ type: "blob" });
       const url = window.URL.createObjectURL(zipContent);
+      
       const link = document.createElement("a");
       link.href = url;
       link.download = "releves_de_notes.zip";
       link.click();
+      
       window.URL.revokeObjectURL(url);
-
       setSuccessNotification(true);
       setTimeout(() => setSuccessNotification(false), 5000);
     } catch (err) {
-      setError("Erreur lors de la génération des relevés");
+      setError((err as Error).message || "Erreur lors de la génération des relevés");
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Get all available ECs from the selected config
-  const getAvailableECs = () => {
-    if (!selectedConfigId || !selectedSemesterId) return [];
-    
-    const config = configs.find((c) => c.id === selectedConfigId);
-    if (!config) return [];
-    
-    const semester = config.semesters.find(sem => sem.id === selectedSemesterId);
-    if (!semester) return [];
-    
-    const ecList: { id: string; fullName: string }[] = [];
-    
-    semester.ues.forEach((ue) => {
-      ue.ecs.forEach((ec) => {
-        ecList.push({
-          id: ec.id,
-          fullName: `${ue.name} / ${ec.name}`
-        });
-      });
-    });
-    
-    return ecList;
-  };
-
-  const handleBackFromPreview = () => {
-    setActiveTab("mapping");
   };
 
   return (
@@ -540,7 +467,7 @@ export const ReleveGenerator = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
-          <TabsTrigger value="mapping">Correspondance</TabsTrigger>
+          <TabsTrigger value="mapping" disabled={!selectedConfigId || !selectedSemesterId}>Correspondance</TabsTrigger>
           <TabsTrigger value="preview" disabled={!previewPdfUrl}>Prévisualisation</TabsTrigger>
         </TabsList>
         
@@ -588,18 +515,18 @@ export const ReleveGenerator = () => {
                   <p className="text-sm text-gray-600 mb-4">{excelData.length} ligne(s) chargée(s)</p>
                   
                   <div className="flex gap-2">
-                  <Button 
-                    onClick={handleConfigureMapping} 
-                    variant="outline"
-                    disabled={!selectedConfigId || excelColumns.length === 0}
-                  >
-                    Configurer la correspondance
-                  </Button>
+                    <Button 
+                      onClick={handleConfigureMapping} 
+                      variant="outline"
+                      disabled={!selectedConfigId || !selectedSemesterId || excelColumns.length === 0}
+                    >
+                      Configurer la correspondance
+                    </Button>
                     
                     <Button 
                       onClick={handlePreviewReleve} 
                       variant="secondary"
-                      disabled={isLoading || !selectedConfigId || excelData.length === 0}
+                      disabled={isLoading || !selectedConfigId || !selectedSemesterId || excelData.length === 0}
                     >
                       <Eye className="mr-2 h-4 w-4" />
                       Prévisualiser un relevé
@@ -633,22 +560,33 @@ export const ReleveGenerator = () => {
                 Retour
               </Button>
               
-              <Button 
-                onClick={processAndDownloadAll} 
-                disabled={isLoading || Object.keys(columnMapping).length === 0}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Génération en cours...
-                  </>
-                ) : (
-                  <>
-                    <Download className="mr-2 h-4 w-4" />
-                    Générer tous les relevés
-                  </>
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handlePreviewReleve} 
+                  variant="secondary"
+                  disabled={isLoading || Object.keys(columnMapping).length === 0}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Prévisualiser
+                </Button>
+                
+                <Button 
+                  onClick={processAndDownloadAll} 
+                  disabled={isLoading || Object.keys(columnMapping).length === 0}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Génération en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-4 w-4" />
+                      Générer tous les relevés
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardFooter>
           </Card>
         </TabsContent>

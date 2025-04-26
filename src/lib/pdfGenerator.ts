@@ -1,575 +1,188 @@
-// src/lib/pdfGenerator.ts
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
-import type { StudentRecord } from "../types/student";
+import { StudentRecord } from "../types/student";
+import PDFDocument from 'pdfkit';
+import blobStream from 'blob-stream';
 
-export async function generateTranscriptPDF(student: StudentRecord) {
-  const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595, 842]); // A4 size in points (portrait)
-  const { width, height } = page.getSize();
+/**
+ * Generate a PDF transcript using PDFKit
+ */
+export async function generateTranscriptPDFWithPDFKit(student: StudentRecord): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    try {
+      // Create a document
+      const doc = new PDFDocument({
+        size: 'A4',
+        margin: 50,
+        font: 'Helvetica',
+        info: {
+          Title: `Relevé de Notes - ${student.NOM} ${student.PRENOM}`,
+          Author: 'Université de Douala',
+        }
+      });
 
-  // Polices
-  const fontRegular = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
-  const fontItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
+      // Pipe its output to a blob stream
+      const stream = doc.pipe(blobStream());
 
-  // Tailles de police
-  const fontSizeHeader = 9;
-  const fontSizeTitle = 14;
-  const fontSizeNormal = 10;
-  const fontSizeSmall = 8;
+      // Add header content
+      addHeader(doc, student);
 
-  // Marges
-  const marginTop = 40;
-  const marginLeft = 40;
-  const marginRight = 40;
+      // Add student information
+      addStudentInfo(doc, student);
+      
+      // Add courses table
+      const { totalCredits, semesterAverage } = addCoursesTable(doc, student.COURSES || []);
+      
+      // Add grade scale and signature
+      addGradeScaleAndSignature(doc, semesterAverage);
 
-  // En-tête - Partie gauche
-  let y = height - marginTop;
-  let x = marginLeft;
+      // Finalize the PDF and end the stream
+      doc.end();
 
-  // République du Cameroun - Partie gauche
-  page.drawText("REPUBLIQUE DU CAMEROUN", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
+      // Get the PDF as a blob
+      stream.on('finish', () => {
+        const blob = stream.toBlob('application/pdf');
+        
+        // Convert blob to Uint8Array
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (reader.result instanceof ArrayBuffer) {
+            resolve(new Uint8Array(reader.result));
+          } else {
+            reject(new Error('Failed to convert blob to Uint8Array'));
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(blob);
+      });
+    } catch (error) {
+      reject(error);
+    }
   });
-  y -= 12;
-
-  page.drawText("Paix – Travail – Patrie", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontItalic,
-  });
-  y -= 12;
-
-  page.drawText("********************", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("MINISTERE DE L'ENSEIGNEMENT SUPERIEUR", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("********************", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("UNIVERSITE DE DOUALA", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontBold,
-  });
-  y -= 12;
-
-  page.drawText("********************", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontBold,
-  });
-  y -= 12;
-
-  page.drawText("********************", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("B.P 2701, Douala, Cameroun", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("Email: contact@fmsp-udo.cm", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("********************", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("INSTITUT UNIVERSITAIRE DE LA COTE", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontBold,
-  });
-  y -= 12;
-
-  page.drawText("********************", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("B.P 999, Douala, Cameroun", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("Email: contact@IUC.cm", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-
-  // En-tête - Partie droite (en anglais)
-  y = height - marginTop;
-  x = width - marginRight - 150; // Aligné à droite
-
-  page.drawText("REPUBLIC OF CAMEROON", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("Peace – Work – Fatherland", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontItalic,
-  });
-  y -= 12;
-
-  page.drawText("********************", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("MINISTRY OF HIGHER EDUCATION", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("********************", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("THE UNIVERSITY OF DOUALA", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontBold,
-  });
-  y -= 12;
-
-  page.drawText("********************", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("FACULTY OF MEDICINE AND PHARMACEUTICAL SCIENCES", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontBold,
-  });
-  y -= 12;
-
-  page.drawText("********************", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("PO box 2701, Douala, Cameroon", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("Email: contact@fmsp-udo.cm", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("********************", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("INSTITUT UNIVERSITAIRE DE LA COTE", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontBold,
-  });
-  y -= 12;
-
-  page.drawText("********************", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("PO box 999, Douala, Cameroon", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-  y -= 12;
-
-  page.drawText("Email: contact@IUC.cm", {
-    x,
-    y,
-    size: fontSizeHeader,
-    font: fontRegular,
-  });
-
-  // Titre central
-  y = height - 240;
-  page.drawText("RELEVE DE NOTES / TRANSCRIPT", {
-    x: width / 2 - 110,
-    y,
-    size: fontSizeTitle,
-    font: fontBold,
-  });
-
-  y -= 20;
-  page.drawText("Ref No  /24/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASR/SSE", {
-    x: width / 2 - 150,
-    y,
-    size: fontSizeNormal,
-    font: fontRegular,
-  });
-
-  // Informations de l'étudiant - première ligne
-  y -= 30;
-  x = marginLeft + 20;
-  page.drawText("NOM ET PRENOM:", {
-    x,
-    y,
-    size: fontSizeNormal,
-    font: fontRegular,
-  });
-  page.drawText(`${student.NOM} ${student.PRENOM}`, {
-    x: x + 120,
-    y,
-    size: fontSizeNormal,
-    font: fontBold,
-  });
-
-  x = width - marginRight - 150;
-  page.drawText("MATRICULE:", {
-    x,
-    y,
-    size: fontSizeNormal,
-    font: fontBold,
-  });
-  page.drawText(`${student.MATRICULE}`, {
-    x: x + 80,
-    y,
-    size: fontSizeNormal,
-    font: fontBold,
-  });
-
-  // Légende en dessous
-  y -= 10;
-  x = marginLeft + 20;
-  page.drawText("surname and name:", {
-    x,
-    y,
-    size: fontSizeSmall,
-    font: fontItalic,
-  });
-
-  x = width - marginRight - 150;
-  page.drawText("Registration N°:", {
-    x,
-    y,
-    size: fontSizeSmall,
-    font: fontItalic,
-  });
-
-  // Seconde ligne d'informations
-  y -= 20;
-  
-  // Première colonne
-  x = marginLeft + 20;
-  page.drawText(`NÉ(E) LE: ${student["DATE DE NAISSANCE"]}`, {
-    x,
-    y,
-    size: fontSizeNormal,
-    font: fontBold,
-  });
-  
-  y -= 10;
-  page.drawText("Born on:", {
-    x,
-    y,
-    size: fontSizeSmall,
-    font: fontItalic,
-  });
-  
-  // Deuxième colonne
-  x = marginLeft + 200;
-  y += 10;
-  page.drawText(`A: ${student["LIEU DE NAISSANCE"]}`, {
-    x,
-    y,
-    size: fontSizeNormal,
-    font: fontBold,
-  });
-  
-  y -= 10;
-  page.drawText("At:", {
-    x,
-    y,
-    size: fontSizeSmall,
-    font: fontItalic,
-  });
-  
-  // Nouvelle ligne
-  y -= 10;
-  
-  // Première colonne
-  x = marginLeft + 20;
-  page.drawText(`CYCLE: ${student.CYCLE || "Master"}`, {
-    x,
-    y,
-    size: fontSizeNormal,
-    font: fontBold,
-  });
-  
-  y -= 10;
-  page.drawText("Training cycle:", {
-    x,
-    y,
-    size: fontSizeSmall,
-    font: fontItalic,
-  });
-  
-  // Deuxième colonne
-  x = marginLeft + 200;
-  y += 10;
-  page.drawText(`ANNÉE ACADÉMIQUE: ${student["ANNEE ACADÉMIQUE"] || "2023 - 2024"}`, {
-    x,
-    y,
-    size: fontSizeNormal,
-    font: fontBold,
-  });
-  
-  y -= 10;
-  page.drawText("Academic Year:", {
-    x,
-    y,
-    size: fontSizeSmall,
-    font: fontItalic,
-  });
-  
-  // Troisième colonne
-  x = marginLeft + 400;
-  y += 10;
-  page.drawText(`FILIÈRE: ${student.FILIERE || "PHARMACIE"}`, {
-    x,
-    y,
-    size: fontSizeNormal,
-    font: fontBold,
-  });
-  
-  y -= 10;
-  page.drawText("Field of Study:", {
-    x,
-    y,
-    size: fontSizeSmall,
-    font: fontItalic,
-  });
-  
-  // Nouvelle ligne
-  y -= 10;
-  
-  // Première colonne
-  x = marginLeft + 20;
-  page.drawText(`NIVEAU: ${student.NIVEAU || "V"}`, {
-    x,
-    y,
-    size: fontSizeNormal,
-    font: fontBold,
-  });
-  
-  y -= 10;
-  page.drawText("Level:", {
-    x,
-    y,
-    size: fontSizeSmall,
-    font: fontItalic,
-  });
-  
-  // Deuxième colonne
-  x = marginLeft + 200;
-  y += 10;
-  page.drawText(`SEMESTRE: ${student.SEMESTRE || "III"}`, {
-    x,
-    y,
-    size: fontSizeNormal,
-    font: fontBold,
-  });
-  
-  y -= 10;
-  page.drawText("Semester:", {
-    x,
-    y,
-    size: fontSizeSmall,
-    font: fontItalic,
-  });
-  
-  // Troisième colonne
-  x = marginLeft + 400;
-  y += 10;
-  page.drawText(`OPTION: ${student.OPTION || "INDUSTRIE"}`, {
-    x,
-    y,
-    size: fontSizeNormal,
-    font: fontBold,
-  });
-  
-  y -= 10;
-  page.drawText("Option:", {
-    x,
-    y,
-    size: fontSizeSmall,
-    font: fontItalic,
-  });
-
-  // Tableau des notes - en-tête
-  y -= 40;
-  drawTable(page, marginLeft, y, width - marginLeft - marginRight, student.COURSES || [], fontRegular, fontBold);
-
-  // Ajouter le tableau des notes et grille de notation
-  y -= 220; // Espace pour le tableau
-  drawGradeScale(page, marginLeft + 30, y, fontRegular, fontBold);
-
-  // Signatures
-  y -= 70;
-  page.drawText("LE CHEF D'ETABLISSEMENT", {
-    x: width - marginRight - 160,
-    y,
-    size: fontSizeNormal,
-    font: fontRegular,
-  });
-
-  y -= 20;
-  page.drawText("The Dean of the Faculty", {
-    x: width - marginRight - 160,
-    y,
-    size: fontSizeNormal,
-    font: fontRegular,
-  });
-
-  y -= 20;
-  page.drawText("Douala, le ____________", {
-    x: width - marginRight - 160,
-    y,
-    size: fontSizeNormal,
-    font: fontRegular,
-  });
-
-  return pdfDoc.save();
 }
 
-function drawTable(
-  page: PDFPage,
-  x: number,
-  y: number,
-  width: number,
-  courses: any[],
-  fontRegular: PDFFont,
-  fontBold: PDFFont
-) {
-  const fontSize = 10;
-  const lineHeight = 20;
-  const columnWidths = [70, 220, 70, 70, 70]; // Ajustez selon vos besoins
+function addHeader(doc: PDFKit.PDFDocument, student: StudentRecord): void {
+  // Left header text
+  doc.fontSize(8)
+     .text('REPUBLIQUE DU CAMEROUN', 50, 40)
+     .text('Paix – Travail – Patrie', { italic: true })
+     .text('********************')
+     .text('MINISTERE DE L\'ENSEIGNEMENT SUPERIEUR')
+     .text('********************')
+     .text('UNIVERSITE DE DOUALA', { bold: true })
+     .text('********************')
+     .text('FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES', { bold: true })
+     .text('********************')
+     .text('B.P 2701, Douala, Cameroun')
+     .text('Email: contact@fmsp-udo.cm')
+     .text('********************')
+     .text('INSTITUT UNIVERSITAIRE DE LA COTE', { bold: true })
+     .text('********************')
+     .text('B.P 999, Douala, Cameroun')
+     .text('Email: contact@IUC.cm');
+
+  // Right header text
+  doc.fontSize(8)
+     .text('REPUBLIC OF CAMEROON', 400, 40)
+     .text('Peace – Work - Fatherland', { italic: true })
+     .text('********************')
+     .text('MINISTRY OF HIGHER EDUCATION')
+     .text('********************')
+     .text('THE UNIVERSITY OF DOUALA', { bold: true })
+     .text('********************')
+     .text('FACULTY OF MEDICINE AND PHARMACEUTICAL SCIENCES', { bold: true })
+     .text('********************')
+     .text('PO box 2701, Douala, Cameroun')
+     .text('Email: contact@fmsp-udo.cm')
+     .text('********************')
+     .text('INSTITUT UNIVERSITAIRE DE LA COTE', { bold: true })
+     .text('********************')
+     .text('PO box 999, Douala, Cameroun')
+     .text('Email: contact@IUC.cm');
+
+  // Center title
+  doc.fontSize(14)
+     .text('RELEVE DE NOTES / TRANSCRIPT', { align: 'center' }, 240)
+     .fontSize(10)
+     .text('Ref No  /24/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASR/SSE', { align: 'center' });
+}
+
+function addStudentInfo(doc: PDFKit.PDFDocument, student: StudentRecord): void {
+  doc.moveDown(2);
   
-  // Variables pour stocker les crédits totaux et la moyenne
+  // Student name and registration number
+  doc.fontSize(10)
+     .text(`NOM ET PRENOM: ${student.NOM} ${student.PRENOM}`, 50)
+     .fontSize(8)
+     .text('surname and name:', { italic: true })
+     .moveUp()
+     .fontSize(10)
+     .text(`MATRICULE: ${student.MATRICULE}`, 350)
+     .fontSize(8)
+     .text('Registration N°:', { italic: true });
+
+  doc.moveDown();
+  
+  // Birth information
+  doc.fontSize(10)
+     .text(`NÉ(E) LE: ${student["DATE DE NAISSANCE"]}`, 50)
+     .fontSize(8)
+     .text('Born on:', { italic: true })
+     .moveUp()
+     .fontSize(10)
+     .text(`A: ${student["LIEU DE NAISSANCE"]}`, 200)
+     .fontSize(8)
+     .text('At:', { italic: true });
+
+  doc.moveDown();
+  
+  // Academic information
+  doc.fontSize(10)
+     .text(`CYCLE: ${student.CYCLE || "Master"}`, 50)
+     .fontSize(8)
+     .text('Training cycle:', { italic: true })
+     .moveUp()
+     .fontSize(10)
+     .text(`ANNÉE ACADÉMIQUE: ${student["ANNEE ACADÉMIQUE"] || "2023 - 2024"}`, 200)
+     .fontSize(8)
+     .text('Academic Year', { italic: true })
+     .moveUp()
+     .fontSize(10)
+     .text(`FILIÈRE: ${student.FILIERE || "PHARMACIE"}`, 400)
+     .fontSize(8)
+     .text('Field of Study:', { italic: true });
+
+  doc.moveDown();
+  
+  doc.fontSize(10)
+     .text(`NIVEAU: ${student.NIVEAU || "V"}`, 50)
+     .fontSize(8)
+     .text('Level:', { italic: true })
+     .moveUp()
+     .fontSize(10)
+     .text(`SEMESTRE: ${student.SEMESTRE || "III"}`, 200)
+     .fontSize(8)
+     .text('Semester:', { italic: true })
+     .moveUp()
+     .fontSize(10)
+     .text(`OPTION: ${student.OPTION || "INDUSTRIE"}`, 400)
+     .fontSize(8)
+     .text('Option:', { italic: true });
+}
+
+function processCourseData(courses: any[]): {
+  ueGroups: Map<string, { 
+    code: string;
+    name: string;
+    ecs: any[];
+    average: number;
+    credits: number;
+  }>;
+  totalCredits: number;
+  weightedSum: number;
+} {
+  const ueMap = new Map();
+  
   let totalCredits = 0;
   let weightedSum = 0;
-  
-  // En-tête du tableau
-  drawTableRow(
-    page, 
-    x, 
-    y, 
-    ["CODE", "UNITE D'ENSEIGNEMENT", "NOTE/20", "MOYENNE", "CREDIT"], 
-    columnWidths, 
-    fontSize, 
-    fontBold,
-    true
-  );
-  
-  y -= lineHeight;
-  
-  // Grouper les cours par UE
-  const ueMap = new Map();
   
   courses.forEach(course => {
     if (!ueMap.has(course.CODE)) {
@@ -577,225 +190,179 @@ function drawTable(
         code: course.CODE,
         name: course.INTITULE,
         ecs: [],
-        credits: course.CREDIT,
-        grades: []
+        average: 0,
+        credits: course.CREDIT
       });
     }
     
     const ue = ueMap.get(course.CODE);
     ue.ecs.push(course);
-    ue.grades.push(course.NOTE);
   });
   
-  // Dessiner les lignes pour chaque UE
+  // Calculate averages for each UE
   ueMap.forEach(ue => {
-    const ueAverage = ue.grades.reduce((sum: number, grade: number) => sum + grade, 0) / ue.grades.length;
+    const grades = ue.ecs.map(ec => ec.NOTE);
+    ue.average = grades.reduce((sum, grade) => sum + grade, 0) / grades.length;
     
-    // Pour les UE avec un seul EC
-    if (ue.ecs.length === 1) {
-      const ec = ue.ecs[0];
-      drawTableRow(
-        page,
-        x,
-        y,
-        [ue.code, ue.name, ec.NOTE.toFixed(2), ueAverage.toFixed(2), ue.credits.toString()],
-        columnWidths,
-        fontSize,
-        fontRegular,
-        false,
-        [0, 2]  // Mettre en gras la colonne du code et de la moyenne
-      );
-      y -= lineHeight;
-    } 
-    // Pour les UE avec plusieurs ECs
-    else {
-      // Première ligne pour l'UE
-      drawTableRow(
-        page,
-        x,
-        y,
-        [ue.code, ue.name, "", "", ""],
-        columnWidths,
-        fontSize,
-        fontRegular,
-        false,
-        [0, 1]  // Mettre en gras les colonnes du code et du nom
-      );
-      y -= lineHeight;
-      
-      // Lignes pour chaque EC
-      ue.ecs.forEach((ec: any, index: number) => {
-        if (index === ue.ecs.length - 1) {
-          // Dernier EC, afficher aussi la moyenne de l'UE
-          drawTableRow(
-            page,
-            x,
-            y,
-            ["", ec.INTITULE, ec.NOTE.toFixed(2), ueAverage.toFixed(2), ue.credits.toString()],
-            columnWidths,
-            fontSize,
-            fontRegular,
-            false,
-            [3, 4]  // Mettre en gras les colonnes de la moyenne et des crédits
-          );
-        } else {
-          drawTableRow(
-            page,
-            x,
-            y,
-            ["", ec.INTITULE, ec.NOTE.toFixed(2), "", ""],
-            columnWidths,
-            fontSize,
-            fontRegular
-          );
-        }
-        y -= lineHeight;
-      });
-    }
-    
-    // Calculer les statistiques
     totalCredits += ue.credits;
-    weightedSum += ueAverage * ue.credits;
+    weightedSum += ue.average * ue.credits;
   });
   
-  // Calcul de la moyenne semestrielle
+  return { ueGroups: ueMap, totalCredits, weightedSum };
+}
+
+function addCoursesTable(doc: PDFKit.PDFDocument, courses: any[]): {
+  totalCredits: number;
+  semesterAverage: number;
+} {
+  const { ueGroups, totalCredits, weightedSum } = processCourseData(courses);
   const semesterAverage = weightedSum / totalCredits;
+
+  doc.moveDown(2);
+  
+  // Define table layout
+  const tableTop = doc.y;
+  const colWidths = {
+    code: 50,
+    ue: 150,
+    ec: 150,
+    note: 50,
+    average: 50,
+    credit: 40
+  };
+  
+  // Draw table headers
+  doc.fontSize(9)
+     .rect(50, tableTop, 500, 20)
+     .fill('#f0f0f0')
+     .stroke();
+  
+  doc.fontSize(9)
+     .fillColor('black')
+     .text('CODE', 55, tableTop + 5)
+     .text('UNITE D\'ENSEIGNEMENT', 105, tableTop + 5)
+     .text('ELEMENT CONSTITUTIF', 255, tableTop + 5)
+     .text('NOTE/20', 405, tableTop + 5)
+     .text('MOYENNE', 455, tableTop + 5)
+     .text('CREDIT', 505, tableTop + 5);
+  
+  let rowY = tableTop + 20;
+  
+  // Draw rows for each UE and EC
+  ueGroups.forEach((ue, ueCode) => {
+    const startY = rowY;
+    const rowHeight = 20;
+    
+    ue.ecs.forEach((ec, index) => {
+      // Draw row background
+      doc.rect(50, rowY, 500, rowHeight)
+         .fillAndStroke('#ffffff', '#000000');
+      
+      // Draw cell content
+      if (index === 0) {
+        // First EC of the UE
+        doc.fontSize(9)
+           .text(ue.code, 55, rowY + 5, { width: colWidths.code })
+           .text(ue.name, 105, rowY + 5, { width: colWidths.ue });
+      }
+      
+      doc.fontSize(9)
+         .text(ec.INTITULE, 255, rowY + 5, { width: colWidths.ec })
+         .text(ec.NOTE.toFixed(2), 405, rowY + 5, { width: colWidths.note });
+      
+      if (index === 0) {
+        // Show average and credits only on first row
+        doc.fontSize(9)
+           .text(ue.average.toFixed(2), 455, rowY + 5, { width: colWidths.average })
+           .text(ue.credits.toString(), 505, rowY + 5, { width: colWidths.credit });
+      }
+      
+      rowY += rowHeight;
+    });
+  });
+  
+  // Calculate MGP and grade
   const mgp = calculateMGP(semesterAverage);
   const grade = getGradeFromAverage(semesterAverage);
   const decision = semesterAverage >= 10 ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
   
-  // Ligne vide
-  y -= lineHeight;
+  // Draw summary row
+  rowY += 10;
+  doc.rect(50, rowY, 500, 20)
+     .fill('#f0f0f0')
+     .stroke();
   
-  // Ligne récapitulative
-  drawTableRow(
-    page,
-    x,
-    y,
-    ["RELEVE NIVEAU", "SEMESTRE", "TOTAL CREDIT / 30", "MOYENNE SEMESTRIELLE / 20", "MGP", "GRADE", "DECISION DU JURY"],
-    [70, 70, 70, 100, 50, 70, 120],
-    fontSize,
-    fontBold
-  );
+  doc.fontSize(9)
+     .fillColor('black')
+     .text('RELEVE NIVEAU', 55, rowY + 5)
+     .text('SEMESTRE', 105, rowY + 5)
+     .text('TOTAL CREDIT / 30', 155, rowY + 5)
+     .text('MOYENNE SEMESTRIELLE / 20', 255, rowY + 5)
+     .text('MGP', 355, rowY + 5)
+     .text('GRADE', 405, rowY + 5)
+     .text('DECISION DU JURY', 455, rowY + 5);
   
-  y -= lineHeight;
+  rowY += 20;
+  doc.rect(50, rowY, 500, 20)
+     .fillAndStroke('#ffffff', '#000000');
   
-  // Valeurs récapitulatives
-  drawTableRow(
-    page,
-    x,
-    y,
-    ["1", "1", totalCredits.toString(), semesterAverage.toFixed(2), mgp.toFixed(1), grade, decision],
-    [70, 70, 70, 100, 50, 70, 120],
-    fontSize,
-    fontBold
-  );
+  doc.fontSize(9)
+     .text('1', 55, rowY + 5)
+     .text('1', 105, rowY + 5)
+     .text(totalCredits.toString(), 155, rowY + 5)
+     .text(semesterAverage.toFixed(2), 255, rowY + 5)
+     .text(mgp.toFixed(1), 355, rowY + 5)
+     .text(grade, 405, rowY + 5)
+     .text(decision, 455, rowY + 5);
   
-  return y; // Retourne la position Y actuelle pour continuer le dessin
+  return { totalCredits, semesterAverage };
 }
 
-function drawTableRow(
-  page: PDFPage,
-  x: number,
-  y: number,
-  cells: string[],
-  columnWidths: number[],
-  fontSize: number,
-  font: PDFFont,
-  isHeader: boolean = false,
-  boldIndices: number[] = []
-) {
-  // Dessiner le fond pour l'en-tête
-  if (isHeader) {
-    page.drawRectangle({
-      x,
-      y: y - fontSize,
-      width: columnWidths.reduce((a, b) => a + b, 0),
-      height: fontSize * 2,
-      color: rgb(0.95, 0.95, 0.95),
-      borderColor: rgb(0, 0, 0),
-      borderWidth: 1,
-    });
-  } else {
-    // Dessiner les bordures pour les lignes normales
-    page.drawRectangle({
-      x,
-      y: y - fontSize,
-      width: columnWidths.reduce((a, b) => a + b, 0),
-      height: fontSize * 2,
-      borderColor: rgb(0, 0, 0),
-      borderWidth: 1,
-    });
-  }
-
-  // Dessiner le texte des cellules
-  let currentX = x;
-  for (let i = 0; i < cells.length; i++) {
-    const cellFont = boldIndices.includes(i) ? fontBold : font;
-    
-    page.drawText(cells[i], {
-      x: currentX + 5, // Petit padding à gauche
-      y: y - fontSize + 5,
-      size: fontSize,
-      font: cellFont,
-    });
-    
-    // Dessiner la ligne de séparation de colonne (sauf pour la dernière colonne)
-    if (i < cells.length - 1) {
-      page.drawLine({
-        start: { x: currentX + columnWidths[i], y: y + fontSize },
-        end: { x: currentX + columnWidths[i], y: y - fontSize },
-        thickness: 1,
-        color: rgb(0, 0, 0),
-      });
-    }
-    
-    currentX += columnWidths[i];
-  }
-}
-
-function drawGradeScale(
-  page: PDFPage,
-  x: number,
-  y: number,
-  fontRegular: PDFFont,
-  fontBold: PDFFont
-) {
-  const fontSize = 8;
-  const lineHeight = 14;
+function addGradeScaleAndSignature(doc: PDFKit.PDFDocument, semesterAverage: number): void {
+  doc.moveDown(3);
   
-  // En-tête du tableau
-  page.drawText("Grade", { x, y, size: fontSize, font: fontBold });
-  page.drawText("Note/4", { x: x + 40, y, size: fontSize, font: fontBold });
-  page.drawText("Appréciation", { x: x + 80, y, size: fontSize, font: fontBold });
-  page.drawText("Moy /20", { x: x + 160, y, size: fontSize, font: fontBold });
+  // Grade scale - left
+  const scaleTop = doc.y;
+  let scaleY = scaleTop;
   
-  y -= lineHeight;
+  doc.fontSize(8)
+     .text('Grade', 50, scaleY)
+     .text('Note/4', 80, scaleY)
+     .text('Appréciation', 110, scaleY)
+     .text('Moy /20', 180, scaleY);
   
-  // Lignes du tableau
-  const gradeRows = [
-    ["A+", "4.0", "Excellent", "[18-20]"],
-    ["A", "3.7", "Très Bien", "[16-18["],
-    ["B+", "3.3", "Bien", "[14-16["],
-    ["B", "3", "Assez Bien", "[13-14["],
-    ["B-", "2.7", "Assez Bien", "[12-13["],
-    ["C+", "2.3", "Passable", "[11-12["],
-    ["C", "2.0", "Passable", "[10-11["],
-    ["C-", "1.7", "Insuffisant", "[09-10["],
-    ["D", "1.3", "Faible", "[08-09["],
-    ["E", "1.0", "Très Faible", "[06-08["],
-    ["F", "0.0", "Nul", "[00-06["]
+  scaleY += 15;
+  
+  const grades = [
+    { grade: 'A+', note: '4.0', appreciation: 'Excellent', range: '[18-20]' },
+    { grade: 'A', note: '3.7', appreciation: 'Très Bien', range: '[16-18[' },
+    { grade: 'B+', note: '3.3', appreciation: 'Bien', range: '[14-16[' },
+    { grade: 'B', note: '3', appreciation: 'Assez Bien', range: '[13-14[' },
+    { grade: 'B-', note: '2.7', appreciation: 'Assez Bien', range: '[12-13[' },
+    { grade: 'C+', note: '2.3', appreciation: 'Passable', range: '[11-12[' },
+    { grade: 'C', note: '2.0', appreciation: 'Passable', range: '[10-11[' },
+    { grade: 'C-', note: '1.7', appreciation: 'Insuffisant', range: '[09-10[' },
+    { grade: 'D', note: '1.3', appreciation: 'Faible', range: '[08-09[' },
+    { grade: 'E', note: '1.0', appreciation: 'Très Faible', range: '[06-08[' },
+    { grade: 'F', note: '0.0', appreciation: 'Nul', range: '[00-06[' },
   ];
   
-  gradeRows.forEach(row => {
-    page.drawText(row[0], { x, y, size: fontSize, font: fontBold });
-    page.drawText(row[1], { x: x + 40, y, size: fontSize, font: fontBold });
-    page.drawText(row[2], { x: x + 80, y, size: fontSize, font: fontBold });
-    page.drawText(row[3], { x: x + 160, y, size: fontSize, font: fontBold });
-    y -= lineHeight;
+  grades.forEach(g => {
+    doc.text(g.grade, 50, scaleY)
+       .text(g.note, 80, scaleY)
+       .text(g.appreciation, 110, scaleY)
+       .text(g.range, 180, scaleY);
+    scaleY += 15;
   });
+  
+  // Signature - right
+  doc.fontSize(10)
+     .text('LE CHEF D\'ETABLISSEMENT', 400, scaleTop)
+     .text('The Dean of the Faculty', 400, scaleTop + 15)
+     .text('Douala, le ____________', 400, scaleTop + 60);
 }
 
+// Existing grade calculation functions
 function calculateMGP(average: number): number {
   if (average >= 18) return 4.0;
   if (average >= 16) return 3.7;
