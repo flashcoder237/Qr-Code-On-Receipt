@@ -9,6 +9,7 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import JSZip from "jszip";
 import { calculateGrade, calculateStatistics, calculateMGP } from "@/lib/helpers/grades";
 import { SemesterSelector } from "./SemesterSelector"
+import { generateTranscriptPDF } from "@/lib/pdfGenerator";
 
 // Import the extracted components
 import { ConfigurationSelector } from "./ConfigurationSelector";
@@ -233,7 +234,7 @@ export const ReleveGenerator = () => {
     }));
   };
 
-  const generatePdfForStudent = async (student: StudentRecord) => {
+  const generateTranscriptPDF = async (student: StudentRecord) => {
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([595, 842]); // A4 size in points (portrait)
     const { width, height } = page.getSize();
@@ -444,7 +445,7 @@ export const ReleveGenerator = () => {
       const student = students[0];
       setPreviewStudent(student);
       
-      const pdfBytes = await generatePdfForStudent(student);
+      const pdfBytes = await generateTranscriptPDF(student);
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       
@@ -485,7 +486,7 @@ export const ReleveGenerator = () => {
       const zip = new JSZip();
 
       for (const student of students) {
-        const pdfBytes = await generatePdfForStudent(student);
+        const pdfBytes = await generateTranscriptPDF(student);
         zip.file(`${student.MATRICULE}_releve.pdf`, pdfBytes);
       }
 
