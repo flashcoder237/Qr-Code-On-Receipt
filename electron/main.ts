@@ -2,6 +2,7 @@ import { app, BrowserWindow } from "electron";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { setupPDFGenerationHandlers } from "../src/lib/pdfGenerator";
 
 const require = createRequire(import.meta.url);
 console.log(require);
@@ -71,5 +72,6 @@ app.on("activate", () => {
 });
 
 app.whenReady().then(() => {
+  setupPDFGenerationHandlers();
   createWindow();
 });

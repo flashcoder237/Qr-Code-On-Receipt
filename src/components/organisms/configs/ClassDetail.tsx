@@ -130,6 +130,18 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
             />
           </div>
           <div>
+            <Label htmlFor="cycle" className="text-sm font-medium">
+              Cycle
+            </Label>
+            <Input
+              id="cycle"
+              value={config.cycle || ""}
+              onChange={(e) => onUpdate({ cycle: e.target.value })}
+              className="mt-1"
+              disabled={!isEditing}
+            />
+          </div>
+          <div>
             <Label htmlFor="niveau" className="text-sm font-medium">
               Niveau
             </Label>
