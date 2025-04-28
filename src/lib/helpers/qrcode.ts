@@ -36,7 +36,7 @@ export type StudentExcelRecord = {
 
 export function getQrCodePayload(
   payload: StudentExcelRecord,
-  documentType: "releve" | "attestation"
+  documentType: "releve" | "attestation" | "diplome"
 ): string {
   if (documentType === "releve") {
     return `
@@ -84,7 +84,6 @@ Site Web: https://fmsp-udo.cm`;
   return "";
 }
 
-
 export async function generateQrCode(
   payload: StudentExcelRecord,
   documentType: "releve" | "attestation" | "diplome"
@@ -97,5 +96,3 @@ export async function generateQrCode(
   );
   return qrCodeImage;
 }
-
-

@@ -4,21 +4,18 @@ import { useLocalStorage } from "usehooks-ts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { PlusCircle, AlertCircle, Loader2 } from "lucide-react";
+import { PlusCircle, AlertCircle } from "lucide-react";
 import { ClassList } from "@/components/organisms/configs/ClassList";
 import { ClassDetail } from "@/components/organisms/configs/ClassDetail";
 import { ClassConfig, Semester, UE, EC } from "@/components/organisms/configs/types";
 import { LOCAL_STORAGE_KEY, getDefaultAcademicYear, isConfigDuplicate } from "@/components/organisms/configs/utils";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-
 
 export const AcademicConfigManager: React.FC = () => {
   const [configs, setConfigs] = useLocalStorage<ClassConfig[]>(LOCAL_STORAGE_KEY, []);
   const [selectedConfigId, setSelectedConfigId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isEditing, setIsEditing] = React.useState<boolean>(false);
-  const [isLoading, setIsLoading] = React.useState<boolean>(false); 
-
+ 
   const selectedConfig = configs.find((cfg) => cfg.id === selectedConfigId);
 
   const addNewConfig = () => {
@@ -321,11 +318,6 @@ export const AcademicConfigManager: React.FC = () => {
 
   return (
     <div className="bg-gray-50 min-h-screen p-2 md:p-6 relative">
-      {isLoading && (
-        <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center z-50">
-          <LoadingSpinner size={48} />
-        </div>
-      )}
       <Card className="shadow-lg">
         <CardHeader className="bg-gradient-to-r from-gray-500 to-gray-700 text-white">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

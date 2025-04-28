@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { ECItem } from "./ECItem";
-import { UE } from "./types";
+import { UE, EC } from "./types";
 import { calculateUECredits } from "./utils";
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -114,7 +114,6 @@ export const UECard: React.FC<UECardProps> = ({
                 onClick={onAddEC}
                 className="bg-transparent border-none p-0"
                 aria-label="Add EC"
-                size="sm"
                 variant="ghost"
               >
                 <PlusCircle className="mr-1 h-3 w-3" />

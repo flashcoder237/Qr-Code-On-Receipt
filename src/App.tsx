@@ -12,13 +12,6 @@ import { Button } from "./components/ui/button";
 import { useReadLocalStorage } from "usehooks-ts";
 import { PageLayout } from "./components/layouts/PageLayout";
 
-// Typage des licences
-interface Licenses {
-  [key: string]: {
-    status: "unused" | "used";
-  };
-}
-
 const App: React.FC = () => {
   const path = useReadLocalStorage<string>("current_path");
   const [licenseKey, setLicenseKey] = useState<string>("");

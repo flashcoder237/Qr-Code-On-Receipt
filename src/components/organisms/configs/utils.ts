@@ -1,3 +1,4 @@
+import {UE, Semester,ClassConfig } from "./types";
 export const LOCAL_STORAGE_KEY = "academicConfigs";
 
 export const getDefaultAcademicYear = () => {

@@ -9,6 +9,7 @@ interface IProps {
     x: number;
     y: number;
   };
+  orientation : string;
   onChange: (p: { x: number; y: number }) => void;
 }
 

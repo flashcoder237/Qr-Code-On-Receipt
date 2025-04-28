@@ -1,365 +1,362 @@
 import { StudentRecord } from "../types/student";
-import PDFDocument from 'pdfkit';
-import blobStream from 'blob-stream';
+import { app, BrowserWindow } from 'electron';
+import * as path from 'path';
+import * as fs from 'fs';
+import { ipcMain } from 'electron';
+
+// Create HTML template for the transcript
+function createTranscriptHTML(student: StudentRecord): string {
+  const courseRows = student.COURSES ? student.COURSES.map(course => {
+    return `
+      <tr>
+        <td>${course.CODE}</td>
+        <td>${course.INTITULE}</td>
+        <td>${course.NOTE.toFixed(2)}</td>
+        <td>${course.CREDIT}</td>
+      </tr>
+    `;
+  }).join('') : '';
+
+  // Calculate course statistics
+  const totalCredits = student.COURSES ? student.COURSES.reduce((sum, course) => sum + course.CREDIT, 0) : 0;
+  const weightedSum = student.COURSES ? student.COURSES.reduce((sum, course) => sum + (course.NOTE * course.CREDIT), 0) : 0;
+  const semesterAverage = totalCredits > 0 ? weightedSum / totalCredits : 0;
+  const mgp = calculateMGP(semesterAverage);
+  const grade = getGradeFromAverage(semesterAverage);
+  const decision = semesterAverage >= 10 ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Relevé de Notes - ${student.NOM} ${student.PRENOM}</title>
+      <style>
+        body {
+          font-family: 'Helvetica', 'Arial', sans-serif;
+          margin: 0;
+          padding: 20px;
+          color: #333;
+        }
+        .header {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 20px;
+          font-size: 8pt;
+        }
+        .header-left, .header-right {
+          width: 45%;
+        }
+        .document-title {
+          text-align: center;
+          font-size: 14pt;
+          font-weight: bold;
+          margin: 20px 0 10px;
+        }
+        .document-ref {
+          text-align: center;
+          font-size: 10pt;
+          margin-bottom: 20px;
+        }
+        .student-info {
+          margin: 20px 0;
+          font-size: 10pt;
+        }
+        .student-info-row {
+          display: flex;
+          margin-bottom: 10px;
+        }
+        .student-info-item {
+          margin-right: 30px;
+        }
+        .student-info-label {
+          font-style: italic;
+          font-size: 8pt;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 20px 0;
+        }
+        th {
+          background-color: #f0f0f0;
+          text-align: left;
+          padding: 8px;
+          font-size: 9pt;
+        }
+        td {
+          padding: 8px;
+          border: 1px solid #ddd;
+          font-size: 9pt;
+        }
+        .summary-row {
+          font-weight: bold;
+          background-color: #f0f0f0;
+        }
+        .grade-scale {
+          width: 50%;
+          float: left;
+          font-size: 8pt;
+        }
+        .signature {
+          width: 45%;
+          float: right;
+          text-align: left;
+          font-size: 10pt;
+          margin-top: 20px;
+        }
+        .signature-date {
+          margin-top: 40px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="header-left">
+          <p>REPUBLIQUE DU CAMEROUN<br>
+          <i>Paix – Travail – Patrie</i><br>
+          ********************<br>
+          MINISTERE DE L'ENSEIGNEMENT SUPERIEUR<br>
+          ********************<br>
+          <b>UNIVERSITE DE DOUALA</b><br>
+          ********************<br>
+          <b>FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES</b><br>
+          ********************<br>
+          B.P 2701, Douala, Cameroun<br>
+          Email: contact@fmsp-udo.cm<br>
+          ********************<br>
+          <b>INSTITUT UNIVERSITAIRE DE LA COTE</b><br>
+          ********************<br>
+          B.P 999, Douala, Cameroun<br>
+          Email: contact@IUC.cm</p>
+        </div>
+        <div class="header-right">
+          <p>REPUBLIC OF CAMEROON<br>
+          <i>Peace – Work - Fatherland</i><br>
+          ********************<br>
+          MINISTRY OF HIGHER EDUCATION<br>
+          ********************<br>
+          <b>THE UNIVERSITY OF DOUALA</b><br>
+          ********************<br>
+          <b>FACULTY OF MEDICINE AND PHARMACEUTICAL SCIENCES</b><br>
+          ********************<br>
+          PO box 2701, Douala, Cameroun<br>
+          Email: contact@fmsp-udo.cm<br>
+          ********************<br>
+          <b>INSTITUT UNIVERSITAIRE DE LA COTE</b><br>
+          ********************<br>
+          PO box 999, Douala, Cameroun<br>
+          Email: contact@IUC.cm</p>
+        </div>
+      </div>
+      
+      <div class="document-title">RELEVE DE NOTES / TRANSCRIPT</div>
+      <div class="document-ref">Ref No /24/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASR/SSE</div>
+      
+      <div class="student-info">
+        <div class="student-info-row">
+          <div class="student-info-item">
+            <div>NOM ET PRENOM: ${student.NOM} ${student.PRENOM}</div>
+            <div class="student-info-label">surname and name:</div>
+          </div>
+          <div class="student-info-item">
+            <div>MATRICULE: ${student.MATRICULE}</div>
+            <div class="student-info-label">Registration N°:</div>
+          </div>
+        </div>
+        
+        <div class="student-info-row">
+          <div class="student-info-item">
+            <div>NÉ(E) LE: ${student["DATE DE NAISSANCE"] || ""}</div>
+            <div class="student-info-label">Born on:</div>
+          </div>
+          <div class="student-info-item">
+            <div>A: ${student["LIEU DE NAISSANCE"] || ""}</div>
+            <div class="student-info-label">At:</div>
+          </div>
+        </div>
+        
+        <div class="student-info-row">
+          <div class="student-info-item">
+            <div>CYCLE: ${student.CYCLE || "Master"}</div>
+            <div class="student-info-label">Training cycle:</div>
+          </div>
+          <div class="student-info-item">
+            <div>ANNÉE ACADÉMIQUE: ${student["ANNEE ACADÉMIQUE"] || "2023 - 2024"}</div>
+            <div class="student-info-label">Academic Year:</div>
+          </div>
+          <div class="student-info-item">
+            <div>FILIÈRE: ${student.FILIERE || "PHARMACIE"}</div>
+            <div class="student-info-label">Field of Study:</div>
+          </div>
+        </div>
+        
+        <div class="student-info-row">
+          <div class="student-info-item">
+            <div>NIVEAU: ${student.NIVEAU || "V"}</div>
+            <div class="student-info-label">Level:</div>
+          </div>
+          <div class="student-info-item">
+            <div>SEMESTRE: ${student.SEMESTRE || "III"}</div>
+            <div class="student-info-label">Semester:</div>
+          </div>
+          <div class="student-info-item">
+            <div>OPTION: ${student.OPTION || "INDUSTRIE"}</div>
+            <div class="student-info-label">Option:</div>
+          </div>
+        </div>
+      </div>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>CODE</th>
+            <th>UNITE D'ENSEIGNEMENT</th>
+            <th>NOTE/20</th>
+            <th>CREDIT</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${courseRows}
+        </tbody>
+        <tfoot>
+          <tr class="summary-row">
+            <td colspan="2">TOTAL</td>
+            <td>${semesterAverage.toFixed(2)}</td>
+            <td>${totalCredits}</td>
+          </tr>
+        </tfoot>
+      </table>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>RELEVE NIVEAU</th>
+            <th>SEMESTRE</th>
+            <th>TOTAL CREDIT / 30</th>
+            <th>MOYENNE SEMESTRIELLE / 20</th>
+            <th>MGP</th>
+            <th>GRADE</th>
+            <th>DECISION DU JURY</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>1</td>
+            <td>${totalCredits}</td>
+            <td>${semesterAverage.toFixed(2)}</td>
+            <td>${mgp.toFixed(1)}</td>
+            <td>${grade}</td>
+            <td>${decision}</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <div class="grade-scale">
+        <table>
+          <tr>
+            <th>Grade</th>
+            <th>Note/4</th>
+            <th>Appréciation</th>
+            <th>Moy /20</th>
+          </tr>
+          <tr><td>A+</td><td>4.0</td><td>Excellent</td><td>[18-20]</td></tr>
+          <tr><td>A</td><td>3.7</td><td>Très Bien</td><td>[16-18[</td></tr>
+          <tr><td>B+</td><td>3.3</td><td>Bien</td><td>[14-16[</td></tr>
+          <tr><td>B</td><td>3</td><td>Assez Bien</td><td>[13-14[</td></tr>
+          <tr><td>B-</td><td>2.7</td><td>Assez Bien</td><td>[12-13[</td></tr>
+          <tr><td>C+</td><td>2.3</td><td>Passable</td><td>[11-12[</td></tr>
+          <tr><td>C</td><td>2.0</td><td>Passable</td><td>[10-11[</td></tr>
+          <tr><td>C-</td><td>1.7</td><td>Insuffisant</td><td>[09-10[</td></tr>
+          <tr><td>D</td><td>1.3</td><td>Faible</td><td>[08-09[</td></tr>
+          <tr><td>E</td><td>1.0</td><td>Très Faible</td><td>[06-08[</td></tr>
+          <tr><td>F</td><td>0.0</td><td>Nul</td><td>[00-06[</td></tr>
+        </table>
+      </div>
+      
+      <div class="signature">
+        <p>LE CHEF D'ETABLISSEMENT<br>
+        <span class="student-info-label">The Dean of the Faculty</span></p>
+        <p class="signature-date">Douala, le ____________</p>
+      </div>
+    </body>
+    </html>
+  `;
+}
 
 /**
- * Generate a PDF transcript using PDFKit
+ * Generate a PDF transcript using Electron's built-in PDF generation capabilities
  */
-export async function generateTranscriptPDFWithPDFKit(student: StudentRecord): Promise<Uint8Array> {
-  return new Promise((resolve, reject) => {
+export async function generateTranscriptPDF(student: StudentRecord): Promise<Uint8Array> {
+  return new Promise(async (resolve, reject) => {
     try {
-      // Create a document
-      const doc = new PDFDocument({
-        size: 'A4',
-        margin: 50,
-        font: 'Helvetica',
-        info: {
-          Title: `Relevé de Notes - ${student.NOM} ${student.PRENOM}`,
-          Author: 'Université de Douala',
+      // Create a temporary HTML file with the transcript content
+      const html = createTranscriptHTML(student);
+      const tempDir = app.getPath('temp');
+      const htmlPath = path.join(tempDir, `transcript-${Date.now()}.html`);
+      const pdfPath = path.join(tempDir, `transcript-${Date.now()}.pdf`);
+      
+      // Write HTML to temp file
+      fs.writeFileSync(htmlPath, html);
+      
+      // Create a hidden browser window
+      const win = new BrowserWindow({
+        width: 595, // A4 width in pixels at 72 DPI
+        height: 842, // A4 height in pixels at 72 DPI
+        show: false, // Keep window hidden
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true
         }
       });
-
-      // Pipe its output to a blob stream
-      const stream = doc.pipe(blobStream());
-
-      // Add header content
-      addHeader(doc, student);
-
-      // Add student information
-      addStudentInfo(doc, student);
       
-      // Add courses table
-      const { totalCredits, semesterAverage } = addCoursesTable(doc, student.COURSES || []);
+      // Load the HTML file
+      await win.loadFile(htmlPath);
       
-      // Add grade scale and signature
-      addGradeScaleAndSignature(doc, semesterAverage);
-
-      // Finalize the PDF and end the stream
-      doc.end();
-
-      // Get the PDF as a blob
-      stream.on('finish', () => {
-        const blob = stream.toBlob('application/pdf');
-        
-        // Convert blob to Uint8Array
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (reader.result instanceof ArrayBuffer) {
-            resolve(new Uint8Array(reader.result));
-          } else {
-            reject(new Error('Failed to convert blob to Uint8Array'));
-          }
-        };
-        reader.onerror = reject;
-        reader.readAsArrayBuffer(blob);
+      // Wait for content to load completely
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Generate PDF
+      const pdfData = await win.webContents.printToPDF({
+        printBackground: true,
+        pageSize: 'A4',
+        margins: {
+          top: 0.4,
+          bottom: 0.4,
+          left: 0.4,
+          right: 0.4
+        }
       });
+      
+      // Close the window
+      win.close();
+      
+      // Clean up temp HTML file
+      try {
+        fs.unlinkSync(htmlPath);
+      } catch (error) {
+        console.warn('Failed to clean up temporary HTML file', error);
+      }
+      
+      resolve(pdfData);
     } catch (error) {
       reject(error);
     }
   });
 }
 
-function addHeader(doc: PDFKit.PDFDocument, student: StudentRecord): void {
-  // Left header text
-  doc.fontSize(8)
-     .text('REPUBLIQUE DU CAMEROUN', 50, 40)
-     .text('Paix – Travail – Patrie', { italic: true })
-     .text('********************')
-     .text('MINISTERE DE L\'ENSEIGNEMENT SUPERIEUR')
-     .text('********************')
-     .text('UNIVERSITE DE DOUALA', { bold: true })
-     .text('********************')
-     .text('FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES', { bold: true })
-     .text('********************')
-     .text('B.P 2701, Douala, Cameroun')
-     .text('Email: contact@fmsp-udo.cm')
-     .text('********************')
-     .text('INSTITUT UNIVERSITAIRE DE LA COTE', { bold: true })
-     .text('********************')
-     .text('B.P 999, Douala, Cameroun')
-     .text('Email: contact@IUC.cm');
-
-  // Right header text
-  doc.fontSize(8)
-     .text('REPUBLIC OF CAMEROON', 400, 40)
-     .text('Peace – Work - Fatherland', { italic: true })
-     .text('********************')
-     .text('MINISTRY OF HIGHER EDUCATION')
-     .text('********************')
-     .text('THE UNIVERSITY OF DOUALA', { bold: true })
-     .text('********************')
-     .text('FACULTY OF MEDICINE AND PHARMACEUTICAL SCIENCES', { bold: true })
-     .text('********************')
-     .text('PO box 2701, Douala, Cameroun')
-     .text('Email: contact@fmsp-udo.cm')
-     .text('********************')
-     .text('INSTITUT UNIVERSITAIRE DE LA COTE', { bold: true })
-     .text('********************')
-     .text('PO box 999, Douala, Cameroun')
-     .text('Email: contact@IUC.cm');
-
-  // Center title
-  doc.fontSize(14)
-     .text('RELEVE DE NOTES / TRANSCRIPT', { align: 'center' }, 240)
-     .fontSize(10)
-     .text('Ref No  /24/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASR/SSE', { align: 'center' });
-}
-
-function addStudentInfo(doc: PDFKit.PDFDocument, student: StudentRecord): void {
-  doc.moveDown(2);
-  
-  // Student name and registration number
-  doc.fontSize(10)
-     .text(`NOM ET PRENOM: ${student.NOM} ${student.PRENOM}`, 50)
-     .fontSize(8)
-     .text('surname and name:', { italic: true })
-     .moveUp()
-     .fontSize(10)
-     .text(`MATRICULE: ${student.MATRICULE}`, 350)
-     .fontSize(8)
-     .text('Registration N°:', { italic: true });
-
-  doc.moveDown();
-  
-  // Birth information
-  doc.fontSize(10)
-     .text(`NÉ(E) LE: ${student["DATE DE NAISSANCE"]}`, 50)
-     .fontSize(8)
-     .text('Born on:', { italic: true })
-     .moveUp()
-     .fontSize(10)
-     .text(`A: ${student["LIEU DE NAISSANCE"]}`, 200)
-     .fontSize(8)
-     .text('At:', { italic: true });
-
-  doc.moveDown();
-  
-  // Academic information
-  doc.fontSize(10)
-     .text(`CYCLE: ${student.CYCLE || "Master"}`, 50)
-     .fontSize(8)
-     .text('Training cycle:', { italic: true })
-     .moveUp()
-     .fontSize(10)
-     .text(`ANNÉE ACADÉMIQUE: ${student["ANNEE ACADÉMIQUE"] || "2023 - 2024"}`, 200)
-     .fontSize(8)
-     .text('Academic Year', { italic: true })
-     .moveUp()
-     .fontSize(10)
-     .text(`FILIÈRE: ${student.FILIERE || "PHARMACIE"}`, 400)
-     .fontSize(8)
-     .text('Field of Study:', { italic: true });
-
-  doc.moveDown();
-  
-  doc.fontSize(10)
-     .text(`NIVEAU: ${student.NIVEAU || "V"}`, 50)
-     .fontSize(8)
-     .text('Level:', { italic: true })
-     .moveUp()
-     .fontSize(10)
-     .text(`SEMESTRE: ${student.SEMESTRE || "III"}`, 200)
-     .fontSize(8)
-     .text('Semester:', { italic: true })
-     .moveUp()
-     .fontSize(10)
-     .text(`OPTION: ${student.OPTION || "INDUSTRIE"}`, 400)
-     .fontSize(8)
-     .text('Option:', { italic: true });
-}
-
-function processCourseData(courses: any[]): {
-  ueGroups: Map<string, { 
-    code: string;
-    name: string;
-    ecs: any[];
-    average: number;
-    credits: number;
-  }>;
-  totalCredits: number;
-  weightedSum: number;
-} {
-  const ueMap = new Map();
-  
-  let totalCredits = 0;
-  let weightedSum = 0;
-  
-  courses.forEach(course => {
-    if (!ueMap.has(course.CODE)) {
-      ueMap.set(course.CODE, {
-        code: course.CODE,
-        name: course.INTITULE,
-        ecs: [],
-        average: 0,
-        credits: course.CREDIT
-      });
+// Setup IPC handler for renderer process
+export function setupPDFGenerationHandlers() {
+  ipcMain.handle('generate-transcript-pdf', async (event, studentData) => {
+    try {
+      const pdfData = await generateTranscriptPDF(studentData);
+      return pdfData.buffer;
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      throw error;
     }
-    
-    const ue = ueMap.get(course.CODE);
-    ue.ecs.push(course);
   });
-  
-  // Calculate averages for each UE
-  ueMap.forEach(ue => {
-    const grades = ue.ecs.map(ec => ec.NOTE);
-    ue.average = grades.reduce((sum, grade) => sum + grade, 0) / grades.length;
-    
-    totalCredits += ue.credits;
-    weightedSum += ue.average * ue.credits;
-  });
-  
-  return { ueGroups: ueMap, totalCredits, weightedSum };
-}
-
-function addCoursesTable(doc: PDFKit.PDFDocument, courses: any[]): {
-  totalCredits: number;
-  semesterAverage: number;
-} {
-  const { ueGroups, totalCredits, weightedSum } = processCourseData(courses);
-  const semesterAverage = weightedSum / totalCredits;
-
-  doc.moveDown(2);
-  
-  // Define table layout
-  const tableTop = doc.y;
-  const colWidths = {
-    code: 50,
-    ue: 150,
-    ec: 150,
-    note: 50,
-    average: 50,
-    credit: 40
-  };
-  
-  // Draw table headers
-  doc.fontSize(9)
-     .rect(50, tableTop, 500, 20)
-     .fill('#f0f0f0')
-     .stroke();
-  
-  doc.fontSize(9)
-     .fillColor('black')
-     .text('CODE', 55, tableTop + 5)
-     .text('UNITE D\'ENSEIGNEMENT', 105, tableTop + 5)
-     .text('ELEMENT CONSTITUTIF', 255, tableTop + 5)
-     .text('NOTE/20', 405, tableTop + 5)
-     .text('MOYENNE', 455, tableTop + 5)
-     .text('CREDIT', 505, tableTop + 5);
-  
-  let rowY = tableTop + 20;
-  
-  // Draw rows for each UE and EC
-  ueGroups.forEach((ue, ueCode) => {
-    const startY = rowY;
-    const rowHeight = 20;
-    
-    ue.ecs.forEach((ec, index) => {
-      // Draw row background
-      doc.rect(50, rowY, 500, rowHeight)
-         .fillAndStroke('#ffffff', '#000000');
-      
-      // Draw cell content
-      if (index === 0) {
-        // First EC of the UE
-        doc.fontSize(9)
-           .text(ue.code, 55, rowY + 5, { width: colWidths.code })
-           .text(ue.name, 105, rowY + 5, { width: colWidths.ue });
-      }
-      
-      doc.fontSize(9)
-         .text(ec.INTITULE, 255, rowY + 5, { width: colWidths.ec })
-         .text(ec.NOTE.toFixed(2), 405, rowY + 5, { width: colWidths.note });
-      
-      if (index === 0) {
-        // Show average and credits only on first row
-        doc.fontSize(9)
-           .text(ue.average.toFixed(2), 455, rowY + 5, { width: colWidths.average })
-           .text(ue.credits.toString(), 505, rowY + 5, { width: colWidths.credit });
-      }
-      
-      rowY += rowHeight;
-    });
-  });
-  
-  // Calculate MGP and grade
-  const mgp = calculateMGP(semesterAverage);
-  const grade = getGradeFromAverage(semesterAverage);
-  const decision = semesterAverage >= 10 ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
-  
-  // Draw summary row
-  rowY += 10;
-  doc.rect(50, rowY, 500, 20)
-     .fill('#f0f0f0')
-     .stroke();
-  
-  doc.fontSize(9)
-     .fillColor('black')
-     .text('RELEVE NIVEAU', 55, rowY + 5)
-     .text('SEMESTRE', 105, rowY + 5)
-     .text('TOTAL CREDIT / 30', 155, rowY + 5)
-     .text('MOYENNE SEMESTRIELLE / 20', 255, rowY + 5)
-     .text('MGP', 355, rowY + 5)
-     .text('GRADE', 405, rowY + 5)
-     .text('DECISION DU JURY', 455, rowY + 5);
-  
-  rowY += 20;
-  doc.rect(50, rowY, 500, 20)
-     .fillAndStroke('#ffffff', '#000000');
-  
-  doc.fontSize(9)
-     .text('1', 55, rowY + 5)
-     .text('1', 105, rowY + 5)
-     .text(totalCredits.toString(), 155, rowY + 5)
-     .text(semesterAverage.toFixed(2), 255, rowY + 5)
-     .text(mgp.toFixed(1), 355, rowY + 5)
-     .text(grade, 405, rowY + 5)
-     .text(decision, 455, rowY + 5);
-  
-  return { totalCredits, semesterAverage };
-}
-
-function addGradeScaleAndSignature(doc: PDFKit.PDFDocument, semesterAverage: number): void {
-  doc.moveDown(3);
-  
-  // Grade scale - left
-  const scaleTop = doc.y;
-  let scaleY = scaleTop;
-  
-  doc.fontSize(8)
-     .text('Grade', 50, scaleY)
-     .text('Note/4', 80, scaleY)
-     .text('Appréciation', 110, scaleY)
-     .text('Moy /20', 180, scaleY);
-  
-  scaleY += 15;
-  
-  const grades = [
-    { grade: 'A+', note: '4.0', appreciation: 'Excellent', range: '[18-20]' },
-    { grade: 'A', note: '3.7', appreciation: 'Très Bien', range: '[16-18[' },
-    { grade: 'B+', note: '3.3', appreciation: 'Bien', range: '[14-16[' },
-    { grade: 'B', note: '3', appreciation: 'Assez Bien', range: '[13-14[' },
-    { grade: 'B-', note: '2.7', appreciation: 'Assez Bien', range: '[12-13[' },
-    { grade: 'C+', note: '2.3', appreciation: 'Passable', range: '[11-12[' },
-    { grade: 'C', note: '2.0', appreciation: 'Passable', range: '[10-11[' },
-    { grade: 'C-', note: '1.7', appreciation: 'Insuffisant', range: '[09-10[' },
-    { grade: 'D', note: '1.3', appreciation: 'Faible', range: '[08-09[' },
-    { grade: 'E', note: '1.0', appreciation: 'Très Faible', range: '[06-08[' },
-    { grade: 'F', note: '0.0', appreciation: 'Nul', range: '[00-06[' },
-  ];
-  
-  grades.forEach(g => {
-    doc.text(g.grade, 50, scaleY)
-       .text(g.note, 80, scaleY)
-       .text(g.appreciation, 110, scaleY)
-       .text(g.range, 180, scaleY);
-    scaleY += 15;
-  });
-  
-  // Signature - right
-  doc.fontSize(10)
-     .text('LE CHEF D\'ETABLISSEMENT', 400, scaleTop)
-     .text('The Dean of the Faculty', 400, scaleTop + 15)
-     .text('Douala, le ____________', 400, scaleTop + 60);
 }
 
 // Existing grade calculation functions

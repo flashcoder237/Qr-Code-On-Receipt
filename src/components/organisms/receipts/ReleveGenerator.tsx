@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Download, Eye } from "lucide-react";
 import * as XLSX from "xlsx";
-import { PDFDocument } from "pdf-lib";
 import JSZip from "jszip";
-import { calculateGrade, calculateStatistics, calculateMGP } from "@/lib/helpers/grades";
-import { generateTranscriptPDFWithPDFKit } from "@/lib/pdfGenerator";
+
 
 // Import des composants
 import { ConfigurationSelector } from "./ConfigurationSelector";
@@ -389,7 +387,7 @@ export const ReleveGenerator: React.FC = () => {
       const student = students[0];
       setPreviewStudent(student);
       
-      const pdfBytes = await generateTranscriptPDFWithPDFKit(student);
+      const pdfBytes = await window.ipcRenderer.invoke('generate-transcript-pdf', student);
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
       
       // Nettoyer l'URL précédente
@@ -436,7 +434,7 @@ export const ReleveGenerator: React.FC = () => {
 
       for (const student of students) {
         try {
-          const pdfBytes = await generateTranscriptPDFWithPDFKit(student);
+          const pdfBytes = await window.ipcRenderer.invoke('generate-transcript-pdf', student);
           zip.file(`${student.MATRICULE}_releve.pdf`, pdfBytes);
         } catch (err) {
           console.error(`Erreur pour l'étudiant ${student.MATRICULE}:`, err);

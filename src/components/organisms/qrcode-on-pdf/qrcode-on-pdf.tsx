@@ -43,12 +43,12 @@ export const QrCodeOnPdf = () => {
     y: 0,
   });
   const [documentType, setDocumentType] = useLocalStorage<"releve" | "attestation" | "diplome">(
-    "releve"
+    "document_type", "releve"
   );
   const [orientation, setOrientation] = useLocalStorage<"portrait" | "paysage">(
-    "portrait"
+    "orientation", "portrait"
   );
-  const handleSetDocumentType = (element) => {
+  const handleSetDocumentType = (element: string) => {
     if (documentType !== element) {
       // Cas où le type de document change
       const isSwitchingBetweenReleveOrAttestation =
