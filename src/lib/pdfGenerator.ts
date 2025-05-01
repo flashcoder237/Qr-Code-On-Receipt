@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import { ipcMain } from 'electron';
 import { TranscriptSettingsPayload } from "@/lib/form-schemas/settings";
 import { useLocalStorage } from "usehooks-ts";
+import { calculateGrade, calculateMGP} from "@/lib/helpers/grades";
 
 // Fonction pour charger les paramètres d'entête depuis localStorage
 const loadHeaderSettings = (): TranscriptSettingsPayload => {
@@ -133,7 +134,7 @@ function createTranscriptHTML(student: StudentRecord): string {
   const weightedSum = student.COURSES ? student.COURSES.reduce((sum, course) => sum + (course.NOTE * course.CREDIT), 0) : 0;
   const semesterAverage = totalCredits > 0 ? weightedSum / totalCredits : 0;
   const mgp = calculateMGP(semesterAverage);
-  const grade = getGradeFromAverage(semesterAverage);
+  const grade = calculateGrade(semesterAverage);
   const decision = semesterAverage >= 10 ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
 
   return `
@@ -262,12 +263,16 @@ function createTranscriptHTML(student: StudentRecord): string {
             .table-ec{
                 text-align: left;
             }
+
             .grade-sign{
-                display: grid;
-                grid-template-columns: 2fr 1fr 3fr;
-                grid-template-rows: 100px 1fr;
-                gap: 16px;
+              display: flex;
+              flex-flow: row;
+                
             }
+         .footer-note{
+          font-size: 11px;
+          text-align: center;
+         }
                 body > .container{
             border: 1px solid black;
             height: 100%;
@@ -412,91 +417,100 @@ function createTranscriptHTML(student: StudentRecord): string {
             </div>
         
             <div class="grade-sign">
-                <div class="grade-scale">
-                    <table style="table-layout: auto;">
-                        <tbody style="font-size: 8px;">
-                            <tr>
-                                <td><strong>Grade</strong></td>
-                                <td><strong>Note/4</strong></td>
-                                <td><strong>Appréciation</strong></td>
-                                <td><strong>Moy /20</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>A+</strong></td>
-                                <td><strong>4.0</strong></td>
-                                <td><strong>Excellent</strong></td>
-                                <td><strong>[18-20]</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>A</strong></td>
-                                <td><strong>3.7</strong></td>
-                                <td><strong>Très Bien</strong></td>
-                                <td><strong>[16-18[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>B+</strong></td>
-                                <td><strong>3.3</strong></td>
-                                <td><strong>Bien</strong></td>
-                                <td><strong>[14-16[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>B</strong></td>
-                                <td><strong>3</strong></td>
-                                <td><strong>Assez Bien</strong></td>
-                                <td><strong>[13-14[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>B-</strong></td>
-                                <td><strong>2.7</strong></td>
-                                <td><strong>Assez Bien</strong></td>
-                                <td><strong>[12-13[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>C+</strong></td>
-                                <td><strong>2.3</strong></td>
-                                <td><strong>Passable</strong></td>
-                                <td><strong>[11-12[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>C</strong></td>
-                                <td><strong>2.0</strong></td>
-                                <td><strong>Passable</strong></td>
-                                <td><strong>[10-11[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>C-</strong></td>
-                                <td><strong>1.7</strong></td>
-                                <td><strong>Insuffisant</strong></td>
-                                <td><strong>[09-10[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>D</strong></td>
-                                <td><strong>1.3</strong></td>
-                                <td><strong>Faible</strong></td>
-                                <td><strong>[08-09[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>E</strong></td>
-                                <td><strong>1.0</strong></td>
-                                <td><strong>Très Faible</strong></td>
-                                <td><strong>[06-08[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>F</strong></td>
-                                <td><strong>0.0</strong></td>
-                                <td><strong>Nul</strong></td>
-                                <td><strong>[00-06[</strong></td>
-                            </tr>
-                        </tbody>
-                    </table>        
-                </div>
-        
-                <div class="signature">
-                    <p>LE CHEF D'ETABLISSEMENT</p>
-                    <p>The Dean of the Faculty</p>
-                    <p>Douala, le ____________</p>
-                </div>
+                <div>
+      <div class="grade-scale">
+        <table style="table-layout: auto;">
+            <tbody>
+              <tr>
+                <td><strong>Grade</strong></td>
+                <td><strong>Note/4</strong></td>
+                <td><strong>Appréciation</strong></td>
+                <td><strong>Moy /20</strong></td>
+              </tr>
+              <tr>
+                <td><strong>A+</strong></td>
+                <td><strong>4.0</strong></td>
+                <td><strong>Excellent</strong></td>
+                <td><strong>[18-20]</strong></td>
+              </tr>
+              <tr>
+                <td><strong>A</strong></td>
+                <td><strong>3.7</strong></td>
+                <td><strong>Très Bien</strong></td>
+                <td><strong>[16-18[</strong></td>
+              </tr>
+              <tr>
+                <td><strong>B+</strong></td>
+                <td><strong>3.3</strong></td>
+                <td><strong>Bien</strong></td>
+                <td><strong>[14-16[</strong></td>
+              </tr>
+              <tr>
+                <td><strong>B</strong></td>
+                <td><strong>3</strong></td>
+                <td><strong>Assez Bien</strong></td>
+                <td><strong>[13-14[</strong></td>
+              </tr>
+              <tr>
+                <td><strong>B-</strong></td>
+                <td><strong>2.7</strong></td>
+                <td><strong>Assez Bien</strong></td>
+                <td><strong>[12-13[</strong></td>
+              </tr>
+              <tr>
+                <td><strong>C+</strong></td>
+                <td><strong>2.3</strong></td>
+                <td><strong>Passable</strong></td>
+                <td><strong>[11-12[</strong></td>
+              </tr>
+              <tr>
+                <td><strong>C</strong></td>
+                <td><strong>2.0</strong></td>
+                <td><strong>Passable</strong></td>
+                <td><strong>[10-11[</strong></td>
+              </tr>
+              <tr>
+                <td><strong>C-</strong></td>
+                <td><strong>1.7</strong></td>
+                <td><strong>Insuffisant</strong></td>
+                <td><strong>[09-10[</strong></td>
+              </tr>
+              <tr>
+                <td><strong>D</strong></td>
+                <td><strong>1.3</strong></td>
+                <td><strong>Faible</strong></td>
+                <td><strong>[08-09[</strong></td>
+              </tr>
+              <tr>
+                <td><strong>E</strong></td>
+                <td><strong>1.0</strong></td>
+                <td><strong>Très Faible</strong></td>
+                <td><strong>[06-08[</strong></td>
+              </tr>
+              <tr>
+                <td><strong>F</strong></td>
+                <td><strong>0.0</strong></td>
+                <td><strong>Nul</strong></td>
+                <td><strong>[00-06[</strong></td>
+              </tr>
+            </tbody>
+          </table>          
+     </div>
+     <div class="qr-code">
+
+     </div>
+    </div>
+ 
+     <div class="signature">
+       <div>Douala, le <br /> <i>Douala, the</i> </div>
+      <div>LE DOYEN FMSP <br>
+      <i>The Dean FMSP</i></div>
+     </div>
             </div>
+            <div class="footer-note">
+    Il n’est délivré qu’un seul exemplaire de relevé de note, le titulaire peut en faire des copies certifiées conformes. <br>
+    <i>This transcript is delivered only once, the owner can do many certified copies as necessary</i>
+  </div>
         </div>
     </body>
     </html>
@@ -506,11 +520,11 @@ function createTranscriptHTML(student: StudentRecord): string {
 /**
  * Generate a PDF transcript using Electron's built-in PDF generation capabilities
  */
-export async function generateTranscriptPDF(student: StudentRecord): Promise<Uint8Array> {
+export async function generateTranscriptPDF(student: StudentRecord, headerSettings: TranscriptSettingsPayload): Promise<Uint8Array> {
   return new Promise(async (resolve, reject) => {
     try {
       // Create a temporary HTML file with the transcript content
-      const html = createTranscriptHTML(student);
+      const html = createTranscriptHTML(student, headerSettings);
       const tempDir = app.getPath('temp');
       const htmlPath = path.join(tempDir, `transcript-${Date.now()}.html`);
       
@@ -563,11 +577,11 @@ export async function generateTranscriptPDF(student: StudentRecord): Promise<Uin
   });
 }
 
-// Setup IPC handler for renderer process
 export function setupPDFGenerationHandlers() {
-  ipcMain.handle('generate-transcript-pdf', async (event, studentData) => {
+  ipcMain.handle('generate-transcript-pdf', async (event, args) => {
     try {
-      const pdfData = await generateTranscriptPDF(studentData);
+      const { studentData, headerSettings } = args;
+      const pdfData = await generateTranscriptPDF(studentData, headerSettings);
       return pdfData.buffer;
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -576,31 +590,3 @@ export function setupPDFGenerationHandlers() {
   });
 }
 
-// Grade calculation functions
-function calculateMGP(average: number): number {
-  if (average >= 18) return 4.0;
-  if (average >= 16) return 3.7;
-  if (average >= 14) return 3.3;
-  if (average >= 13) return 3.0;
-  if (average >= 12) return 2.7;
-  if (average >= 11) return 2.3;
-  if (average >= 10) return 2.0;
-  if (average >= 9) return 1.7;
-  if (average >= 8) return 1.3;
-  if (average >= 6) return 1.0;
-  return 0.0;
-}
-
-function getGradeFromAverage(average: number): string {
-  if (average >= 18) return "A+";
-  if (average >= 16) return "A";
-  if (average >= 14) return "B+";
-  if (average >= 13) return "B";
-  if (average >= 12) return "B-";
-  if (average >= 11) return "C+";
-  if (average >= 10) return "C";
-  if (average >= 9) return "C-";
-  if (average >= 8) return "D";
-  if (average >= 6) return "E";
-  return "F";
-}
