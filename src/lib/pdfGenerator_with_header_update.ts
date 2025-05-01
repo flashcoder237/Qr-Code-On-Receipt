@@ -3,42 +3,9 @@ import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ipcMain } from 'electron';
-import { TranscriptSettingsPayload } from "@/lib/form-schemas/settings";
-import { useLocalStorage } from "usehooks-ts";
-
-// Fonction pour charger les paramètres d'entête depuis localStorage
-const loadHeaderSettings = (): TranscriptSettingsPayload => {
-    try {
-        const [storedSettings, setStoredSettings] =
-        useLocalStorage<TranscriptSettingsPayload>("settings", {
-          nameFrench: "",
-          nameEnglish: "",
-          postalBox: "",
-          email: "",
-          logo: "",
-        });
-    
-    if (storedSettings) {
-        return JSON.parse(storedSettings);
-    }
-    } catch (error) {
-    console.error("Erreur lors du chargement des paramètres d'entête:", error);
-    }
-    
-    // Valeurs par défaut si les paramètres ne sont pas trouvés
-    return {
-    nameFrench: "Nom de l'établissement",
-    nameEnglish: "Institution Name",
-    postalBox: "B.P. 0000",
-    email: "contact@example.com",
-    logo: "",
-    };
-};
 
 // Create HTML template for the transcript based on the provided model
 function createTranscriptHTML(student: StudentRecord): string {
-    const headerSettings = loadHeaderSettings();
-    
   // Helper function to generate course rows
   const generateCourseRows = () => {
     if (!student.COURSES || student.COURSES.length === 0) return '';
@@ -244,9 +211,6 @@ function createTranscriptHTML(student: StudentRecord): string {
             .header-row2 p{
                 font-size: 12px;
             }
-            .header-row2{
-                text-align: center;
-            }
             td{
                 text-align: center;
             }
@@ -268,10 +232,6 @@ function createTranscriptHTML(student: StudentRecord): string {
                 grid-template-rows: 100px 1fr;
                 gap: 16px;
             }
-                body > .container{
-            border: 1px solid black;
-            height: 100%;
-        }
         </style>
     </head>
     <body>
@@ -291,10 +251,10 @@ function createTranscriptHTML(student: StudentRecord): string {
                         B.P 2701, Douala, Cameroun<br>
                         Email: <a href="">contact@fmsp-udo.cm</a><br>
                         ********************<br>
-                        <strong>${headerSettings.nameFrench}</strong><br>
+                        <strong>INSTITUT UNIVERSITAIRE DE LA COTE</strong><br>
                         ********************<br>
-                        B.P ${headerSettings.postalBox}<br>
-                        Email: <a href="">${headerSettings.email}</a></p>
+                        B.P 999, Douala, Cameroun<br>
+                        Email: <a href="">contact@IUC.cm</a></p>
                     </div>
                     <div class="header-logo-content">
                         <div><img src="assets/logo-ud.png" alt="" height="70"></div>
@@ -314,15 +274,14 @@ function createTranscriptHTML(student: StudentRecord): string {
                         PO box 2701, Douala, Cameroun<br>
                         Email: <a href="">contact@fmsp-udo.cm</a><br>
                         ********************<br>
-                        <strong>${headerSettings.nameEnglish}</strong><br>
+                        <strong>INSTITUT UNIVERSITAIRE DE LA COTE</strong><br>
                         ********************<br>
-                        PO box ${headerSettings.postalBox}<br>
-                        Email: <a href="">${headerSettings.email}</a></p>    
+                        PO box 999, Douala, Cameroun<br>
+                        Email: <a href="">contact@IUC.cm</a></p>    
                     </div>
                 </div>
                 <div class="header-row2">
                     <h1><strong>RELEVE DE NOTES</strong> / TRANSCRIPT </h1>
-                    <p><strong>Ref No</strong>&nbsp;&nbsp; /24/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASR/SSE</p>
                 </div>
             </div>
         

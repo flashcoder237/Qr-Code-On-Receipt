@@ -179,7 +179,7 @@ function generateCoursesTable(courses: any[]): {
 function generateGradeScaleTable(): string {
   return `
     <table style="table-layout: auto;">
-      <tbody style="font-size: 4px;">
+      <tbody style="font-size: 2px;">
         <tr>
           <td><strong>Grade</strong></td>
           <td><strong>Note/4</strong></td>
@@ -280,7 +280,7 @@ function generateTranscriptHtml(student: StudentRecord): string {
                 min-height: 297mm;
                 box-sizing: border-box;
                 background-color: white;
-                border: 1px solid black;
+                border: 3px solid black;
                 color: black;
             }
             

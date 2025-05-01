@@ -4,6 +4,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   Form,
@@ -14,20 +15,26 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Edit, Save, X } from "lucide-react";
 import {
   TranscriptSettingsPayload,
   TranscriptsettingsSchema,
 } from "@/lib/form-schemas/settings";
 import { zodResolver } from "@hookform/resolvers/zod";
-import React from "react";
+import React, { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useForm } from "react-hook-form";
 import { useLocalStorage } from "usehooks-ts";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const SettingForm: React.FC = () => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
+  
+  // État pour stocker les données dans localStorage
   const [storedFormData, setStoredFormData] =
     useLocalStorage<TranscriptSettingsPayload>("settings", {
-      referenceNumber: "",
       nameFrench: "",
       nameEnglish: "",
       postalBox: "",
@@ -40,13 +47,14 @@ const SettingForm: React.FC = () => {
     defaultValues: storedFormData,
   });
 
-  const MAX_FILE_SIZE = 1000 * 1024; 
+  const MAX_FILE_SIZE = 1000 * 1024;
 
   const onDrop = React.useCallback(
     (acceptedFiles: File[]) => {
+      if (!isEditing) return;
+      
       const file = acceptedFiles[0];
   
-      
       if (file.size > MAX_FILE_SIZE) {
         form.setError("logo", {
           type: "manual",
@@ -59,70 +67,102 @@ const SettingForm: React.FC = () => {
       reader.onload = (event) => {
         const base64 = event.target?.result as string;
         form.clearErrors("logo"); 
-        form.setValue("logo", base64); 
-        setStoredFormData((prev) => ({ ...prev, logo: base64 })); 
+        form.setValue("logo", base64);
       };
       reader.readAsDataURL(file);
     },
-    [form, setStoredFormData]
+    [form, isEditing]
   );
   
-
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { "image/*": [] },
+    disabled: !isEditing
   });
+
+  // Fonction pour enregistrer les modifications
+  const saveChanges = () => {
+    const formData = form.getValues();
+    
+    // Validation des données avant enregistrement
+    if (!formData.nameFrench || !formData.nameEnglish) {
+      form.setError("nameFrench", { 
+        type: "manual", 
+        message: "Le nom de l'établissement est requis en français et en anglais" 
+      });
+      return;
+    }
+    
+    try {
+      setStoredFormData(formData);
+      setSaveStatus("success");
+      
+      // Réinitialiser le message de succès après 3 secondes
+      setTimeout(() => {
+        setSaveStatus("idle");
+      }, 3000);
+      
+      setIsEditing(false);
+    } catch (error) {
+      setSaveStatus("error");
+    }
+  };
+
+  // Annuler les modifications
+  const cancelEditing = () => {
+    form.reset(storedFormData);
+    setIsEditing(false);
+    setSaveStatus("idle");
+  };
 
   return (
     <Card className="w-full max-w-3xl mx-auto my-10">
       <CardHeader>
-        <CardTitle>Formulaire de Paramètres</CardTitle>
-        <CardDescription>
-          Les données sont sauvegardées automatiquement
-        </CardDescription>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle>Configuration des Entêtes</CardTitle>
+            <CardDescription>
+              Ces informations seront utilisées dans les entêtes de relevés
+            </CardDescription>
+          </div>
+          {!isEditing ? (
+            <Button variant="outline" onClick={() => setIsEditing(true)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Modifier
+            </Button>
+          ) : null}
+        </div>
       </CardHeader>
       <CardContent>
+        {saveStatus === "success" && (
+          <Alert className="mb-4 bg-green-50 border-green-300 text-green-800">
+            <AlertDescription>
+              Les informations ont été enregistrées avec succès
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {saveStatus === "error" && (
+          <Alert className="mb-4" variant="destructive">
+            <AlertDescription>
+              Une erreur est survenue lors de l'enregistrement
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Form {...form}>
           <form className="grid grid-cols-[2fr_1fr] gap-6">
             <div className="space-y-4">
               <FormField
                 control={form.control}
-                name="referenceNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Numéro de Référence</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        onChange={(e) => {
-                          field.onChange(e);
-                          setStoredFormData((prev) => ({
-                            ...prev,
-                            referenceNumber: e.target.value,
-                          }));
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="nameFrench"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nom en Français</FormLabel>
+                    <FormLabel>Nom de l'établissement en Français</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        onChange={(e) => {
-                          field.onChange(e);
-                          setStoredFormData((prev) => ({
-                            ...prev,
-                            nameFrench: e.target.value,
-                          }));
-                        }}
+                        disabled={!isEditing}
                       />
                     </FormControl>
                     <FormMessage />
@@ -134,17 +174,11 @@ const SettingForm: React.FC = () => {
                 name="nameEnglish"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nom en Anglais</FormLabel>
+                    <FormLabel>Nom de l'établissement en Anglais</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        onChange={(e) => {
-                          field.onChange(e);
-                          setStoredFormData((prev) => ({
-                            ...prev,
-                            nameEnglish: e.target.value,
-                          }));
-                        }}
+                        disabled={!isEditing}
                       />
                     </FormControl>
                     <FormMessage />
@@ -160,13 +194,7 @@ const SettingForm: React.FC = () => {
                     <FormControl>
                       <Input
                         {...field}
-                        onChange={(e) => {
-                          field.onChange(e);
-                          setStoredFormData((prev) => ({
-                            ...prev,
-                            postalBox: e.target.value,
-                          }));
-                        }}
+                        disabled={!isEditing}
                       />
                     </FormControl>
                     <FormMessage />
@@ -183,13 +211,7 @@ const SettingForm: React.FC = () => {
                       <Input
                         {...field}
                         type="email"
-                        onChange={(e) => {
-                          field.onChange(e);
-                          setStoredFormData((prev) => ({
-                            ...prev,
-                            email: e.target.value,
-                          }));
-                        }}
+                        disabled={!isEditing}
                       />
                     </FormControl>
                     <FormMessage />
@@ -202,28 +224,30 @@ const SettingForm: React.FC = () => {
               name="logo"
               render={({ field }) => (
                 <FormItem className="h-full">
-                  <FormLabel>Logo</FormLabel>
+                  <FormLabel>Logo de l'IPES</FormLabel>
                   <FormControl>
                     <div
-                      {...getRootProps()}
-                      className={`border-2 border-dashed rounded-md p-4 text-center cursor-pointer flex flex-col justify-center ${
-                        isDragActive ? "border-primary" : "border-gray-300"
+                      {...(isEditing ? getRootProps() : {})}
+                      className={`border-2 ${isEditing ? 'border-dashed cursor-pointer' : 'border-solid'} rounded-md p-4 text-center flex flex-col justify-center ${
+                        isDragActive && isEditing ? "border-primary bg-primary/10" : isEditing ? "border-gray-300" : "border-gray-200"
                       }`}
                     >
-                      <input {...getInputProps()} />
+                      {isEditing && <input {...getInputProps()} />}
                       {field.value ? (
                         <img
                           src={field.value}
                           alt="Logo"
                           className="mx-auto max-h-40 w-full object-contain"
                         />
-                      ) : isDragActive ? (
+                      ) : isDragActive && isEditing ? (
                         <p>Déposez le fichier ici ...</p>
-                      ) : (
+                      ) : isEditing ? (
                         <p>
                           Faites glisser et déposez un logo ici, ou cliquez pour
                           sélectionner un fichier
                         </p>
+                      ) : (
+                        <p className="text-gray-500">Aucun logo défini</p>
                       )}
                     </div>
                   </FormControl>
@@ -234,6 +258,18 @@ const SettingForm: React.FC = () => {
           </form>
         </Form>
       </CardContent>
+      {isEditing && (
+        <CardFooter className="flex justify-end gap-2">
+          <Button variant="outline" onClick={cancelEditing}>
+            <X className="mr-2 h-4 w-4" />
+            Annuler
+          </Button>
+          <Button onClick={saveChanges}>
+            <Save className="mr-2 h-4 w-4" />
+            Enregistrer
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 };
