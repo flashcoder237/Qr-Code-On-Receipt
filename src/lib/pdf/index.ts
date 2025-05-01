@@ -4,7 +4,7 @@
  */
 
 // Exporter les fonctions et types publics
-export { loadHeaderSettings } from './settings';
+export { loadHeaderSettings, saveHeaderSettings } from './settings';
 export { createTranscriptHTML } from './htmlGenerator';
 export { generateTranscriptPDF } from './pdfConverter';
 export { setupPDFGenerationHandlers } from './ipcHandlers';

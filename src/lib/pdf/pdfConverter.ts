@@ -12,7 +12,7 @@ import { createTranscriptHTML } from './htmlGenerator';
 /**
  * Génère un fichier PDF à partir des données d'un étudiant
  * @param student Les données de l'étudiant
- * @param headerSettings Les paramètres d'en-tête du relevé
+ * @param headerSettings Les paramètres d'en-tête du relevé (optionnel)
  * @returns Une promesse résolue avec les données du PDF en Uint8Array
  */
 export async function generateTranscriptPDF(
@@ -21,32 +21,32 @@ export async function generateTranscriptPDF(
 ): Promise<Uint8Array> {
   return new Promise(async (resolve, reject) => {
     try {
-      // Create a temporary HTML file with the transcript content
+      // Créer un fichier HTML temporaire avec le contenu du relevé
       const html = createTranscriptHTML(student);
       const tempDir = app.getPath('temp');
       const htmlPath = path.join(tempDir, `transcript-${Date.now()}.html`);
       
-      // Write HTML to temp file
+      // Écrire le HTML dans un fichier temporaire
       fs.writeFileSync(htmlPath, html);
       
-      // Create a hidden browser window
+      // Créer une fenêtre de navigateur cachée
       const win = new BrowserWindow({
-        width: 595, // A4 width in pixels at 72 DPI
-        height: 842, // A4 height in pixels at 72 DPI
-        show: false, // Keep window hidden
+        width: 595, // Largeur A4 en pixels à 72 DPI
+        height: 842, // Hauteur A4 en pixels à 72 DPI
+        show: false, // Garder la fenêtre cachée
         webPreferences: {
           nodeIntegration: false,
           contextIsolation: true
         }
       });
       
-      // Load the HTML file
+      // Charger le fichier HTML
       await win.loadFile(htmlPath);
       
-      // Wait for content to load completely
+      // Attendre que le contenu soit complètement chargé
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Generate PDF
+      // Générer le PDF
       const pdfData = await win.webContents.printToPDF({
         printBackground: true,
         pageSize: 'A4',
@@ -58,14 +58,14 @@ export async function generateTranscriptPDF(
         }
       });
       
-      // Close the window
+      // Fermer la fenêtre
       win.close();
       
-      // Clean up temp HTML file
+      // Nettoyer le fichier HTML temporaire
       try {
         fs.unlinkSync(htmlPath);
       } catch (error) {
-        console.warn('Failed to clean up temporary HTML file:', error);
+        console.warn('Échec du nettoyage du fichier HTML temporaire:', error);
       }
       
       resolve(pdfData);
