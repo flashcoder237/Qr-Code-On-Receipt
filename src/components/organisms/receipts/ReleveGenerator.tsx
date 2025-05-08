@@ -1,396 +1,200 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Download, Eye } from "lucide-react";
-import * as XLSX from "xlsx";
-import JSZip from "jszip";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Alert, AlertDescription } from "../../ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
+import { Button } from "../../ui/button";
+import { useHotkeys } from "react-hotkeys-hook";
+import { Eye, Download, AlertCircle, CheckCircle } from "lucide-react";
 
-
-// Import des composants
+// Components
+import { FileUploader } from "./components/FileUploader";
+import { ProcessingProgress } from "./components/ProcessingProgress";
 import { ConfigurationSelector } from "./ConfigurationSelector";
-import { ExcelUploader } from "./ExcelUploader";
 import { ColumnMappingEditor } from "./ColumnMappingEditor";
 import { TranscriptPreview } from "./TranscriptPreview";
 import { SemesterSelector } from "./SemesterSelector";
 
-// Types
-type EC = {
-  id: string;
-  name: string;
-  credits: number;
-};
+// Hooks
+import { useConfiguration } from "./hooks/useConfiguration";
+import { useProcessing } from "./hooks/useProcessing";
+import { useTranscriptData } from "./hooks/useTranscriptData";
 
-type UE = {
-  id: string;
-  name: string;
-  credits: number;
-  ecs: EC[];
-};
-
-type Semester = {
-  id: string;
-  name: string;
-  ues: UE[];
-};
-
-type ClassConfig = {
-  id: string;
-  name: string;
-  academicYear: string;
-  semesters: Semester[];
-};
-
-// Type pour la correspondance entre EC et colonnes Excel
-type ColumnMapping = {
-  [ecId: string]: string; // clé: ID de l'EC, valeur: nom de la colonne Excel
-};
-
-type StudentRecord = {
-  MATRICULE: string;
-  NOM: string;
-  PRENOM: string;
-  "DATE DE NAISSANCE": string;
-  "LIEU DE NAISSANCE": string;
-  NIVEAU?: string;
-  SEMESTRE?: string;
-  "ANNEE ACADÉMIQUE"?: string;
-  CYCLE?: string;
-  FILIERE?: string;
-  OPTION?: string;
-  COURSES?: {
-    CODE: string;
-    INTITULE: string;
-    NOTE: number;
-    MOYENNE: number;
-    CREDIT: number;
-  }[];
-};
-
-// Constantes
 const LOCAL_STORAGE_KEY = "academicConfigs";
-const MAPPING_STORAGE_KEY = "columnMappings";
-
-// Hook personnalisé pour gérer les configurations
-const useClassConfigurations = () => {
-  const [configs, setConfigs] = useState<ClassConfig[]>([]);
-  
-  useEffect(() => {
-    const loadConfigs = () => {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (stored) {
-        try {
-          const parsedConfigs = JSON.parse(stored);
-          setConfigs(parsedConfigs);
-        } catch (error) {
-          console.error("Erreur lors du parsing des configurations:", error);
-          setConfigs([]);
-        }
-      }
-    };
-    
-    loadConfigs();
-  }, []);
-  
-  return { configs };
-};
-
-// Hook personnalisé pour gérer les mappings de colonnes
-const useColumnMapping = (selectedConfigId: string | null) => {
-  const [columnMapping, setColumnMapping] = useState<ColumnMapping>({});
-  
-  // Charger le mapping depuis le localStorage quand la configuration change
-  useEffect(() => {
-    if (selectedConfigId) {
-      const storedMapping = localStorage.getItem(`${MAPPING_STORAGE_KEY}_${selectedConfigId}`);
-      if (storedMapping) {
-        try {
-          setColumnMapping(JSON.parse(storedMapping));
-        } catch {
-          setColumnMapping({});
-        }
-      } else {
-        setColumnMapping({});
-      }
-    }
-  }, [selectedConfigId]);
-  
-  // Sauvegarder le mapping dans le localStorage quand il change
-  useEffect(() => {
-    if (selectedConfigId) {
-      localStorage.setItem(`${MAPPING_STORAGE_KEY}_${selectedConfigId}`, JSON.stringify(columnMapping));
-    }
-  }, [columnMapping, selectedConfigId]);
-  
-  const handleMappingChange = useCallback((ecId: string, excelCol: string) => {
-    setColumnMapping(prev => ({
-      ...prev,
-      [ecId]: excelCol,
-    }));
-  }, []);
-  
-  return { columnMapping, handleMappingChange };
-};
-
-// Hook personnalisé pour gérer les données Excel
-const useExcelData = () => {
-  const [excelData, setExcelData] = useState<any[]>([]);
-  const [excelColumns, setExcelColumns] = useState<string[]>([]);
-  
-  const handleExcelUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-  
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: "array" });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true }) as any[];
-  
-        setExcelData(jsonData);
-        if (jsonData.length > 0) {
-          const cols = Object.keys(jsonData[0]);
-          setExcelColumns(cols);
-        } else {
-          setExcelColumns([]);
-          throw new Error("Aucune donnée trouvée dans le fichier Excel");
-        }
-      } catch (err) {
-        console.error("Erreur lors de la lecture du fichier Excel:", err);
-        throw err;
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  }, []);
-  
-  return { excelData, excelColumns, handleExcelUpload };
-};
 
 export const ReleveGenerator: React.FC = () => {
-  // États locaux
-  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
-  const [selectedSemesterId, setSelectedSemesterId] = useState<string | null>(null);
-  const [availableSemesters, setAvailableSemesters] = useState<{id: string; name: string}[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [successNotification, setSuccessNotification] = useState(false);
-  const [previewStudent, setPreviewStudent] = useState<StudentRecord | null>(null);
-  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+  // State
   const [activeTab, setActiveTab] = useState("configuration");
+  const [previewStudent, setPreviewStudent] = useState<any>(null);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+  const [configs, setConfigs] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  // Hooks personnalisés
-  const { configs } = useClassConfigurations();
-  const { excelData, excelColumns, handleExcelUpload: handleExcelUploadBase } = useExcelData();
-  const { columnMapping, handleMappingChange } = useColumnMapping(selectedConfigId);
-
-  // Mettre à jour les semestres disponibles quand la configuration change
+  // Load configurations from localStorage
   useEffect(() => {
-    if (selectedConfigId) {
-      const config = configs.find(c => c.id === selectedConfigId);
-      if (config) {
-        const semesters = config.semesters.map(sem => ({
-          id: sem.id,
-          name: sem.name
-        }));
-        setAvailableSemesters(semesters);
-        setSelectedSemesterId(null); // Réinitialiser la sélection de semestre
-      } else {
-        setAvailableSemesters([]);
-      }
-    }
-  }, [selectedConfigId, configs]);
-
-  // Nettoyer l'URL du PDF de prévisualisation
-  useEffect(() => {
-    return () => {
-      if (previewPdfUrl) {
-        URL.revokeObjectURL(previewPdfUrl);
+    const loadConfigs = () => {
+      try {
+        const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (stored) {
+          const parsedConfigs = JSON.parse(stored);
+          setConfigs(parsedConfigs);
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des configurations:", error);
       }
     };
-  }, [previewPdfUrl]);
 
-  // Handler pour l'upload d'Excel avec gestion d'erreur
-  const handleExcelUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setError(null);
-    setPreviewStudent(null);
-    setPreviewPdfUrl(null);
-    
-    try {
-      handleExcelUploadBase(event);
-    } catch (err) {
-      setError((err as Error).message || "Erreur lors de la lecture du fichier Excel");
-    }
-  }, [handleExcelUploadBase]);
-
-  // Handler pour le changement de configuration
-  const handleConfigChange = useCallback((value: string) => {
-    setSelectedConfigId(value);
-    setError(null);
-    setPreviewStudent(null);
-    setPreviewPdfUrl(null);
+    loadConfigs();
+    window.addEventListener('storage', loadConfigs);
+    return () => window.removeEventListener('storage', loadConfigs);
   }, []);
 
-  // Handler pour le changement de semestre
-  const handleSemesterChange = useCallback((value: string) => {
-    setSelectedSemesterId(value);
-    setError(null);
-    setPreviewStudent(null);
-    setPreviewPdfUrl(null);
-  }, []);
+  // Custom hooks
+  const {
+    selectedConfigId,
+    selectedSemesterId,
+    availableSemesters,
+    columnMapping,
+    handleConfigChange,
+    handleSemesterChange,
+    handleMappingChange,
+    updateAvailableSemesters,
+  } = useConfiguration({
+    onConfigChange: (configId) => {
+      const config = configs.find(c => c.id === configId);
+      if (config) {
+        updateAvailableSemesters(
+          config.semesters.map((sem: any) => ({
+            id: sem.id,
+            name: sem.name
+          }))
+        );
+      }
+      setPreviewStudent(null);
+      if (previewPdfUrl) {
+        URL.revokeObjectURL(previewPdfUrl);
+        setPreviewPdfUrl(null);
+      }
+      setError(null);
+    },
+    onSemesterChange: () => {
+      // Reset preview when semester changes
+      setPreviewStudent(null);
+      if (previewPdfUrl) {
+        URL.revokeObjectURL(previewPdfUrl);
+        setPreviewPdfUrl(null);
+      }
+      setError(null);
+    }
+  });
 
-  // Handler pour configurer le mapping
-  const handleConfigureMapping = useCallback(() => {
-    if (!selectedConfigId) {
-      setError("Veuillez d'abord sélectionner une configuration");
-      return;
-    }
-    
-    if (!selectedSemesterId) {
-      setError("Veuillez sélectionner un semestre");
-      return;
-    }
-    
-    if (excelColumns.length === 0) {
-      setError("Veuillez charger un fichier Excel");
-      return;
-    }
-    
-    if (getAvailableECs().length === 0) {
-      setError("Aucun EC trouvé pour cette configuration et ce semestre");
-      return;
-    }
-    
-    setActiveTab("mapping");
-  }, [selectedConfigId, selectedSemesterId, excelColumns]);
+  const {
+    excelData,
+    excelColumns,
+    mappingComplete,
+    handleFileLoaded,
+    clearData,
+    setMappingStatus,
+  } = useTranscriptData();
 
-  // Handler pour naviguer de la prévisualisation au mapping
-  const handleBackFromPreview = useCallback(() => {
-    setActiveTab("mapping");
-  }, []);
+  const {
+    state: processingState,
+    processBatch,
+    generateZipFile,
+    cancel: cancelProcessing,
+    resetState: resetProcessing,
+  } = useProcessing();
 
-  // Obtenir la liste des ECs disponibles 
+  // Get current config and semester info
+  const { currentConfig, currentSemester } = useMemo(() => {
+    const config = configs.find(c => c.id === selectedConfigId);
+    const semester = config?.semesters.find(s => s.id === selectedSemesterId);
+    return { currentConfig: config, currentSemester: semester };
+  }, [configs, selectedConfigId, selectedSemesterId]);
+
+  // Get available ECs for mapping
   const getAvailableECs = useCallback(() => {
-    if (!selectedConfigId || !selectedSemesterId) return [];
-    
-    const config = configs.find((c) => c.id === selectedConfigId);
-    if (!config) return [];
-    
-    const semester = config.semesters.find(sem => sem.id === selectedSemesterId);
-    if (!semester) return [];
-    
-    const ecList: { id: string; fullName: string }[] = [];
-    
-    semester.ues.forEach((ue) => {
-      ue.ecs.forEach((ec) => {
-        ecList.push({
+    if (!currentConfig || !currentSemester) return [];
+
+    const ecs: Array<{ id: string; fullName: string }> = [];
+    currentSemester.ues.forEach((ue: any) => {
+      ue.ecs.forEach((ec: any) => {
+        ecs.push({
           id: ec.id,
-          fullName: `${ue.name} / ${ec.name}`
+          fullName: `${currentSemester.name} - ${ue.name} - ${ec.name}`,
         });
       });
     });
-    
-    return ecList;
-  }, [selectedConfigId, selectedSemesterId, configs]);
 
-  // Mémoiser le traitement des données étudiants
-  const processStudentData = useCallback(() => {
-    if (excelData.length === 0 || !selectedConfigId || !selectedSemesterId) {
-      return [];
-    }
+    return ecs;
+  }, [currentConfig, currentSemester]);
 
-    // Grouper les étudiants par MATRICULE
-    const studentsMap: { [matricule: string]: StudentRecord } = {};
+  // Check if mapping is complete
+  useEffect(() => {
+    const availableECs = getAvailableECs();
+    const complete = availableECs.length > 0 && availableECs.every(ec => columnMapping[ec.id]);
+    setMappingStatus(complete);
+  }, [getAvailableECs, columnMapping, setMappingStatus]);
 
-    excelData.forEach((row) => {
-      const matricule = row["MATRICULE"];
-      if (!matricule) return;
+  // Prepare student data for PDF generation
+  const prepareStudentData = useCallback((rawStudent: any) => {
+    if (!currentConfig || !currentSemester) return null;
 
-      if (!studentsMap[matricule]) {
-        studentsMap[matricule] = {
-          MATRICULE: matricule,
-          NOM: row["NOM"],
-          PRENOM: row["PRENOM"],
-          "DATE DE NAISSANCE": row["DATE DE NAISSANCE"],
-          "LIEU DE NAISSANCE": row["LIEU DE NAISSANCE"],
-          NIVEAU: row["NIVEAU"],
-          SEMESTRE: row["SEMESTRE"],
-          "ANNEE ACADÉMIQUE": row["ANNEE ACADÉMIQUE"],
-          CYCLE: row["CYCLE"],
-          FILIERE: row["FILIERE"],
-          OPTION: row["OPTION"],
-          COURSES: [],
-        };
-      }
-
-      // Mapper les ECs aux colonnes Excel
-      Object.entries(columnMapping).forEach(([ecId, excelCol]) => {
-        if (!excelCol || row[excelCol] === undefined) return;
-        
-        // Trouver les informations de l'EC depuis la config
-        const config = configs.find((c) => c.id === selectedConfigId);
-        if (!config) return;
-        
-        let ecInfo: { name: string, credits: number, ueCode: string, ueName: string } | null = null;
-        
-        // Recherche efficace de l'EC
-        outerLoop: for (const sem of config.semesters) {
-          for (const ue of sem.ues) {
-            const ec = ue.ecs.find((e) => e.id === ecId);
-            if (ec) {
-              ecInfo = {
-                name: ec.name,
-                credits: ec.credits,
-                ueCode: ue.id,
-                ueName: ue.name
-              };
-              break outerLoop;
-            }
-          }
-        }
-        
-        if (ecInfo) {
-          studentsMap[matricule].COURSES?.push({
-            CODE: ecInfo.ueCode,
-            INTITULE: ecInfo.name,
-            NOTE: Number(row[excelCol]) || 0,
-            MOYENNE: Number(row[excelCol]) || 0,
-            CREDIT: ecInfo.credits,
+    const courses: any[] = [];
+    currentSemester.ues.forEach((ue: any) => {
+      ue.ecs.forEach((ec: any) => {
+        const columnName = columnMapping[ec.id];
+        if (columnName) {
+          courses.push({
+            CODE: `UE ${ue.name}`,
+            INTITULE: ue.name,
+            EC_TITRE: ec.name,
+            NOTE: parseFloat(rawStudent[columnName]) || 0,
+            CREDIT: ec.credits || 0
           });
         }
       });
     });
 
-    return Object.values(studentsMap);
-  }, [excelData, selectedConfigId, selectedSemesterId, columnMapping, configs]);
+    return {
+      NOM: rawStudent.NOM || "",
+      PRENOM: rawStudent.PRENOM || "",
+      MATRICULE: rawStudent.MATRICULE || "",
+      "DATE DE NAISSANCE": rawStudent["DATE DE NAISSANCE"] || "",
+      "LIEU DE NAISSANCE": rawStudent["LIEU DE NAISSANCE"] || "",
+      CYCLE: currentConfig.cycle || "",
+      "ANNEE ACADÉMIQUE": currentConfig.academicYear || "",
+      FILIERE: currentConfig.filiere || "",
+      NIVEAU: currentConfig.niveau || "",
+      SEMESTRE: currentSemester.name || "",
+      OPTION: currentConfig.option || "",
+      COURSES: courses
+    };
+  }, [currentConfig, currentSemester, columnMapping]);
 
-  // Handler pour prévisualiser un relevé
-  const handlePreviewReleve = async () => {
-    if (!selectedSemesterId) {
-      setError("Veuillez sélectionner un semestre");
+  const handlePreviewReleve = useCallback(async () => {
+    if (!selectedSemesterId || excelData.length === 0) {
+      setError("Veuillez sélectionner un semestre et charger des données");
       return;
     }
-    
-    setIsLoading(true);
-    setError(null);
-    
+
+    if (!mappingComplete) {
+      setError("Veuillez compléter la correspondance des colonnes avant de prévisualiser");
+      setActiveTab("mapping");
+      return;
+    }
+
     try {
-      const students = processStudentData();
-      if (students.length === 0) {
-        throw new Error("Aucune donnée d'étudiant à prévisualiser");
+      const student = prepareStudentData(excelData[0]);
+      if (!student) {
+        setError("Erreur lors de la préparation des données");
+        return;
       }
 
-      // Prévisualiser le premier étudiant
-      const student = students[0];
       setPreviewStudent(student);
-      
       const pdfBytes = await window.ipcRenderer.invoke('generate-transcript-pdf', student);
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
       
-      // Nettoyer l'URL précédente
       if (previewPdfUrl) {
         URL.revokeObjectURL(previewPdfUrl);
       }
@@ -398,207 +202,210 @@ export const ReleveGenerator: React.FC = () => {
       const url = URL.createObjectURL(blob);
       setPreviewPdfUrl(url);
       setActiveTab("preview");
-    } catch (err) {
-      setError((err as Error).message || "Erreur lors de la génération de la prévisualisation");
-    } finally {
-      setIsLoading(false);
+      setError(null);
+    } catch (error) {
+      console.error('Preview error:', error);
+      setError("Erreur lors de la génération de l'aperçu");
     }
-  };
+  }, [selectedSemesterId, excelData, mappingComplete, prepareStudentData, previewPdfUrl]);
 
-  // Handler pour générer et télécharger tous les relevés
-  const processAndDownloadAll = async () => {
-    if (!selectedSemesterId) {
-      setError("Veuillez sélectionner un semestre");
-      return;
-    }
-    if (excelData.length === 0) {
-      setError("Aucune donnée d'étudiant chargée");
-      return;
-    }
-    if (!selectedConfigId) {
-      setError("Veuillez sélectionner une configuration de classe");
+  const handleGenerateAll = useCallback(async () => {
+    if (!selectedSemesterId || excelData.length === 0) {
+      setError("Veuillez sélectionner un semestre et charger des données");
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
-    setSuccessNotification(false);
+    if (!mappingComplete) {
+      setError("Veuillez compléter la correspondance des colonnes avant de générer les relevés");
+      setActiveTab("mapping");
+      return;
+    }
 
     try {
-      const students = processStudentData();
-      if (students.length === 0) {
-        throw new Error("Aucune donnée d'étudiant valide");
-      }
+      const preparedData = excelData.map(student => {
+        const prepared = prepareStudentData(student);
+        if (!prepared) throw new Error("Erreur lors de la préparation des données");
+        return prepared;
+      });
       
-      const zip = new JSZip();
+      const results = await processBatch(
+        preparedData,
+        (student) => window.ipcRenderer.invoke('generate-transcript-pdf', student)
+      );
 
-      for (const student of students) {
-        try {
-          const pdfBytes = await window.ipcRenderer.invoke('generate-transcript-pdf', student);
-          zip.file(`${student.MATRICULE}_releve.pdf`, pdfBytes);
-        } catch (err) {
-          console.error(`Erreur pour l'étudiant ${student.MATRICULE}:`, err);
-          // Continue malgré l'erreur pour un étudiant
-        }
-      }
-
-      const zipContent = await zip.generateAsync({ type: "blob" });
-      const url = window.URL.createObjectURL(zipContent);
+      const zipBlob = await generateZipFile(results, 'releve');
+      const url = URL.createObjectURL(zipBlob);
       
       const link = document.createElement("a");
       link.href = url;
-      link.download = "releves_de_notes.zip";
+      link.download = `releves_${new Date().toISOString().split('T')[0]}.zip`;
       link.click();
       
-      window.URL.revokeObjectURL(url);
-      setSuccessNotification(true);
-      setTimeout(() => setSuccessNotification(false), 5000);
-    } catch (err) {
-      setError((err as Error).message || "Erreur lors de la génération des relevés");
-    } finally {
-      setIsLoading(false);
+      URL.revokeObjectURL(url);
+      setError(null);
+    } catch (error) {
+      console.error('Generation error:', error);
+      setError("Erreur lors de la génération des relevés");
     }
-  };
+  }, [selectedSemesterId, excelData, mappingComplete, prepareStudentData, processBatch, generateZipFile]);
+
+  // Keyboard shortcuts
+  useHotkeys('ctrl+p', handlePreviewReleve, [handlePreviewReleve]);
+  useHotkeys('ctrl+g', handleGenerateAll, [handleGenerateAll]);
+  useHotkeys('esc', () => setActiveTab("configuration"), []);
 
   return (
     <div className="container mx-auto">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
-          <TabsTrigger value="mapping" disabled={!selectedConfigId || !selectedSemesterId}>Correspondance</TabsTrigger>
-          <TabsTrigger value="preview" disabled={!previewPdfUrl}>Prévisualisation</TabsTrigger>
+          <TabsTrigger value="mapping" disabled={!selectedConfigId || !selectedSemesterId}>
+            Correspondance
+          </TabsTrigger>
+          <TabsTrigger value="preview" disabled={!previewPdfUrl}>
+            Prévisualisation
+          </TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="configuration">
-          <Card>
-            <CardHeader>
-              <CardTitle>Configuration des relevés de notes</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ConfigurationSelector 
-                configs={configs}
-                selectedConfigId={selectedConfigId}
-                isLoading={isLoading}
-                onConfigChange={handleConfigChange}
-              />
-  
-              {selectedConfigId && availableSemesters.length > 0 && (
-                <SemesterSelector
-                  semesters={availableSemesters}
-                  selectedSemesterId={selectedSemesterId}
-                  isLoading={isLoading}
-                  onSemesterChange={handleSemesterChange}
-                />
-              )}
-              
-              <ExcelUploader 
-                isLoading={isLoading}
-                onExcelUpload={handleExcelUpload}
-              />
 
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <TabsContent value="configuration">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configuration des relevés de notes</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ConfigurationSelector 
+                    configs={configs}
+                    selectedConfigId={selectedConfigId}
+                    isLoading={processingState.isLoading}
+                    onConfigChange={handleConfigChange}
+                  />
 
-              {successNotification && (
-                <Alert variant="default" className="bg-green-50 border-green-300 text-green-800">
-                  <AlertDescription>Les relevés ont été générés avec succès !</AlertDescription>
-                </Alert>
-              )}
-
-              {excelData.length > 0 && (
-                <div className="pt-4">
-                  <p className="text-sm text-gray-600 mb-4">{excelData.length} ligne(s) chargée(s)</p>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={handleConfigureMapping} 
-                      variant="outline"
-                      disabled={!selectedConfigId || !selectedSemesterId || excelColumns.length === 0}
-                    >
-                      Configurer la correspondance
-                    </Button>
-                    
-                    <Button 
-                      onClick={handlePreviewReleve} 
-                      variant="secondary"
-                      disabled={isLoading || !selectedConfigId || !selectedSemesterId || excelData.length === 0}
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      Prévisualiser un relevé
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="mapping">
-          <Card>
-            <CardHeader>
-              <CardTitle>Correspondance des colonnes Excel aux ECs</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ColumnMappingEditor
-                selectedConfigId={selectedConfigId}
-                excelColumns={excelColumns}
-                columnMapping={columnMapping}
-                getAvailableECs={getAvailableECs}
-                onMappingChange={handleMappingChange}
-              />
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button 
-                onClick={() => setActiveTab("configuration")} 
-                variant="outline"
-              >
-                Retour
-              </Button>
-              
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handlePreviewReleve} 
-                  variant="secondary"
-                  disabled={isLoading || Object.keys(columnMapping).length === 0}
-                >
-                  <Eye className="mr-2 h-4 w-4" />
-                  Prévisualiser
-                </Button>
-                
-                <Button 
-                  onClick={processAndDownloadAll} 
-                  disabled={isLoading || Object.keys(columnMapping).length === 0}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Génération en cours...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="mr-2 h-4 w-4" />
-                      Générer tous les relevés
-                    </>
+                  {selectedConfigId && availableSemesters.length > 0 && (
+                    <SemesterSelector
+                      semesters={availableSemesters}
+                      selectedSemesterId={selectedSemesterId}
+                      isLoading={processingState.isLoading}
+                      onSemesterChange={handleSemesterChange}
+                    />
                   )}
-                </Button>
-              </div>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="preview">
-          <TranscriptPreview
-            previewStudent={previewStudent}
-            previewPdfUrl={previewPdfUrl}
-            isLoading={isLoading}
-            onBack={handleBackFromPreview}
-            onGenerateAll={processAndDownloadAll}
-          />
-        </TabsContent>
+
+                  <FileUploader
+                    onFileLoaded={handleFileLoaded}
+                    onError={(error) => setError(error)}
+                    isLoading={processingState.isLoading}
+                  />
+
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  {processingState.successMessage && (
+                    <Alert variant="default" className="bg-green-50 border-green-300">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <AlertDescription className="text-green-700">
+                        {processingState.successMessage}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {processingState.isLoading && (
+                    <ProcessingProgress
+                      progress={processingState.progress}
+                      processedCount={processingState.processedCount}
+                      totalCount={processingState.totalCount}
+                      onCancel={cancelProcessing}
+                    />
+                  )}
+
+                  {excelData.length > 0 && !processingState.isLoading && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="pt-4"
+                    >
+                      <p className="text-sm text-gray-600 mb-4">
+                        {excelData.length} ligne(s) chargée(s)
+                      </p>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={() => setActiveTab("mapping")}
+                          variant="outline"
+                          disabled={!selectedConfigId || !selectedSemesterId}
+                        >
+                          Configurer la correspondance
+                        </Button>
+                        
+                        <Button 
+                          onClick={handlePreviewReleve}
+                          variant="secondary"
+                          disabled={processingState.isLoading || !selectedConfigId || !selectedSemesterId || !mappingComplete}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          Prévisualiser
+                        </Button>
+
+                        <Button
+                          onClick={handleGenerateAll}
+                          disabled={processingState.isLoading || !selectedConfigId || !selectedSemesterId || !mappingComplete}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Générer tous les relevés
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="mapping">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Correspondance des colonnes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ColumnMappingEditor
+                    selectedConfigId={selectedConfigId}
+                    excelColumns={excelColumns}
+                    columnMapping={columnMapping}
+                    getAvailableECs={getAvailableECs}
+                    onMappingChange={handleMappingChange}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="preview">
+              <TranscriptPreview
+                previewStudent={previewStudent}
+                previewPdfUrl={previewPdfUrl}
+                isLoading={processingState.isLoading}
+                onBack={() => setActiveTab("mapping")}
+                onGenerateAll={handleGenerateAll}
+              />
+            </TabsContent>
+          </motion.div>
+        </AnimatePresence>
       </Tabs>
+
+      {/* Keyboard shortcuts help */}
+      <div className="fixed bottom-4 right-4 text-sm text-gray-500">
+        <p>Ctrl+P: Prévisualiser</p>
+        <p>Ctrl+G: Générer tout</p>
+        <p>Esc: Retour</p>
+      </div>
     </div>
   );
 };

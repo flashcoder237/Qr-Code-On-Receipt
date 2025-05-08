@@ -1,29 +1,29 @@
-export type EC = {
+export interface EC {
   id: string;
   name: string;
   credits: number;
-};
+}
 
-export type UE = {
+export interface UE {
   id: string;
   name: string;
   credits: number;
   ecs: EC[];
-};
+}
 
-export type Semester = {
+export interface Semester {
   id: string;
   name: string;
   ues: UE[];
-};
+}
 
-export type ClassConfig = {
+export interface ClassConfig {
   id: string;
   name: string;
   academicYear: string;
-  niveau?: string;
-  filiere?: string;
-  option?: string;
-  cycle?: string;
+  filiere: string;
+  niveau: string;
+  cycle: string;
+  option: string;
   semesters: Semester[];
-};
+}

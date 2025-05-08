@@ -1,23 +1,45 @@
-// drive-utils.ts
 import { supabase } from './supabaseClient';
 import { License } from './types';
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const retryOperation = async <T>(
+  operation: () => Promise<T>,
+  retries: number = MAX_RETRIES
+): Promise<T> => {
+  try {
+    return await operation();
+  } catch (error) {
+    if (retries > 0) {
+      await delay(RETRY_DELAY);
+      return retryOperation(operation, retries - 1);
+    }
+    throw error;
+  }
+};
 
 /**
  * Récupère toutes les licences depuis Supabase.
  */
 export const fetchLicenses = async (): Promise<Record<string, License>> => {
-  try {
+  return retryOperation(async () => {
     const { data, error } = await supabase
       .from('license')
-      .select('key, status, created_at, number_user'); // Sélectionnez toutes les colonnes nécessaires
+      .select('key, status, created_at, number_user');
 
     if (error) {
-      throw new Error(error.message);
+      throw new Error(`Erreur de récupération des licences: ${error.message}`);
     }
 
-    // Si les données sont présentes, construisez l'objet avec les propriétés attendues
+    if (!data) {
+      throw new Error('Aucune donnée de licence trouvée');
+    }
+
     const licenses: Record<string, License> = {};
-    data?.forEach((license: any) => {
+    data.forEach((license: License) => {
       licenses[license.key] = {
         status: license.status,
         key: license.key,
@@ -27,58 +49,46 @@ export const fetchLicenses = async (): Promise<Record<string, License>> => {
     });
 
     return licenses;
-  } catch (error) {
-    console.error('Erreur lors de la récupération des licences:', error);
-    throw new Error('Impossible de récupérer les licences.');
-  }
+  });
 };
 
-/**
- * Met à jour une licence spécifique en modifiant son statut dans Supabase.
- */
 /**
  * Met à jour une licence spécifique et décrémente son compteur d'utilisation.
  */
 export const updateAndDecrementLicense = async (licenseKey: string): Promise<boolean> => {
-  try {
-    // Récupérer la licence existante
-    const { data, error } = await supabase
-      .from("license")
-      .select("number_user, status")
-      .eq("key", licenseKey)
+  return retryOperation(async () => {
+    const { data: license, error: fetchError } = await supabase
+      .from('license')
+      .select('number_user, status')
+      .eq('key', licenseKey)
       .single();
 
-    if (error || !data) {
-      throw new Error("Licence non trouvée ou erreur dans la récupération.");
+    if (fetchError || !license) {
+      throw new Error('Licence non trouvée ou erreur dans la récupération');
     }
 
-    const { number_user, status } = data;
+    const { number_user } = license;
 
     if (number_user <= 0) {
-      throw new Error("La licence a déjà été utilisée au maximum.");
+      throw new Error('La licence a déjà été utilisée au maximum');
     }
 
-    // Décrémenter le compteur d'utilisation
     const newNumberUser = number_user - 1;
-
-    // Mettre à jour le statut si nécessaire
-    const newStatus = newNumberUser === 0 ? "used" : status;
+    const newStatus = newNumberUser === 0 ? 'used' : 'unused';
 
     const { error: updateError } = await supabase
-      .from("license")
-      .update({ number_user: newNumberUser, status: newStatus })
-      .eq("key", licenseKey);
+      .from('license')
+      .update({ 
+        number_user: newNumberUser, 
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      })
+      .eq('key', licenseKey);
 
     if (updateError) {
-      throw new Error(updateError.message);
+      throw new Error(`Erreur lors de la mise à jour: ${updateError.message}`);
     }
 
-    console.log(
-      `Licence ${licenseKey} mise à jour avec succès. Statut: ${newStatus}, Utilisations restantes: ${newNumberUser}`
-    );
-    return true; // Succès
-  } catch (error) {
-    console.error("Erreur lors de la mise à jour et décrémentation de la licence :", error);
-    return false; // En cas d'erreur
-  }
+    return true;
+  });
 };
