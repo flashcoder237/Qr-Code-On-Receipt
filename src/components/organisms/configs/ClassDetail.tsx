@@ -22,7 +22,9 @@ interface ClassDetailProps {
   onEdit: () => void;
   onSave: () => void;
   onUpdate: (updated: Partial<ClassConfig>) => void;
+  onAddSemester: () => void;
   onUpdateSemester: (id: string, updated: Partial<Semester>) => void;
+  onDeleteSemester: (id: string) => void;
   onAddUE: (semesterId: string) => void;
   onUpdateUE: (semesterId: string, ueId: string, updated: Partial<UE>) => void;
   onDeleteUE: (semesterId: string, ueId: string) => void;
@@ -43,7 +45,9 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
   onEdit,
   onSave,
   onUpdate,
+  onAddSemester,
   onUpdateSemester,
+  onDeleteSemester,
   onAddUE,
   onUpdateUE,
   onDeleteUE,
@@ -304,18 +308,34 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                                 <ChevronRight className="h-4 w-4" />
                               )}
                               {isEditing ? (
-                                <Input
-                                  value={ue.name}
-                                  onChange={(e) =>
-                                    onUpdateUE(semester.id, ue.id, {
-                                      name: e.target.value,
-                                    })
-                                  }
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="w-64"
-                                />
+                                <div className="flex flex-col space-y-2 w-64">
+                                  <Input
+                                    value={ue.name}
+                                    onChange={(e) =>
+                                      onUpdateUE(semester.id, ue.id, {
+                                        name: e.target.value,
+                                      })
+                                    }
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="mb-1"
+                                    placeholder="Nom de l'UE"
+                                  />
+                                  <Input 
+                                    value={ue.code || `UE${ue.id.slice(0,4)}`}
+                                    onChange={(e) =>
+                                      onUpdateUE(semester.id, ue.id, {
+                                        code: e.target.value,
+                                      })
+                                    }
+                                    onClick={(e) => e.stopPropagation()}
+                                    placeholder="Code UE"
+                                  />
+                                </div>
                               ) : (
-                                <span className="font-medium">{ue.name}</span>
+                                <div>
+                                  <div className="font-medium">{ue.name}</div>
+                                  <div className="text-xs text-gray-500">Code: {ue.code || `UE${ue.id.slice(0,4)}`}</div>
+                                </div>
                               )}
                             </div>
                             <div className="flex items-center space-x-2">
@@ -378,32 +398,12 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                                               name: e.target.value,
                                             })
                                           }
-                                          className="w-64"
+                                          className="w-full"
                                         />
                                       ) : (
                                         <span>{ec.name}</span>
                                       )}
                                       <div className="flex items-center space-x-2">
-                                        {isEditing && (
-                                          <Input
-                                            type="number"
-                                            value={ec.credits}
-                                            onChange={(e) =>
-                                              onUpdateEC(
-                                                semester.id,
-                                                ue.id,
-                                                ec.id,
-                                                {
-                                                  credits: Number(e.target.value),
-                                                }
-                                              )
-                                            }
-                                            className="w-20"
-                                          />
-                                        )}
-                                        <span className="text-sm text-gray-500">
-                                          {ec.credits} crédits
-                                        </span>
                                         {isEditing && (
                                           <Button
                                             variant="ghost"

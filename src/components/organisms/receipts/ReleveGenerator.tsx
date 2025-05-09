@@ -166,44 +166,58 @@ export const ReleveGenerator: React.FC = () => {
   // Prepare student data for PDF generation
   const prepareStudentData = useCallback((rawStudent: any): StudentRecord => {
     if (!currentConfig || !currentSemester) return null;
-
+  
     // Group ECs by UE and calculate UE averages
-    const ueGroups = new Map();
+    const courses: any[] = [];
+    
     currentSemester.ues.forEach((ue: any) => {
       const ecGrades: number[] = [];
-      const ecData: any[] = [];
       
+      // Collecter toutes les notes des EC pour cette UE
       ue.ecs.forEach((ec: any) => {
         const columnName = columnMapping[ec.id];
         if (columnName) {
           const grade = parseFloat(rawStudent[columnName]) || 0;
           ecGrades.push(grade);
-          ecData.push({
-            CODE: `UE ${ue.name}`,
+          
+          // Ajouter l'EC comme un cours dans la liste
+          courses.push({
+            CODE: ue.code || `UE ${ue.name}`, // Utiliser le code UE explicite
             INTITULE: ue.name,
             EC_TITRE: ec.name,
             NOTE: grade,
-            CREDIT: 0 // Credits only at UE level
+            UE_CREDIT: ue.credits || 0, // Stocker le crédit de l'UE avec chaque EC
+            UE_ID: ue.id // Pour faciliter le regroupement
           });
         }
       });
-      
-      // Calculate UE average
-      const ueAverage = ecGrades.length > 0 
-        ? ecGrades.reduce((sum, grade) => sum + grade, 0) / ecGrades.length 
-        : 0;
-
-      // Add UE credits to first EC
-      if (ecData.length > 0) {
-        ecData[0].CREDIT = ue.credits || 0;
-      }
-
-      ueGroups.set(ue.id, ecData);
     });
-
-    // Flatten all ECs into COURSES array
-    const courses = Array.from(ueGroups.values()).flat();
-
+  
+    // Calculer les moyennes par UE et les ajouter à chaque EC
+    const ueMap = new Map();
+    
+    // Première passe : regrouper les EC par UE et calculer les moyennes
+    courses.forEach(course => {
+      const ueId = course.UE_ID;
+      if (!ueMap.has(ueId)) {
+        ueMap.set(ueId, {
+          grades: [],
+          credit: course.UE_CREDIT,
+          code: course.CODE,
+          name: course.INTITULE
+        });
+      }
+      ueMap.get(ueId).grades.push(course.NOTE);
+    });
+    
+    // Deuxième passe : ajouter la moyenne UE à chaque EC
+    courses.forEach(course => {
+      const ueData = ueMap.get(course.UE_ID);
+      const sum = ueData.grades.reduce((total: number, grade: number) => total + grade, 0);
+      const average = ueData.grades.length > 0 ? sum / ueData.grades.length : 0;
+      course.UE_AVERAGE = average;
+    });
+  
     return {
       NOM: rawStudent.NOM || "",
       PRENOM: rawStudent.PRENOM || "",
@@ -216,7 +230,8 @@ export const ReleveGenerator: React.FC = () => {
       NIVEAU: currentConfig.niveau || "",
       SEMESTRE: currentSemester.name || "",
       OPTION: currentConfig.option || "",
-      COURSES: courses
+      COURSES: courses,
+      TOTAL_CREDITS: 30 // Valeur fixe pour le dénominateur de la formule de moyenne
     };
   }, [currentConfig, currentSemester, columnMapping]);
 

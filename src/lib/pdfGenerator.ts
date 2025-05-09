@@ -47,21 +47,21 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
     if (!student.COURSES || student.COURSES.length === 0) return '';
     
     let html = '';
-    let currentUE = '';
+    let currentUECode = '';
     let ueElements = [];
+    let ueCredit = 0;
     
     student.COURSES.forEach((course, index) => {
-      // Extract UE code from the course code if available
-      const ueMatch = course.CODE ? course.CODE.match(/UE\s*(\w+)/) : null;
-      const ueCode = ueMatch ? ueMatch[0] : course.CODE;
-      const ueTitle = course.INTITULE;
+      // Utiliser le CODE explicite du cours qui contient le code UE
+      const ueCode = course.CODE || '';
+      const ueTitle = course.INTITULE || '';
       
       // Check if this is a new UE or continuation of previous UE
-      if (ueCode !== currentUE) {
+      if (ueCode !== currentUECode) {
         // If we have accumulated elements for a previous UE, output them
         if (ueElements.length > 0) {
-          // Calculate average for the UE
-          const ueAverage = ueElements.reduce((sum, ec) => sum + ec.note, 0) / ueElements.length;
+          // Utiliser la moyenne UE pré-calculée
+          const ueAverage = ueElements[0].ueAverage;
           
           // Check if any EC has a note of 6 or less
           const hasFailingEC = ueElements.some(ec => ec.note <= 6);
@@ -69,28 +69,30 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
           // Determine if UE is validated (average >= 10 AND no EC with note <= 6)
           const isUEValidated = ueAverage >= 10 && !hasFailingEC;
           
-          // Calculate UE credit - only assign credit if UE is validated
-          const ueCredit = isUEValidated ? ueElements[0].credit : 0;
+          // Apply credits only if UE is validated
+          const ueValidatedCredits = new Map();
           
-          html += generateUERowsHTML(currentUE, ueElements[0].title, ueElements, ueAverage, ueCredit);
+          html += generateUERowsHTML(currentUECode, ueElements[0].title, ueElements, ueAverage, ueValidatedCredits);
           ueElements = [];
         }
         
-        currentUE = ueCode;
+        currentUECode = ueCode;
+        // Récupérer le crédit associé à l'UE
+        ueCredit = course.CREDIT || 0;
       }
       
       // Add this course as an element of the current UE
       ueElements.push({
         title: ueTitle,
-        name: course.EC_TITRE || ueTitle,
-        note: course.NOTE,
-        credit: course.CREDIT
+        name: course.EC_TITRE || '',
+        note: course.NOTE || 0,
+        ueAverage: course.UE_AVERAGE || 0 // Utiliser la moyenne UE pré-calculée
       });
     });
     
     // Don't forget to output the last UE
     if (ueElements.length > 0) {
-      const ueAverage = ueElements.reduce((sum, ec) => sum + ec.note, 0) / ueElements.length;
+      const ueAverage = ueElements[0].ueAverage;
       
       // Check if any EC has a note of 6 or less
       const hasFailingEC = ueElements.some(ec => ec.note <= 6);
@@ -98,10 +100,10 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
       // Determine if UE is validated (average >= 10 AND no EC with note <= 6)
       const isUEValidated = ueAverage >= 10 && !hasFailingEC;
       
-      // Calculate UE credit - only assign credit if UE is validated
-      const ueCredit = isUEValidated ?  .credit : 0;
+      // Apply credits only if UE is validated
+      const ueValidatedCredits = isUEValidated ? ueCredit : 0;
       
-      html += generateUERowsHTML(currentUE, ueElements[0].title, ueElements, ueAverage, ueCredit);
+      html += generateUERowsHTML(currentUECode, ueElements[0].title, ueElements, ueAverage, ueValidatedCredits);
     }
     
     return html;
@@ -148,36 +150,55 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
     }
   };
 
-  // Calculate semester statistics
-  const uniqueUEs = new Set(student.COURSES?.map(course => course.CODE) || []);
-  
-  // Total accumulated credits and weighted sum
-  let totalCredits = 0;
-  let weightedSum = 0;
+// Calculate semester statistics
+const uniqueUEs = new Set();
+const ueData = new Map();
+const ueValidatedCredits = new Map();
 
-  // Process each UE to calculate semester statistics
-  Array.from(uniqueUEs).forEach(ueCode => {
-    const ueCourses = student.COURSES?.filter(course => course.CODE === ueCode) || [];
-    const ueAverage = ueCourses.reduce((sum, course) => sum + course.NOTE, 0) / ueCourses.length;
-    const ueCredit = ueCourses[0]?.CREDIT || 0;
+// Première étape : regrouper les EC par UE et calculer les moyennes des UE
+student.COURSES?.forEach(course => {
+  const ueCode = course.CODE;
+  
+  if (!ueValidatedCredits.has(ueCode)) {
+    const ecNotes = student.COURSES
+      .filter(c => c.CODE === ueCode)
+      .map(c => c.NOTE);
     
-    // Check if any EC has a note of 6 or less
-    const hasFailingEC = ueCourses.some(course => course.NOTE <= 6);
-    
-    // Determine if UE is validated (average >= 10 AND no EC with note <= 6)
+    const ueAverage = course.UE_AVERAGE || 0;
+    const hasFailingEC = ecNotes.some(note => note <= 6);
     const isUEValidated = ueAverage >= 10 && !hasFailingEC;
     
-    // Add to total credits only if UE is validated
-    if (isUEValidated) {
-      totalCredits += ueCredit;
-      weightedSum += (ueAverage * ueCredit);
-    }
-  });
+    // Stocker si l'UE est validée ou non et ses informations
+    ueValidatedCredits.set(ueCode, {
+      isValidated: isUEValidated,
+      credits: course.UE_CREDIT || 0,
+      average: ueAverage
+    });
+  }
+});
+// Deuxième étape : calcul des crédits validés et de la moyenne du semestre
+let totalCreditsValidated = 0;
+let weightedSum = 0;
 
-  const semesterAverage = totalCredits > 0 ? weightedSum / totalCredits : 0;
-  const mgp = calculateMGP(semesterAverage);
-  const grade = getGradeFromAverage(semesterAverage);
-  const decision = semesterAverage >= 10 ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
+ueValidatedCredits.forEach((ueInfo, ueCode) => {
+  // Pour la formule de moyenne, on considère toutes les UE, validées ou non
+  weightedSum += ueInfo.average * ueInfo.credits;
+  
+  // Mais pour le total des crédits validés, on ne compte que les UE validées
+  if (ueInfo.isValidated) {
+    totalCreditsValidated += ueInfo.credits;
+  }
+});
+
+const totalSemesterCredits = student.TOTAL_CREDITS || 30; // Utiliser 30 crédits comme dénominateur
+const semesterAverage = weightedSum / totalSemesterCredits;
+const mgp = calculateMGP(semesterAverage);
+const grade = getGradeFromAverage(semesterAverage);
+
+// Un semestre est validé si on obtient au moins 70% des crédits (règle LMD standard)
+// ou selon la règle spécifique de l'institution
+const isEnoughCredits = totalCreditsValidated >= (totalSemesterCredits * 0.7);
+const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
 
   // Get asset paths
   const assetsPath = path.join(app.getPath('userData'), 'assets');
@@ -410,7 +431,12 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
                         B.P 2701, Douala, Cameroun<br>
                         Email: <a href="">contact@fmsp-udo.cm</a><br>
                         ********************<br>
-                        <strong>${settings.nameFrench}</strong><br>
+                        <strong>${
+                          settings.nameFrench
+                            .split(" ")
+                            .map((w, i) => (i > 0 && i % 4 === 0 ? "<br>" + w : w))
+                            .join(" ")
+                        }</strong><br>
                         ********************<br>
                         B.P ${settings.postalBox}<br>
                         Email: <a href="">${settings.email}</a></p>
@@ -442,7 +468,12 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
                         PO box 2701, Douala, Cameroun<br>
                         Email: <a href="">contact@fmsp-udo.cm</a><br>
                         ********************<br>
-                        <strong>${settings.nameEnglish}</strong><br>
+                        <strong>${
+                          settings.nameEnglish
+                            .split(" ")
+                            .map((w, i) => (i > 0 && i % 4 === 0 ? "<br>" + w : w))
+                            .join(" ")
+                        }</strong><br>
                         ********************<br>
                         PO box ${settings.postalBox}<br>
                         Email: <a href="">${settings.email}</a></p>    
@@ -529,7 +560,7 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
                         <tr class="table-footer-values">
                             <td class="summary-value"><strong>${student.NIVEAU || "1"}</strong></td>
                             <td class="summary-value"><strong>${student.SEMESTRE || "1"}</strong></td>
-                            <td class="summary-value"><strong>${totalCredits}</strong></td>
+                            <td class="summary-value"><strong>${totalCreditsValidated}</strong></td>
                             <td colspan="2" class="summary-value"><strong>${semesterAverage.toFixed(2)}</strong></td>
                             <td class="summary-value"><strong>${mgp.toFixed(1)}</strong></td>
                             <td colspan="2" class="summary-value"><strong>${grade}</strong></td>
@@ -695,85 +726,38 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
       // Clean up temp HTML file
       try {
         fs.unlinkSync(htmlPath);
-      } catch (error) {
-        console.log(`PDF generated successfully, size: ${pdfData.byteLength} bytes`);
-        
-        // Return buffer
-        return Buffer.from(pdfData);
+      } catch (cleanupError) {
+        console.warn('Failed to clean up temporary HTML file:', cleanupError);
+        // Continue execution even if cleanup fails
+      }
+
+      console.log(`PDF generated successfully, size: ${pdfData.byteLength} bytes`);
+      
+      // Resolve with the PDF data
+      resolve(Buffer.from(pdfData));
+      
     } catch (error) {
       console.error('Error generating PDF:', error);
-      throw error;
-    }
-  });
-    
-    console.log('PDF generation handlers set up successfully');
-}
-
-// Grade calculation functions
-function calculateMGP(average: number): number {
-  if (average >= 18) return 4.0;
-  if (average >= 16) return 3.7;
-  if (average >= 14) return 3.3;
-  if (average >= 13) return 3.0;
-  if (average >= 12) return 2.7;
-  if (average >= 11) return 2.3;
-  if (average >= 10) return 2.0;
-  if (average >= 9) return 1.7;
-  if (average >= 8) return 1.3;
-  if (average >= 6) return 1.0;
-  return 0.0;
-}
-
-function getGradeFromAverage(average: number): string {
-  if (average >= 18) return "A+";
-  if (average >= 16) return "A";
-  if (average >= 14) return "B+";
-  if (average >= 13) return "B";
-  if (average >= 12) return "B-";
-  if (average >= 11) return "C+";
-  if (average >= 10) return "C";
-  if (average >= 9) return "C-";
-  if (average >= 8) return "D";
-  if (average >= 6) return "E";
-  return "F";
-}warn('Failed to clean up temporary HTML file', error);
-      }
-      
-      resolve(pdfData);
-    } catch (error) {
       reject(error);
     }
   });
 }
-// Setup IPC handler for renderer process
+
 export function setupPDFGenerationHandlers() {
-    console.log('Setting up PDF generation handlers...');
-    
-    ipcMain.handle('generate-transcript-pdf', async (event, params: GeneratePDFParams) => {
-      console.log('Received generate-transcript-pdf request from renderer process');
-      
-      try {
-        // Validate student data
-        if (!params || !params.student || !params.student.NOM || !params.student.MATRICULE) {
-          throw new Error('Invalid student data received');
-        }
-        
-        console.log(`Generating PDF for student: ${params.student.MATRICULE} - ${params.student.NOM}`);
-        
-        // Generate PDF data
-        const pdfData = await generateTranscriptPDF(params);
-        
-        console.log(`PDF generated successfully, size: ${pdfData.byteLength} bytes`);
-        
-        // Return buffer
-        return Buffer.from(pdfData);
+  // Set up IPC handler for PDF generation
+  ipcMain.handle('generate-transcript-pdf', async (_, params: GeneratePDFParams) => {
+    try {
+      return await generateTranscriptPDF(params);
     } catch (error) {
       console.error('Error generating PDF:', error);
       throw error;
     }
   });
-    
-    console.log('PDF generation handlers set up successfully');
+
+  console.log('PDF generation handlers set up successfully');
+  return {
+    generateTranscriptPDF
+  };
 }
 
 // Grade calculation functions

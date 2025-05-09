@@ -55,9 +55,25 @@ export const UECard: React.FC<UECardProps> = ({
               <Input
                 id={`code-${ue.id}`}
                 type="text"
-                value={ue.id}
-                onChange={(e) => onUpdate({ id: e.target.value })}
+                value={ue.code || ""} // Utilisation du champ code
+                onChange={(e) => onUpdate({ code: e.target.value })}
                 className="w-32"
+                disabled={!isEditing}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-2">
+            <div className="flex items-center">
+              <Label htmlFor={`credits-${ue.id}`} className="mr-2 text-sm">
+                Crédits UE:
+              </Label>
+              <Input
+                id={`credits-${ue.id}`}
+                type="number"
+                value={ue.credits}
+                onChange={(e) => onUpdate({ credits: Number(e.target.value) })}
+                className="w-20"
+                min={0}
                 disabled={!isEditing}
               />
             </div>

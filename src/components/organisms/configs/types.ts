@@ -1,12 +1,12 @@
 export interface EC {
   id: string;
   name: string;
-  credits: number;
 }
 
 export interface UE {
   id: string;
   name: string;
+  code: string;
   credits: number;
   ecs: EC[];
 }

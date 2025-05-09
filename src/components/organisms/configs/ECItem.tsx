@@ -24,20 +24,7 @@ export const ECItem: React.FC<ECItemProps> = ({ ec, isEditing, onUpdate, onDelet
           disabled={!isEditing}
         />
       </div>
-      <div className="flex items-center">
-        <Label htmlFor={`ec-credits-${ec.id}`} className="mr-2 text-xs">
-          Crédits:
-        </Label>
-        <Input
-          id={`ec-credits-${ec.id}`}
-          type="number"
-          value={ec.credits}
-          onChange={(e) => onUpdate({ credits: Number(e.target.value) })}
-          className="w-16 text-sm"
-          min={0}
-          disabled={!isEditing}
-        />
-      </div>
+      {/* Suppression du champ crédits pour les EC */}
       {isEditing && (
         <Button
           variant="ghost"
