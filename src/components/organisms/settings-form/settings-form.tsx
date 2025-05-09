@@ -37,6 +37,7 @@ const SettingForm: React.FC = () => {
     useLocalStorage<TranscriptSettingsPayload>("settings", {
       nameFrench: "",
       nameEnglish: "",
+      nameAbreviation: "",
       postalBox: "",
       email: "",
       logo: "",
@@ -53,45 +54,42 @@ const SettingForm: React.FC = () => {
 
   const MAX_FILE_SIZE = 1000 * 1024;
 
-  const createDropzoneHandler = React.useCallback(
-    (fieldName: string) => {
-      const onDrop = (acceptedFiles: File[]) => {
-        if (!isEditing) return;
-        
-        // Vérifier si acceptedFiles existe et n'est pas vide
-        if (!acceptedFiles || acceptedFiles.length === 0) return;
-        
-        const file = acceptedFiles[0];
-    
-        if (file.size > MAX_FILE_SIZE) {
-          form.setError(fieldName, {
-            type: "manual",
-            message: "L'image dépasse la taille maximale autorisée (1Mb).",
-          });
-          return;
-        }
-    
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const base64 = event.target?.result as string;
-          form.clearErrors(fieldName); 
-          form.setValue(fieldName, base64);
-        };
-        reader.readAsDataURL(file);
-      };
+  // Dropzone pour le logo IPES
+  const createImageDropzone = (fieldName: keyof TranscriptSettingsPayload) => {
+    const onDrop = (acceptedFiles: File[]) => {
+      if (!isEditing || !acceptedFiles || acceptedFiles.length === 0) return;
       
-      return useDropzone({
-        onDrop,
-        accept: { "image/*": [] },
-        disabled: !isEditing
-      });
-    },
-    [form, isEditing]
-  );
+      const file = acceptedFiles[0];
+  
+      if (file.size > MAX_FILE_SIZE) {
+        form.setError(fieldName as any, {
+          type: "manual",
+          message: "L'image dépasse la taille maximale autorisée (1Mb).",
+        });
+        return;
+      }
+  
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        form.clearErrors(fieldName as any); 
+        form.setValue(fieldName, base64);
+      };
+      reader.readAsDataURL(file);
+    };
+    
+    return useDropzone({
+      onDrop,
+      accept: { "image/*": [] },
+      disabled: !isEditing,
+      multiple: false
+    });
+  };
 
-  const logoDropzone = React.useMemo(() => createDropzoneHandler("logo"), [createDropzoneHandler]);
-  const universityLogoDropzone = React.useMemo(() => createDropzoneHandler("universityLogo"), [createDropzoneHandler]);
-  const facultyLogoDropzone = React.useMemo(() => createDropzoneHandler("facultyLogo"), [createDropzoneHandler]);
+  // Créer des dropzones individuels pour chaque logo
+  const logoDropzone = createImageDropzone("logo");
+  const universityLogoDropzone = createImageDropzone("universityLogo");
+  const facultyLogoDropzone = createImageDropzone("facultyLogo");
 
   // Fonction pour enregistrer les modifications
   const saveChanges = () => {
@@ -99,7 +97,7 @@ const SettingForm: React.FC = () => {
     
     // Validation des données avant enregistrement
     if (!formData.nameFrench || !formData.nameEnglish) {
-      form.setError("nameFrench", { 
+      form.setError("nameFrench" as any, { 
         type: "manual", 
         message: "Le nom de l'établissement est requis en français et en anglais" 
       });
@@ -230,6 +228,22 @@ const SettingForm: React.FC = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nom de l'établissement en Anglais</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        disabled={!isEditing}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="nameAbreviation"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>L'abréviation du nom de l'établissement             </FormLabel>
                     <FormControl>
                       <Input
                         {...field}

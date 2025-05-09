@@ -8,6 +8,7 @@ import QRCode from 'qrcode';
 interface TranscriptSettingsPayload {
   nameFrench: string;
   nameEnglish: string;
+  nameAbreviation: string;
   postalBox: string;
   email: string;
   logo: string;
@@ -61,7 +62,15 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
         if (ueElements.length > 0) {
           // Calculate average for the UE
           const ueAverage = ueElements.reduce((sum, ec) => sum + ec.note, 0) / ueElements.length;
-          const ueCredit = course.CREDIT; // Use credit from current course for UE
+          
+          // Check if any EC has a note of 6 or less
+          const hasFailingEC = ueElements.some(ec => ec.note <= 6);
+          
+          // Determine if UE is validated (average >= 10 AND no EC with note <= 6)
+          const isUEValidated = ueAverage >= 10 && !hasFailingEC;
+          
+          // Calculate UE credit - only assign credit if UE is validated
+          const ueCredit = isUEValidated ? ueElements[0].credit : 0;
           
           html += generateUERowsHTML(currentUE, ueElements[0].title, ueElements, ueAverage, ueCredit);
           ueElements = [];
@@ -82,7 +91,16 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
     // Don't forget to output the last UE
     if (ueElements.length > 0) {
       const ueAverage = ueElements.reduce((sum, ec) => sum + ec.note, 0) / ueElements.length;
-      const ueCredit = student.COURSES[student.COURSES.length - 1].CREDIT;
+      
+      // Check if any EC has a note of 6 or less
+      const hasFailingEC = ueElements.some(ec => ec.note <= 6);
+      
+      // Determine if UE is validated (average >= 10 AND no EC with note <= 6)
+      const isUEValidated = ueAverage >= 10 && !hasFailingEC;
+      
+      // Calculate UE credit - only assign credit if UE is validated
+      const ueCredit = isUEValidated ?  .credit : 0;
+      
       html += generateUERowsHTML(currentUE, ueElements[0].title, ueElements, ueAverage, ueCredit);
     }
     
@@ -132,17 +150,29 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
 
   // Calculate semester statistics
   const uniqueUEs = new Set(student.COURSES?.map(course => course.CODE) || []);
-  const totalCredits = Array.from(uniqueUEs).reduce((sum, ueCode) => {
-    const ueFirstCourse = student.COURSES?.find(course => course.CODE === ueCode);
-    return sum + (ueFirstCourse?.CREDIT || 0);
-  }, 0);
+  
+  // Total accumulated credits and weighted sum
+  let totalCredits = 0;
+  let weightedSum = 0;
 
-  const weightedSum = Array.from(uniqueUEs).reduce((sum, ueCode) => {
+  // Process each UE to calculate semester statistics
+  Array.from(uniqueUEs).forEach(ueCode => {
     const ueCourses = student.COURSES?.filter(course => course.CODE === ueCode) || [];
     const ueAverage = ueCourses.reduce((sum, course) => sum + course.NOTE, 0) / ueCourses.length;
     const ueCredit = ueCourses[0]?.CREDIT || 0;
-    return sum + (ueAverage * ueCredit);
-  }, 0);
+    
+    // Check if any EC has a note of 6 or less
+    const hasFailingEC = ueCourses.some(course => course.NOTE <= 6);
+    
+    // Determine if UE is validated (average >= 10 AND no EC with note <= 6)
+    const isUEValidated = ueAverage >= 10 && !hasFailingEC;
+    
+    // Add to total credits only if UE is validated
+    if (isUEValidated) {
+      totalCredits += ueCredit;
+      weightedSum += (ueAverage * ueCredit);
+    }
+  });
 
   const semesterAverage = totalCredits > 0 ? weightedSum / totalCredits : 0;
   const mgp = calculateMGP(semesterAverage);
@@ -256,7 +286,8 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
                 display: inline-block;
             }
             .signature-ipes{
-            margin-left: 40px;
+                width: 50%;
+                margin-left: 40px;
                 font-size: 12px;
             }
             .signature {
@@ -406,7 +437,7 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
                         ********************<br>
                         <strong>THE UNIVERSITY OF DOUALA</strong><br>
                         ********************<br>
-                        <strong>FACULTY OF MEDICINE AND PHARMACEUTICAL SCIENCES</strong><br>
+                        <strong>FACULTY OF MEDICINE AND<br>PHARMACEUTICAL SCIENCES</strong><br>
                         ********************<br>
                         PO box 2701, Douala, Cameroun<br>
                         Email: <a href="">contact@fmsp-udo.cm</a><br>
@@ -419,7 +450,7 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
                 </div>
                 <div class="header-row2">
                     <h1><strong>RELEVE DE NOTES</strong> / TRANSCRIPT </h1>
-                    <p><strong>Ref No</strong>&nbsp;&nbsp; /24/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASR/SSE</p>
+                    <p><strong>Ref No</strong>&nbsp;&nbsp; /24/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR/${settings.nameAbreviation}</p>
                 </div>
             </div>
         
@@ -448,7 +479,7 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
                     <div><em>Training cycle:</em></div>
                 </div>
                 <div>
-                    <p><strong>ANNÉE ACADÉMIQUE:</strong> <strong>${student["ANNEE ACADÉMIQUE"] || "2023 - 2024"}</strong></p>
+                    <p><strong>ANNÉE ACADÉMIQUE:</strong> <strong>${student["ANNEE ACADÉMIQUE"] || "2024 - 2025"}</strong></p>
                     <div><em>Academic Year:</em></div>
                 </div>
                 <div>
@@ -602,8 +633,8 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
                 </div>
             </div>
 
-            <div class="signature-ipes"><strong>Le Directeur de L'${settings.nameFrench}</strong>
-            <br/><i>The Director of ${settings.nameEnglish}</i></div>
+            <div class="signature-ipes"><strong>Le Directeur de L'${settings.nameFrench.length >= 30 ? settings.nameAbreviation : settings.nameFrench}</strong>
+            <br/><i>The Director of ${settings.nameFrench.length >= 30 ? settings.nameAbreviation : settings.nameEnglish}</i></div>
             </div>
             <!-- Footer note -->
             <div class="footer-note">
@@ -665,7 +696,47 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
       try {
         fs.unlinkSync(htmlPath);
       } catch (error) {
-        console.warn('Failed to clean up temporary HTML file', error);
+        console.log(`PDF generated successfully, size: ${pdfData.byteLength} bytes`);
+        
+        // Return buffer
+        return Buffer.from(pdfData);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      throw error;
+    }
+  });
+    
+    console.log('PDF generation handlers set up successfully');
+}
+
+// Grade calculation functions
+function calculateMGP(average: number): number {
+  if (average >= 18) return 4.0;
+  if (average >= 16) return 3.7;
+  if (average >= 14) return 3.3;
+  if (average >= 13) return 3.0;
+  if (average >= 12) return 2.7;
+  if (average >= 11) return 2.3;
+  if (average >= 10) return 2.0;
+  if (average >= 9) return 1.7;
+  if (average >= 8) return 1.3;
+  if (average >= 6) return 1.0;
+  return 0.0;
+}
+
+function getGradeFromAverage(average: number): string {
+  if (average >= 18) return "A+";
+  if (average >= 16) return "A";
+  if (average >= 14) return "B+";
+  if (average >= 13) return "B";
+  if (average >= 12) return "B-";
+  if (average >= 11) return "C+";
+  if (average >= 10) return "C";
+  if (average >= 9) return "C-";
+  if (average >= 8) return "D";
+  if (average >= 6) return "E";
+  return "F";
+}warn('Failed to clean up temporary HTML file', error);
       }
       
       resolve(pdfData);
@@ -674,7 +745,6 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
     }
   });
 }
-
 // Setup IPC handler for renderer process
 export function setupPDFGenerationHandlers() {
     console.log('Setting up PDF generation handlers...');
