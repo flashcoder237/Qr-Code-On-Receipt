@@ -140,19 +140,47 @@ export const ReleveGenerator: React.FC = () => {
   const prepareStudentData = useCallback((rawStudent: any) => {
     if (!currentConfig || !currentSemester) return null;
 
-    const courses: any[] = [];
+    // Group ECs by UE and calculate UE averages
+    const ueGroups = new Map();
     currentSemester.ues.forEach((ue: any) => {
+      const ecGrades: number[] = [];
       ue.ecs.forEach((ec: any) => {
         const columnName = columnMapping[ec.id];
         if (columnName) {
-          courses.push({
-            CODE: `UE ${ue.name}`,
-            INTITULE: ue.name,
-            EC_TITRE: ec.name,
-            NOTE: parseFloat(rawStudent[columnName]) || 0,
-            CREDIT: ec.credits || 0
-          });
+          const grade = parseFloat(rawStudent[columnName]) || 0;
+          ecGrades.push(grade);
         }
+      });
+      
+      // Calculate UE average
+      const ueAverage = ecGrades.length > 0 
+        ? ecGrades.reduce((sum, grade) => sum + grade, 0) / ecGrades.length 
+        : 0;
+
+      ueGroups.set(ue.id, {
+        code: `UE ${ue.name}`,
+        name: ue.name,
+        credits: ue.credits || 0,
+        average: ueAverage,
+        ecs: ue.ecs.map((ec: any) => ({
+          name: ec.name,
+          note: parseFloat(rawStudent[columnMapping[ec.id]]) || 0
+        }))
+      });
+    });
+
+    // Convert UE groups to COURSES array
+    const courses: any[] = [];
+    ueGroups.forEach((ue) => {
+      ue.ecs.forEach((ec: any, index: number) => {
+        courses.push({
+          CODE: ue.code,
+          INTITULE: ue.name,
+          EC_TITRE: ec.name,
+          NOTE: ec.note,
+          CREDIT: index === 0 ? ue.credits : 0, // Credits only on first EC of each UE
+          UE_AVERAGE: ue.average
+        });
       });
     });
 
@@ -191,6 +219,8 @@ export const ReleveGenerator: React.FC = () => {
         return;
       }
 
+      console.log("Prepared student data:", student); // Debug log
+
       setPreviewStudent(student);
       const pdfBytes = await window.ipcRenderer.invoke('generate-transcript-pdf', student);
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
@@ -200,6 +230,8 @@ export const ReleveGenerator: React.FC = () => {
       }
       
       const url = URL.createObjectURL(blob);
+      console.log("Created PDF URL:", url); // Debug log
+      
       setPreviewPdfUrl(url);
       setActiveTab("preview");
       setError(null);

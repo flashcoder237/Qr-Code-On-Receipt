@@ -3,42 +3,54 @@ import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ipcMain } from 'electron';
-import { TranscriptSettingsPayload } from "@/lib/form-schemas/settings";
-import { useLocalStorage } from "usehooks-ts";
 
-// Fonction pour charger les paramètres d'entête depuis localStorage
+interface TranscriptSettingsPayload {
+  nameFrench: string;
+  nameEnglish: string;
+  postalBox: string;
+  email: string;
+  logo: string;
+}
+
+// Load header settings from a JSON file
 const loadHeaderSettings = (): TranscriptSettingsPayload => {
-    try {
-        const [storedSettings, setStoredSettings] =
-        useLocalStorage<TranscriptSettingsPayload>("settings", {
-          nameFrench: "",
-          nameEnglish: "",
-          postalBox: "",
-          email: "",
-          logo: "",
-        });
-    
-    if (storedSettings) {
-        return JSON.parse(storedSettings);
+  try {
+    const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+    if (fs.existsSync(settingsPath)) {
+      const settingsData = fs.readFileSync(settingsPath, 'utf8');
+      return JSON.parse(settingsData);
     }
-    } catch (error) {
+  } catch (error) {
     console.error("Erreur lors du chargement des paramètres d'entête:", error);
-    }
-    
-    // Valeurs par défaut si les paramètres ne sont pas trouvés
-    return {
+  }
+  
+  // Default values if settings are not found
+  return {
     nameFrench: "Nom de l'établissement",
     nameEnglish: "Institution Name",
     postalBox: "B.P. 0000",
     email: "contact@example.com",
     logo: "",
-    };
+  };
 };
+
+// Generate a QR code with the student ID and some verification information
+function generateQRCodeSvg(student: StudentRecord): string {
+  // This will be replaced with actual QR code generation in production
+  // For now, we're creating a placeholder element for the QR code
+  return `
+    <div class="qr-code-placeholder">
+      <div class="qr-code-inner">
+        <div class="qr-code-text">QR Code: ${student.MATRICULE}</div>
+      </div>
+    </div>
+  `;
+}
 
 // Create HTML template for the transcript based on the provided model
 function createTranscriptHTML(student: StudentRecord): string {
-    const headerSettings = loadHeaderSettings();
-    
+  const headerSettings = loadHeaderSettings();
+  
   // Helper function to generate course rows
   const generateCourseRows = () => {
     if (!student.COURSES || student.COURSES.length === 0) return '';
@@ -59,7 +71,7 @@ function createTranscriptHTML(student: StudentRecord): string {
         if (ueElements.length > 0) {
           // Calculate average for the UE
           const ueAverage = ueElements.reduce((sum, ec) => sum + ec.note, 0) / ueElements.length;
-          const ueCredit = ueElements[0].credit; // Assuming all ECs in a UE have same credit
+          const ueCredit = course.CREDIT; // Use credit from current course for UE
           
           html += generateUERowsHTML(currentUE, ueElements[0].title, ueElements, ueAverage, ueCredit);
           ueElements = [];
@@ -80,7 +92,7 @@ function createTranscriptHTML(student: StudentRecord): string {
     // Don't forget to output the last UE
     if (ueElements.length > 0) {
       const ueAverage = ueElements.reduce((sum, ec) => sum + ec.note, 0) / ueElements.length;
-      const ueCredit = ueElements[0].credit;
+      const ueCredit = student.COURSES[student.COURSES.length - 1].CREDIT;
       html += generateUERowsHTML(currentUE, ueElements[0].title, ueElements, ueAverage, ueCredit);
     }
     
@@ -129,12 +141,24 @@ function createTranscriptHTML(student: StudentRecord): string {
   };
 
   // Calculate semester statistics
-  const totalCredits = student.COURSES ? student.COURSES.reduce((sum, course) => sum + course.CREDIT, 0) : 0;
-  const weightedSum = student.COURSES ? student.COURSES.reduce((sum, course) => sum + (course.NOTE * course.CREDIT), 0) : 0;
+  const uniqueUEs = new Set(student.COURSES?.map(course => course.CODE) || []);
+  const totalCredits = Array.from(uniqueUEs).reduce((sum, ueCode) => {
+    const ueFirstCourse = student.COURSES?.find(course => course.CODE === ueCode);
+    return sum + (ueFirstCourse?.CREDIT || 0);
+  }, 0);
+
+  const weightedSum = Array.from(uniqueUEs).reduce((sum, ueCode) => {
+    const ueCourses = student.COURSES?.filter(course => course.CODE === ueCode) || [];
+    const ueAverage = ueCourses.reduce((sum, course) => sum + course.NOTE, 0) / ueCourses.length;
+    const ueCredit = ueCourses[0]?.CREDIT || 0;
+    return sum + (ueAverage * ueCredit);
+  }, 0);
+
   const semesterAverage = totalCredits > 0 ? weightedSum / totalCredits : 0;
   const mgp = calculateMGP(semesterAverage);
   const grade = getGradeFromAverage(semesterAverage);
   const decision = semesterAverage >= 10 ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
+  const qrCodeSvg = generateQRCodeSvg(student);
 
   return `
     <!DOCTYPE html>
@@ -150,14 +174,16 @@ function createTranscriptHTML(student: StudentRecord): string {
             }
             body {
                 font-family: 'Times New Roman', Times, serif;
-                margin: 0;
-                padding: 20px;
-                width: 210mm;
-                min-height: 297mm;
+             
+                
+                width: 200mm;
+                min-height: 287mm;
                 box-sizing: border-box;
                 background-color: white;
+                margin: 5mm;
                 border: 1px solid black;
                 color: black;
+                position: relative;
             }
             
             .header {    
@@ -212,14 +238,24 @@ function createTranscriptHTML(student: StudentRecord): string {
                 background-color: #f0f0f0;
             }
             .grade-scale {
-                padding: 20px;
-                width: 50%;
-                float: right;
-                font-size: 12px;
+                width: 20%;
+                font-size: 6px;
+                float: left;
+                margin-left: 20px;
+            }
+            .grade-scale table {
+                width: 100%;
+            }
+            .signature-ipes{
+            font-size: 11px;
             }
             .signature {
                 margin-top: 30px;
-                text-align: right;
+                width: 30%;
+                float: right;
+                text-align: center;
+                font-size: 10px;
+                margin-right: 20px;
             }
             .header-content{
                 width: 35%;
@@ -263,19 +299,73 @@ function createTranscriptHTML(student: StudentRecord): string {
                 text-align: left;
             }
             .grade-sign{
-                display: grid;
-                grid-template-columns: 2fr 1fr 3fr;
-                grid-template-rows: 100px 1fr;
-                gap: 16px;
+                display: flex;
+                justify-content: start;
+                width: 96%;
+                margin: 0 auto;
             }
-                body > .container{
-            border: 1px solid black;
-            height: 100%;
-        }
+            .grade-sign th, .grade-sign td{
+                padding: 1px;
+                border: 0.5px solid #000;
+            }
+            body > .container{
+                
+                position: relative;
+            }
+            .watermark {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: -1;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                opacity: 0.1;
+                pointer-events: none;
+            }
+            .watermark img {
+                width: 300px;
+                height: auto;
+            }
+            .footer-note {
+                font-size: 8px;
+                text-align: center;
+                margin-top: 20px;
+                padding-top: 10px;
+                font-style: italic;
+            }
+            .qr-code-placeholder {
+                width: 80px;
+                height: 80px;
+                border: 1px solid #000;
+                margin: 10px auto;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            .qr-code-inner {
+                width: 70px;
+                height: 70px;
+                background-color: #f0f0f0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+            }
+            .qr-code-text {
+                font-size: 6px;
+            }
         </style>
     </head>
     <body>
         <div class="container">
+            <!-- IPES Logo Watermark -->
+            <div class="watermark">
+                <img src=${headerSettings.logo} alt="IPES Watermark">
+            </div>
+            
             <div class="header">
                 <div class="header-row1">
                     <div class="header-content">
@@ -299,7 +389,7 @@ function createTranscriptHTML(student: StudentRecord): string {
                     <div class="header-logo-content">
                         <div><img src="assets/logo-ud.png" alt="" height="70"></div>
                         <div><img src="assets/logo-fmsp.png" alt="" height="50" style="margin: 5px;"></div>
-                        <div style="height: 50px; border: 1px solid black;"> Logo IPES</div>
+                        <div><img src=${headerSettings.logo} alt="" height="50" style="margin: 5px;"></div>
                     </div>
                     <div class="header-content">
                         <p>REPUBLIC OF CAMEROON<br>
@@ -413,89 +503,104 @@ function createTranscriptHTML(student: StudentRecord): string {
         
             <div class="grade-sign">
                 <div class="grade-scale">
-                    <table style="table-layout: auto;">
-                        <tbody style="font-size: 8px;">
-                            <tr>
-                                <td><strong>Grade</strong></td>
-                                <td><strong>Note/4</strong></td>
-                                <td><strong>Appréciation</strong></td>
-                                <td><strong>Moy /20</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>A+</strong></td>
-                                <td><strong>4.0</strong></td>
-                                <td><strong>Excellent</strong></td>
-                                <td><strong>[18-20]</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>A</strong></td>
-                                <td><strong>3.7</strong></td>
-                                <td><strong>Très Bien</strong></td>
-                                <td><strong>[16-18[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>B+</strong></td>
-                                <td><strong>3.3</strong></td>
-                                <td><strong>Bien</strong></td>
-                                <td><strong>[14-16[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>B</strong></td>
-                                <td><strong>3</strong></td>
-                                <td><strong>Assez Bien</strong></td>
-                                <td><strong>[13-14[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>B-</strong></td>
-                                <td><strong>2.7</strong></td>
-                                <td><strong>Assez Bien</strong></td>
-                                <td><strong>[12-13[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>C+</strong></td>
-                                <td><strong>2.3</strong></td>
-                                <td><strong>Passable</strong></td>
-                                <td><strong>[11-12[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>C</strong></td>
-                                <td><strong>2.0</strong></td>
-                                <td><strong>Passable</strong></td>
-                                <td><strong>[10-11[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>C-</strong></td>
-                                <td><strong>1.7</strong></td>
-                                <td><strong>Insuffisant</strong></td>
-                                <td><strong>[09-10[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>D</strong></td>
-                                <td><strong>1.3</strong></td>
-                                <td><strong>Faible</strong></td>
-                                <td><strong>[08-09[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>E</strong></td>
-                                <td><strong>1.0</strong></td>
-                                <td><strong>Très Faible</strong></td>
-                                <td><strong>[06-08[</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>F</strong></td>
-                                <td><strong>0.0</strong></td>
-                                <td><strong>Nul</strong></td>
-                                <td><strong>[00-06[</strong></td>
-                            </tr>
-                        </tbody>
-                    </table>        
+                    <div>
+                        <table style="table-layout: auto;">
+                            <tbody style="font-size: 6px;">
+                                <tr>
+                                    <td><strong>Grade</strong></td>
+                                    <td><strong>Note/4</strong></td>
+                                    <td><strong>Appréciation</strong></td>
+                                    <td><strong>Moy /20</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>A+</strong></td>
+                                    <td><strong>4.0</strong></td>
+                                    <td><strong>Excellent</strong></td>
+                                    <td><strong>[18-20]</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>A</strong></td>
+                                    <td><strong>3.7</strong></td>
+                                    <td><strong>Très Bien</strong></td>
+                                    <td><strong>[16-18[</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>B+</strong></td>
+                                    <td><strong>3.3</strong></td>
+                                    <td><strong>Bien</strong></td>
+                                    <td><strong>[14-16[</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>B</strong></td>
+                                    <td><strong>3</strong></td>
+                                    <td><strong>Assez Bien</strong></td>
+                                    <td><strong>[13-14[</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>B-</strong></td>
+                                    <td><strong>2.7</strong></td>
+                                    <td><strong>Assez Bien</strong></td>
+                                    <td><strong>[12-13[</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>C+</strong></td>
+                                    <td><strong>2.3</strong></td>
+                                    <td><strong>Passable</strong></td>
+                                    <td><strong>[11-12[</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>C</strong></td>
+                                    <td><strong>2.0</strong></td>
+                                    <td><strong>Passable</strong></td>
+                                    <td><strong>[10-11[</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>C-</strong></td>
+                                    <td><strong>1.7</strong></td>
+                                    <td><strong>Insuffisant</strong></td>
+                                    <td><strong>[09-10[</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>D</strong></td>
+                                    <td><strong>1.3</strong></td>
+                                    <td><strong>Faible</strong></td>
+                                    <td><strong>[08-09[</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>E</strong></td>
+                                    <td><strong>1.0</strong></td>
+                                    <td><strong>Très Faible</strong></td>
+                                    <td><strong>[06-08[</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>F</strong></td>
+                                    <td><strong>0.0</strong></td>
+                                    <td><strong>Nul</strong></td>
+                                    <td><strong>[00-06[</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="signature-ipes">Le Directeur de L'${headerSettings.nameFrench}
+                    <br/><i>The Director of ${headerSettings.nameEnglish}</i></div>
                 </div>
+
+                <!-- QR Code placeholder -->
+                ${qrCodeSvg}
         
                 <div class="signature">
-                    <p>LE CHEF D'ETABLISSEMENT</p>
-                    <p>The Dean of the Faculty</p>
-                    <p>Douala, le ____________</p>
+                    <div>Le Doyen FMSP
+                    <br/><i>The Dean FMSP</i></div>
+        
+                    <div>Douala, le 
+                    <br/><i>Douala, the</i></div>
                 </div>
+            </div>
+            
+            <!-- Footer note -->
+            <div class="footer-note">
+                Il n'est délivré qu'un seul exemplaire de relevé de note, le titulaire peut en faire des copies certifiées conformes.<br>
+                This transcript is delivered only once, the owner can do many certified copies as necessary
             </div>
         </div>
     </body>
@@ -573,6 +678,13 @@ export function setupPDFGenerationHandlers() {
       console.error('Error generating PDF:', error);
       throw error;
     }
+  });
+  
+  // IPC handler to generate actual QR code - you can implement this with a QR library
+  ipcMain.handle('generate-qr-code', async (event, data) => {
+    // Implement actual QR code generation here using a library like qrcode
+    // For now, we're using a placeholder in the HTML
+    return Buffer.from('placeholder QR code');
   });
 }
 
