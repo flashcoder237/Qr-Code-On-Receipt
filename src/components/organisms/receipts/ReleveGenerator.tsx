@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { Button } from "../../ui/button";
 import { useHotkeys } from "react-hotkeys-hook";
 import { Eye, Download, AlertCircle, CheckCircle } from "lucide-react";
+import { useLocalStorage } from "usehooks-ts";
 
 // Components
 import { FileUploader } from "./components/FileUploader";
@@ -23,6 +24,18 @@ import { StudentRecord } from "../../../types/student";
 
 const LOCAL_STORAGE_KEY = "academicConfigs";
 
+interface TranscriptSettings {
+  nameFrench: string;
+  nameEnglish: string;
+  postalBox: string;
+  email: string;
+  logo: string;
+  universityLogo: string;
+  facultyLogo: string;
+  themeColor: string;
+  themeFont: string;
+}
+
 export const ReleveGenerator: React.FC = () => {
   // State
   const [activeTab, setActiveTab] = useState("configuration");
@@ -30,6 +43,19 @@ export const ReleveGenerator: React.FC = () => {
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [configs, setConfigs] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Load settings from localStorage
+  const [settings] = useLocalStorage<TranscriptSettings>("settings", {
+    nameFrench: "",
+    nameEnglish: "",
+    postalBox: "",
+    email: "",
+    logo: "",
+    universityLogo: "",
+    facultyLogo: "",
+    themeColor: "#000000",
+    themeFont: "Times New Roman, serif",
+  });
 
   // Load configurations from localStorage
   useEffect(() => {
@@ -195,8 +221,13 @@ export const ReleveGenerator: React.FC = () => {
   }, [currentConfig, currentSemester, columnMapping]);
 
   const handlePreviewReleve = useCallback(async () => {
-    if (!selectedSemesterId || excelData.length === 0) {
-      setError("Veuillez sélectionner un semestre et charger des données");
+    if (!currentConfig || !currentSemester) {
+      setError("Veuillez sélectionner une configuration et un semestre");
+      return;
+    }
+
+    if (excelData.length === 0) {
+      setError("Veuillez charger des données");
       return;
     }
 
@@ -214,9 +245,10 @@ export const ReleveGenerator: React.FC = () => {
       }
 
       console.log("Prepared student data:", student); // Debug log
+      console.log("Settings:", settings); // Debug log
 
       setPreviewStudent(student);
-      const pdfBytes = await window.ipcRenderer.invoke('generate-transcript-pdf', student);
+      const pdfBytes = await window.ipcRenderer.invoke('generate-transcript-pdf', { student, settings });
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
       
       if (previewPdfUrl) {
@@ -233,11 +265,16 @@ export const ReleveGenerator: React.FC = () => {
       console.error('Preview error:', error);
       setError("Erreur lors de la génération de l'aperçu");
     }
-  }, [selectedSemesterId, excelData, mappingComplete, prepareStudentData, previewPdfUrl]);
+  }, [selectedSemesterId, excelData, mappingComplete, prepareStudentData, previewPdfUrl, settings]);
 
   const handleGenerateAll = useCallback(async () => {
-    if (!selectedSemesterId || excelData.length === 0) {
-      setError("Veuillez sélectionner un semestre et charger des données");
+    if (!currentConfig || !currentSemester) {
+      setError("Veuillez sélectionner une configuration et un semestre");
+      return;
+    }
+
+    if (excelData.length === 0) {
+      setError("Veuillez charger des données");
       return;
     }
 
@@ -251,12 +288,12 @@ export const ReleveGenerator: React.FC = () => {
       const preparedData = excelData.map(student => {
         const prepared = prepareStudentData(student);
         if (!prepared) throw new Error("Erreur lors de la préparation des données");
-        return prepared;
+        return { student: prepared, settings };
       });
       
       const results = await processBatch(
         preparedData,
-        (student) => window.ipcRenderer.invoke('generate-transcript-pdf', student)
+        (data) => window.ipcRenderer.invoke('generate-transcript-pdf', data)
       );
 
       const zipBlob = await generateZipFile(results, 'releve');
@@ -273,7 +310,7 @@ export const ReleveGenerator: React.FC = () => {
       console.error('Generation error:', error);
       setError("Erreur lors de la génération des relevés");
     }
-  }, [selectedSemesterId, excelData, mappingComplete, prepareStudentData, processBatch, generateZipFile]);
+  }, [selectedSemesterId, excelData, mappingComplete, prepareStudentData, processBatch, generateZipFile, settings]);
 
   // Keyboard shortcuts
   useHotkeys('ctrl+p', handlePreviewReleve, [handlePreviewReleve]);
