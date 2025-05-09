@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../../ui/card";
 import { Button } from "../../ui/button";
@@ -37,6 +37,11 @@ export const TranscriptPreview: React.FC<TranscriptPreviewProps> = ({
   const [rotation, setRotation] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    // Log when previewPdfUrl changes
+    console.log("Preview URL updated:", previewPdfUrl);
+  }, [previewPdfUrl]);
 
   const handleZoomIn = () => {
     setZoom((prev) => Math.min(prev + 25, 200));
@@ -193,18 +198,29 @@ export const TranscriptPreview: React.FC<TranscriptPreviewProps> = ({
                     </div>
                   </motion.div>
                 ) : previewPdfUrl ? (
-                  <motion.iframe
+                  <motion.div
                     key="pdf"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    src={previewPdfUrl}
                     className="w-full h-full"
                     style={{
                       transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
                       transformOrigin: "center center",
                     }}
-                  />
+                  >
+                    <object
+                      data={previewPdfUrl}
+                      type="application/pdf"
+                      className="w-full h-full"
+                    >
+                      <embed
+                        src={previewPdfUrl}
+                        type="application/pdf"
+                        className="w-full h-full"
+                      />
+                    </object>
+                  </motion.div>
                 ) : (
                   <motion.div
                     key="error"

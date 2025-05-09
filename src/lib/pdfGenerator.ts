@@ -238,23 +238,29 @@ function createTranscriptHTML(student: StudentRecord): string {
                 background-color: #f0f0f0;
             }
             .grade-scale {
-                width: 20%;
+                display: flex;
                 font-size: 6px;
                 float: left;
                 margin-left: 20px;
+                width: 50%;
             }
             .grade-scale table {
-                width: 100%;
+                witdth: 30%;
+                margin-right : 10px;
+            }
+            .grade-scale div {
+                display: inline-block;
             }
             .signature-ipes{
-            font-size: 11px;
+            margin-left: 40px;
+            font-size: 12px;
             }
             .signature {
                 margin-top: 30px;
-                width: 30%;
+                
                 float: right;
-                text-align: center;
-                font-size: 10px;
+                text-align: left;
+                font-size: 12px;
                 margin-right: 20px;
             }
             .header-content{
@@ -305,6 +311,7 @@ function createTranscriptHTML(student: StudentRecord): string {
                 margin: 0 auto;
             }
             .grade-sign th, .grade-sign td{
+                width:30px;
                 padding: 1px;
                 border: 0.5px solid #000;
             }
@@ -330,6 +337,9 @@ function createTranscriptHTML(student: StudentRecord): string {
                 height: auto;
             }
             .footer-note {
+                position: absolute;
+                width: 100%;
+                bottom: 10px;
                 font-size: 8px;
                 text-align: center;
                 margin-top: 20px;
@@ -337,17 +347,16 @@ function createTranscriptHTML(student: StudentRecord): string {
                 font-style: italic;
             }
             .qr-code-placeholder {
-                width: 80px;
-                height: 80px;
+                width: 100px;
+                height: 100px;
                 border: 1px solid #000;
-                margin: 10px auto;
                 display: flex;
                 justify-content: center;
                 align-items: center;
             }
             .qr-code-inner {
-                width: 70px;
-                height: 70px;
+                width: 90px;
+                height: 90px;
                 background-color: #f0f0f0;
                 display: flex;
                 justify-content: center;
@@ -399,7 +408,7 @@ function createTranscriptHTML(student: StudentRecord): string {
                         ********************<br>
                         <strong>THE UNIVERSITY OF DOUALA</strong><br>
                         ********************<br>
-                        <strong>FACULTY OF MEDICINE AND PHARMACEUTICAL SCIENCES</strong><br>
+                        <strong>FACULTY OF MEDICINE AND <br> PHARMACEUTICAL SCIENCES</strong><br>
                         ********************<br>
                         PO box 2701, Douala, Cameroun<br>
                         Email: <a href="">contact@fmsp-udo.cm</a><br>
@@ -442,7 +451,7 @@ function createTranscriptHTML(student: StudentRecord): string {
                 </div>
                 <div>
                     <p><strong>ANNÉE ACADÉMIQUE:</strong> <strong>${student["ANNEE ACADÉMIQUE"] || "2023 - 2024"}</strong></p>
-                    <div><em>Academic Year</em></div>
+                    <div><em>Academic Year:</em></div>
                 </div>
                 <div>
                     <p><strong>FILIÈRE:</strong> <strong>${student.FILIERE || "PHARMACIE"}</strong></p>
@@ -581,28 +590,28 @@ function createTranscriptHTML(student: StudentRecord): string {
                             </tbody>
                         </table>
                     </div>
-                    <div class="signature-ipes">Le Directeur de L'${headerSettings.nameFrench}
-                    <br/><i>The Director of ${headerSettings.nameEnglish}</i></div>
+                    <!-- QR Code placeholder -->
+                    <div>
+                    ${qrCodeSvg}
+                    </div>
                 </div>
-
-                <!-- QR Code placeholder -->
-                ${qrCodeSvg}
-        
                 <div class="signature">
-                    <div>Le Doyen FMSP
+                    <div><strong>Douala, le</strong> 
+                    <br/><i>Douala, the</i></div><br/>
+
+                    <div><strong>Le Doyen FMSP</strong>
                     <br/><i>The Dean FMSP</i></div>
-        
-                    <div>Douala, le 
-                    <br/><i>Douala, the</i></div>
                 </div>
             </div>
-            
+
+            <div class="signature-ipes"><strong>Le Directeur de L'${headerSettings.nameFrench}</strong>
+            <br/><i>The Director of ${headerSettings.nameEnglish}</i></div>
+            </div>
             <!-- Footer note -->
             <div class="footer-note">
                 Il n'est délivré qu'un seul exemplaire de relevé de note, le titulaire peut en faire des copies certifiées conformes.<br>
                 This transcript is delivered only once, the owner can do many certified copies as necessary
             </div>
-        </div>
     </body>
     </html>
   `;
@@ -612,81 +621,95 @@ function createTranscriptHTML(student: StudentRecord): string {
  * Generate a PDF transcript using Electron's built-in PDF generation capabilities
  */
 export async function generateTranscriptPDF(student: StudentRecord): Promise<Uint8Array> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      // Create a temporary HTML file with the transcript content
-      const html = createTranscriptHTML(student);
-      const tempDir = app.getPath('temp');
-      const htmlPath = path.join(tempDir, `transcript-${Date.now()}.html`);
-      
-      // Write HTML to temp file
-      fs.writeFileSync(htmlPath, html);
-      
-      // Create a hidden browser window
-      const win = new BrowserWindow({
-        width: 595, // A4 width in pixels at 72 DPI
-        height: 842, // A4 height in pixels at 72 DPI
-        show: false, // Keep window hidden
-        webPreferences: {
-          nodeIntegration: false,
-          contextIsolation: true
-        }
-      });
-      
-      // Load the HTML file
-      await win.loadFile(htmlPath);
-      
-      // Wait for content to load completely
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Generate PDF
-      const pdfData = await win.webContents.printToPDF({
-        printBackground: true,
-        pageSize: 'A4',
-        margins: {
-          top: 0.4,
-          bottom: 0.4,
-          left: 0.4,
-          right: 0.4
-        }
-      });
-      
-      // Close the window
-      win.close();
-      
-      // Clean up temp HTML file
+    return new Promise(async (resolve, reject) => {
       try {
-        fs.unlinkSync(htmlPath);
+        // Create HTML content for the transcript
+        const html = createTranscriptHTML(student);
+        
+        // Create a temporary file to store the HTML
+        const tempDir = app.getPath('temp');
+        const htmlPath = path.join(tempDir, `transcript-${Date.now()}.html`);
+        
+        // Write HTML to temporary file
+        fs.writeFileSync(htmlPath, html);
+        
+        // Create a hidden browser window to render the HTML
+        const win = new BrowserWindow({
+          width: 595, // A4 width in pixels at 72 DPI
+          height: 842, // A4 height in pixels at 72 DPI
+          show: false, // Keep the window hidden
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true
+          }
+        });
+        
+        // Load the HTML file
+        await win.loadFile(htmlPath);
+        
+        // Wait for content to load completely
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Print the content to PDF
+        const pdfData = await win.webContents.printToPDF({
+          printBackground: true,
+          pageSize: 'A4',
+          margins: {
+            top: 0.4,
+            bottom: 0.4,
+            left: 0.4,
+            right: 0.4
+          }
+        });
+        
+        // Close the window
+        win.close();
+        
+        // Clean up temporary HTML file
+        try {
+          fs.unlinkSync(htmlPath);
+        } catch (error) {
+          console.warn('Failed to clean up temporary HTML file', error);
+        }
+        
+        // Resolve with the PDF data
+        resolve(pdfData);
       } catch (error) {
-        console.warn('Failed to clean up temporary HTML file', error);
+        reject(error);
       }
-      
-      resolve(pdfData);
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
+    });
+  }
 
 // Setup IPC handler for renderer process
 export function setupPDFGenerationHandlers() {
-  ipcMain.handle('generate-transcript-pdf', async (event, studentData) => {
-    try {
-      const pdfData = await generateTranscriptPDF(studentData);
-      return pdfData.buffer;
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      throw error;
-    }
-  });
-  
-  // IPC handler to generate actual QR code - you can implement this with a QR library
-  ipcMain.handle('generate-qr-code', async (event, data) => {
-    // Implement actual QR code generation here using a library like qrcode
-    // For now, we're using a placeholder in the HTML
-    return Buffer.from('placeholder QR code');
-  });
-}
+    console.log('Setting up PDF generation handlers...');
+    
+    ipcMain.handle('generate-transcript-pdf', async (event, studentData: StudentRecord) => {
+      console.log('Received generate-transcript-pdf request from renderer process');
+      
+      try {
+        // Validate student data
+        if (!studentData || !studentData.NOM || !studentData.MATRICULE) {
+          throw new Error('Invalid student data received');
+        }
+        
+        console.log(`Generating PDF for student: ${studentData.MATRICULE} - ${studentData.NOM}`);
+        
+        // Generate PDF data
+        const pdfData = await generateTranscriptPDF(studentData);
+        
+        console.log(`PDF generated successfully, size: ${pdfData.byteLength} bytes`);
+        
+        // Return buffer
+        return Buffer.from(pdfData);
+      } catch (error) {
+        console.error('Error generating PDF:', error);
+        throw error; // Re-throw to be caught by the renderer process
+      }
+    });
+    
+    console.log('PDF generation handlers set up successfully');
+  }
 
 // Grade calculation functions
 function calculateMGP(average: number): number {

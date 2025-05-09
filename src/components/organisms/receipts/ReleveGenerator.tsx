@@ -19,13 +19,14 @@ import { SemesterSelector } from "./SemesterSelector";
 import { useConfiguration } from "./hooks/useConfiguration";
 import { useProcessing } from "./hooks/useProcessing";
 import { useTranscriptData } from "./hooks/useTranscriptData";
+import { StudentRecord } from "../../../types/student";
 
 const LOCAL_STORAGE_KEY = "academicConfigs";
 
 export const ReleveGenerator: React.FC = () => {
   // State
   const [activeTab, setActiveTab] = useState("configuration");
-  const [previewStudent, setPreviewStudent] = useState<any>(null);
+  const [previewStudent, setPreviewStudent] = useState<StudentRecord | null>(null);
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [configs, setConfigs] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -137,18 +138,27 @@ export const ReleveGenerator: React.FC = () => {
   }, [getAvailableECs, columnMapping, setMappingStatus]);
 
   // Prepare student data for PDF generation
-  const prepareStudentData = useCallback((rawStudent: any) => {
+  const prepareStudentData = useCallback((rawStudent: any): StudentRecord => {
     if (!currentConfig || !currentSemester) return null;
 
     // Group ECs by UE and calculate UE averages
     const ueGroups = new Map();
     currentSemester.ues.forEach((ue: any) => {
       const ecGrades: number[] = [];
+      const ecData: any[] = [];
+      
       ue.ecs.forEach((ec: any) => {
         const columnName = columnMapping[ec.id];
         if (columnName) {
           const grade = parseFloat(rawStudent[columnName]) || 0;
           ecGrades.push(grade);
+          ecData.push({
+            CODE: `UE ${ue.name}`,
+            INTITULE: ue.name,
+            EC_TITRE: ec.name,
+            NOTE: grade,
+            CREDIT: 0 // Credits only at UE level
+          });
         }
       });
       
@@ -157,32 +167,16 @@ export const ReleveGenerator: React.FC = () => {
         ? ecGrades.reduce((sum, grade) => sum + grade, 0) / ecGrades.length 
         : 0;
 
-      ueGroups.set(ue.id, {
-        code: `UE ${ue.name}`,
-        name: ue.name,
-        credits: ue.credits || 0,
-        average: ueAverage,
-        ecs: ue.ecs.map((ec: any) => ({
-          name: ec.name,
-          note: parseFloat(rawStudent[columnMapping[ec.id]]) || 0
-        }))
-      });
+      // Add UE credits to first EC
+      if (ecData.length > 0) {
+        ecData[0].CREDIT = ue.credits || 0;
+      }
+
+      ueGroups.set(ue.id, ecData);
     });
 
-    // Convert UE groups to COURSES array
-    const courses: any[] = [];
-    ueGroups.forEach((ue) => {
-      ue.ecs.forEach((ec: any, index: number) => {
-        courses.push({
-          CODE: ue.code,
-          INTITULE: ue.name,
-          EC_TITRE: ec.name,
-          NOTE: ec.note,
-          CREDIT: index === 0 ? ue.credits : 0, // Credits only on first EC of each UE
-          UE_AVERAGE: ue.average
-        });
-      });
-    });
+    // Flatten all ECs into COURSES array
+    const courses = Array.from(ueGroups.values()).flat();
 
     return {
       NOM: rawStudent.NOM || "",
