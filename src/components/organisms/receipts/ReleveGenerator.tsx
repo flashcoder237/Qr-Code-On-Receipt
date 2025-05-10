@@ -262,8 +262,16 @@ export const ReleveGenerator: React.FC = () => {
       console.log("Settings:", settings); // Debug log
 
       setPreviewStudent(student);
+      console.log("Calling generate-transcript-pdf with:", { student, settings }); // Additional debug
       const pdfBytes = await window.ipcRenderer.invoke('generate-transcript-pdf', { student, settings });
+      console.log("Received PDF bytes:", pdfBytes ? "Yes" : "No", "Length:", pdfBytes?.length); // Check if we get PDF data
+      
+      if (!pdfBytes || pdfBytes.length === 0) {
+        throw new Error("No PDF data received");
+      }
+      
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      console.log("Created blob:", blob.size, "bytes"); // Check blob size
       
       if (previewPdfUrl) {
         URL.revokeObjectURL(previewPdfUrl);

@@ -242,22 +242,9 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
     }
   };
 
-  // Get asset paths
-  const assetsPath = path.join(app.getPath('userData'), 'assets');
-  const udLogoPath = path.join(assetsPath, 'assets/logo-ud.png');
-  const fmspLogoPath = path.join(assetsPath, 'assets/logo-fmsp.png');
-
   // Convert logos to base64
-  const universityLogoBase64 = settings.universityLogo
-    ? settings.universityLogo
-    : fs.existsSync(udLogoPath) 
-      ? `data:image/png;base64,${fs.readFileSync(udLogoPath, 'base64')}` 
-      : '';
-  const facultyLogoBase64 = settings.facultyLogo
-    ? settings.facultyLogo
-    : fs.existsSync(fmspLogoPath)
-      ? `data:image/png;base64,${fs.readFileSync(fmspLogoPath, 'base64')}`
-      : '';
+  const universityLogoBase64 = settings.universityLogo;
+  const facultyLogoBase64 = settings.facultyLogo;
   
   const currentYear = new Date().getFullYear() % 100;
 
