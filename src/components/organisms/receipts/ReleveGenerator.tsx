@@ -170,24 +170,22 @@ export const ReleveGenerator: React.FC = () => {
     // Group ECs by UE and calculate UE averages
     const courses: any[] = [];
     
+    // Ici le problème peut être dans le traitement des crédits UE
     currentSemester.ues.forEach((ue: any) => {
-      const ecGrades: number[] = [];
-      
-      // Collecter toutes les notes des EC pour cette UE
+      // Collecter les notes des EC pour cette UE
       ue.ecs.forEach((ec: any) => {
         const columnName = columnMapping[ec.id];
         if (columnName) {
           const grade = parseFloat(rawStudent[columnName]) || 0;
-          ecGrades.push(grade);
           
           // Ajouter l'EC comme un cours dans la liste
           courses.push({
-            CODE: ue.code || `UE ${ue.name}`, // Utiliser le code UE explicite
+            CODE: ue.code || `UE ${ue.name}`,
             INTITULE: ue.name,
             EC_TITRE: ec.name,
             NOTE: grade,
-            UE_CREDIT: ue.credits || 0, // Stocker le crédit de l'UE avec chaque EC
-            UE_ID: ue.id // Pour faciliter le regroupement
+            UE_CREDIT: ue.credits || 0, // Ici, utilisez une valeur numérique directe
+            UE_ID: ue.id
           });
         }
       });

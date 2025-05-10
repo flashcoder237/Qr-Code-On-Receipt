@@ -9,12 +9,14 @@ import { ClassList } from "@/components/organisms/configs/ClassList";
 import { ClassDetail } from "@/components/organisms/configs/ClassDetail";
 import { ClassConfig, Semester, UE, EC } from "@/components/organisms/configs/types";
 import { LOCAL_STORAGE_KEY, getDefaultAcademicYear, isConfigDuplicate } from "@/components/organisms/configs/utils";
+import { ImportExportExcel } from "@/components/organisms/configs/import-export";
 
 export const AcademicConfigManager: React.FC = () => {
   const [configs, setConfigs] = useLocalStorage<ClassConfig[]>(LOCAL_STORAGE_KEY, []);
   const [selectedConfigId, setSelectedConfigId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isEditing, setIsEditing] = React.useState<boolean>(false);
+  const [success, setSuccess] = React.useState<string | null>(null);
  
   const selectedConfig = configs.find((cfg) => cfg.id === selectedConfigId);
 
@@ -166,6 +168,7 @@ export const AcademicConfigManager: React.FC = () => {
     const newUE: UE = {
       id: Date.now().toString(),
       name: "Nouvelle UE",
+      code: "",
       credits: 0,
       ecs: [],
     };
@@ -234,7 +237,6 @@ export const AcademicConfigManager: React.FC = () => {
     const newEC: EC = {
       id: Date.now().toString(),
       name: "Nouvel EC",
-      credits: 0,
     };
     
     setConfigs(
@@ -316,6 +318,45 @@ export const AcademicConfigManager: React.FC = () => {
     setIsEditing(false);
   };
 
+  const handleImportConfigs = (importedConfigs: ClassConfig[]) => {
+    // Check for duplicates
+    const duplicates: string[] = [];
+    importedConfigs.forEach(imported => {
+      const existingConfig = configs.find(cfg => 
+        cfg.name === imported.name && 
+        cfg.academicYear === imported.academicYear &&
+        cfg.id !== imported.id
+      );
+      
+      if (existingConfig) {
+        duplicates.push(`${imported.name} (${imported.academicYear})`);
+      }
+    });
+    
+    if (duplicates.length > 0) {
+      setError(`Configurations en double trouvées: ${duplicates.join(", ")}. Ces configurations n'ont pas été importées.`);
+      
+      // Filter out duplicates and add only unique configurations
+      const uniqueImports = importedConfigs.filter(imported => 
+        !configs.some(cfg => 
+          cfg.name === imported.name && 
+          cfg.academicYear === imported.academicYear
+        )
+      );
+      
+      if (uniqueImports.length > 0) {
+        setConfigs([...configs, ...uniqueImports]);
+        setSuccess(`${uniqueImports.length} configuration(s) importée(s) avec succès.`);
+        setTimeout(() => setSuccess(null), 3000); // Clear success message after 3 seconds
+      }
+    } else {
+      // No duplicates found, add all configurations
+      setConfigs([...configs, ...importedConfigs]);
+      setSuccess(`${importedConfigs.length} configuration(s) importée(s) avec succès.`);
+      setTimeout(() => setSuccess(null), 3000); // Clear success message after 3 seconds
+    }
+  };
+
   return (
     <div className="bg-gray-50 min-h-screen p-2 md:p-6 relative">
       <Card className="shadow-lg">
@@ -327,14 +368,20 @@ export const AcademicConfigManager: React.FC = () => {
                 Gérez les classes, semestres, UEs et ECs
               </CardDescription>
             </div>
-            <Button 
-              onClick={addNewConfig} 
-              variant="secondary"
-              className="bg-white hover:bg-gray-50 text-gray-700 w-full md:w-auto"
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Nouvelle Configuration
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+              <Button 
+                onClick={addNewConfig} 
+                variant="secondary"
+                className="bg-white hover:bg-gray-50 text-gray-700 w-full md:w-auto"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Nouvelle Configuration
+              </Button>
+              <ImportExportExcel 
+                configs={configs}
+                onImport={handleImportConfigs}
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-2 md:p-6">
@@ -342,6 +389,12 @@ export const AcademicConfigManager: React.FC = () => {
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4 mr-2" />
               <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
+          {success && (
+            <Alert variant="default" className="mb-6 bg-green-50 border-green-200">
+              <AlertDescription className="text-green-700">{success}</AlertDescription>
             </Alert>
           )}
           

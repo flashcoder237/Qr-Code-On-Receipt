@@ -70,7 +70,11 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
           const isUEValidated = ueAverage >= 10 && !hasFailingEC;
           
           // Apply credits only if UE is validated
-          const ueValidatedCredits = new Map();
+          // CORRECTION ICI: Assurez-vous que ueCredit est un nombre
+          const creditValue = typeof ueCredit === 'number' ? ueCredit : 
+                             (typeof ueCredit === 'string' ? parseFloat(ueCredit) : 0);
+          
+          const ueValidatedCredits = isUEValidated ? creditValue : 0;
           
           html += generateUERowsHTML(currentUECode, ueElements[0].title, ueElements, ueAverage, ueValidatedCredits);
           ueElements = [];
@@ -78,7 +82,9 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
         
         currentUECode = ueCode;
         // Récupérer le crédit associé à l'UE
-        ueCredit = course.CREDIT || 0;
+        // CORRECTION ICI: Convertir explicitement en nombre
+        ueCredit = typeof course.UE_CREDIT === 'number' ? course.UE_CREDIT : 
+                  (typeof course.UE_CREDIT === 'string' ? parseFloat(course.UE_CREDIT) : 0);
       }
       
       // Add this course as an element of the current UE
@@ -100,17 +106,43 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
       // Determine if UE is validated (average >= 10 AND no EC with note <= 6)
       const isUEValidated = ueAverage >= 10 && !hasFailingEC;
       
-      // Apply credits only if UE is validated
-      const ueValidatedCredits = isUEValidated ? ueCredit : 0;
+      // CORRECTION ICI: Assurez-vous que ueCredit est un nombre
+      const creditValue = typeof ueCredit === 'number' ? ueCredit : 
+                         (typeof ueCredit === 'string' ? parseFloat(ueCredit) : 0);
+      
+      const ueValidatedCredits = isUEValidated ? creditValue : 0;
       
       html += generateUERowsHTML(currentUECode, ueElements[0].title, ueElements, ueAverage, ueValidatedCredits);
     }
     
     return html;
   };
-  
-  // Helper function to generate HTML for a UE and its elements
+
+  function ensureNumber(value) {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    if (typeof value === 'object') {
+      // Si c'est un objet Map ou un autre type d'objet, essayez d'extraire une valeur numérique
+      if (value.toString() === '[object Map]') {
+        // Si c'est une Map, utilisez la première valeur ou 0
+        return value.size > 0 ? ensureNumber(Array.from(value.values())[0]) : 0;
+      }
+      
+      // Pour d'autres objets, essayez de voir s'ils ont une propriété numérique
+      for (const key in value) {
+        if (typeof value[key] === 'number') return value[key];
+      }
+    }
+    return 0;
+  }
+
   const generateUERowsHTML = (ueCode, ueTitle, elements, average, credit) => {
+    const creditValue = ensureNumber(credit);
+    
     if (elements.length === 1) {
       // Single element UE
       return `
@@ -120,7 +152,7 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
           <td colspan="3" class="table-ec">${elements[0].name}</td>
           <td colspan="2" class="table-note">${elements[0].note.toFixed(2)}</td>
           <td class="table-average"><strong>${average.toFixed(2)}</strong></td>
-          <td class="table-credit">${credit}</td>
+          <td class="table-credit">${creditValue}</td>
         </tr>
       `;
     } else {
@@ -132,7 +164,7 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
           <td colspan="3" class="table-ec">${elements[0].name}</td>
           <td colspan="2" class="table-note">${elements[0].note.toFixed(2)}</td>
           <td rowspan="${elements.length}" class="table-average"><strong>${average.toFixed(2)}</strong></td>
-          <td rowspan="${elements.length}" class="table-credit">${credit}</td>
+          <td rowspan="${elements.length}" class="table-credit">${creditValue}</td>
         </tr>
       `;
       
@@ -181,16 +213,20 @@ let totalCreditsValidated = 0;
 let weightedSum = 0;
 
 ueValidatedCredits.forEach((ueInfo, ueCode) => {
+  // Utilisez ensureNumber pour garantir que vous travaillez avec des nombres
+  const credits = ensureNumber(ueInfo.credits);
+  const average = ensureNumber(ueInfo.average);
+  
   // Pour la formule de moyenne, on considère toutes les UE, validées ou non
-  weightedSum += ueInfo.average * ueInfo.credits;
+  weightedSum += average * credits;
   
   // Mais pour le total des crédits validés, on ne compte que les UE validées
   if (ueInfo.isValidated) {
-    totalCreditsValidated += ueInfo.credits;
+    totalCreditsValidated += credits;
   }
 });
 
-const totalSemesterCredits = student.TOTAL_CREDITS || 30; // Utiliser 30 crédits comme dénominateur
+const totalSemesterCredits = ensureNumber(student.TOTAL_CREDITS) || 30;
 const semesterAverage = weightedSum / totalSemesterCredits;
 const mgp = calculateMGP(semesterAverage);
 const grade = getGradeFromAverage(semesterAverage);
@@ -216,6 +252,8 @@ const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
     : fs.existsSync(fmspLogoPath)
       ? `data:image/png;base64,${fs.readFileSync(fmspLogoPath, 'base64')}`
       : '';
+  
+  const currentYear = new Date().getFullYear() % 100;
 
   return `
     <!DOCTYPE html>
@@ -481,7 +519,7 @@ const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
                 </div>
                 <div class="header-row2">
                     <h1><strong>RELEVE DE NOTES</strong> / TRANSCRIPT </h1>
-                    <p><strong>Ref No</strong>&nbsp;&nbsp; /24/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR/${settings.nameAbreviation}</p>
+                    <p><strong>Ref No</strong>&nbsp;&nbsp;  /${currentYear}/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR/${settings.nameAbreviation}</p>
                 </div>
             </div>
         
@@ -497,7 +535,7 @@ const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
             </div>
             <div class="student-info">
                 <div>
-                    <p><strong>NÉ(E) LE: ${student["DATE DE NAISSANCE"] || ""}</strong></p>
+                    <p><strong>NÉ(E) LE: ${student["DATE DE NAISSANCE"] || "N/D"}</strong></p>
                     <div><em>Born on:</em></div>
                 </div>
                 <div>
@@ -506,27 +544,27 @@ const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
                 </div>
                 <div></div>
                 <div>
-                    <p><strong>CYCLE:</strong> <strong>${student.CYCLE || "Master"}</strong></p>
+                    <p><strong>CYCLE:</strong> <strong>${student.CYCLE || "N/D"}</strong></p>
                     <div><em>Training cycle:</em></div>
                 </div>
                 <div>
-                    <p><strong>ANNÉE ACADÉMIQUE:</strong> <strong>${student["ANNEE ACADÉMIQUE"] || "2024 - 2025"}</strong></p>
+                    <p><strong>ANNÉE ACADÉMIQUE:</strong> <strong>${student["ANNEE ACADÉMIQUE"] || "N/D"}</strong></p>
                     <div><em>Academic Year:</em></div>
                 </div>
                 <div>
-                    <p><strong>FILIÈRE:</strong> <strong>${student.FILIERE || "PHARMACIE"}</strong></p>
+                    <p><strong>FILIÈRE:</strong> <strong>${student.FILIERE || "N/D"}</strong></p>
                     <div><em>Field of Study:</em></div>
                 </div>
                 <div>
-                    <p><strong>NIVEAU:</strong> <strong>${student.NIVEAU || "V"}</strong></p>
+                    <p><strong>NIVEAU:</strong> <strong>${student.NIVEAU || "N/D"}</strong></p>
                     <div><em>Level:</em></div>
                 </div>
                 <div>
-                    <p><strong>SEMESTRE:</strong> <strong>${student.SEMESTRE || "III"}</strong></p>
+                    <p><strong>SEMESTRE:</strong> <strong>${student.SEMESTRE.split(" ")[1] || "N/D"}</strong></p>
                     <div><em>Semester:</em></div>
                 </div>
                 <div>
-                    <p><strong>OPTION:</strong> <strong>${student.OPTION || "INDUSTRIE"}</strong></p>
+                    <p><strong>OPTION:</strong> <strong>${student.OPTION || "N/D"}</strong></p>
                     <div><em>Option:</em></div>
                 </div>
             </div>
@@ -559,7 +597,7 @@ const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
                         </tr>
                         <tr class="table-footer-values">
                             <td class="summary-value"><strong>${student.NIVEAU || "1"}</strong></td>
-                            <td class="summary-value"><strong>${student.SEMESTRE || "1"}</strong></td>
+                            <td class="summary-value"><strong>${student.SEMESTRE.split(" ")[1] || "1"}</strong></td>
                             <td class="summary-value"><strong>${totalCreditsValidated}</strong></td>
                             <td colspan="2" class="summary-value"><strong>${semesterAverage.toFixed(2)}</strong></td>
                             <td class="summary-value"><strong>${mgp.toFixed(1)}</strong></td>
