@@ -28,6 +28,7 @@ interface TranscriptSettings {
   nameFrench: string;
   nameEnglish: string;
   postalBox: string;
+  postalBoxEn: string;
   email: string;
   logo: string;
   universityLogo: string;

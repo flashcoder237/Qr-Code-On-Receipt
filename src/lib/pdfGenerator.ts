@@ -10,6 +10,7 @@ interface TranscriptSettingsPayload {
   nameEnglish: string;
   nameAbreviation: string;
   postalBox: string;
+  postalBoxEn: string;
   email: string;
   logo: string;
   universityLogo: string;
@@ -25,16 +26,97 @@ interface GeneratePDFParams {
 
 // Create HTML template for the transcript based on the provided model
 async function createTranscriptHTML({ student, settings }: GeneratePDFParams): Promise<string> {
-  // Generate QR code
-  const qrData = JSON.stringify({
-    nom: student.NOM,
-    prenom: student.PRENOM,
-    matricule: student.MATRICULE,
-    cycle: student.CYCLE,
-    niveau: student.NIVEAU,
-    semestre: student.SEMESTRE,
-    timestamp: new Date().toISOString()
+  // Helper function to ensure values are always numbers
+  function ensureNumber(value) {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    if (typeof value === 'object') {
+      // Si c'est un objet Map ou un autre type d'objet, essayez d'extraire une valeur numérique
+      if (value.toString() === '[object Map]') {
+        // Si c'est une Map, utilisez la première valeur ou 0
+        return value.size > 0 ? ensureNumber(Array.from(value.values())[0]) : 0;
+      }
+      
+      // Pour d'autres objets, essayez de voir s'ils ont une propriété numérique
+      for (const key in value) {
+        if (typeof value[key] === 'number') return value[key];
+      }
+    }
+    return 0;
+  }
+
+  // Calculate semester statistics first
+  const uniqueUEs = new Set();
+  const ueData = new Map();
+  const ueValidatedCredits = new Map();
+
+  // Première étape : regrouper les EC par UE et calculer les moyennes des UE
+  student.COURSES?.forEach(course => {
+    const ueCode = course.CODE;
+    
+    if (!ueValidatedCredits.has(ueCode)) {
+      const ecNotes = student.COURSES
+        .filter(c => c.CODE === ueCode)
+        .map(c => c.NOTE);
+      
+      const ueAverage = course.UE_AVERAGE || 0;
+      const hasFailingEC = ecNotes.some(note => note <= 6);
+      const isUEValidated = ueAverage >= 10 && !hasFailingEC;
+      
+      // Stocker si l'UE est validée ou non et ses informations
+      ueValidatedCredits.set(ueCode, {
+        isValidated: isUEValidated,
+        credits: course.UE_CREDIT || 0,
+        average: ueAverage
+      });
+    }
   });
+
+  // Deuxième étape : calcul des crédits validés et de la moyenne du semestre
+  let totalCreditsValidated = 0;
+  let weightedSum = 0;
+
+  ueValidatedCredits.forEach((ueInfo, ueCode) => {
+    // Utilisez ensureNumber pour garantir que vous travaillez avec des nombres
+    const credits = ensureNumber(ueInfo.credits);
+    const average = ensureNumber(ueInfo.average);
+    
+    // Pour la formule de moyenne, on considère toutes les UE, validées ou non
+    weightedSum += average * credits;
+    
+    // Mais pour le total des crédits validés, on ne compte que les UE validées
+    if (ueInfo.isValidated) {
+      totalCreditsValidated += credits;
+    }
+  });
+
+  const totalSemesterCredits = ensureNumber(student.TOTAL_CREDITS) || 30;
+  const semesterAverage = weightedSum / totalSemesterCredits;
+  const mgp = calculateMGP(semesterAverage);
+  const grade = getGradeFromAverage(semesterAverage);
+
+  // Un semestre est validé si on obtient au moins 70% des crédits (règle LMD standard)
+  // ou selon la règle spécifique de l'institution
+  const isEnoughCredits = totalCreditsValidated >= (totalSemesterCredits * 0.7);
+  const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
+
+  // Generate QR code now that we have calculated semesterAverage
+  const qrData = `Établissement: ${settings.nameFrench}
+Nom: ${student.NOM}
+Prénom: ${student.PRENOM}
+Matricule: ${student.MATRICULE}
+Date de naissance: ${student["DATE DE NAISSANCE"]}
+Lieu de naissance: ${student["LIEU DE NAISSANCE"]}
+Niveau: ${student.NIVEAU}
+Semestre: ${student.SEMESTRE.split(" ")[1]}
+Moyenne: ${semesterAverage.toFixed(2)}
+Grade: ${grade}
+Mention: ${getMention(semesterAverage)}
+Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
   
   const qrCodeDataUrl = await QRCode.toDataURL(qrData, {
     errorCorrectionLevel: 'H',
@@ -118,28 +200,6 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
     return html;
   };
 
-  function ensureNumber(value) {
-    if (value === null || value === undefined) return 0;
-    if (typeof value === 'number') return value;
-    if (typeof value === 'string') {
-      const parsed = parseFloat(value);
-      return isNaN(parsed) ? 0 : parsed;
-    }
-    if (typeof value === 'object') {
-      // Si c'est un objet Map ou un autre type d'objet, essayez d'extraire une valeur numérique
-      if (value.toString() === '[object Map]') {
-        // Si c'est une Map, utilisez la première valeur ou 0
-        return value.size > 0 ? ensureNumber(Array.from(value.values())[0]) : 0;
-      }
-      
-      // Pour d'autres objets, essayez de voir s'ils ont une propriété numérique
-      for (const key in value) {
-        if (typeof value[key] === 'number') return value[key];
-      }
-    }
-    return 0;
-  }
-
   const generateUERowsHTML = (ueCode, ueTitle, elements, average, credit) => {
     const creditValue = ensureNumber(credit);
     
@@ -181,60 +241,6 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
       return html;
     }
   };
-
-// Calculate semester statistics
-const uniqueUEs = new Set();
-const ueData = new Map();
-const ueValidatedCredits = new Map();
-
-// Première étape : regrouper les EC par UE et calculer les moyennes des UE
-student.COURSES?.forEach(course => {
-  const ueCode = course.CODE;
-  
-  if (!ueValidatedCredits.has(ueCode)) {
-    const ecNotes = student.COURSES
-      .filter(c => c.CODE === ueCode)
-      .map(c => c.NOTE);
-    
-    const ueAverage = course.UE_AVERAGE || 0;
-    const hasFailingEC = ecNotes.some(note => note <= 6);
-    const isUEValidated = ueAverage >= 10 && !hasFailingEC;
-    
-    // Stocker si l'UE est validée ou non et ses informations
-    ueValidatedCredits.set(ueCode, {
-      isValidated: isUEValidated,
-      credits: course.UE_CREDIT || 0,
-      average: ueAverage
-    });
-  }
-});
-// Deuxième étape : calcul des crédits validés et de la moyenne du semestre
-let totalCreditsValidated = 0;
-let weightedSum = 0;
-
-ueValidatedCredits.forEach((ueInfo, ueCode) => {
-  // Utilisez ensureNumber pour garantir que vous travaillez avec des nombres
-  const credits = ensureNumber(ueInfo.credits);
-  const average = ensureNumber(ueInfo.average);
-  
-  // Pour la formule de moyenne, on considère toutes les UE, validées ou non
-  weightedSum += average * credits;
-  
-  // Mais pour le total des crédits validés, on ne compte que les UE validées
-  if (ueInfo.isValidated) {
-    totalCreditsValidated += credits;
-  }
-});
-
-const totalSemesterCredits = ensureNumber(student.TOTAL_CREDITS) || 30;
-const semesterAverage = weightedSum / totalSemesterCredits;
-const mgp = calculateMGP(semesterAverage);
-const grade = getGradeFromAverage(semesterAverage);
-
-// Un semestre est validé si on obtient au moins 70% des crédits (règle LMD standard)
-// ou selon la règle spécifique de l'institution
-const isEnoughCredits = totalCreditsValidated >= (totalSemesterCredits * 0.7);
-const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
 
   // Get asset paths
   const assetsPath = path.join(app.getPath('userData'), 'assets');
@@ -503,7 +509,7 @@ const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
                         ********************<br>
                         <strong>FACULTY OF MEDICINE AND<br>PHARMACEUTICAL SCIENCES</strong><br>
                         ********************<br>
-                        PO box 2701, Douala, Cameroun<br>
+                        PO box 2701, Douala, Cameroon<br>
                         Email: <a href="">contact@fmsp-udo.cm</a><br>
                         ********************<br>
                         <strong>${
@@ -513,7 +519,7 @@ const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
                             .join(" ")
                         }</strong><br>
                         ********************<br>
-                        PO box ${settings.postalBox}<br>
+                        PO box ${settings.postalBoxEn}<br>
                         Email: <a href="">${settings.email}</a></p>    
                     </div>
                 </div>
@@ -560,7 +566,7 @@ const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
                     <div><em>Level:</em></div>
                 </div>
                 <div>
-                    <p><strong>SEMESTRE:</strong> <strong>${student.SEMESTRE.split(" ")[1] || "N/D"}</strong></p>
+                    <p><strong>SEMESTRE:</strong> <strong>${student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "N/D") : "N/D"}</strong></p>
                     <div><em>Semester:</em></div>
                 </div>
                 <div>
@@ -597,7 +603,7 @@ const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
                         </tr>
                         <tr class="table-footer-values">
                             <td class="summary-value"><strong>${student.NIVEAU || "1"}</strong></td>
-                            <td class="summary-value"><strong>${student.SEMESTRE.split(" ")[1] || "1"}</strong></td>
+                            <td class="summary-value"><strong>${student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "1") : "1"}</strong></td>
                             <td class="summary-value"><strong>${totalCreditsValidated}</strong></td>
                             <td colspan="2" class="summary-value"><strong>${semesterAverage.toFixed(2)}</strong></td>
                             <td class="summary-value"><strong>${mgp.toFixed(1)}</strong></td>
@@ -825,4 +831,12 @@ function getGradeFromAverage(average: number): string {
   if (average >= 8) return "D";
   if (average >= 6) return "E";
   return "F";
+}
+
+function getMention(average: number): string {
+  if (average >= 16) return "Très Bien";
+  if (average >= 14) return "Bien";
+  if (average >= 12) return "Assez Bien";
+  if (average >= 10) return "Passable";
+  return "Insuffisant";
 }

@@ -39,6 +39,7 @@ const SettingForm: React.FC = () => {
       nameEnglish: "",
       nameAbreviation: "",
       postalBox: "",
+      postalBoxEn: "",
       email: "",
       logo: "",
       universityLogo: "",
@@ -259,7 +260,23 @@ const SettingForm: React.FC = () => {
                 name="postalBox"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Boîte Postale</FormLabel>
+                    <FormLabel>Boîte Postale en Francais</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        disabled={!isEditing}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="postalBoxEn"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Boîte Postale en Anglais</FormLabel>
                     <FormControl>
                       <Input
                         {...field}

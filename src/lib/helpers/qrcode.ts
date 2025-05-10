@@ -19,28 +19,12 @@ export type StudentExcelRecord = {
   OPTION?: string;
 };
 
-// interface QrCodePayload {
-//   scholl: string;
-//   name: string;
-//   surname: string;
-//   registrationNumber: string;
-//   birthDate: string;
-//   birthPlace: string;
-//   level: string;
-//   semester: string;
-//   avg?: number | string; // Optionnel pour attestation
-//   grade?: string;        // Optionnel pour attestation
-//   appreciation?: string; // Optionnel pour attestation
-//   documentType: string;  // Type de document : relevé ou attestation
-// }
-
 export function getQrCodePayload(
   payload: StudentExcelRecord,
   documentType: "releve" | "attestation" | "diplome"
 ): string {
   if (documentType === "releve") {
-    return `
-Établissement: ${payload.ETABLISSEMENT}
+    return `Établissement: ${payload.ETABLISSEMENT}
 Nom: ${payload.NOM}
 Prénom: ${payload.PRENOM}
 Matricule: ${payload.MATRICULE}
@@ -53,8 +37,7 @@ Grade: ${payload.GRADE}
 Mention: ${payload.MENTION}
 Année académique: ${payload["ANNEE ACADEMIQUE"]}`;
   } else if (documentType === "attestation") {
-    return `
-Établissement: ${payload.ETABLISSEMENT}
+    return `Établissement: ${payload.ETABLISSEMENT}
 Nom: ${payload.NOM}
 Prénom: ${payload.PRENOM}
 Matricule: ${payload.MATRICULE}
@@ -68,8 +51,7 @@ Grade: ${payload.GRADE}
 Mention: ${payload.MENTION}
 Année académique: ${payload["ANNEE ACADEMIQUE"]}`;
   } else if (documentType === "diplome") {
-    return `
-Établissement: ${payload.ETABLISSEMENT}
+    return `Établissement: ${payload.ETABLISSEMENT}
 Nom: ${payload.NOM}
 Prénom: ${payload.PRENOM}
 Matricule: ${payload.MATRICULE}
