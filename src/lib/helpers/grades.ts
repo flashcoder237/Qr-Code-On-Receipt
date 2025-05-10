@@ -1,4 +1,4 @@
-export const calculateGrade = (average: number): string => {
+export const getGradeFromAverage = (average: number): string => {
   if (average >= 18) return "A+";
   if (average >= 16) return "A";
   if (average >= 14) return "B+";
