@@ -31,30 +31,37 @@ const HtmlPreview: React.FC<HtmlPreviewProps> = ({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
-  // Fonction pour injecter le HTML dans l'iframe
+  // Use an internal document write method to safely inject HTML
   useEffect(() => {
     if (html && iframeRef.current) {
       const iframe = iframeRef.current;
       const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
       
       if (iframeDoc) {
+        // Clear any existing content
         iframeDoc.open();
-        iframeDoc.write(html);
-        iframeDoc.close();
         
-        // Appliquer le zoom
-        const style = iframeDoc.createElement('style');
-        style.textContent = `
-          body {
-            zoom: ${zoom / 100};
-            -moz-transform: scale(${zoom / 100});
-            -moz-transform-origin: 0 0;
-            transform-origin: 0 0;
-            margin: 0;
-            padding: 0;
-          }
-        `;
-        iframeDoc.head.appendChild(style);
+        // Write the HTML content
+        iframeDoc.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              body { 
+                margin: 0; 
+                zoom: ${zoom / 100};
+                -moz-transform: scale(${zoom / 100});
+                -moz-transform-origin: 0 0;
+                overflow-x: auto;
+              }
+              * { max-width: 100%; }
+            </style>
+          </head>
+          <body>${html}</body>
+          </html>
+        `);
+        
+        iframeDoc.close();
       }
     }
   }, [html, zoom]);
@@ -116,11 +123,11 @@ const HtmlPreview: React.FC<HtmlPreviewProps> = ({
             </div>
           ) : html ? (
             <iframe 
-                ref={iframeRef}
-                className="w-full h-full bg-white shadow-md"
-                title="Aperçu du relevé de notes"
-                sandbox="allow-scripts"
-                />
+              ref={iframeRef}
+              className="w-full h-full bg-white shadow-md"
+              title="Aperçu du relevé de notes"
+              sandbox="allow-scripts allow-same-origin" // Modified to allow same-origin scripts
+            />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500">
               Aucun aperçu disponible
