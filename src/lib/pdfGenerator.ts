@@ -232,7 +232,6 @@ function generateThemeStyles(params: GeneratePDFParams): string {
     .qr-code {
       width: 100px;
       height: 100px;
-      border: 1px solid ${theme.showQRCode ? theme.tableBorderColor : 'transparent'};
       display: ${theme.showQRCode ? 'block' : 'none'};
     }
     
