@@ -4,6 +4,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { ipcMain } from 'electron';
 import QRCode from 'qrcode';
+import { getCompleteTheme } from './form-schemas/settings';
+import { ThemeSettingsPayload } from './form-schemas/theme-settings';
 
 interface TranscriptSettingsPayload {
   nameFrench: string;
@@ -17,11 +19,237 @@ interface TranscriptSettingsPayload {
   facultyLogo: string;
   themeColor: string;
   themeFont: string;
+  theme?: ThemeSettingsPayload;
 }
 
 interface GeneratePDFParams {
   student: StudentRecord;
   settings: TranscriptSettingsPayload;
+}
+
+// Génère les styles CSS basés sur les paramètres du thème
+function generateThemeStyles(params: GeneratePDFParams): string {
+  const theme = getCompleteTheme(params.settings);
+  
+  // Générer des styles CSS basés sur les paramètres du thème
+  return `
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    body {
+      font-family: ${theme.mainFont};
+      width: 200mm;
+      min-height: 287mm;
+      box-sizing: border-box;
+      background-color: white;
+      margin: 5mm;
+      border: ${theme.borderWidth}px ${theme.borderStyle} ${theme.primaryColor};
+      color: ${theme.primaryColor};
+      position: relative;
+    }
+    
+    .header {    
+      line-height: normal;
+      font-size: ${theme.headerFontSize}px;
+      font-family: ${theme.headerFont};
+    }
+    .header-row1{
+      text-align: center;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .header h1 {
+      font-size: ${theme.titleFontSize}px;
+    }
+    .student_block1 {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+    }
+    .student_block1,
+    .student-info {
+      width: 90%;
+      margin-left: auto;
+      margin-right: auto;
+      font-size: ${theme.contentFontSize}px;
+      line-height: 0px;
+      gap: 10px;
+    }
+    .student-info {
+      display: ${theme.studentInfoLayout === 'grille' ? 'grid' : 
+                theme.studentInfoLayout === 'colonnes' ? 'flex' : 'block'};
+      ${theme.studentInfoLayout === 'grille' ? 'grid-template-columns: 1fr 1fr 1fr;' : 
+        theme.studentInfoLayout === 'colonnes' ? 'flex-direction: column;' : ''}
+      margin-bottom: 20px;
+    }
+    .student-info p {
+      font-size: ${theme.contentFontSize}px;
+    }
+    table {
+      margin-left: auto;
+      margin-right: auto;
+      width: 96%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: ${theme.contentFontSize}px;
+    }
+    th, td {
+      border: ${theme.borderWidth}px ${theme.borderStyle} ${theme.tableBorderColor};
+      padding: ${theme.tableCellPadding}px;
+      text-align: left;
+    }
+    th {
+      background-color: ${theme.tableHeaderBgColor};
+    }
+    
+    /* Styles spécifiques pour les UE validées si l'option est activée */
+    ${theme.highlightValidatedUE ? `
+    tr.validated-ue {
+      background-color: rgba(0, 128, 0, 0.1);
+    }
+    ` : ''}
+    
+    .grade-scale {
+      display: ${theme.showGradeScale ? 'flex' : 'none'};
+      font-size: ${theme.footerFontSize}px;
+      float: left;
+      margin-left: 20px;
+      width: 50%;
+    }
+    .grade-scale table {
+      witdth: 30%;
+      margin-right : 10px;
+    }
+    .grade-scale div {
+      display: inline-block;
+    }
+    
+    /* Styles des signatures basés sur le thème */
+    .signature-ipes{
+      width: 50%;
+      margin-left: 40px;
+      font-size: ${theme.contentFontSize + 2}px;
+      ${theme.signatureStyle === 'encadré' ? 'border: 1px solid ' + theme.primaryColor + '; padding: 10px;' : ''}
+      ${theme.signatureStyle === 'souligné' ? 'border-bottom: 2px solid ' + theme.primaryColor + ';' : ''}
+    }
+    .signature {
+      margin-top: 30px;
+      float: right;
+      text-align: left;
+      font-size: ${theme.contentFontSize + 2}px;
+      margin-right: 20px;
+      ${theme.signatureStyle === 'encadré' ? 'border: 1px solid ' + theme.primaryColor + '; padding: 10px;' : ''}
+      ${theme.signatureStyle === 'souligné' ? 'border-bottom: 2px solid ' + theme.primaryColor + ';' : ''}
+    }
+    
+    /* Adaptation de la mise en page de l'en-tête basée sur le thème */
+    .header-content{
+      width: ${theme.headerLayout === 'standard' ? '35%' : 
+               theme.headerLayout === 'compact' ? '30%' : '40%'};
+    }
+    .header-logo-content{
+      align-content: center;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-logo-content > div{
+      width: 100%;
+      height: 100%;
+      align-items: center;
+      align-content: center;
+    }
+    .header-row2 h1{
+      font-weight: ${theme.headerLayout === 'compact' ? '400' : '100'};
+      text-align: center;
+      font-size: ${theme.titleFontSize}px;
+      color: ${theme.accentColor};
+    }
+    .header-row2 p{
+      font-size: ${theme.contentFontSize + 2}px;
+    }
+    .header-row2{
+      text-align: center;
+    }
+    td{
+      text-align: center;
+    }
+    .table{
+      padding-left: 20px;
+    }
+    .table-head th{
+      text-align: center;
+    }
+    .table-ue-code, .table-ue-label, .table-ue-avearage{
+      font-weight: bold;
+    }
+    .table-ec{
+      text-align: left;
+    }
+    .grade-sign{
+      display: flex;
+      justify-content: start;
+      width: 96%;
+      margin: 0 auto;
+    }
+    .grade-sign th, .grade-sign td{
+      width:30px;
+      padding: 1px;
+      border: 0.5px solid ${theme.tableBorderColor};
+    }
+    body > .container{
+      position: relative;
+    }
+    .watermark {
+      position: absolute;
+      top: 25%;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      display: ${theme.showWatermark ? 'flex' : 'none'};
+      justify-content: center;
+      align-items: center;
+      opacity: ${theme.watermarkOpacity};
+      pointer-events: none;
+    }
+    .watermark img {
+      width: 600px;
+      height: auto;
+    }
+    .footer-note {
+      position: absolute;
+      width: 100%;
+      bottom: 10px;
+      font-size: ${theme.footerFontSize}px;
+      text-align: center;
+      margin-top: 20px;
+      padding-top: 10px;
+      font-style: italic;
+    }
+    .qr-code {
+      width: 100px;
+      height: 100px;
+      border: 1px solid ${theme.showQRCode ? theme.tableBorderColor : 'transparent'};
+      display: ${theme.showQRCode ? 'block' : 'none'};
+    }
+    
+    /* Styles supplémentaires pour les en-têtes */
+    .header-title {
+      color: ${theme.accentColor};
+    }
+    
+    /* Styles pour les mentions validées/non validées */
+    .validated {
+      color: ${theme.accentColor};
+      font-weight: bold;
+    }
+    .not-validated {
+      color: #cc0000;
+    }
+  `;
 }
 
 // Create HTML template for the transcript based on the provided model
@@ -48,6 +276,9 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
     }
     return 0;
   }
+
+  // Récupération des paramètres de thème
+  const theme = getCompleteTheme(settings);
 
   // Calculate semester statistics first
   const uniqueUEs = new Set();
@@ -104,8 +335,11 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
   const isEnoughCredits = totalCreditsValidated >= (totalSemesterCredits * 0.7);
   const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
 
-  // Generate QR code now that we have calculated semesterAverage
-  const qrData = `Établissement: ${settings.nameFrench}
+  // Generate QR code only if enabled in theme
+  let qrCodeDataUrl = "";
+  if (theme.showQRCode) {
+    // Prepare QR code data
+    const qrData = `Établissement: ${settings.nameFrench}
 Nom: ${student.NOM}
 Prénom: ${student.PRENOM}
 Matricule: ${student.MATRICULE}
@@ -117,12 +351,14 @@ Moyenne: ${semesterAverage.toFixed(2)}
 Grade: ${grade}
 Mention: ${getMention(semesterAverage)}
 Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
-  
-  const qrCodeDataUrl = await QRCode.toDataURL(qrData, {
-    errorCorrectionLevel: 'H',
-    margin: 1,
-    width: 150
-  });
+    
+    // Generate QR code
+    qrCodeDataUrl = await QRCode.toDataURL(qrData, {
+      errorCorrectionLevel: 'H',
+      margin: 1,
+      width: 150
+    });
+  }
   
   // Helper function to generate course rows
   const generateCourseRows = () => {
@@ -158,7 +394,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
           
           const ueValidatedCredits = isUEValidated ? creditValue : 0;
           
-          html += generateUERowsHTML(currentUECode, ueElements[0].title, ueElements, ueAverage, ueValidatedCredits);
+          html += generateUERowsHTML(currentUECode, ueElements[0].title, ueElements, ueAverage, ueValidatedCredits, isUEValidated);
           ueElements = [];
         }
         
@@ -194,19 +430,20 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
       
       const ueValidatedCredits = isUEValidated ? creditValue : 0;
       
-      html += generateUERowsHTML(currentUECode, ueElements[0].title, ueElements, ueAverage, ueValidatedCredits);
+      html += generateUERowsHTML(currentUECode, ueElements[0].title, ueElements, ueAverage, ueValidatedCredits, isUEValidated);
     }
     
     return html;
   };
 
-  const generateUERowsHTML = (ueCode, ueTitle, elements, average, credit) => {
+  const generateUERowsHTML = (ueCode, ueTitle, elements, average, credit, isUEValidated) => {
     const creditValue = ensureNumber(credit);
+    const cssClass = theme.highlightValidatedUE && isUEValidated ? 'validated-ue' : '';
     
     if (elements.length === 1) {
       // Single element UE
       return `
-        <tr>
+        <tr class="${cssClass}">
           <td class="table-code"><strong>${ueCode}</strong></td>
           <td colspan="3" class="table-ue"><strong>${ueTitle}</strong></td>
           <td colspan="3" class="table-ec">${elements[0].name}</td>
@@ -218,7 +455,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
     } else {
       // Multiple elements UE
       let html = `
-        <tr>
+        <tr class="${cssClass}">
           <td rowspan="${elements.length}" class="table-code"><strong>${ueCode}</strong></td>
           <td colspan="3" rowspan="${elements.length}" class="table-ue"><strong>${ueTitle}</strong></td>
           <td colspan="3" class="table-ec">${elements[0].name}</td>
@@ -231,7 +468,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
       // Add rows for remaining elements
       for (let i = 1; i < elements.length; i++) {
         html += `
-          <tr>
+          <tr class="${cssClass}">
             <td colspan="3" class="table-ec">${elements[i].name}</td>
             <td colspan="2" class="table-note">${elements[i].note.toFixed(2)}</td>
           </tr>
@@ -256,188 +493,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Relevé de Notes - ${student.NOM} ${student.PRENOM}</title>
         <style>
-            @page {
-                size: A4;
-                margin: 0;
-            }
-            body {
-                font-family: ${settings.themeFont};
-                width: 200mm;
-                min-height: 287mm;
-                box-sizing: border-box;
-                background-color: white;
-                margin: 5mm;
-                border: 1px double ${settings.themeColor};
-                color: ${settings.themeColor};
-                position: relative;
-            }
-            
-            .header {    
-                line-height: normal;
-                font-size: 9px;
-            }
-            .header-row1{
-                text-align: center;
-                margin-bottom: 20px;
-                display: flex;
-                justify-content: space-between;
-            }
-            .header h1 {
-                font-size: 10px;
-            }
-            .student_block1 {
-                display: flex;
-                flex-direction: row;
-                justify-content: space-between;
-            }
-            .student_block1,
-            .student-info {
-                width: 90%;
-                margin-left: auto;
-                margin-right: auto;
-                font-size: 10px;
-                line-height: 0px;
-                gap: 10px;
-            }
-            .student-info {
-                display: grid;
-                grid-template-columns: 1fr 1fr 1fr;
-                margin-bottom: 20px;
-            }
-            .student-info p {
-                font-size: 10px;
-            }
-            table {
-                margin-left: auto;
-                margin-right: auto;
-                width: 96%;
-                border-collapse: collapse;
-                margin-bottom: 20px;
-                font-size: 10px;
-            }
-            th, td {
-                border: 1px solid black;
-                padding: 5px;
-                text-align: left;
-            }
-            th {
-                background-color: #f0f0f0;
-            }
-            .grade-scale {
-                display: flex;
-                font-size: 6px;
-                float: left;
-                margin-left: 20px;
-                width: 50%;
-            }
-            .grade-scale table {
-                witdth: 30%;
-                margin-right : 10px;
-            }
-            .grade-scale div {
-                display: inline-block;
-            }
-            .signature-ipes{
-                width: 50%;
-                margin-left: 40px;
-                font-size: 12px;
-            }
-            .signature {
-                margin-top: 30px;
-                
-                float: right;
-                text-align: left;
-                font-size: 12px;
-                margin-right: 20px;
-            }
-            .header-content{
-                width: 35%;
-            }
-            .header-logo-content{
-                align-content: center;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            }
-            .header-logo-content > div{
-                width: 100%;
-                height: 100%;
-                align-items: center;
-                align-content: center;
-            }
-            .header-row2 h1{
-                font-weight: 100;
-                text-align: center;
-                font-size: large;
-            }
-            .header-row2 p{
-                font-size: 12px;
-            }
-            .header-row2{
-                text-align: center;
-            }
-            td{
-                text-align: center;
-            }
-            .table{
-                padding-left: 20px;
-            }
-            .table-head th{
-                text-align: center;
-            }
-            .table-ue-code, .table-ue-label, .table-ue-avearage{
-                font-weight: bold;
-            }
-            .table-ec{
-                text-align: left;
-            }
-            .grade-sign{
-                display: flex;
-                justify-content: start;
-                width: 96%;
-                margin: 0 auto;
-            }
-            .grade-sign th, .grade-sign td{
-                width:30px;
-                padding: 1px;
-                border: 0.5px solid #000;
-            }
-            body > .container{
-                
-                position: relative;
-            }
-            .watermark {
-                position: absolute;
-                top: 25%;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                z-index: -1;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                opacity: 0.1;
-                pointer-events: none;
-            }
-            .watermark img {
-                width: 600px;
-                height: auto;
-            }
-            .footer-note {
-                position: absolute;
-                width: 100%;
-                bottom: 10px;
-                font-size: 8px;
-                text-align: center;
-                margin-top: 20px;
-                padding-top: 10px;
-                font-style: italic;
-            }
-            .qr-code {
-                width: 100px;
-                height: 100px;
-                border: 1px solid #000;
-            }
+            ${generateThemeStyles({ student, settings })}
         </style>
     </head>
     <body>
@@ -511,7 +567,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                     </div>
                 </div>
                 <div class="header-row2">
-                    <h1><strong>RELEVE DE NOTES</strong> / TRANSCRIPT </h1>
+                    <h1 class="header-title"><strong>RELEVE DE NOTES</strong> / TRANSCRIPT </h1>
                     <p><strong>Ref No</strong>&nbsp;&nbsp;  /${currentYear}/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR/${settings.nameAbreviation}</p>
                 </div>
             </div>
@@ -595,7 +651,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                             <td colspan="2" class="summary-value"><strong>${semesterAverage.toFixed(2)}</strong></td>
                             <td class="summary-value"><strong>${mgp.toFixed(1)}</strong></td>
                             <td colspan="2" class="summary-value"><strong>${grade}</strong></td>
-                            <td colspan="3" class="summary-value"><strong>${decision}</strong></td>
+                            <td colspan="3" class="summary-value ${decision === "SEMESTRE VALIDE" ? "validated" : "not-validated"}"><strong>${decision}</strong></td>
                         </tr>
                     </tbody>
                 </table>
@@ -683,7 +739,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                 </div>
                     <!-- QR Code placeholder -->
                     <div>
-                        <img src="${qrCodeDataUrl}" alt="QR Code" class="qr-code">
+                        ${qrCodeDataUrl ? `<img src="${qrCodeDataUrl}" alt="QR Code" class="qr-code">` : ''}
                     </div>
                 </div>
                 <div class="signature">

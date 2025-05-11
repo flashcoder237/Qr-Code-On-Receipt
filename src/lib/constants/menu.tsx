@@ -8,6 +8,7 @@ import {
   HelpCircleIcon,
   ListCheck,
   Settings2,
+  PaletteIcon,
 } from "lucide-react";
 
 const menuItems = [
@@ -27,7 +28,6 @@ const menuItems = [
     title: "Configurer les entetes",
     url: "settings",
     icon: Settings2,
-    // component: <></>,
     component: <SettingsForm />,
   },
   {
