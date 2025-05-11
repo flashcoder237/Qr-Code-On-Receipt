@@ -10,6 +10,7 @@ import { useLicense } from "./hooks/use-license";
 import { LicenseForm } from "./components/organisms/license-form/LicenseForm";
 import { Spinner } from "./components/ui/LoadingSpinner";
 import { ErrorBoundary } from "./components/shared/ErrorBoundary";
+import './lib/electron-mock';
 
 const AppContent: React.FC = () => {
   const path = useReadLocalStorage<string>("current_path");

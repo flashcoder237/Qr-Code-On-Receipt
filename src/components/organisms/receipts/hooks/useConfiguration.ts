@@ -1,3 +1,5 @@
+// Ajustement du fichier useConfiguration.ts
+
 import { useState, useEffect, useCallback } from 'react';
 
 const LOCAL_STORAGE_KEY = "academicConfigs"; // Same key as AcademicConfigManager
@@ -20,7 +22,7 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [configs, setConfigs] = useState<any[]>([]);
 
-  // Load configurations from localStorage
+  // Créez une fonction stable qui ne change pas entre les rendus
   const loadConfigs = useCallback(() => {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -28,7 +30,7 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
         const parsedConfigs = JSON.parse(stored);
         setConfigs(parsedConfigs);
 
-        // If we have a selected config, update its semesters
+        // Si nous avons une config sélectionnée, mettons à jour ses semestres
         if (selectedConfigId) {
           const config = parsedConfigs.find((c: any) => c.id === selectedConfigId);
           if (config) {
@@ -44,9 +46,9 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
     } catch (error) {
       console.error('Error loading configurations:', error);
     }
-  }, [selectedConfigId]);
+  }, [selectedConfigId]); // Ajoutez selectedConfigId comme dépendance
 
-  // Load cache on mount
+  // Load cache on mount - faites-le une seule fois au montage
   useEffect(() => {
     const loadCache = () => {
       try {
@@ -56,12 +58,16 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
           
           if (lastConfigId) {
             setSelectedConfigId(lastConfigId);
-            options.onConfigChange?.(lastConfigId);
+            if (options.onConfigChange) {
+              options.onConfigChange(lastConfigId);
+            }
           }
           
           if (lastSemesterId) {
             setSelectedSemesterId(lastSemesterId);
-            options.onSemesterChange?.(lastSemesterId);
+            if (options.onSemesterChange) {
+              options.onSemesterChange(lastSemesterId);
+            }
           }
           
           if (lastMapping) {
@@ -85,9 +91,9 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [loadConfigs, options]);
+  }, [loadConfigs, options]); // Utilisez loadConfigs comme dépendance stable
 
-  // Update cache when values change
+  // Fonction de mise à jour du cache
   const updateCache = useCallback((updates: Partial<ConfigurationCache>) => {
     try {
       const cached = localStorage.getItem('releveGeneratorCache');
@@ -99,11 +105,12 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
     }
   }, []);
 
+  // Fonctions pour manipuler les états
   const handleConfigChange = useCallback((configId: string) => {
     setSelectedConfigId(configId);
     updateCache({ lastConfigId: configId });
     
-    // Update available semesters
+    // Mise à jour des semestres disponibles
     const config = configs.find(c => c.id === configId);
     if (config) {
       const semesters = config.semesters.map((sem: any) => ({
@@ -113,13 +120,18 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
       setAvailableSemesters(semesters);
     }
     
-    options.onConfigChange?.(configId);
+    if (options.onConfigChange) {
+      options.onConfigChange(configId);
+    }
   }, [configs, updateCache, options]);
 
   const handleSemesterChange = useCallback((semesterId: string) => {
     setSelectedSemesterId(semesterId);
     updateCache({ lastSemesterId: semesterId });
-    options.onSemesterChange?.(semesterId);
+    
+    if (options.onSemesterChange) {
+      options.onSemesterChange(semesterId);
+    }
   }, [updateCache, options]);
 
   const handleMappingChange = useCallback((ecId: string, column: string) => {

@@ -119,7 +119,7 @@ const HtmlPreview: React.FC<HtmlPreviewProps> = ({
                 ref={iframeRef}
                 className="w-full h-full bg-white shadow-md"
                 title="Aperçu du relevé de notes"
-                sandbox="allow-same-origin allow-scripts"
+                sandbox="allow-scripts"
                 />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500">

@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -29,6 +29,23 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 let win: BrowserWindow | null;
+
+function setupIpcHandlers() {
+  console.log("Setting up IPC handlers...");
+
+  // Setup file system access
+  ipcMain.handle("fs:readFile", async (_, filePath, options) => {
+    console.log(`Reading file: ${filePath}`);
+    try {
+      return await fs.promises.readFile(filePath, options);
+    } catch (error) {
+      console.error("Error reading file:", error);
+      throw error;
+    }
+  });
+
+  console.log("IPC handlers setup complete");
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -73,5 +90,6 @@ app.on("activate", () => {
 
 app.whenReady().then(() => {
   setupPDFGenerationHandlers();
+  setupIpcHandlers();
   createWindow();
 });

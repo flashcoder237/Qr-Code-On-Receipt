@@ -22,6 +22,21 @@ import { useProcessing } from "./hooks/useProcessing";
 import { useTranscriptData } from "./hooks/useTranscriptData";
 import { StudentRecord } from "../../../types/student";
 
+
+const safeIpcInvoke = async (channel: string, data: any): Promise<any> => {
+  if (window.ipcRenderer) {
+    try {
+      return await window.ipcRenderer.invoke(channel, data);
+    } catch (error) {
+      console.error(`IPC invoke error (${channel}):`, error);
+      throw error;
+    }
+  } else {
+    console.warn('IPC renderer not available. Running in browser mode or preload script not loaded.');
+    throw new Error('IPC renderer not available. This feature requires the Electron environment.');
+  }
+};
+
 const LOCAL_STORAGE_KEY = "academicConfigs";
 
 interface TranscriptSettings {
@@ -276,7 +291,7 @@ export const ReleveGenerator: React.FC = () => {
       // Demander à la fois le HTML et le PDF pour l'aperçu
       try {
         // Récupérer le HTML pour l'aperçu intégré
-        const htmlContent = await window.ipcRenderer.invoke('generate-transcript-html', { student, settings });
+        const htmlContent = await safeIpcInvoke('generate-transcript-html', { student, settings });
         setPreviewHtml(htmlContent);
         console.log("Received HTML:", htmlContent ? "Yes (length: " + htmlContent.length + ")" : "No");
       } catch (htmlError) {
@@ -285,7 +300,7 @@ export const ReleveGenerator: React.FC = () => {
       }
       
       // Générer également le PDF (en arrière-plan)
-      const pdfBytes = await window.ipcRenderer.invoke('generate-transcript-pdf', { student, settings });
+      const pdfBytes = await safeIpcInvoke('generate-transcript-pdf', { student, settings });
       console.log("Received PDF bytes:", pdfBytes ? "Yes" : "No", "Length:", pdfBytes?.length);
       
       if (!pdfBytes || pdfBytes.length === 0) {
@@ -353,7 +368,7 @@ export const ReleveGenerator: React.FC = () => {
       
       const results = await processBatch(
         preparedData,
-        (data) => window.ipcRenderer.invoke('generate-transcript-pdf', data)
+        (data) => safeIpcInvoke('generate-transcript-pdf', data)
       );
 
       const zipBlob = await generateZipFile(results, 'releve');
