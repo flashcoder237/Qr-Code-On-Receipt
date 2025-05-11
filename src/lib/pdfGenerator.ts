@@ -27,78 +27,95 @@ interface GeneratePDFParams {
   settings: TranscriptSettingsPayload;
 }
 
-// Génère les styles CSS basés sur les paramètres du thème
+// Génère les styles CSS basés sur les paramètres du thème et optimisés pour une seule page
 function generateThemeStyles(params: GeneratePDFParams): string {
   const theme = getCompleteTheme(params.settings);
   
-  // Générer des styles CSS basés sur les paramètres du thème
+  // Ajustements pour assurer que le relevé tient sur une seule page
   return `
     @page {
-      size: A4;
+      size: A4 portrait;
       margin: 0;
     }
     body {
       font-family: ${theme.mainFont};
-      width: 200mm;
-      min-height: 287mm;
+      width: 210mm;
+      height: 297mm; /* Hauteur exacte d'une page A4 */
       box-sizing: border-box;
       background-color: white;
-      margin: 5mm;
+      margin: 0;
+      padding: 5mm;
       border: ${theme.borderWidth}px ${theme.borderStyle} ${theme.primaryColor};
       color: ${theme.primaryColor};
       position: relative;
+      overflow: hidden; /* Empêche les débordements */
+      display: flex;
+      flex-direction: column;
     }
     
-    .header {    
+    .header {
       line-height: normal;
-      font-size: ${theme.headerFontSize}px;
+      font-size: ${Math.max(theme.headerFontSize - 1, 8)}px; /* Réduction légère de la taille */
       font-family: ${theme.headerFont};
+      flex-shrink: 0;
     }
-    .header-row1{
+    .header-row1 {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 10px; /* Réduction de la marge */
       display: flex;
       justify-content: space-between;
     }
     .header h1 {
-      font-size: ${theme.titleFontSize}px;
+      font-size: ${Math.max(theme.titleFontSize - 1, 12)}px; /* Réduction légère de la taille */
+      margin-top: 5px;
+      margin-bottom: 5px;
     }
     .student_block1 {
       display: flex;
       flex-direction: row;
       justify-content: space-between;
+      flex-shrink: 0;
     }
     .student_block1,
     .student-info {
-      width: 90%;
+      width: 95%;
       margin-left: auto;
       margin-right: auto;
-      font-size: ${theme.contentFontSize}px;
-      line-height: 0px;
+      font-size: ${Math.max(theme.contentFontSize - 1, 8)}px; /* Réduction légère de la taille */
+      line-height: 1.1;
       gap: 10px;
+      flex-shrink: 0;
     }
     .student-info {
       display: ${theme.studentInfoLayout === 'grille' ? 'grid' : 
                 theme.studentInfoLayout === 'colonnes' ? 'flex' : 'block'};
       ${theme.studentInfoLayout === 'grille' ? 'grid-template-columns: 1fr 1fr 1fr;' : 
         theme.studentInfoLayout === 'colonnes' ? 'flex-direction: column;' : ''}
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     .student-info p {
-      font-size: ${theme.contentFontSize}px;
+      font-size: ${Math.max(theme.contentFontSize - 1, 8)}px;
+      margin: 3px 0; /* Réduction de la marge */
     }
+    
+    .table-container {
+      flex: 1;
+      overflow: auto;
+      margin-bottom: 10px;
+    }
+    
     table {
       margin-left: auto;
       margin-right: auto;
-      width: 96%;
+      width: 98%;
       border-collapse: collapse;
-      margin-bottom: 20px;
-      font-size: ${theme.contentFontSize}px;
+      font-size: ${Math.max(theme.contentFontSize - 1, 8)}px;
     }
     th, td {
       border: ${theme.borderWidth}px ${theme.borderStyle} ${theme.tableBorderColor};
-      padding: ${theme.tableCellPadding}px;
+      padding: ${Math.max(theme.tableCellPadding - 2, 1)}px; /* Réduction du padding */
       text-align: left;
+      font-size: ${Math.max(theme.contentFontSize - 1, 8)}px;
     }
     th {
       background-color: ${theme.tableHeaderBgColor};
@@ -113,94 +130,104 @@ function generateThemeStyles(params: GeneratePDFParams): string {
     
     .grade-scale {
       display: ${theme.showGradeScale ? 'flex' : 'none'};
-      font-size: ${theme.footerFontSize}px;
+      font-size: ${Math.max(theme.footerFontSize - 1, 6)}px;
       float: left;
-      margin-left: 20px;
+      margin-left: 10px;
       width: 50%;
+      flex-shrink: 0;
     }
     .grade-scale table {
-      witdth: 30%;
-      margin-right : 10px;
+      width: 30%;
+      margin-right: 10px;
     }
     .grade-scale div {
       display: inline-block;
     }
     
-    /* Styles des signatures basés sur le thème */
-    .signature-ipes{
+    /* Styles des signatures optimisés */
+    .signature-ipes {
       width: 50%;
-      margin-left: 40px;
-      font-size: ${theme.contentFontSize + 2}px;
-      ${theme.signatureStyle === 'encadré' ? 'border: 1px solid ' + theme.primaryColor + '; padding: 10px;' : ''}
+      margin-left: 20px;
+      font-size: ${Math.max(theme.contentFontSize, 9)}px;
+      ${theme.signatureStyle === 'encadré' ? 'border: 1px solid ' + theme.primaryColor + '; padding: 5px;' : ''}
       ${theme.signatureStyle === 'souligné' ? 'border-bottom: 2px solid ' + theme.primaryColor + ';' : ''}
+      flex-shrink: 0;
     }
     .signature {
-      margin-top: 30px;
+      margin-top: 15px;
       float: right;
       text-align: left;
-      font-size: ${theme.contentFontSize + 2}px;
+      font-size: ${Math.max(theme.contentFontSize, 9)}px;
       margin-right: 20px;
-      ${theme.signatureStyle === 'encadré' ? 'border: 1px solid ' + theme.primaryColor + '; padding: 10px;' : ''}
+      ${theme.signatureStyle === 'encadré' ? 'border: 1px solid ' + theme.primaryColor + '; padding: 5px;' : ''}
       ${theme.signatureStyle === 'souligné' ? 'border-bottom: 2px solid ' + theme.primaryColor + ';' : ''}
+      flex-shrink: 0;
     }
     
     /* Adaptation de la mise en page de l'en-tête basée sur le thème */
-    .header-content{
+    .header-content {
       width: ${theme.headerLayout === 'standard' ? '35%' : 
                theme.headerLayout === 'compact' ? '30%' : '40%'};
+      font-size: ${Math.max(theme.contentFontSize - 2, 7)}px; /* Réduction additionnelle de la taille */
     }
-    .header-logo-content{
+    .header-logo-content {
       align-content: center;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
-    .header-logo-content > div{
+    .header-logo-content > div {
       width: 100%;
       height: 100%;
       align-items: center;
       align-content: center;
     }
-    .header-row2 h1{
+    .header-row2 h1 {
       font-weight: ${theme.headerLayout === 'compact' ? '400' : '100'};
       text-align: center;
-      font-size: ${theme.titleFontSize}px;
+      font-size: ${Math.max(theme.titleFontSize - 1, 12)}px;
       color: ${theme.accentColor};
+      margin: 5px 0;
     }
-    .header-row2 p{
-      font-size: ${theme.contentFontSize + 2}px;
+    .header-row2 p {
+      font-size: ${Math.max(theme.contentFontSize, 9)}px;
+      margin: 5px 0;
     }
-    .header-row2{
+    .header-row2 {
       text-align: center;
     }
-    td{
+    td {
       text-align: center;
     }
-    .table{
-      padding-left: 20px;
+    .table {
+      padding-left: 10px;
     }
-    .table-head th{
+    .table-head th {
       text-align: center;
     }
-    .table-ue-code, .table-ue-label, .table-ue-avearage{
+    .table-ue-code, .table-ue-label, .table-ue-avearage {
       font-weight: bold;
     }
-    .table-ec{
+    .table-ec {
       text-align: left;
     }
-    .grade-sign{
+    .grade-sign {
       display: flex;
       justify-content: start;
-      width: 96%;
+      width: 98%;
       margin: 0 auto;
+      flex-shrink: 0;
     }
-    .grade-sign th, .grade-sign td{
-      width:30px;
+    .grade-sign th, .grade-sign td {
+      width: 30px;
       padding: 1px;
       border: 0.5px solid ${theme.tableBorderColor};
     }
-    body > .container{
+    body > .container {
       position: relative;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
     }
     .watermark {
       position: absolute;
@@ -216,22 +243,22 @@ function generateThemeStyles(params: GeneratePDFParams): string {
       pointer-events: none;
     }
     .watermark img {
-      width: 600px;
+      width: 500px; /* Réduction de la taille */
       height: auto;
     }
     .footer-note {
       position: absolute;
       width: 100%;
-      bottom: 10px;
-      font-size: ${theme.footerFontSize}px;
+      bottom: 5px;
+      font-size: ${Math.max(theme.footerFontSize - 1, 6)}px; /* Réduction de la taille */
       text-align: center;
-      margin-top: 20px;
-      padding-top: 10px;
+      margin-top: 5px;
+      padding-top: 5px;
       font-style: italic;
     }
     .qr-code {
-      width: 100px;
-      height: 100px;
+      width: 80px; /* Réduction de la taille */
+      height: 80px;
       display: ${theme.showQRCode ? 'block' : 'none'};
     }
     
@@ -260,18 +287,6 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
     if (typeof value === 'string') {
       const parsed = parseFloat(value);
       return isNaN(parsed) ? 0 : parsed;
-    }
-    if (typeof value === 'object') {
-      // Si c'est un objet Map ou un autre type d'objet, essayez d'extraire une valeur numérique
-      if (value.toString() === '[object Map]') {
-        // Si c'est une Map, utilisez la première valeur ou 0
-        return value.size > 0 ? ensureNumber(Array.from(value.values())[0]) : 0;
-      }
-      
-      // Pour d'autres objets, essayez de voir s'ils ont une propriété numérique
-      for (const key in value) {
-        if (typeof value[key] === 'number') return value[key];
-      }
     }
     return 0;
   }
@@ -345,21 +360,21 @@ Matricule: ${student.MATRICULE}
 Date de naissance: ${student["DATE DE NAISSANCE"]}
 Lieu de naissance: ${student["LIEU DE NAISSANCE"]}
 Niveau: ${student.NIVEAU}
-Semestre: ${student.SEMESTRE.split(" ")[1]}
+Semestre: ${student.SEMESTRE ? student.SEMESTRE.split(" ")[1] : ""}
 Moyenne: ${semesterAverage.toFixed(2)}
 Grade: ${grade}
 Mention: ${getMention(semesterAverage)}
 Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
     
-    // Generate QR code
+    // Generate QR code with smaller size
     qrCodeDataUrl = await QRCode.toDataURL(qrData, {
-      errorCorrectionLevel: 'H',
+      errorCorrectionLevel: 'M', // Niveau moyen de correction d'erreur pour équilibrer taille et fiabilité
       margin: 1,
-      width: 150
+      width: 100 // Taille réduite
     });
   }
   
-  // Helper function to generate course rows
+  // Helper function to generate optimized course rows
   const generateCourseRows = () => {
     if (!student.COURSES || student.COURSES.length === 0) return '';
     
@@ -387,7 +402,6 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
           const isUEValidated = ueAverage >= 10 && !hasFailingEC;
           
           // Apply credits only if UE is validated
-          // CORRECTION ICI: Assurez-vous que ueCredit est un nombre
           const creditValue = typeof ueCredit === 'number' ? ueCredit : 
                              (typeof ueCredit === 'string' ? parseFloat(ueCredit) : 0);
           
@@ -399,7 +413,6 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
         
         currentUECode = ueCode;
         // Récupérer le crédit associé à l'UE
-        // CORRECTION ICI: Convertir explicitement en nombre
         ueCredit = typeof course.UE_CREDIT === 'number' ? course.UE_CREDIT : 
                   (typeof course.UE_CREDIT === 'string' ? parseFloat(course.UE_CREDIT) : 0);
       }
@@ -423,7 +436,6 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
       // Determine if UE is validated (average >= 10 AND no EC with note <= 6)
       const isUEValidated = ueAverage >= 10 && !hasFailingEC;
       
-      // CORRECTION ICI: Assurez-vous que ueCredit est un nombre
       const creditValue = typeof ueCredit === 'number' ? ueCredit : 
                          (typeof ueCredit === 'string' ? parseFloat(ueCredit) : 0);
       
@@ -500,160 +512,6 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
             <!-- IPES Logo Watermark -->
             <div class="watermark">
                 <img src=${settings.logo} alt="IPES Watermark">
-            </div>
-            
-            <div class="header">
-                <div class="header-row1">
-                    <div class="header-content">
-                        <p>REPUBLIQUE DU CAMEROUN <br>
-                        <em>Paix – Travail – Patrie</em><br>
-                        ********************<br>
-                        MINISTERE DE L'ENSEIGNEMENT SUPERIEUR<br>
-                        ********************<br>
-                        <strong>UNIVERSITE DE DOUALA</strong><br>
-                        ********************<br>
-                        <strong>FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES</strong><br>
-                        ********************<br>
-                        B.P 2701, Douala, Cameroun<br>
-                        Email: <a href="">contact@fmsp-udo.cm</a><br>
-                        ********************<br>
-                        <strong>${
-                          settings.nameFrench
-                            .split(" ")
-                            .map((w, i) => (i > 0 && i % 4 === 0 ? "<br>" + w : w))
-                            .join(" ")
-                        }</strong><br>
-                        ********************<br>
-                        B.P ${settings.postalBox}<br>
-                        Email: <a href="">${settings.email}</a></p>
-                    </div>
-                    <div class="header-logo-content">
-                        <div>
-                          ${universityLogoBase64 ? `<img src="${universityLogoBase64}" alt="University Logo" height="70">` : 
-                            '<div style="height: 70px; border: 1px solid black;"> University Logo</div>'}
-                        </div>
-                        <div>
-                          ${facultyLogoBase64 ? `<img src="${facultyLogoBase64}" alt="Faculty Logo" height="50" style="margin: 5px;">` : 
-                            '<div style="height: 50px; border: 1px solid black; margin: 5px;"> Faculty Logo</div>'}
-                        </div>
-                        <div>
-                          ${settings.logo ? `<img src="${settings.logo}" alt="IPES Logo" height="50">` : 
-                            '<div style="height: 50px; border: 1px solid black;"> IPES Logo</div>'}
-                        </div>
-                    </div>
-                    <div class="header-content">
-                        <p>REPUBLIC OF CAMEROON<br>
-                        <em>Peace – Work - Fatherland</em><br>
-                        ********************<br>
-                        MINISTRY OF HIGHER EDUCATION<br>
-                        ********************<br>
-                        <strong>THE UNIVERSITY OF DOUALA</strong><br>
-                        ********************<br>
-                        <strong>FACULTY OF MEDICINE AND<br>PHARMACEUTICAL SCIENCES</strong><br>
-                        ********************<br>
-                        PO box 2701, Douala, Cameroon<br>
-                        Email: <a href="">contact@fmsp-udo.cm</a><br>
-                        ********************<br>
-                        <strong>${
-                          settings.nameEnglish
-                            .split(" ")
-                            .map((w, i) => (i > 0 && i % 4 === 0 ? "<br>" + w : w))
-                            .join(" ")
-                        }</strong><br>
-                        ********************<br>
-                        PO box ${settings.postalBoxEn}<br>
-                        Email: <a href="">${settings.email}</a></p>    
-                    </div>
-                </div>
-                <div class="header-row2">
-                    <h1 class="header-title"><strong>RELEVE DE NOTES</strong> / TRANSCRIPT </h1>
-                    <p><strong>Ref No</strong>&nbsp;&nbsp;  /${currentYear}/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR/${settings.nameAbreviation}</p>
-                </div>
-            </div>
-        
-            <div class="student_block1">
-                <div>
-                    <p><span>NOM ET PRENOM:</span> <strong>${student.NOM} ${student.PRENOM}</strong></p>
-                    <p><em>surname and name:</em></p>
-                </div>
-                <div>
-                    <p><strong>MATRICULE:</strong> <strong>${student.MATRICULE}</strong></p>
-                    <p><em>Registration N°:</em></p>
-                </div>
-            </div>
-            <div class="student-info">
-                <div>
-                    <p><strong>NÉ(E) LE: ${student["DATE DE NAISSANCE"] || "N/D"}</strong></p>
-                    <div><em>Born on:</em></div>
-                </div>
-                <div>
-                    <p><strong>A:</strong> <strong>${student["LIEU DE NAISSANCE"] || ""}</strong></p>
-                    <div><em>At:</em></div>
-                </div>
-                <div></div>
-                <div>
-                    <p><strong>CYCLE:</strong> <strong>${student.CYCLE || "N/D"}</strong></p>
-                    <div><em>Training cycle:</em></div>
-                </div>
-                <div>
-                    <p><strong>ANNÉE ACADÉMIQUE:</strong> <strong>${student["ANNEE ACADÉMIQUE"] || "N/D"}</strong></p>
-                    <div><em>Academic Year:</em></div>
-                </div>
-                <div>
-                    <p><strong>FILIÈRE:</strong> <strong>${student.FILIERE || "N/D"}</strong></p>
-                    <div><em>Field of Study:</em></div>
-                </div>
-                <div>
-                    <p><strong>NIVEAU:</strong> <strong>${student.NIVEAU || "N/D"}</strong></p>
-                    <div><em>Level:</em></div>
-                </div>
-                <div>
-                    <p><strong>SEMESTRE:</strong> <strong>${student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "N/D") : "N/D"}</strong></p>
-                    <div><em>Semester:</em></div>
-                </div>
-                <div>
-                    <p><strong>OPTION:</strong> <strong>${student.OPTION || "N/D"}</strong></p>
-                    <div><em>Option:</em></div>
-                </div>
-            </div>
-        
-            <div class="table">
-                <table>
-                    <thead>
-                        <tr class="table-head">
-                            <th class="table-code">CODE</th>
-                            <th colspan="3" class="table-ue">UNITE D'ENSEIGNEMENT</th>
-                            <th colspan="3" class="table-ec">ELEMENT CONSTITUTIF</th>
-                            <th colspan="2" class="table-note">NOTE/20</th>
-                            <th class="table-average">MOYENNE</th>
-                            <th class="table-credit">CREDIT</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${generateCourseRows()}
-                        <tr class="table-summary">
-                            <td colspan="11">&nbsp;</td>
-                        </tr>
-                        <tr class="table-footer">
-                            <td class="summary-label">RELEVE NIVEAU</td>
-                            <td class="summary-label">SEMESTRE</td>
-                            <td class="summary-label">TOTAL CREDIT / 30</td>
-                            <td colspan="2" class="summary-label">MOYENNE SEMESTRIELLE / 20</td>
-                            <td class="summary-label">MGP</td>
-                            <td colspan="2" class="summary-label">GRADE</td>
-                            <td colspan="3" class="summary-label">DECISION DU JURY</td>
-                        </tr>
-                        <tr class="table-footer-values">
-                            <td class="summary-value"><strong>${student.NIVEAU || "1"}</strong></td>
-                            <td class="summary-value"><strong>${student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "1") : "1"}</strong></td>
-                            <td class="summary-value"><strong>${totalCreditsValidated}</strong></td>
-                            <td colspan="2" class="summary-value"><strong>${semesterAverage.toFixed(2)}</strong></td>
-                            <td class="summary-value"><strong>${mgp.toFixed(1)}</strong></td>
-                            <td colspan="2" class="summary-value"><strong>${grade}</strong></td>
-                            <td colspan="3" class="summary-value ${decision === "SEMESTRE VALIDE" ? "validated" : "not-validated"}"><strong>${decision}</strong></td>
-                        </tr>
-                    </tbody>
-                </table>
             </div>
         
             <div class="grade-sign">
@@ -752,11 +610,12 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
 
             <div class="signature-ipes"><strong>Le Directeur de L'${settings.nameFrench.length >= 30 ? settings.nameAbreviation : settings.nameFrench}</strong>
             <br/><i>The Director of ${settings.nameFrench.length >= 30 ? settings.nameAbreviation : settings.nameEnglish}</i></div>
-            </div>
+            
             <!-- Footer note -->
             <div class="footer-note">
                 Il n'est délivré qu'un seul exemplaire de relevé de note, le titulaire peut en faire des copies certifiées conformes.<br>
                 This transcript is delivered only once, the owner can do many certified copies as necessary
+            </div>
         </div>
     </body>
     </html>
@@ -765,6 +624,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
 
 /**
  * Generate a PDF transcript using Electron's built-in PDF generation capabilities
+ * with optimized settings to ensure a single page output
  */
 export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<Uint8Array> {
   return new Promise(async (resolve, reject) => {
@@ -794,16 +654,19 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
       // Wait for content to load completely
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Generate PDF
+      // Generate PDF with optimized settings for single page
       const pdfData = await win.webContents.printToPDF({
         printBackground: true,
         pageSize: 'A4',
         margins: {
-          top: 0.4,
-          bottom: 0.4,
-          left: 0.4,
-          right: 0.4
-        }
+          top: 0, // Minimize margins
+          bottom: 0,
+          left: 0,
+          right: 0
+        },
+        pageRanges: '1', // Only print the first page
+        scaleFactor: 100, // Scale to fit
+        preferCSSPageSize: true // Use CSS page size and margins
       });
       
       // Close the window
@@ -836,6 +699,18 @@ export function setupPDFGenerationHandlers() {
       return await generateTranscriptPDF(params);
     } catch (error) {
       console.error('Error generating PDF:', error);
+      throw error;
+    }
+  });
+
+  // Set up IPC handler for HTML preview - new feature for improved previewing
+  ipcMain.handle('generate-transcript-html', async (_, params: GeneratePDFParams) => {
+    try {
+      // Return the HTML directly for preview in the renderer
+      const html = await createTranscriptHTML(params);
+      return html;
+    } catch (error) {
+      console.error('Error generating HTML preview:', error);
       throw error;
     }
   });
@@ -881,4 +756,4 @@ function getMention(average: number): string {
   if (average >= 12) return "Assez Bien";
   if (average >= 10) return "Passable";
   return "Insuffisant";
-}
+}        

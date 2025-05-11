@@ -2,66 +2,36 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../../ui/card";
 import { Button } from "../../ui/button";
-import { Input } from "../../ui/input";
-import { Slider } from "../../ui/slider";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  ZoomIn,
-  ZoomOut,
-  RotateCw,
-  Printer,
-  ArrowLeft,
-} from "lucide-react";
-import { StudentRecord } from "./types";
+import { Download, ArrowLeft } from "lucide-react";
+import { StudentRecord } from "../types"; // Assurez-vous que ce chemin est correct
+import HtmlPreview from "./HtmlPreview"; // Importez le nouveau composant de prévisualisation
 
 interface TranscriptPreviewProps {
   previewStudent: StudentRecord | null;
   previewPdfUrl: string | null;
+  previewHtml: string | null;
   isLoading: boolean;
   onBack: () => void;
   onGenerateAll: () => void;
+  onRefreshPreview?: () => void;
   onPrint?: () => void;
 }
 
 export const TranscriptPreview: React.FC<TranscriptPreviewProps> = ({
   previewStudent,
   previewPdfUrl,
+  previewHtml,
   isLoading,
   onBack,
   onGenerateAll,
+  onRefreshPreview,
   onPrint,
 }) => {
-  const [zoom, setZoom] = useState(100);
-  const [rotation, setRotation] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [useHtmlPreview, setUseHtmlPreview] = useState(true);
 
-  useEffect(() => {
-    // Log when previewPdfUrl changes
-    console.log("Preview URL updated:", previewPdfUrl);
-  }, [previewPdfUrl]);
-
-  const handleZoomIn = () => {
-    setZoom((prev) => Math.min(prev + 25, 200));
-  };
-
-  const handleZoomOut = () => {
-    setZoom((prev) => Math.max(prev - 25, 25));
-  };
-
-  const handleRotate = () => {
-    setRotation((prev) => (prev + 90) % 360);
-  };
-
-  const handlePrint = () => {
-    if (onPrint) {
-      onPrint();
-    } else if (previewPdfUrl) {
-      const printWindow = window.open(previewPdfUrl);
-      printWindow?.print();
-    }
+  // Fonction pour basculer entre les modes de prévisualisation
+  const togglePreviewMode = () => {
+    setUseHtmlPreview(!useHtmlPreview);
   };
 
   return (
@@ -82,6 +52,9 @@ export const TranscriptPreview: React.FC<TranscriptPreviewProps> = ({
             )}
           </div>
           <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm" onClick={togglePreviewMode}>
+              {useHtmlPreview ? "Mode PDF" : "Mode HTML"}
+            </Button>
             <Button variant="outline" size="sm" onClick={onBack}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Retour
@@ -94,154 +67,65 @@ export const TranscriptPreview: React.FC<TranscriptPreviewProps> = ({
         </CardHeader>
 
         <CardContent>
-          <div className="flex space-x-4">
-            {/* PDF Controls */}
-            <div className="w-64 space-y-4">
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Zoom</p>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleZoomOut}
-                    disabled={zoom <= 25}
-                  >
-                    <ZoomOut className="h-4 w-4" />
-                  </Button>
-                  <Slider
-                    value={[zoom]}
-                    onValueChange={(value) => setZoom(value[0])}
-                    min={25}
-                    max={200}
-                    step={25}
-                    className="w-full"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleZoomIn}
-                    disabled={zoom >= 200}
-                  >
-                    <ZoomIn className="h-4 w-4" />
-                  </Button>
-                </div>
-                <p className="text-sm text-center">{zoom}%</p>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Rotation</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRotate}
-                  className="w-full"
-                >
-                  <RotateCw className="h-4 w-4 mr-2" />
-                  Rotation {rotation}°
-                </Button>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Pages</p>
-                <div className="flex items-center justify-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                    disabled={currentPage <= 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setCurrentPage((p) => Math.min(p + 1, totalPages))
-                    }
-                    disabled={currentPage >= totalPages}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrint}
-                className="w-full"
+          <AnimatePresence mode="wait">
+            {useHtmlPreview ? (
+              <motion.div
+                key="html-preview"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full"
               >
-                <Printer className="h-4 w-4 mr-2" />
-                Imprimer
-              </Button>
-            </div>
-
-            {/* PDF Preview */}
-            <div className="flex-1 relative min-h-[800px] bg-gray-100 rounded-lg overflow-hidden">
-              <AnimatePresence mode="wait">
+                <HtmlPreview 
+                  html={previewHtml || undefined}
+                  isLoading={isLoading} 
+                  onGenerate={onGenerateAll}
+                  onPrint={onPrint}
+                  onBack={onRefreshPreview}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="pdf-preview"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-[70vh] bg-gray-100 rounded-lg flex items-center justify-center"
+              >
                 {isLoading ? (
-                  <motion.div
-                    key="loading"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 flex items-center justify-center"
-                  >
-                    <div className="text-center space-y-4">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
-                      <p className="text-sm text-gray-600">
-                        Chargement de l'aperçu...
-                      </p>
-                    </div>
-                  </motion.div>
-                ) : previewPdfUrl ? (
-                  <motion.div
-                    key="pdf"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="w-full h-full"
-                    style={{
-                      transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
-                      transformOrigin: "center center",
-                    }}
-                  >
-                    <object
-                      data={previewPdfUrl}
-                      type="application/pdf"
-                      className="w-full h-full"
-                    >
-                      <embed
-                        src={previewPdfUrl}
-                        type="application/pdf"
-                        className="w-full h-full"
-                      />
-                    </object>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="error"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 flex items-center justify-center"
-                  >
-                    <p className="text-gray-500">
-                      Aucun aperçu disponible
+                  <div className="text-center space-y-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
+                    <p className="text-sm text-gray-600">
+                      Chargement de l'aperçu...
                     </p>
-                  </motion.div>
+                  </div>
+                ) : previewPdfUrl ? (
+                  <object
+                    data={previewPdfUrl}
+                    type="application/pdf"
+                    className="w-full h-full rounded-lg"
+                  >
+                    <embed
+                      src={previewPdfUrl}
+                      type="application/pdf"
+                      className="w-full h-full rounded-lg"
+                    />
+                  </object>
+                ) : (
+                  <p className="text-gray-500">
+                    Aucun aperçu PDF disponible
+                  </p>
                 )}
-              </AnimatePresence>
-            </div>
-          </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </CardContent>
 
         <CardFooter className="flex justify-between">
           <p className="text-sm text-gray-500">
-            Utilisez les contrôles à gauche pour ajuster l'aperçu
+            {useHtmlPreview 
+              ? "Le mode HTML offre une meilleure prévisualisation et optimise les performances."
+              : "Le mode PDF montre exactement ce qui sera généré, mais peut être plus lent à charger."}
           </p>
         </CardFooter>
       </Card>

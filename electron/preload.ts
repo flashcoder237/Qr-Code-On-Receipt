@@ -23,15 +23,33 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     
     return ipcRenderer.invoke(channel, ...params)
       .then(result => {
-        console.log(`IPC Invoke Success: ${channel}`, result instanceof ArrayBuffer 
-          ? `[ArrayBuffer: ${result.byteLength} bytes]` 
-          : '(with result)')
+        if (channel === 'generate-transcript-html') {
+          console.log(`IPC Invoke Success: ${channel}`, typeof result === 'string' ? 
+            `[HTML: ${result.length} chars]` : '(unknown result type)')
+        } else {
+          console.log(`IPC Invoke Success: ${channel}`, result instanceof ArrayBuffer 
+            ? `[ArrayBuffer: ${result.byteLength} bytes]` 
+            : '(with result)')
+        }
         return result
       })
       .catch(error => {
         console.error(`IPC Invoke Error: ${channel}`, error)
         throw error // Re-throw to be caught by the caller
       })
+  }
+})
+
+// Setup file system access
+contextBridge.exposeInMainWorld('fs', {
+  // Method to read file contents
+  readFile: async (filePath: string, options: { encoding?: string } = {}) => {
+    try {
+      return await ipcRenderer.invoke('fs:readFile', filePath, options)
+    } catch (error) {
+      console.error('Error reading file via preload:', error)
+      throw error
+    }
   }
 })
 

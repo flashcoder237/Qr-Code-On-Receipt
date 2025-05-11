@@ -27,6 +27,7 @@ const LOCAL_STORAGE_KEY = "academicConfigs";
 interface TranscriptSettings {
   nameFrench: string;
   nameEnglish: string;
+  nameAbreviation: string;
   postalBox: string;
   postalBoxEn: string;
   email: string;
@@ -35,6 +36,7 @@ interface TranscriptSettings {
   facultyLogo: string;
   themeColor: string;
   themeFont: string;
+  theme: any;
 }
 
 export const ReleveGenerator: React.FC = () => {
@@ -42,6 +44,7 @@ export const ReleveGenerator: React.FC = () => {
   const [activeTab, setActiveTab] = useState("configuration");
   const [previewStudent, setPreviewStudent] = useState<StudentRecord | null>(null);
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [configs, setConfigs] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,13 +52,16 @@ export const ReleveGenerator: React.FC = () => {
   const [settings] = useLocalStorage<TranscriptSettings>("settings", {
     nameFrench: "",
     nameEnglish: "",
+    nameAbreviation: "",
     postalBox: "",
+    postalBoxEn: "",
     email: "",
     logo: "",
     universityLogo: "",
     facultyLogo: "",
     themeColor: "#000000",
     themeFont: "Times New Roman, serif",
+    theme: {},
   });
 
   // Load configurations from localStorage
@@ -103,6 +109,7 @@ export const ReleveGenerator: React.FC = () => {
         URL.revokeObjectURL(previewPdfUrl);
         setPreviewPdfUrl(null);
       }
+      setPreviewHtml(null);
       setError(null);
     },
     onSemesterChange: () => {
@@ -112,6 +119,7 @@ export const ReleveGenerator: React.FC = () => {
         URL.revokeObjectURL(previewPdfUrl);
         setPreviewPdfUrl(null);
       }
+      setPreviewHtml(null);
       setError(null);
     }
   });
@@ -258,27 +266,41 @@ export const ReleveGenerator: React.FC = () => {
         return;
       }
 
-      console.log("Prepared student data:", student); // Debug log
-      console.log("Settings:", settings); // Debug log
+      console.log("Prepared student data:", student);
+      console.log("Settings:", settings);
 
       setPreviewStudent(student);
-      console.log("Calling generate-transcript-pdf with:", { student, settings }); // Additional debug
+      setPreviewHtml(null);
+      setPreviewPdfUrl(null);
+      
+      // Demander à la fois le HTML et le PDF pour l'aperçu
+      try {
+        // Récupérer le HTML pour l'aperçu intégré
+        const htmlContent = await window.ipcRenderer.invoke('generate-transcript-html', { student, settings });
+        setPreviewHtml(htmlContent);
+        console.log("Received HTML:", htmlContent ? "Yes (length: " + htmlContent.length + ")" : "No");
+      } catch (htmlError) {
+        console.error("Error generating HTML preview:", htmlError);
+        // Continuer quand même pour essayer de générer le PDF
+      }
+      
+      // Générer également le PDF (en arrière-plan)
       const pdfBytes = await window.ipcRenderer.invoke('generate-transcript-pdf', { student, settings });
-      console.log("Received PDF bytes:", pdfBytes ? "Yes" : "No", "Length:", pdfBytes?.length); // Check if we get PDF data
+      console.log("Received PDF bytes:", pdfBytes ? "Yes" : "No", "Length:", pdfBytes?.length);
       
       if (!pdfBytes || pdfBytes.length === 0) {
         throw new Error("No PDF data received");
       }
       
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
-      console.log("Created blob:", blob.size, "bytes"); // Check blob size
+      console.log("Created blob:", blob.size, "bytes");
       
       if (previewPdfUrl) {
         URL.revokeObjectURL(previewPdfUrl);
       }
       
       const url = URL.createObjectURL(blob);
-      console.log("Created PDF URL:", url); // Debug log
+      console.log("Created PDF URL:", url);
       
       setPreviewPdfUrl(url);
       setActiveTab("preview");
@@ -288,6 +310,22 @@ export const ReleveGenerator: React.FC = () => {
       setError("Erreur lors de la génération de l'aperçu");
     }
   }, [selectedSemesterId, excelData, mappingComplete, prepareStudentData, previewPdfUrl, settings]);
+
+  const refreshPreview = useCallback(async () => {
+    if (previewStudent) {
+      try {
+        // Réinitialiser et régénérer le HTML
+        setPreviewHtml(null);
+        const htmlContent = await window.ipcRenderer.invoke('generate-transcript-html', { 
+          student: previewStudent, 
+          settings 
+        });
+        setPreviewHtml(htmlContent);
+      } catch (error) {
+        console.error('Refresh preview error:', error);
+      }
+    }
+  }, [previewStudent, settings]);
 
   const handleGenerateAll = useCallback(async () => {
     if (!currentConfig || !currentSemester) {
@@ -347,7 +385,7 @@ export const ReleveGenerator: React.FC = () => {
           <TabsTrigger value="mapping" disabled={!selectedConfigId || !selectedSemesterId}>
             Correspondance
           </TabsTrigger>
-          <TabsTrigger value="preview" disabled={!previewPdfUrl}>
+          <TabsTrigger value="preview" disabled={!previewStudent}>
             Prévisualisation
           </TabsTrigger>
         </TabsList>
@@ -396,7 +434,7 @@ export const ReleveGenerator: React.FC = () => {
                   )}
 
                   {processingState.successMessage && (
-                    <Alert variant="default" className="bg-green-50 border-green-300">
+                    <Alert variant="default" className="bg-green-50 border-green-200">
                       <CheckCircle className="h-4 w-4 text-green-500" />
                       <AlertDescription className="text-green-700">
                         {processingState.successMessage}
@@ -476,9 +514,17 @@ export const ReleveGenerator: React.FC = () => {
               <TranscriptPreview
                 previewStudent={previewStudent}
                 previewPdfUrl={previewPdfUrl}
+                previewHtml={previewHtml}
                 isLoading={processingState.isLoading}
                 onBack={() => setActiveTab("mapping")}
                 onGenerateAll={handleGenerateAll}
+                onRefreshPreview={refreshPreview}
+                onPrint={() => {
+                  if (previewPdfUrl) {
+                    const printWindow = window.open(previewPdfUrl);
+                    printWindow?.print();
+                  }
+                }}
               />
             </TabsContent>
           </motion.div>
