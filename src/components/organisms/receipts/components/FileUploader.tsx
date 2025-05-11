@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 
 interface FileUploaderProps {
   onFileLoaded: (data: any[], columns: string[]) => void;
-  onError: (error: string) => void;
+  onError: (error: string) => void; // Make sure this is a string parameter
   isLoading: boolean;
 }
 
@@ -39,7 +39,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         const columns = Object.keys(jsonData[0]);
         onFileLoaded(jsonData, columns);
       } catch (error) {
-        onError(error instanceof Error ? error.message : "Erreur lors du chargement du fichier");
+        // Ensure we always pass a string to onError
+        const errorMessage = error instanceof Error ? error.message : "Erreur lors du chargement du fichier";
+        onError(errorMessage);
       }
     }
   });

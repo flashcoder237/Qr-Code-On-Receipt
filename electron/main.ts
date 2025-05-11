@@ -1,11 +1,11 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import { createRequire } from "node:module";
 import path from "node:path";
+import fs from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { setupPDFGenerationHandlers } from "../src/lib/pdfGenerator";
 
 const require = createRequire(import.meta.url);
-console.log(require);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // The built directory structure
@@ -40,6 +40,9 @@ function createWindow() {
     },
   });
 
+  // Setup basic file system handlers
+  setupFileSystemHandlers();
+
   // Test active push message to Renderer-process.
   win.webContents.on("did-finish-load", () => {
     win?.webContents.send("main-process-message", new Date().toLocaleString());
@@ -51,6 +54,23 @@ function createWindow() {
     // win.loadFile('dist/index.html')
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
+
+  // Open DevTools in development mode
+  if (VITE_DEV_SERVER_URL) {
+    win.webContents.openDevTools();
+  }
+}
+
+// Setup file system handlers for the IPC bridge
+function setupFileSystemHandlers() {
+  ipcMain.handle('fs:readFile', async (_, filePath, options) => {
+    try {
+      return await fs.readFile(filePath, options);
+    } catch (error) {
+      console.error('Error reading file:', error);
+      throw error;
+    }
+  });
 }
 
 // Quit when all windows are closed, except on macOS. There, it's common

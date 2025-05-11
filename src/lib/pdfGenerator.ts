@@ -47,6 +47,7 @@ function generateThemeStyles(params: GeneratePDFParams): string {
       border: ${theme.borderWidth}px ${theme.borderStyle} ${theme.primaryColor};
       color: ${theme.primaryColor};
       position: relative;
+      overflow: hidden; /* Empêche le débordement */
     }
     
     .header {    
@@ -798,6 +799,7 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
       const pdfData = await win.webContents.printToPDF({
         printBackground: true,
         pageSize: 'A4',
+        pageRanges: '1-1',
         margins: {
           top: 0.4,
           bottom: 0.4,

@@ -239,56 +239,70 @@ export const ReleveGenerator: React.FC = () => {
       setError("Veuillez sélectionner une configuration et un semestre");
       return;
     }
-
+  
     if (excelData.length === 0) {
       setError("Veuillez charger des données");
       return;
     }
-
+  
     if (!mappingComplete) {
       setError("Veuillez compléter la correspondance des colonnes avant de prévisualiser");
       setActiveTab("mapping");
       return;
     }
-
+  
     try {
       const student = prepareStudentData(excelData[0]);
       if (!student) {
         setError("Erreur lors de la préparation des données");
         return;
       }
-
-      console.log("Prepared student data:", student); // Debug log
-      console.log("Settings:", settings); // Debug log
-
+  
+      console.log("Prepared student data:", student);
+      console.log("Settings:", settings);
+  
       setPreviewStudent(student);
-      console.log("Calling generate-transcript-pdf with:", { student, settings }); // Additional debug
-      const pdfBytes = await window.ipcRenderer.invoke('generate-transcript-pdf', { student, settings });
-      console.log("Received PDF bytes:", pdfBytes ? "Yes" : "No", "Length:", pdfBytes?.length); // Check if we get PDF data
       
-      if (!pdfBytes || pdfBytes.length === 0) {
-        throw new Error("No PDF data received");
+      // Check if IPC renderer is available before invoking
+      if (!window.ipcRenderer) {
+        setError("Impossible de communiquer avec le processus principal d'Electron");
+        console.error("IPC renderer is not available. Are you running in a non-Electron environment?");
+        return;
       }
       
-      const blob = new Blob([pdfBytes], { type: "application/pdf" });
-      console.log("Created blob:", blob.size, "bytes"); // Check blob size
+      console.log("Calling generate-transcript-pdf with:", { student, settings });
       
-      if (previewPdfUrl) {
-        URL.revokeObjectURL(previewPdfUrl);
+      try {
+        const pdfBytes = await window.ipcRenderer.invoke('generate-transcript-pdf', { student, settings });
+        console.log("Received PDF bytes:", pdfBytes ? "Yes" : "No", "Length:", pdfBytes?.length);
+        
+        if (!pdfBytes || pdfBytes.length === 0) {
+          throw new Error("No PDF data received");
+        }
+        
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        console.log("Created blob:", blob.size, "bytes");
+        
+        if (previewPdfUrl) {
+          URL.revokeObjectURL(previewPdfUrl);
+        }
+        
+        const url = URL.createObjectURL(blob);
+        console.log("Created PDF URL:", url);
+        
+        setPreviewPdfUrl(url);
+        setActiveTab("preview");
+        setError(null);
+      } catch (err) {
+        console.error("Error during IPC invoke:", err);
+        setError(`Erreur de communication avec le processus principal: ${err.message || 'Erreur inconnue'}`);
       }
-      
-      const url = URL.createObjectURL(blob);
-      console.log("Created PDF URL:", url); // Debug log
-      
-      setPreviewPdfUrl(url);
-      setActiveTab("preview");
-      setError(null);
     } catch (error) {
       console.error('Preview error:', error);
-      setError("Erreur lors de la génération de l'aperçu");
+      setError(`Erreur lors de la génération de l'aperçu: ${error.message || 'Erreur inconnue'}`);
     }
-  }, [selectedSemesterId, excelData, mappingComplete, prepareStudentData, previewPdfUrl, settings]);
-
+  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, previewPdfUrl, settings, setActiveTab]);
+  
   const handleGenerateAll = useCallback(async () => {
     if (!currentConfig || !currentSemester) {
       setError("Veuillez sélectionner une configuration et un semestre");
