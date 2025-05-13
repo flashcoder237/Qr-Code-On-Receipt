@@ -62,6 +62,23 @@ class MockInvocationError extends Error {
       // Simulate a delay to mimic async operation
       await new Promise(resolve => setTimeout(resolve, 100));
       
+      // Implémentation pour le gestionnaire show-preview
+    if (channel === 'show-preview') {
+      const [htmlContent, title] = args;
+      console.log(`[MOCK] Affichage de la prévisualisation avec titre: ${title}`);
+      
+      // Ouvrir une nouvelle fenêtre avec le contenu
+      const previewWindow = window.open('', '_blank');
+      if (previewWindow) {
+        previewWindow.document.write(htmlContent);
+        previewWindow.document.title = title || 'Prévisualisation';
+        previewWindow.document.close();
+        return true;
+      } else {
+        console.error('[MOCK] Impossible d\'ouvrir la fenêtre de prévisualisation. Vérifiez que les popups ne sont pas bloqués.');
+        return false;
+      }
+    }
       // Handle specific mock implementations
       if (channel === 'generate-transcript-pdf') {
         return await mockPdfGenerator[channel](args[0]);

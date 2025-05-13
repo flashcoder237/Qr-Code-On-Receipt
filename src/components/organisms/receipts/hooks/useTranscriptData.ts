@@ -1,3 +1,4 @@
+// Fixed useTranscriptData.ts
 import { useState, useCallback } from 'react';
 
 export const useTranscriptData = () => {
@@ -8,7 +9,8 @@ export const useTranscriptData = () => {
   const handleFileLoaded = useCallback((data: any[], columns: string[]) => {
     setExcelData(data);
     setExcelColumns(columns);
-    setMappingComplete(false);
+    // Don't reset mapping status here as it will be updated by the effect in ReleveGenerator
+    // This prevents unnecessary renders that can cause infinite update loops
   }, []);
 
   const clearData = useCallback(() => {

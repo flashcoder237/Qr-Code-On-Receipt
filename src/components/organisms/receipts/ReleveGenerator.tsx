@@ -64,36 +64,44 @@ export const ReleveGenerator: React.FC = () => {
 
   // Load configurations from localStorage only once during component mount
   useEffect(() => {
-    if (!configsLoaded) {
-      try {
-        const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (stored) {
-          const parsedConfigs = JSON.parse(stored);
-          setConfigs(parsedConfigs);
-        }
-        setConfigsLoaded(true);
-      } catch (error) {
-        console.error("Erreur lors du chargement des configurations:", error);
+  if (!configsLoaded) {
+    try {
+      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (stored) {
+        const parsedConfigs = JSON.parse(stored);
+        setConfigs(parsedConfigs);
       }
+      setConfigsLoaded(true);
+    } catch (error) {
+      console.error("Erreur lors du chargement des configurations:", error);
     }
-  }, [configsLoaded]);
+  }
+}, [configsLoaded])
+
+useEffect(() => {
+  if (previewContentUrl) {
+    console.log("previewContentUrl a changé, nouvelle valeur:", previewContentUrl);
+    // Potentiellement changer l'onglet ici si ce n'est pas fait ailleurs
+    setActiveTab("preview");
+  }
+}, [previewContentUrl]);
 
   // Listen to localStorage changes
   useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === LOCAL_STORAGE_KEY) {
-        try {
-          const parsedConfigs = JSON.parse(e.newValue);
-          setConfigs(parsedConfigs);
-        } catch (error) {
-          console.error("Erreur lors du traitement des nouvelles configurations:", error);
-        }
+  const handleStorageChange = (e) => {
+    if (e.key === LOCAL_STORAGE_KEY) {
+      try {
+        const parsedConfigs = JSON.parse(e.newValue);
+        setConfigs(parsedConfigs);
+      } catch (error) {
+        console.error("Erreur lors du traitement des nouvelles configurations:", error);
       }
-    };
+    }
+  };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  window.addEventListener('storage', handleStorageChange);
+  return () => window.removeEventListener('storage', handleStorageChange);
+}, []);
 
   // Custom hooks
   const {
@@ -178,19 +186,22 @@ export const ReleveGenerator: React.FC = () => {
 
   // Check if mapping is complete when available ECs or column mapping changes
   useEffect(() => {
-    const availableECs = getAvailableECs();
-    const complete = availableECs.length > 0 && availableECs.every(ec => columnMapping[ec.id]);
+  // Only run this check if we have a selected config and semester
+  if (!selectedConfigId || !selectedSemesterId) return;
+  
+  const availableECs = getAvailableECs();
+  // Only update if we actually have ECs to map
+  if (availableECs.length > 0) {
+    const complete = availableECs.every(ec => columnMapping[ec.id]);
     setMappingStatus(complete);
-  }, [getAvailableECs, columnMapping, setMappingStatus]);
+  }
+}, [getAvailableECs, columnMapping, setMappingStatus, selectedConfigId, selectedSemesterId]);
 
   // Fonction pour charger un mapping complet
   const handleLoadMapping = useCallback((mapping: Record<string, string>) => {
     try {
       // Appliquer les nouvelles valeurs de mapping une par une
-      Object.entries(mapping).forEach(([ecId, column]) => {
-        handleMappingChange(ecId, column);
-      });
-      
+      setColumnMapping(mapping);
       // Afficher un message de succès
       setSuccessMessage("Correspondance chargée avec succès");
       setTimeout(() => {
@@ -273,73 +284,67 @@ export const ReleveGenerator: React.FC = () => {
   }, [currentConfig, currentSemester, columnMapping]);
 
   const handlePreviewReleve = useCallback(async () => {
-    if (!currentConfig || !currentSemester) {
-      setError("Veuillez sélectionner une configuration et un semestre");
+  if (!currentConfig || !currentSemester) {
+    setError("Veuillez sélectionner une configuration et un semestre");
+    return;
+  }
+
+  if (excelData.length === 0) {
+    setError("Veuillez charger des données");
+    return;
+  }
+
+  if (!mappingComplete) {
+    setError("Veuillez compléter la correspondance des colonnes avant de prévisualiser");
+    setActiveTab("mapping");
+    return;
+  }
+
+  try {
+    const student = prepareStudentData(excelData[0]);
+    if (!student) {
+      setError("Erreur lors de la préparation des données");
       return;
     }
-  
-    if (excelData.length === 0) {
-      setError("Veuillez charger des données");
+
+    console.log("Données étudiant préparées:", student);
+    console.log("Paramètres:", settings);
+
+    setPreviewStudent(student);
+    
+    // Vérifier si le renderer HTML est disponible
+    if (!window.transcriptRenderer) {
+      setError("Impossible de communiquer avec le processus de rendu HTML");
+      console.error("Transcript renderer n'est pas disponible. Êtes-vous dans un environnement non-Electron ?");
       return;
     }
-  
-    if (!mappingComplete) {
-      setError("Veuillez compléter la correspondance des colonnes avant de prévisualiser");
-      setActiveTab("mapping");
-      return;
-    }
-  
+    
     try {
-      const student = prepareStudentData(excelData[0]);
-      if (!student) {
-        setError("Erreur lors de la préparation des données");
-        return;
-      }
-  
-      console.log("Prepared student data:", student);
-      console.log("Settings:", settings);
-  
-      setPreviewStudent(student);
+      // Générer le HTML
+      const htmlContent = await window.transcriptRenderer.renderHTML({ student, settings });
+      console.log("Contenu HTML reçu:", htmlContent ? "Oui" : "Non", "Longueur:", htmlContent?.length);
       
-      // Vérifier si le renderer HTML est disponible
-      if (!window.transcriptRenderer) {
-        setError("Impossible de communiquer avec le processus de rendu HTML");
-        console.error("Transcript renderer is not available. Are you running in a non-Electron environment?");
-        return;
+      if (!htmlContent) {
+        throw new Error("Aucun contenu HTML reçu");
       }
       
-      try {
-        // Appeler la fonction de rendu HTML au lieu de générer un PDF
-        const htmlContent = await window.transcriptRenderer.renderHTML({ student, settings });
-        console.log("Received HTML content:", htmlContent ? "Yes" : "No", "Length:", htmlContent?.length);
-        
-        if (!htmlContent) {
-          throw new Error("No HTML content received");
-        }
-        
-        // Créer un Blob HTML et générer une URL
-        const blob = new Blob([htmlContent], { type: "text/html" });
-        console.log("Created blob:", blob.size, "bytes");
-        
-        if (previewContentUrl) {
-          URL.revokeObjectURL(previewContentUrl);
-        }
-        
-        const url = URL.createObjectURL(blob);
-        console.log("URL créée:", url);
-        
-        setPreviewContentUrl(url);
-        setActiveTab("preview");
-        setError(null);
-      } catch (err) {
-        console.error("Error during HTML rendering:", err);
-        setError(`Erreur de communication avec le processus de rendu: ${err.message || 'Erreur inconnue'}`);
+      // Utiliser l'API IPC pour ouvrir une nouvelle fenêtre avec le contenu HTML
+      const success = await window.ipcRenderer.invoke('show-preview', htmlContent, 'Prévisualisation du relevé');
+      
+      if (!success) {
+        throw new Error("Impossible d'ouvrir la fenêtre de prévisualisation");
       }
-    } catch (error) {
-      console.error('Preview error:', error);
-      setError(`Erreur lors de la génération de l'aperçu: ${error.message || 'Erreur inconnue'}`);
+      
+      setError(null);
+    } catch (err) {
+      console.error("Erreur pendant le rendu HTML:", err);
+      setError(`Erreur de communication avec le processus de rendu: ${err.message || 'Erreur inconnue'}`);
     }
-  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, previewContentUrl, settings]);
+  } catch (error) {
+    console.error('Erreur de prévisualisation:', error);
+    setError(`Erreur lors de la génération de la prévisualisation: ${error.message || 'Erreur inconnue'}`);
+  }
+}, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, settings]);
   
   const handleGenerateAll = useCallback(async () => {
     if (!currentConfig || !currentSemester) {
@@ -397,14 +402,14 @@ export const ReleveGenerator: React.FC = () => {
 
   // Fonction pour vérifier si les boutons doivent être activés
   const areButtonsEnabled = useCallback(() => {
-    return (
-      !processingState.isLoading && 
-      selectedConfigId && 
-      selectedSemesterId && 
-      mappingComplete && 
-      excelData.length > 0
-    );
-  }, [processingState.isLoading, selectedConfigId, selectedSemesterId, mappingComplete, excelData.length]);
+  return (
+    !processingState.isLoading && 
+    selectedConfigId && 
+    selectedSemesterId && 
+    mappingComplete && 
+    excelData.length > 0
+  );
+}, [processingState.isLoading, selectedConfigId, selectedSemesterId, mappingComplete, excelData.length]); 
 
   return (
     <div className="container mx-auto">

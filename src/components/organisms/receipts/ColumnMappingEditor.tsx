@@ -1,3 +1,4 @@
+// Fixed ColumnMappingEditor.tsx with improved update handling
 import React, { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -55,19 +56,24 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
   const [loadSuccess, setLoadSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // State to track if initial setup is complete
+  const [initialSetupComplete, setInitialSetupComplete] = useState(false);
+
   // Filtrer les mappings disponibles pour la configuration et le semestre actuel
   const availableMappings = savedMappings.filter(
     m => m.configId === selectedConfigId && m.semesterId === selectedSemesterId
   );
 
-  // Pour forcer une mise à jour après le mapping initial
+  // Pour faire l'initialisation sans créer une boucle infinie
   useEffect(() => {
-    const availableECs = getAvailableECs();
-    
-    // Si des ECs sont disponibles mais qu'aucun mapping n'existe pour eux,
-    // initialiser le mapping avec des valeurs vides
-    if (availableECs.length > 0) {
+    // Ne faire cette initialisation qu'une seule fois par changement de config/semestre
+    if (!initialSetupComplete && selectedConfigId && selectedSemesterId) {
+      const availableECs = getAvailableECs();
+      
+      // Si des ECs sont disponibles mais qu'aucun mapping n'existe pour eux,
+      // initialiser une fois avec des valeurs vides sans créer de boucle
       let needsUpdate = false;
+      
       availableECs.forEach(ec => {
         if (columnMapping[ec.id] === undefined) {
           onMappingChange(ec.id, "null");
@@ -76,11 +82,17 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
       });
       
       if (needsUpdate) {
-        // Forcer une mise à jour de l'interface
         console.log("Initializing column mapping for all ECs");
       }
+      
+      setInitialSetupComplete(true);
     }
-  }, [selectedConfigId, selectedSemesterId, getAvailableECs, columnMapping, onMappingChange]);
+  }, [selectedConfigId, selectedSemesterId, getAvailableECs, columnMapping, onMappingChange, initialSetupComplete]);
+
+  // Reset initialSetupComplete when config or semester changes
+  useEffect(() => {
+    setInitialSetupComplete(false);
+  }, [selectedConfigId, selectedSemesterId]);
 
   // Fonction pour sauvegarder le mapping actuel
   const saveCurrentMapping = () => {
@@ -154,6 +166,7 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
         onLoadMapping(savedMapping.mapping);
       } else {
         // Si onLoadMapping n'est pas fourni, appliquer le mapping manuellement
+        // Cette approche est plus lente mais nécessaire sans onLoadMapping
         Object.entries(savedMapping.mapping).forEach(([ecId, col]) => {
           onMappingChange(ecId, col);
         });

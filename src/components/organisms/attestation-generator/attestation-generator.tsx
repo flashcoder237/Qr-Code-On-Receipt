@@ -294,7 +294,7 @@ export const AttestationGenerator = () => {
                 </div>
               )}
 
-              {/* Positionnement du QR Code */}
+              {/* Positionnement du QR Code
               <div className="space-y-2">
                 <Label>Position du QR Code</Label>
                 <A4PositionPicker 
@@ -302,7 +302,7 @@ export const AttestationGenerator = () => {
                   orientation="portrait"
                   onChange={setPosition} 
                 />
-              </div>
+              </div> */}
 
               {/* Bouton de génération */}
               <div className="flex justify-end">

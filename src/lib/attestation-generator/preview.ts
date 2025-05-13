@@ -93,23 +93,40 @@ export async function openAttestationPreview(
   options: PreviewOptions = {}
 ): Promise<boolean> {
   try {
-    const html = await previewAttestation(student, settings, options);
-    if (!html) {
-      throw new Error("Impossible de générer la prévisualisation HTML");
+    // Générer le HTML de l'attestation
+    let htmlContent: string | null = null;
+    
+    // Utiliser le renderer d'attestations si disponible (Electron)
+    if (window.attestationRenderer) {
+      htmlContent = await window.attestationRenderer.renderHTML({
+        student,
+        settings,
+        options: {
+          ...options,
+          qrCodeImage: options.qrCodeImage
+        }
+      });
+    } else {
+      // Fallback au cas où le renderer n'est pas disponible
+      htmlContent = await generateAttestationHTML(student, settings, {
+        qrCodeImage: options.qrCodeImage,
+        qrCodePosition: options.qrCodePosition
+      });
     }
     
-    // Ouvrir dans une nouvelle fenêtre
-    const previewWindow = window.open('', '_blank');
-    if (!previewWindow) {
-      throw new Error("Impossible d'ouvrir la fenêtre de prévisualisation");
+    if (!htmlContent) {
+      throw new Error("Impossible de générer le HTML de l'attestation");
     }
     
-    previewWindow.document.write(html);
-    previewWindow.document.close();
-    
-    return true;
+    // Utiliser l'API IPC pour ouvrir une nouvelle fenêtre avec le contenu HTML
+    if (window.ipcRenderer) {
+      const success = await window.ipcRenderer.invoke('show-preview', htmlContent, 'Prévisualisation de l\'attestation');
+      return success;
+    } else {
+      throw new Error("L'API IPC n'est pas disponible");
+    }
   } catch (error) {
-    console.error("Erreur lors de l'ouverture de la prévisualisation:", error);
+    console.error("Erreur lors de l'ouverture de la prévisualisation de l'attestation:", error);
     return false;
   }
 }
