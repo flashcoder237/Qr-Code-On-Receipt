@@ -14,12 +14,11 @@ import {
   Printer,
   ArrowLeft,
 } from "lucide-react";
-import { StudentRecord } from "./types";
+import { StudentRecord } from "../../../types/student";
 
 interface TranscriptPreviewProps {
   previewStudent: StudentRecord | null;
-  previewContentUrl: string | null;  // Renommé
-  previewContentType: "pdf" | "html"; // Nouveau
+  previewContentUrl: string | null;
   isLoading: boolean;
   onBack: () => void;
   onGenerateAll: () => void;
@@ -29,7 +28,6 @@ interface TranscriptPreviewProps {
 export const TranscriptPreview: React.FC<TranscriptPreviewProps> = ({
   previewStudent,
   previewContentUrl,
-  previewContentType,
   isLoading,
   onBack,
   onGenerateAll,
@@ -41,9 +39,9 @@ export const TranscriptPreview: React.FC<TranscriptPreviewProps> = ({
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
-    // Log when previewContentUrl  changes
-    console.log("Preview URL updated:", previewContentUrl );
-  }, [previewContentUrl ]);
+    // Log when previewContentUrl changes
+    console.log("Preview URL updated:", previewContentUrl);
+  }, [previewContentUrl]);
 
   const handleZoomIn = () => {
     setZoom((prev) => Math.min(prev + 25, 200));
@@ -60,8 +58,8 @@ export const TranscriptPreview: React.FC<TranscriptPreviewProps> = ({
   const handlePrint = () => {
     if (onPrint) {
       onPrint();
-    } else if (previewContentUrl ) {
-      const printWindow = window.open(previewContentUrl );
+    } else if (previewContentUrl) {
+      const printWindow = window.open(previewContentUrl);
       printWindow?.print();
     }
   };
@@ -183,57 +181,57 @@ export const TranscriptPreview: React.FC<TranscriptPreviewProps> = ({
 
             {/* PDF Preview */}
             <div className="flex-1 relative min-h-[800px] bg-gray-100 rounded-lg overflow-hidden">
-        <AnimatePresence mode="wait">
-          {isLoading ? (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 flex items-center justify-center"
-            >
-              <div className="text-center space-y-4">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
-                <p className="text-sm text-gray-600">
-                  Chargement de l'aperçu...
-                </p>
-              </div>
-            </motion.div>
-          ) : previewContentUrl  ? (
-            <motion.div
-              key="html"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="w-full h-full"
-              style={{
-                transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
-                transformOrigin: "center center",
-              }}
-            >
-              {/* Utiliser un iframe pour afficher le HTML au lieu d'un object PDF */}
-              <iframe
-                src={previewContentUrl }
-                className="w-full h-full border-0"
-                style={{ backgroundColor: 'white' }}
-                title="Aperçu du relevé"
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="error"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 flex items-center justify-center"
-            >
-              <p className="text-gray-500">
-                Aucun aperçu disponible
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+              <AnimatePresence mode="wait">
+                {isLoading ? (
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    <div className="text-center space-y-4">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
+                      <p className="text-sm text-gray-600">
+                        Chargement de l'aperçu...
+                      </p>
+                    </div>
+                  </motion.div>
+                ) : previewContentUrl ? (
+                  <motion.div
+                    key="html"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="w-full h-full"
+                    style={{
+                      transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
+                      transformOrigin: "center center",
+                    }}
+                  >
+                    {/* Utiliser un iframe pour afficher le HTML au lieu d'un object PDF */}
+                    <iframe
+                      src={previewContentUrl}
+                      className="w-full h-full border-0"
+                      style={{ backgroundColor: 'white' }}
+                      title="Aperçu du relevé"
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="error"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    <p className="text-gray-500">
+                      Aucun aperçu disponible
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </CardContent>
 

@@ -44,13 +44,14 @@ export const ReleveGenerator: React.FC = () => {
   const [configs, setConfigs] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [previewContentUrl, setPreviewContentUrl] = useState<string | null>(null);
-  const [previewContentType, setPreviewContentType] = useState<"pdf" | "html">("html");
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Load settings from localStorage
   const [settings] = useLocalStorage<TranscriptSettings>("settings", {
     nameFrench: "",
     nameEnglish: "",
     postalBox: "",
+    postalBoxEn: "",
     email: "",
     logo: "",
     universityLogo: "",
@@ -88,6 +89,7 @@ export const ReleveGenerator: React.FC = () => {
     handleSemesterChange,
     handleMappingChange,
     updateAvailableSemesters,
+    setColumnMapping // Utilisé pour charger un mapping existant
   } = useConfiguration({
     onConfigChange: (configId) => {
       const config = configs.find(c => c.id === configId);
@@ -102,7 +104,7 @@ export const ReleveGenerator: React.FC = () => {
       setPreviewStudent(null);
       if (previewContentUrl) {
         URL.revokeObjectURL(previewContentUrl);
-        setpreviewContentUrl(null);
+        setPreviewContentUrl(null);
       }
       setError(null);
     },
@@ -111,7 +113,7 @@ export const ReleveGenerator: React.FC = () => {
       setPreviewStudent(null);
       if (previewContentUrl) {
         URL.revokeObjectURL(previewContentUrl);
-        setpreviewContentUrl(null);
+        setPreviewContentUrl(null);
       }
       setError(null);
     }
@@ -164,6 +166,16 @@ export const ReleveGenerator: React.FC = () => {
     const complete = availableECs.length > 0 && availableECs.every(ec => columnMapping[ec.id]);
     setMappingStatus(complete);
   }, [getAvailableECs, columnMapping, setMappingStatus]);
+
+  // Fonction pour charger un mapping complet
+  const handleLoadMapping = useCallback((mapping: Record<string, string>) => {
+    // Remplacer entièrement le mapping actuel
+    setColumnMapping(mapping);
+    
+    // Afficher un message de succès
+    setSuccessMessage("Correspondance chargée avec succès");
+    setTimeout(() => setSuccessMessage(null), 3000);
+  }, [setColumnMapping]);
 
   // Prepare student data for PDF generation
   const prepareStudentData = useCallback((rawStudent: any): StudentRecord => {
@@ -290,8 +302,6 @@ export const ReleveGenerator: React.FC = () => {
         
         const url = URL.createObjectURL(blob);
         console.log("URL créée:", url);
-
-        setPreviewContentType("html");
         
         setPreviewContentUrl(url);
         setActiveTab("preview");
@@ -304,7 +314,7 @@ export const ReleveGenerator: React.FC = () => {
       console.error('Preview error:', error);
       setError(`Erreur lors de la génération de l'aperçu: ${error.message || 'Erreur inconnue'}`);
     }
-  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, previewContentUrl, settings, setActiveTab]);
+  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, previewContentUrl, settings]);
   
   const handleGenerateAll = useCallback(async () => {
     if (!currentConfig || !currentSemester) {
@@ -345,16 +355,31 @@ export const ReleveGenerator: React.FC = () => {
       
       URL.revokeObjectURL(url);
       setError(null);
+      
+      // Afficher un message de succès
+      setSuccessMessage(`${results.size} relevé(s) généré(s) avec succès`);
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (error) {
       console.error('Generation error:', error);
       setError("Erreur lors de la génération des relevés");
     }
-  }, [selectedSemesterId, excelData, mappingComplete, prepareStudentData, processBatch, generateZipFile, settings]);
+  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, processBatch, generateZipFile, settings]);
 
   // Keyboard shortcuts
   useHotkeys('ctrl+p', handlePreviewReleve, [handlePreviewReleve]);
   useHotkeys('ctrl+g', handleGenerateAll, [handleGenerateAll]);
   useHotkeys('esc', () => setActiveTab("configuration"), []);
+
+  // Fonction pour vérifier si les boutons doivent être activés
+  const areButtonsEnabled = useCallback(() => {
+    return (
+      !processingState.isLoading && 
+      selectedConfigId && 
+      selectedSemesterId && 
+      mappingComplete && 
+      excelData.length > 0
+    );
+  }, [processingState.isLoading, selectedConfigId, selectedSemesterId, mappingComplete, excelData.length]);
 
   return (
     <div className="container mx-auto">
@@ -412,11 +437,11 @@ export const ReleveGenerator: React.FC = () => {
                     </Alert>
                   )}
 
-                  {processingState.successMessage && (
+                  {(successMessage || processingState.successMessage) && (
                     <Alert variant="default" className="bg-green-50 border-green-300">
                       <CheckCircle className="h-4 w-4 text-green-500" />
                       <AlertDescription className="text-green-700">
-                        {processingState.successMessage}
+                        {successMessage || processingState.successMessage}
                       </AlertDescription>
                     </Alert>
                   )}
@@ -452,7 +477,7 @@ export const ReleveGenerator: React.FC = () => {
                         <Button 
                           onClick={handlePreviewReleve}
                           variant="secondary"
-                          disabled={processingState.isLoading || !selectedConfigId || !selectedSemesterId || !mappingComplete}
+                          disabled={!areButtonsEnabled()}
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           Prévisualiser
@@ -460,7 +485,7 @@ export const ReleveGenerator: React.FC = () => {
 
                         <Button
                           onClick={handleGenerateAll}
-                          disabled={processingState.isLoading || !selectedConfigId || !selectedSemesterId || !mappingComplete}
+                          disabled={!areButtonsEnabled()}
                         >
                           <Download className="mr-2 h-4 w-4" />
                           Générer tous les relevés
@@ -480,10 +505,12 @@ export const ReleveGenerator: React.FC = () => {
                 <CardContent>
                   <ColumnMappingEditor
                     selectedConfigId={selectedConfigId}
+                    selectedSemesterId={selectedSemesterId}
                     excelColumns={excelColumns}
                     columnMapping={columnMapping}
                     getAvailableECs={getAvailableECs}
                     onMappingChange={handleMappingChange}
+                    onLoadMapping={handleLoadMapping}
                   />
                 </CardContent>
               </Card>

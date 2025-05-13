@@ -1,3 +1,5 @@
+// useConfiguration.ts modifié
+
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 /**
@@ -103,27 +105,27 @@ export const useConfiguration = (options: UseConfigurationOptions = {}): UseConf
       // Ne mettre à jour les semestres disponibles que lors du chargement initial
       // ou lorsque le localStorage change, mais pas à chaque fois que selectedConfigId change
       if (currentConfigsStr !== newConfigsStr) {
-      // Mettre à jour seulement si nécessaire
-      configsRef.current = parsedConfigs;
-      setConfigs(parsedConfigs);
-      if (isInitialLoad.current && selectedConfigId) {
-        const config = parsedConfigs.find((c) => c.id === selectedConfigId);
-        if (config) {
-          setAvailableSemesters(
-            config.semesters.map((sem) => ({
-              id: sem.id,
-              name: sem.name,
-            }))
-          );
+        // Mettre à jour seulement si nécessaire
+        configsRef.current = parsedConfigs;
+        setConfigs(parsedConfigs);
+        if (isInitialLoad.current && selectedConfigId) {
+          const config = parsedConfigs.find((c) => c.id === selectedConfigId);
+          if (config) {
+            setAvailableSemesters(
+              config.semesters.map((sem) => ({
+                id: sem.id,
+                name: sem.name,
+              }))
+            );
+          }
+          isInitialLoad.current = false;
         }
-        isInitialLoad.current = false;
       }
-    }
       
     } catch (error) {
       console.error(`Erreur lors du chargement des configurations: ${error instanceof Error ? error.message : String(error)}`);
     }
-  }, [selectedConfigId]); // Supprimé selectedConfigId de la dépendance
+  }, []); // Supprimé selectedConfigId de la dépendance
 
   /**
    * Met à jour le cache avec les nouvelles valeurs
@@ -181,21 +183,30 @@ export const useConfiguration = (options: UseConfigurationOptions = {}): UseConf
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [loadConfigs]);
+  }, [loadConfigs, loadCache]);
 
-   useEffect(() => {
-  if (selectedConfigId && configs.length > 0) {
-    const config = configs.find(c => c.id === selectedConfigId);
-    if (config) {
-      setAvailableSemesters(
-        config.semesters.map(sem => ({
-          id: sem.id,
-          name: sem.name
-        }))
-      );
+  // Cet effet s'exécute lorsque selectedConfigId ou configs changent
+  // et met à jour les semestres disponibles
+  useEffect(() => {
+    if (selectedConfigId && configs.length > 0) {
+      const config = configs.find(c => c.id === selectedConfigId);
+      if (config) {
+        setAvailableSemesters(
+          config.semesters.map(sem => ({
+            id: sem.id,
+            name: sem.name
+          }))
+        );
+        
+        // Si des semestres sont disponibles mais qu'aucun n'est sélectionné,
+        // sélectionner automatiquement le premier
+        if (config.semesters.length > 0 && !selectedSemesterId) {
+          handleSemesterChange(config.semesters[0].id);
+        }
+      }
     }
-  }
-}, [selectedConfigId, configs]);
+  }, [selectedConfigId, configs]);
+
   // Handlers
   /**
    * Gère le changement de configuration
@@ -203,30 +214,26 @@ export const useConfiguration = (options: UseConfigurationOptions = {}): UseConf
   const handleConfigChange = useCallback((configId: string) => {
     setSelectedConfigId(configId);
     updateCache({ lastConfigId: configId });
-
-    // Mettre à jour les semestres disponibles
-    const config = configs.find(c => c.id === configId);
-    if (config) {
-      const semesters = config.semesters.map((sem) => ({
-        id: sem.id,
-        name: sem.name,
-      }));
-      setAvailableSemesters(semesters);
-    } else {
-      // Réinitialiser les semestres si la configuration n'existe pas
-      setAvailableSemesters([]);
-    }
+    
+    // Réinitialiser la sélection de semestre pour éviter les références à des semestres
+    // qui n'existent pas dans la nouvelle configuration
+    setSelectedSemesterId(null);
 
     options.onConfigChange?.(configId);
-  }, [configs, updateCache, options]);
+  }, [updateCache, options]);
 
   /**
    * Gère le changement de semestre
    */
   const handleSemesterChange = useCallback((semesterId: string) => {
-    setSelectedSemesterId(semesterId);
-    updateCache({ lastSemesterId: semesterId });
-    options.onSemesterChange?.(semesterId);
+    if (!semesterId || semesterId === "null") {
+      setSelectedSemesterId(null);
+      updateCache({ lastSemesterId: null });
+    } else {
+      setSelectedSemesterId(semesterId);
+      updateCache({ lastSemesterId: semesterId });
+      options.onSemesterChange?.(semesterId);
+    }
   }, [updateCache, options]);
 
   /**
@@ -245,7 +252,13 @@ export const useConfiguration = (options: UseConfigurationOptions = {}): UseConf
    */
   const updateAvailableSemesters = useCallback((semesters: Array<{ id: string; name: string }>) => {
     setAvailableSemesters(semesters);
-  }, []);
+    
+    // Si des semestres sont disponibles mais qu'aucun n'est sélectionné,
+    // sélectionner automatiquement le premier
+    if (semesters.length > 0 && !selectedSemesterId) {
+      handleSemesterChange(semesters[0].id);
+    }
+  }, [selectedSemesterId, handleSemesterChange]);
 
   /**
    * Réinitialise toute la configuration
@@ -260,11 +273,6 @@ export const useConfiguration = (options: UseConfigurationOptions = {}): UseConf
       console.error(`Erreur lors de la réinitialisation de la configuration: ${error instanceof Error ? error.message : String(error)}`);
     }
   }, []);
-
-  // Memoïsation de la configuration sélectionnée
-  const selectedConfig = useMemo(() => {
-    return configs.find(c => c.id === selectedConfigId) || null;
-  }, [configs, selectedConfigId]);
 
   return {
     configs,
