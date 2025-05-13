@@ -36,5 +36,8 @@ interface Window {
   transcriptRenderer: {
     renderHTML(params: any): Promise<string>;
   };
+  attestationRenderer: {
+      renderHTML(params: any): Promise<string>;
+    };
   initMockIpc?: () => void;
 }

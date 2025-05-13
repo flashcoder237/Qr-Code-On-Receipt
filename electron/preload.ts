@@ -1,5 +1,4 @@
-// electron/preload.ts - Enhanced version with IPC setup and error handling
-
+// src/electron/preload.ts - Mise à jour pour inclure les gestionnaires d'attestation
 import { ipcRenderer, contextBridge } from 'electron';
 
 // --------- Expose some API to the Renderer process ---------
@@ -49,6 +48,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   }
 });
 
+// Extension pour le rendu des relevés de notes
 contextBridge.exposeInMainWorld('transcriptRenderer', {
   async renderHTML(params: any) {
     try {
@@ -60,6 +60,17 @@ contextBridge.exposeInMainWorld('transcriptRenderer', {
   }
 });
 
+// Nouvelle extension pour le rendu des attestations
+contextBridge.exposeInMainWorld('attestationRenderer', {
+  async renderHTML(params: any) {
+    try {
+      return await ipcRenderer.invoke('render-attestation-html', params);
+    } catch (err) {
+      console.error('Error rendering attestation HTML:', err);
+      throw err;
+    }
+  }
+});
 
 // Add the file system API
 contextBridge.exposeInMainWorld('fs', {
@@ -77,4 +88,3 @@ contextBridge.exposeInMainWorld('fs', {
 window.addEventListener('DOMContentLoaded', () => {
   console.log('Preload script loaded successfully');
 });
-

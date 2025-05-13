@@ -1,4 +1,3 @@
-// src/components/organisms/attestation-generator/attestation-generator.tsx
 import React, { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -14,17 +13,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { generateQrCode, StudentExcelRecord } from "@/lib/helpers/qrcode";
-import { generateAttestationPDF } from "@/lib/attestation-generator/generator";
-import { calculateGrade, calculateMention, getCurrentAcademicYear } from "@/lib/attestation-generator/utils";
 import JSZip from "jszip";
 import * as XLSX from "xlsx";
 import { useLocalStorage } from "usehooks-ts";
 import { A4PositionPicker } from "../a4-position-picker";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// Correction de l'importation
 import { AttestationSettings } from "./AttestationSettings";
+import { AttestationPreviewButton } from "./AttestationPreviewButton";
 import { FileDown, Loader2, Settings2, Table2 } from "lucide-react";
+import { calculateGrade, calculateMention, getCurrentAcademicYear } from "@/lib/attestation-generator/utils";
+import { openAttestationPreview } from "@/lib/attestation-generator/preview";
 
 export const AttestationGenerator = () => {
   const [activeTab, setActiveTab] = useState<"generator" | "settings">("generator");
@@ -150,17 +149,20 @@ export const AttestationGenerator = () => {
 
       for (const student of excelData) {
         try {
-          // Générer le QR Code
-          const qrCodeImage = await generateQrCode(student, "attestation");
-          
-          // Générer le PDF de l'attestation
-          const pdfBytes = await generateAttestationPDF(student, schoolSettings, {
-            qrCodeImage,
-            qrCodePosition: {
-              x: position.x,
-              y: position.y,
+          // Utiliser la nouvelle méthode de génération HTML-to-PDF via IPC
+          const params = {
+            student,
+            settings: schoolSettings,
+            options: {
+              qrCodePosition: {
+                x: position.x,
+                y: position.y,
+              }
             }
-          });
+          };
+          
+          // Invoquer la fonction IPC pour générer le PDF (nouveau système)
+          const pdfBytes = await window.ipcRenderer.invoke('generate-attestation-pdf', params);
           
           // Ajouter le PDF au ZIP
           const fileName = `${student.MATRICULE}_Attestation.pdf`;
@@ -204,6 +206,31 @@ export const AttestationGenerator = () => {
       } catch (error) {
         console.error("Erreur lors du chargement des paramètres:", error);
       }
+    }
+  };
+
+  // Fonction pour prévisualiser une attestation individuelle
+  const previewAttestation = async (student: StudentExcelRecord) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Utiliser la fonction de prévisualisation depuis le module
+      const success = await openAttestationPreview(
+        student, 
+        schoolSettings, 
+        { qrCodePosition: position }
+      );
+      
+      if (!success) {
+        setError("Impossible d'ouvrir la fenêtre de prévisualisation. Veuillez vérifier vos paramètres de bloqueur de popups.");
+      }
+      
+    } catch (err) {
+      console.error("Erreur lors de la prévisualisation", err);
+      setError("Une erreur est survenue lors de la prévisualisation de l'attestation");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -318,6 +345,7 @@ export const AttestationGenerator = () => {
                         <TableHead>Moyenne</TableHead>
                         <TableHead>Grade</TableHead>
                         <TableHead>Mention</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -334,6 +362,15 @@ export const AttestationGenerator = () => {
                           </TableCell>
                           <TableCell>{student.GRADE}</TableCell>
                           <TableCell>{student.MENTION}</TableCell>
+                          <TableCell>
+                            <AttestationPreviewButton
+                              student={student}
+                              schoolSettings={schoolSettings}
+                              qrCodePosition={position}
+                              onError={setError}
+                              disabled={isLoading}
+                            />
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

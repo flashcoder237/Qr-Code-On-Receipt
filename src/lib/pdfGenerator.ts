@@ -7,6 +7,9 @@ import QRCode from 'qrcode';
 import { getCompleteTheme } from './form-schemas/settings';
 import { ThemeSettingsPayload } from './form-schemas/theme-settings';
 
+// Importer directement depuis html-to-pdf.ts
+import { generateAttestationPDF } from './attestation-generator/html-to-pdf';
+
 interface TranscriptSettingsPayload {
   nameFrench: string;
   nameEnglish: string;
@@ -848,6 +851,27 @@ export function setupPDFGenerationHandlers() {
       return await generateTranscriptPDF(params);
     } catch (error) {
       console.error('Error generating PDF:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('render-attestation-html', async (_, params) => {
+    try {
+      // Importer dynamiquement pour éviter les problèmes de dépendances circulaires
+      const { generateAttestationHTML } = require('./attestation-generator/html-generator');
+      const html = await generateAttestationHTML(params.student, params.settings, params.options);
+      return html;
+    } catch (error) {
+      console.error('Error generating attestation HTML:', error);
+      throw error;
+    }
+  });
+  
+  ipcMain.handle('generate-attestation-pdf', async (_, params) => {
+    try {
+      return await generateAttestationPDF(params.student, params.settings, params.options);
+    } catch (error) {
+      console.error('Error generating attestation PDF:', error);
       throw error;
     }
   });

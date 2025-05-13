@@ -1,3 +1,4 @@
+// src/electron/main.ts - Mise à jour pour inclure les gestionnaires d'attestation
 import { app, BrowserWindow, ipcMain } from "electron";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -92,6 +93,7 @@ app.on("activate", () => {
 });
 
 app.whenReady().then(() => {
+  // Configurer les gestionnaires PDF pour les relevés ET les attestations
   setupPDFGenerationHandlers();
   createWindow();
 });
