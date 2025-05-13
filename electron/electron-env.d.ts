@@ -33,5 +33,8 @@ interface Window {
   fs: {
     readFile(path: string, options?: { encoding?: string }): Promise<any>;
   };
+  transcriptRenderer: {
+    renderHTML(params: any): Promise<string>;
+  };
   initMockIpc?: () => void;
 }

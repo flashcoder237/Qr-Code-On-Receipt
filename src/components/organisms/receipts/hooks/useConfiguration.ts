@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 /**
  * Clé utilisée pour stocker les configurations dans le localStorage
@@ -83,6 +83,10 @@ export const useConfiguration = (options: UseConfigurationOptions = {}): UseConf
   const [availableSemesters, setAvailableSemesters] = useState<Array<{ id: string; name: string }>>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [configs, setConfigs] = useState<AcademicConfig[]>([]);
+  const configsRef = useRef<AcademicConfig[]>([]);
+  
+  // Référence pour éviter les boucles infinies
+  const isInitialLoad = useRef(true);
 
   /**
    * Charge les configurations depuis le localStorage
@@ -93,10 +97,16 @@ export const useConfiguration = (options: UseConfigurationOptions = {}): UseConf
       if (!stored) return;
 
       const parsedConfigs = JSON.parse(stored) as AcademicConfig[];
+      const currentConfigsStr = JSON.stringify(configsRef.current);
+      const newConfigsStr = JSON.stringify(parsedConfigs);
+      
+      // Ne mettre à jour les semestres disponibles que lors du chargement initial
+      // ou lorsque le localStorage change, mais pas à chaque fois que selectedConfigId change
+      if (currentConfigsStr !== newConfigsStr) {
+      // Mettre à jour seulement si nécessaire
+      configsRef.current = parsedConfigs;
       setConfigs(parsedConfigs);
-
-      // Mettre à jour les semestres disponibles si une configuration est sélectionnée
-      if (selectedConfigId) {
+      if (isInitialLoad.current && selectedConfigId) {
         const config = parsedConfigs.find((c) => c.id === selectedConfigId);
         if (config) {
           setAvailableSemesters(
@@ -106,11 +116,14 @@ export const useConfiguration = (options: UseConfigurationOptions = {}): UseConf
             }))
           );
         }
+        isInitialLoad.current = false;
       }
+    }
+      
     } catch (error) {
       console.error(`Erreur lors du chargement des configurations: ${error instanceof Error ? error.message : String(error)}`);
     }
-  }, [selectedConfigId]);
+  }, [selectedConfigId]); // Supprimé selectedConfigId de la dépendance
 
   /**
    * Met à jour le cache avec les nouvelles valeurs
@@ -168,8 +181,21 @@ export const useConfiguration = (options: UseConfigurationOptions = {}): UseConf
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [loadConfigs, loadCache]);
+  }, [loadConfigs]);
 
+   useEffect(() => {
+  if (selectedConfigId && configs.length > 0) {
+    const config = configs.find(c => c.id === selectedConfigId);
+    if (config) {
+      setAvailableSemesters(
+        config.semesters.map(sem => ({
+          id: sem.id,
+          name: sem.name
+        }))
+      );
+    }
+  }
+}, [selectedConfigId, configs]);
   // Handlers
   /**
    * Gère le changement de configuration

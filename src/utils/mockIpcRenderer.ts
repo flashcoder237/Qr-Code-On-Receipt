@@ -92,5 +92,64 @@ class MockInvocationError extends Error {
         console.log('[MOCK] Initializing mock fs');
         window.fs = mockFs;
       }
+      
+      if (!window.transcriptRenderer) {
+        console.log('[MOCK] Initializing mock transcript renderer');
+        window.transcriptRenderer = mockTranscriptRenderer;
+      }
     }
   }
+
+  export const mockTranscriptRenderer = {
+    async renderHTML(params: any) {
+      console.log('[MOCK] Rendering HTML with params:', params);
+      
+      // Simuler un délai et retourner un HTML de base
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      return `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body { font-family: Arial; margin: 20px; }
+              .header { text-align: center; margin-bottom: 20px; }
+              .student-info { margin-bottom: 20px; }
+              table { width: 100%; border-collapse: collapse; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background-color: #f2f2f2; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>Relevé de Notes</h1>
+              <p>Université de Douala</p>
+            </div>
+            <div class="student-info">
+              <p><strong>Nom:</strong> ${params.student.NOM}</p>
+              <p><strong>Prénom:</strong> ${params.student.PRENOM}</p>
+              <p><strong>Matricule:</strong> ${params.student.MATRICULE}</p>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Unité d'Enseignement</th>
+                  <th>Note</th>
+                  <th>Crédit</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>UE1</td>
+                  <td>Exemple d'UE</td>
+                  <td>15/20</td>
+                  <td>5</td>
+                </tr>
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `;
+    }
+  };

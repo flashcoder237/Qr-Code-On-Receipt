@@ -41,9 +41,10 @@ export const ReleveGenerator: React.FC = () => {
   // State
   const [activeTab, setActiveTab] = useState("configuration");
   const [previewStudent, setPreviewStudent] = useState<StudentRecord | null>(null);
-  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [configs, setConfigs] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [previewContentUrl, setPreviewContentUrl] = useState<string | null>(null);
+  const [previewContentType, setPreviewContentType] = useState<"pdf" | "html">("html");
 
   // Load settings from localStorage
   const [settings] = useLocalStorage<TranscriptSettings>("settings", {
@@ -99,18 +100,18 @@ export const ReleveGenerator: React.FC = () => {
         );
       }
       setPreviewStudent(null);
-      if (previewPdfUrl) {
-        URL.revokeObjectURL(previewPdfUrl);
-        setPreviewPdfUrl(null);
+      if (previewContentUrl) {
+        URL.revokeObjectURL(previewContentUrl);
+        setpreviewContentUrl(null);
       }
       setError(null);
     },
     onSemesterChange: () => {
       // Reset preview when semester changes
       setPreviewStudent(null);
-      if (previewPdfUrl) {
-        URL.revokeObjectURL(previewPdfUrl);
-        setPreviewPdfUrl(null);
+      if (previewContentUrl) {
+        URL.revokeObjectURL(previewContentUrl);
+        setpreviewContentUrl(null);
       }
       setError(null);
     }
@@ -263,45 +264,47 @@ export const ReleveGenerator: React.FC = () => {
   
       setPreviewStudent(student);
       
-      // Check if IPC renderer is available before invoking
-      if (!window.ipcRenderer) {
-        setError("Impossible de communiquer avec le processus principal d'Electron");
-        console.error("IPC renderer is not available. Are you running in a non-Electron environment?");
+      // Vérifier si le renderer HTML est disponible
+      if (!window.transcriptRenderer) {
+        setError("Impossible de communiquer avec le processus de rendu HTML");
+        console.error("Transcript renderer is not available. Are you running in a non-Electron environment?");
         return;
       }
       
-      console.log("Calling generate-transcript-pdf with:", { student, settings });
-      
       try {
-        const pdfBytes = await window.ipcRenderer.invoke('generate-transcript-pdf', { student, settings });
-        console.log("Received PDF bytes:", pdfBytes ? "Yes" : "No", "Length:", pdfBytes?.length);
+        // Appeler la fonction de rendu HTML au lieu de générer un PDF
+        const htmlContent = await window.transcriptRenderer.renderHTML({ student, settings });
+        console.log("Received HTML content:", htmlContent ? "Yes" : "No", "Length:", htmlContent?.length);
         
-        if (!pdfBytes || pdfBytes.length === 0) {
-          throw new Error("No PDF data received");
+        if (!htmlContent) {
+          throw new Error("No HTML content received");
         }
         
-        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        // Créer un Blob HTML et générer une URL
+        const blob = new Blob([htmlContent], { type: "text/html" });
         console.log("Created blob:", blob.size, "bytes");
         
-        if (previewPdfUrl) {
-          URL.revokeObjectURL(previewPdfUrl);
+        if (previewContentUrl) {
+          URL.revokeObjectURL(previewContentUrl);
         }
         
         const url = URL.createObjectURL(blob);
-        console.log("Created PDF URL:", url);
+        console.log("URL créée:", url);
+
+        setPreviewContentType("html");
         
-        setPreviewPdfUrl(url);
+        setPreviewContentUrl(url);
         setActiveTab("preview");
         setError(null);
       } catch (err) {
-        console.error("Error during IPC invoke:", err);
-        setError(`Erreur de communication avec le processus principal: ${err.message || 'Erreur inconnue'}`);
+        console.error("Error during HTML rendering:", err);
+        setError(`Erreur de communication avec le processus de rendu: ${err.message || 'Erreur inconnue'}`);
       }
     } catch (error) {
       console.error('Preview error:', error);
       setError(`Erreur lors de la génération de l'aperçu: ${error.message || 'Erreur inconnue'}`);
     }
-  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, previewPdfUrl, settings, setActiveTab]);
+  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, previewContentUrl, settings, setActiveTab]);
   
   const handleGenerateAll = useCallback(async () => {
     if (!currentConfig || !currentSemester) {
@@ -361,7 +364,7 @@ export const ReleveGenerator: React.FC = () => {
           <TabsTrigger value="mapping" disabled={!selectedConfigId || !selectedSemesterId}>
             Correspondance
           </TabsTrigger>
-          <TabsTrigger value="preview" disabled={!previewPdfUrl}>
+          <TabsTrigger value="preview" disabled={!previewContentUrl}>
             Prévisualisation
           </TabsTrigger>
         </TabsList>
@@ -489,9 +492,9 @@ export const ReleveGenerator: React.FC = () => {
             <TabsContent value="preview">
               <TranscriptPreview
                 previewStudent={previewStudent}
-                previewPdfUrl={previewPdfUrl}
+                previewContentUrl={previewContentUrl}
                 isLoading={processingState.isLoading}
-                onBack={() => setActiveTab("mapping")}
+                onBack={() => setActiveTab("configuration")}
                 onGenerateAll={handleGenerateAll}
               />
             </TabsContent>

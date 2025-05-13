@@ -49,6 +49,18 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   }
 });
 
+contextBridge.exposeInMainWorld('transcriptRenderer', {
+  async renderHTML(params: any) {
+    try {
+      return await ipcRenderer.invoke('render-transcript-html', params);
+    } catch (err) {
+      console.error('Error rendering HTML:', err);
+      throw err;
+    }
+  }
+});
+
+
 // Add the file system API
 contextBridge.exposeInMainWorld('fs', {
   async readFile(filePath: string, options?: { encoding?: string }) {
@@ -65,3 +77,4 @@ contextBridge.exposeInMainWorld('fs', {
 window.addEventListener('DOMContentLoaded', () => {
   console.log('Preload script loaded successfully');
 });
+

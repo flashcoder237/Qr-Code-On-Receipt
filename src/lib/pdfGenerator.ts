@@ -833,6 +833,16 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
 
 export function setupPDFGenerationHandlers() {
   // Set up IPC handler for PDF generation
+  ipcMain.handle('render-transcript-html', async (_, params) => {
+    try {
+      const html = await createTranscriptHTML(params);
+      return html;
+    } catch (error) {
+      console.error('Error generating HTML:', error);
+      throw error;
+    }
+  });
+  
   ipcMain.handle('generate-transcript-pdf', async (_, params: GeneratePDFParams) => {
     try {
       return await generateTranscriptPDF(params);
