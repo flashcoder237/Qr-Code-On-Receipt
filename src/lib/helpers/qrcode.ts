@@ -1,3 +1,4 @@
+// Modification de src/lib/helpers/qrcode.ts
 import QRCode from "qrcode";
 
 export type StudentExcelRecord = {
@@ -68,7 +69,7 @@ Site Web: https://fmsp-udo.cm`;
 
 export async function generateQrCode(
   payload: StudentExcelRecord,
-  documentType: "releve" | "attestation" | "diplome"
+  documentType: "releve" | "attestation" | "diplome" = "releve"
 ) {
   const qrCodeDataURL = await QRCode.toDataURL(
     getQrCodePayload(payload, documentType)
