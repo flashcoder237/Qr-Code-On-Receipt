@@ -45,6 +45,8 @@ export const ReleveGenerator: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [previewContentUrl, setPreviewContentUrl] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // Flag to avoid infinite update loop
+  const [configsLoaded, setConfigsLoaded] = useState(false);
 
   // Load settings from localStorage
   const [settings] = useLocalStorage<TranscriptSettings>("settings", {
@@ -60,23 +62,37 @@ export const ReleveGenerator: React.FC = () => {
     themeFont: "Times New Roman, serif",
   });
 
-  // Load configurations from localStorage
+  // Load configurations from localStorage only once during component mount
   useEffect(() => {
-    const loadConfigs = () => {
+    if (!configsLoaded) {
       try {
         const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (stored) {
           const parsedConfigs = JSON.parse(stored);
           setConfigs(parsedConfigs);
         }
+        setConfigsLoaded(true);
       } catch (error) {
         console.error("Erreur lors du chargement des configurations:", error);
       }
+    }
+  }, [configsLoaded]);
+
+  // Listen to localStorage changes
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === LOCAL_STORAGE_KEY) {
+        try {
+          const parsedConfigs = JSON.parse(e.newValue);
+          setConfigs(parsedConfigs);
+        } catch (error) {
+          console.error("Erreur lors du traitement des nouvelles configurations:", error);
+        }
+      }
     };
 
-    loadConfigs();
-    window.addEventListener('storage', loadConfigs);
-    return () => window.removeEventListener('storage', loadConfigs);
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   // Custom hooks
@@ -160,7 +176,7 @@ export const ReleveGenerator: React.FC = () => {
     return ecs;
   }, [currentConfig, currentSemester]);
 
-  // Check if mapping is complete
+  // Check if mapping is complete when available ECs or column mapping changes
   useEffect(() => {
     const availableECs = getAvailableECs();
     const complete = availableECs.length > 0 && availableECs.every(ec => columnMapping[ec.id]);
@@ -169,13 +185,22 @@ export const ReleveGenerator: React.FC = () => {
 
   // Fonction pour charger un mapping complet
   const handleLoadMapping = useCallback((mapping: Record<string, string>) => {
-    // Remplacer entièrement le mapping actuel
-    setColumnMapping(mapping);
-    
-    // Afficher un message de succès
-    setSuccessMessage("Correspondance chargée avec succès");
-    setTimeout(() => setSuccessMessage(null), 3000);
-  }, [setColumnMapping]);
+    try {
+      // Appliquer les nouvelles valeurs de mapping une par une
+      Object.entries(mapping).forEach(([ecId, column]) => {
+        handleMappingChange(ecId, column);
+      });
+      
+      // Afficher un message de succès
+      setSuccessMessage("Correspondance chargée avec succès");
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
+    } catch (error) {
+      console.error("Erreur lors du chargement du mapping:", error);
+      setError(`Erreur lors du chargement du mapping: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }, [handleMappingChange]);
 
   // Prepare student data for PDF generation
   const prepareStudentData = useCallback((rawStudent: any): StudentRecord => {

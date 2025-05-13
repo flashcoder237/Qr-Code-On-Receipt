@@ -4,13 +4,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Save, FileDown, Upload, BookmarkPlus, Bookmark, Trash, List, CheckCircle } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
-
-// If you have a Dialog component in your project, import it from the correct path
-// For example:
-// import { Dialog } from "./Dialog"; // or wherever your Dialog component is located
-// or use an alternative dialog solution
 
 interface EC {
   id: string;
@@ -56,13 +53,12 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loadSuccess, setLoadSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Filtrer les mappings disponibles pour la configuration et le semestre actuel
   const availableMappings = savedMappings.filter(
     m => m.configId === selectedConfigId && m.semesterId === selectedSemesterId
   );
-
-
 
   // Pour forcer une mise à jour après le mapping initial
   useEffect(() => {
@@ -89,12 +85,12 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
   // Fonction pour sauvegarder le mapping actuel
   const saveCurrentMapping = () => {
     if (!newMappingName.trim()) {
-      alert("Veuillez entrer un nom pour ce mapping");
+      setError("Veuillez entrer un nom pour ce mapping");
       return;
     }
 
     if (!selectedConfigId || !selectedSemesterId) {
-      alert("Impossible de sauvegarder sans configuration et semestre");
+      setError("Impossible de sauvegarder sans configuration et semestre");
       return;
     }
 
@@ -147,24 +143,31 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
     setNewMappingName("");
     setShowSaveDialog(false);
     setSaveSuccess(true);
+    setError(null);
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
   // Fonction pour charger un mapping sauvegardé
   const loadMapping = (savedMapping: SavedMapping) => {
-    if (onLoadMapping) {
-      onLoadMapping(savedMapping.mapping);
-    } else {
-      // Si onLoadMapping n'est pas fourni, appliquer le mapping manuellement
-      Object.entries(savedMapping.mapping).forEach(([ecId, col]) => {
-        onMappingChange(ecId, col);
-      });
+    try {
+      if (onLoadMapping) {
+        onLoadMapping(savedMapping.mapping);
+      } else {
+        // Si onLoadMapping n'est pas fourni, appliquer le mapping manuellement
+        Object.entries(savedMapping.mapping).forEach(([ecId, col]) => {
+          onMappingChange(ecId, col);
+        });
+      }
+      
+      // Fermer le dialogue et afficher un message de succès
+      setShowLoadDialog(false);
+      setLoadSuccess(true);
+      setTimeout(() => setLoadSuccess(false), 3000);
+    } catch (error) {
+      console.error("Erreur lors du chargement du mapping:", error);
+      setError(`Erreur lors du chargement du mapping: ${error.message}`);
+      setShowLoadDialog(false);
     }
-    
-    // Fermer le dialogue et afficher un message de succès
-    setShowLoadDialog(false);
-    setLoadSuccess(true);
-    setTimeout(() => setLoadSuccess(false), 3000);
   };
 
   // Fonction pour supprimer un mapping sauvegardé
@@ -252,84 +255,6 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
     event.target.value = "";
   };
 
-  // Simple modal components as a replacement for the missing Dialog component
-  const SaveDialog = () => {
-    if (!showSaveDialog) return null;
-    
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full">
-          <h3 className="text-lg font-medium mb-4">Enregistrer la correspondance</h3>
-          <div className="py-4">
-            <Label htmlFor="mapping-name" className="mb-2 block">Nom de la correspondance</Label>
-            <Input
-              id="mapping-name"
-              value={newMappingName}
-              onChange={(e) => setNewMappingName(e.target.value)}
-              placeholder="Exemple: Mapping Semestre 1 - 2023"
-              className="mb-4"
-            />
-          </div>
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>Annuler</Button>
-            <Button onClick={saveCurrentMapping}>Enregistrer</Button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const LoadDialog = () => {
-    if (!showLoadDialog) return null;
-    
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full">
-          <h3 className="text-lg font-medium mb-4">Charger une correspondance sauvegardée</h3>
-          <div className="py-4 max-h-96 overflow-y-auto">
-            {availableMappings.length === 0 ? (
-              <p className="text-center text-gray-500">
-                Aucune correspondance disponible pour cette configuration et ce semestre
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {availableMappings.map((mapping) => (
-                  <Card key={mapping.id} className="p-3 flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">{mapping.name}</p>
-                      <p className="text-xs text-gray-500">
-                        Créé le {new Date(mapping.dateCreated).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => loadMapping(mapping)}
-                      >
-                        <BookmarkPlus className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteMapping(mapping.id)}
-                      >
-                        <Trash className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex justify-end mt-4">
-            <Button variant="outline" onClick={() => setShowLoadDialog(false)}>Fermer</Button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   // Vérification des données disponibles
   const availableECs = getAvailableECs();
   const hasConfig = !!selectedConfigId;
@@ -405,22 +330,96 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
 
       {/* Messages de succès */}
       {saveSuccess && (
-        <div className="mb-4 p-2 bg-green-100 text-green-800 rounded-md flex items-center">
+        <Alert className="mb-4 bg-green-100 text-green-800 rounded-md flex items-center">
           <CheckCircle className="h-4 w-4 mr-2" />
-          Mapping sauvegardé avec succès
-        </div>
+          <AlertDescription>Mapping sauvegardé avec succès</AlertDescription>
+        </Alert>
       )}
       
       {loadSuccess && (
-        <div className="mb-4 p-2 bg-green-100 text-green-800 rounded-md flex items-center">
+        <Alert className="mb-4 bg-green-100 text-green-800 rounded-md flex items-center">
           <CheckCircle className="h-4 w-4 mr-2" />
-          Mapping chargé avec succès
-        </div>
+          <AlertDescription>Mapping chargé avec succès</AlertDescription>
+        </Alert>
       )}
 
-      {/* Render modals */}
-      <SaveDialog />
-      <LoadDialog />
+      {/* Message d'erreur */}
+      {error && (
+        <Alert className="mb-4 bg-red-100 text-red-800 rounded-md flex items-center" variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Dialog pour enregistrer un mapping */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enregistrer la correspondance</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="mapping-name" className="mb-2 block">Nom de la correspondance</Label>
+            <Input
+              id="mapping-name"
+              value={newMappingName}
+              onChange={(e) => setNewMappingName(e.target.value)}
+              placeholder="Exemple: Mapping Semestre 1 - 2023"
+              className="mb-4"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>Annuler</Button>
+            <Button onClick={saveCurrentMapping}>Enregistrer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog pour charger un mapping */}
+      <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Charger une correspondance sauvegardée</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 max-h-96 overflow-y-auto">
+            {availableMappings.length === 0 ? (
+              <p className="text-center text-gray-500">
+                Aucune correspondance disponible pour cette configuration et ce semestre
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {availableMappings.map((mapping) => (
+                  <Card key={mapping.id} className="p-3 flex justify-between items-center">
+                    <div>
+                      <p className="font-medium">{mapping.name}</p>
+                      <p className="text-xs text-gray-500">
+                        Créé le {new Date(mapping.dateCreated).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => loadMapping(mapping)}
+                      >
+                        <BookmarkPlus className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteMapping(mapping.id)}
+                      >
+                        <Trash className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLoadDialog(false)}>Fermer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Éditeur de correspondance */}
       <div className="space-y-2 max-h-96 overflow-y-auto border rounded-md p-2">
