@@ -6,10 +6,6 @@ interface SchoolSettings {
   nameFrench: string;
   nameEnglish: string;
   nameAbreviation: string;
-  universityName: string;
-  universityNameEn: string;
-  facultyName: string;
-  facultyNameEn: string;
   postalBox: string;
   postalBoxEn: string;
   email: string;
@@ -72,6 +68,7 @@ export async function generateAttestationHTML(
   
   // Finalité
   const finality = "LICENCE PROFESSIONNELLE";
+
   
   // Styles CSS
   const styles = `
@@ -95,19 +92,20 @@ export async function generateAttestationHTML(
       padding: 20px;
       box-sizing: border-box;
       position: relative;
-      background-color: white;
     }
     .watermark {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      align-self: center;
+      align-item: center;
       opacity: 0.1;
       width: 80%;
       height: 80%;
-      background-color: #ccc;
-      border-radius: 50%;
       z-index: -1;
+    }
+      .watermark img {
+      align-self: center;
+      width: 600px;
+      height: auto;
     }
     .header {    
       line-height: normal;
@@ -250,6 +248,22 @@ export async function generateAttestationHTML(
     em {
       font-style: italic;
     }
+      .watermark {
+      position: absolute;
+      top: 25%;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      justify-content: center;
+      align-items: center;
+      opacity: 0.1;
+      pointer-events: none;
+    }
+    .watermark img {
+      width: 600px;
+      height: auto;
+    }
   `;
 
   // Création du contenu HTML
@@ -264,7 +278,10 @@ export async function generateAttestationHTML(
 </head>
 <body>
     <div class="container">
-        <div class="watermark"></div>
+        <!-- IPES Logo Watermark -->
+            <div class="watermark">
+                <img src=${schoolLogo} alt="IPES Watermark">
+            </div>
         
         <div class="header">
             <div class="header-row1">
@@ -274,9 +291,9 @@ export async function generateAttestationHTML(
                 ********************<br>
                 MINISTERE DE L'ENSEIGNEMENT SUPERIEUR<br>
                 ********************<br>
-                <strong>${settings.universityName}</strong><br>
+                <strong>UNIVERSITE DE DOUALA</strong><br>
                 ********************<br>
-                <strong>${settings.facultyName}</strong><br>
+                <strong>FACULTE DE MEDECINE ET <br> DES SCIENCES PHARMACEUTIQUES</strong><br>
                 ********************<br>
                 B.P ${settings.postalBox}, Douala, Cameroun<br>
                 Email: <a href="mailto:${settings.email}">${settings.email}</a><br>
@@ -297,9 +314,9 @@ export async function generateAttestationHTML(
                 ********************<br>
                 MINISTRY OF HIGHER EDUCATION<br>
                 ********************<br>
-                <strong>${settings.universityNameEn}</strong><br>
+                <strong>UNIVERSITY OF DOUALA</strong><br>
                 ********************<br>
-                <strong>${settings.facultyNameEn}</strong><br>
+                <strong>FACULTY OF MEDICINE AND <br>PHARMACEUTICAL SCIENCES</strong><br>
                 ********************<br>
                 PO box ${settings.postalBoxEn}, Douala, Cameroun<br>
                 Email: <a href="mailto:${settings.email}">${settings.email}</a><br>
@@ -314,7 +331,7 @@ export async function generateAttestationHTML(
               <div class="title">ATTESTATION DE REUSSITE</div>
               <div class="subtitle">ATTESTATION OF COMPLETION OF STUDIES</div>
               
-              <div class="ref">Ref N°............./24/UDo/FMSP/VDRC/${settings.nameAbreviation}</div>
+              <div class="ref">Ref N°............./${currentYear}/UDo/FMSP/VDRC/${settings.nameAbreviation}</div>
             </div>
         </div>
         
@@ -329,8 +346,8 @@ export async function generateAttestationHTML(
                 <p>M./Mme/Mlle <strong>${studentFullName}</strong><br>
                 <em>Mr/Mrs/Miss</em></p>
                 
-                <p>Né(e) le: <strong>${birthDate}</strong> à <strong>${birthPlace}</strong><br>
-                <em>Born on: <strong>${birthDate}</strong></em> <em>at:</em></p>
+                <p>Né(e) le: <strong>${birthDate}</strong>   à <strong>${birthPlace}</strong><br>
+                <em>Born on: <strong style="opacity:0">${birthDate}</strong></em> <em>  at:</em></p>
                 
                 <p>Inscrit(e) à <strong>${settings.nameFrench}</strong> sous le matricule: <strong>${matricule}</strong><br>
                 <em>Registered under the matricule number:</em></p>

@@ -1,12 +1,11 @@
-// src/components/organisms/attestation-generator/AttestationSettings.tsx
-import React, { useState, useRef } from "react";
+// src/components/organisms/attestation-generator/AttestationSettings.tsx - Version corrigée
+import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useLocalStorage } from "usehooks-ts";
 import { useDropzone } from "react-dropzone";
-// Correction ici - Utilisation de l'icône RotateCcw au lieu de RotateLeft
 import { Upload, Save, RotateCcw } from "lucide-react";
 
 interface AttestationSettingsProps {
@@ -15,14 +14,10 @@ interface AttestationSettingsProps {
 
 export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSettingsUpdated }) => {
   // État des paramètres stockés dans localStorage
-  const [settings, setSettings] = useLocalStorage("attestation-settings", {
+  const [settings, setSettings] = useLocalStorage("settings", {
     nameFrench: "INSTITUT UNIVERSITAIRE DES BATISSEURS-SIGMEN",
     nameEnglish: "UNIVERSITY INSTITUTE OF BUILDERS-SIGMEN",
     nameAbreviation: "IUB-SIGMEN",
-    universityName: "UNIVERSITE DE DOUALA",
-    universityNameEn: "UNIVERSITY OF DOUALA",
-    facultyName: "FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES",
-    facultyNameEn: "FACULTY OF MEDICINE AND PHARMACEUTICAL SCIENCES",
     postalBox: "5816, Douala Cameroun",
     postalBoxEn: "5816, Douala Cameroon",
     email: "institutsigmen@gmail.com",
@@ -34,19 +29,47 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
   // État local pour la modification
   const [formValues, setFormValues] = useState(settings);
   const [isSuccess, setIsSuccess] = useState(false);
+  
+  // DEBUG: Ajout de logs pour diagnostiquer le problème
+  useEffect(() => {
+    console.log("AttestationSettings - Settings chargées:", 
+      settings.logo ? "Logo présent" : "Pas de logo",
+      settings.universityLogo ? "Logo université présent" : "Pas de logo université",
+      settings.facultyLogo ? "Logo faculté présent" : "Pas de logo faculté");
+  }, [settings]);
+  
+  // Synchroniser l'état local quand les paramètres changent
+  useEffect(() => {
+    setFormValues(settings);
+  }, [settings]);
 
   // Références pour les champs de fichier
   const logoInputRef = useRef<HTMLInputElement>(null);
   const uniLogoInputRef = useRef<HTMLInputElement>(null);
   const facLogoInputRef = useRef<HTMLInputElement>(null);
+  
+  // Taille maximale de fichier (1 MB)
+  const MAX_FILE_SIZE = 1 * 1024 * 1024;
 
   // Dropzones pour les logos
   const handleLogoUpload = (field: keyof typeof formValues) => (acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       const file = acceptedFiles[0];
+      
+      // Vérifier la taille du fichier
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`Le fichier est trop volumineux. Taille maximale: 1MB. Taille actuelle: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
+          // DEBUG: Vérification du résultat de la lecture
+          console.log(`AttestationSettings - Image ${field} chargée:`, 
+            typeof e.target.result, 
+            typeof e.target.result === 'string' ? e.target.result.substring(0, 30) + '...' : 'Non-string');
+          
           setFormValues(prev => ({
             ...prev,
             [field]: e.target?.result as string
@@ -86,11 +109,22 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
 
   // Enregistrement des modifications
   const handleSave = () => {
-    setSettings(formValues);
+    // DEBUG: Vérification des données avant sauvegarde
+    console.log("AttestationSettings - Sauvegarde des valeurs:", 
+      formValues.logo ? "Logo présent" : "Pas de logo",
+      formValues.universityLogo ? "Logo université présent" : "Pas de logo université",
+      formValues.facultyLogo ? "Logo faculté présent" : "Pas de logo faculté");
+    
+    // Sauvegarde dans localStorage avec un nouveau objet pour garantir le déclenchement de useEffect
+    setSettings({...formValues});
     setIsSuccess(true);
+    
+    // Notification au parent que les paramètres ont été mis à jour
     if (onSettingsUpdated) {
       onSettingsUpdated();
     }
+    
+    // Effacer le message de succès après un délai
     setTimeout(() => {
       setIsSuccess(false);
     }, 3000);
@@ -146,45 +180,6 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="universityName">Nom de l'université (Français)</Label>
-              <Input 
-                id="universityName"
-                name="universityName"
-                value={formValues.universityName}
-                onChange={handleInputChange}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="universityNameEn">Nom de l'université (Anglais)</Label>
-              <Input 
-                id="universityNameEn"
-                name="universityNameEn"
-                value={formValues.universityNameEn}
-                onChange={handleInputChange}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="facultyName">Nom de la faculté (Français)</Label>
-              <Input 
-                id="facultyName"
-                name="facultyName"
-                value={formValues.facultyName}
-                onChange={handleInputChange}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="facultyNameEn">Nom de la faculté (Anglais)</Label>
-              <Input 
-                id="facultyNameEn"
-                name="facultyNameEn"
-                value={formValues.facultyNameEn}
-                onChange={handleInputChange}
-              />
-            </div>
             
             <div className="space-y-2">
               <Label htmlFor="postalBox">Boîte postale (Français)</Label>
@@ -338,4 +333,4 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
       </CardContent>
     </Card>
   );
-};  
+};

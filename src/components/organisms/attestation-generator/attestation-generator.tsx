@@ -40,17 +40,13 @@ export const AttestationGenerator = () => {
   });
   
   // Paramètres de l'établissement
-  const [schoolSettings, setSchoolSettings] = useLocalStorage("attestation-settings", {
-    nameFrench: "INSTITUT UNIVERSITAIRE DES BATISSEURS-SIGMEN",
-    nameEnglish: "UNIVERSITY INSTITUTE OF BUILDERS-SIGMEN",
-    nameAbreviation: "IUB-SIGMEN",
-    universityName: "UNIVERSITE DE DOUALA",
-    universityNameEn: "UNIVERSITY OF DOUALA",
-    facultyName: "FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES",
-    facultyNameEn: "FACULTY OF MEDICINE AND PHARMACEUTICAL SCIENCES",
-    postalBox: "5816, Douala Cameroun",
-    postalBoxEn: "5816, Douala Cameroon",
-    email: "institutsigmen@gmail.com",
+  const [schoolSettings, setSchoolSettings] = useLocalStorage("settings", {
+    nameFrench: "N/D",
+    nameEnglish: "N/D",
+    nameAbreviation: "N/D",
+    postalBox: "N/D",
+    postalBoxEn: "N/D",
+    email: "N/D",
     logo: "",
     universityLogo: "",
     facultyLogo: "",
@@ -161,7 +157,7 @@ export const AttestationGenerator = () => {
             }
           };
           
-          // Invoquer la fonction IPC pour générer le PDF (nouveau système)
+          // Invoquer la fonction IPC pour générer le PDF
           const pdfBytes = await window.ipcRenderer.invoke('generate-attestation-pdf', params);
           
           // Ajouter le PDF au ZIP
@@ -199,7 +195,7 @@ export const AttestationGenerator = () => {
 
   const handleSettingsUpdate = () => {
     // Recharger les paramètres après mise à jour
-    const settings = localStorage.getItem("attestation-settings");
+    const settings = localStorage.getItem("attestation");
     if (settings) {
       try {
         setSchoolSettings(JSON.parse(settings));
@@ -215,7 +211,7 @@ export const AttestationGenerator = () => {
       setIsLoading(true);
       setError(null);
       
-      // Utiliser la fonction de prévisualisation depuis le module
+      // Utiliser la fonction de prévisualisation depuis le module attestation-generator/preview
       const success = await openAttestationPreview(
         student, 
         schoolSettings, 
@@ -294,15 +290,7 @@ export const AttestationGenerator = () => {
                 </div>
               )}
 
-              {/* Positionnement du QR Code
-              <div className="space-y-2">
-                <Label>Position du QR Code</Label>
-                <A4PositionPicker 
-                  value={position} 
-                  orientation="portrait"
-                  onChange={setPosition} 
-                />
-              </div> */}
+              
 
               {/* Bouton de génération */}
               <div className="flex justify-end">

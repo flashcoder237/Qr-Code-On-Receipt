@@ -6,10 +6,6 @@ import { formatDate } from './utils';
 interface SchoolSettings {
   nameFrench: string;
   nameEnglish: string;
-  universityName: string;
-  universityNameEn: string;
-  facultyName: string;
-  facultyNameEn: string;
   postalBox: string;
   postalBoxEn: string;
   email: string;
@@ -119,9 +115,9 @@ export async function generateAttestationPDF(
     "********************",
     "MINISTERE DE L'ENSEIGNEMENT SUPERIEUR",
     "********************",
-    settings.universityName,
+    "UNIVERSITE DE DOUALA",
     "********************",
-    settings.facultyName,
+    "FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES",
     "********************",
     `B.P ${settings.postalBox}`,
     `Email: ${settings.email}`,
@@ -139,9 +135,9 @@ export async function generateAttestationPDF(
     "********************",
     "MINISTRY OF HIGHER EDUCATION",
     "********************",
-    settings.universityNameEn,
+    "UNIVERSITY OF DOUALA",
     "********************",
-    settings.facultyNameEn,
+    "FACULTY OF MEDICINE AND PHARMACEUTICAL SCIENCES",
     "********************",
     `P.O. Box ${settings.postalBoxEn}`,
     `Email: ${settings.email}`,

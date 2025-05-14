@@ -7,10 +7,6 @@ interface SchoolSettings {
   nameFrench: string;
   nameEnglish: string;
   nameAbreviation: string;
-  universityName: string;
-  universityNameEn: string;
-  facultyName: string;
-  facultyNameEn: string;
   postalBox: string;
   postalBoxEn: string;
   email: string;
@@ -26,22 +22,26 @@ interface PreviewOptions {
     x: number;
     y: number;
   };
+  qrCodeImage?: string; // Base64 encoded QR code image
 }
 
 /**
- * Génère une prévisualisation HTML d'une attestation pour un étudiant
+ * Ouvre une nouvelle fenêtre avec la prévisualisation de l'attestation
+ * en utilisant la même approche que pour les relevés
  */
-export async function previewAttestation(
+export async function openAttestationPreview(
   student: StudentExcelRecord,
   settings: SchoolSettings,
   options: PreviewOptions = {}
-): Promise<string | null> {
+): Promise<boolean> {
   try {
-    // Générer le QR code
-    let qrCodeBase64 = '';
-    try {
-      // Dans un environnement navigateur, on peut générer le QR code directement
-      const qrData = `Établissement: ${settings.nameFrench}
+    // Générer ou utiliser un QR code
+    let qrCodeBase64 = options.qrCodeImage || '';
+    
+    if (!qrCodeBase64) {
+      try {
+        // Créer les données QR pour l'attestation
+        const qrData = `Établissement: ${settings.nameFrench}
 Nom: ${student.NOM}
 Prénom: ${student.PRENOM}
 Matricule: ${student.MATRICULE}
@@ -54,16 +54,20 @@ Moyenne: ${student.MOYENNE}
 Grade: ${student.GRADE}
 Mention: ${student.MENTION}
 Année académique: ${student["ANNEE ACADEMIQUE"]}`;
-      
-      qrCodeBase64 = await QRCode.toDataURL(qrData);
-    } catch (qrError) {
-      console.error("Erreur lors de la génération du QR code pour la prévisualisation:", qrError);
-      // Continuer sans QR code
+        
+        qrCodeBase64 = await QRCode.toDataURL(qrData);
+      } catch (qrError) {
+        console.error("Erreur lors de la génération du QR code pour la prévisualisation:", qrError);
+        // Continuer sans QR code
+      }
     }
-
-    // Afficher la prévisualisation en utilisant window.attestationRenderer si disponible
+    
+    // Utiliser le renderer d'attestations dans la fenêtre Electron
+    let htmlContent: string | null = null;
+    
     if (window.attestationRenderer) {
-      return await window.attestationRenderer.renderHTML({
+      // Utiliser le renderer via IPC (méthode préférée en mode Electron)
+      htmlContent = await window.attestationRenderer.renderHTML({
         student,
         settings,
         options: {
@@ -72,44 +76,9 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
         }
       });
     } else {
-      // Fallback au cas où le renderer n'est pas disponible (mode développement sans Electron)
-      return await generateAttestationHTML(student, settings, {
-        qrCodeImage: qrCodeBase64,
-        qrCodePosition: options.qrCodePosition
-      });
-    }
-  } catch (error) {
-    console.error("Erreur lors de la prévisualisation de l'attestation:", error);
-    return null;
-  }
-}
-
-/**
- * Ouvre une nouvelle fenêtre avec la prévisualisation de l'attestation
- */
-export async function openAttestationPreview(
-  student: StudentExcelRecord,
-  settings: SchoolSettings,
-  options: PreviewOptions = {}
-): Promise<boolean> {
-  try {
-    // Générer le HTML de l'attestation
-    let htmlContent: string | null = null;
-    
-    // Utiliser le renderer d'attestations si disponible (Electron)
-    if (window.attestationRenderer) {
-      htmlContent = await window.attestationRenderer.renderHTML({
-        student,
-        settings,
-        options: {
-          ...options,
-          qrCodeImage: options.qrCodeImage
-        }
-      });
-    } else {
-      // Fallback au cas où le renderer n'est pas disponible
+      // Fallback au générateur HTML direct si le renderer n'est pas disponible
       htmlContent = await generateAttestationHTML(student, settings, {
-        qrCodeImage: options.qrCodeImage,
+        qrCodeImage: qrCodeBase64,
         qrCodePosition: options.qrCodePosition
       });
     }
@@ -119,10 +88,23 @@ export async function openAttestationPreview(
     }
     
     // Utiliser l'API IPC pour ouvrir une nouvelle fenêtre avec le contenu HTML
+    // comme pour les relevés
     if (window.ipcRenderer) {
-      const success = await window.ipcRenderer.invoke('show-preview', htmlContent, 'Prévisualisation de l\'attestation');
+      const success = await window.ipcRenderer.invoke(
+        'show-preview', 
+        htmlContent, 
+        'Prévisualisation de l\'attestation'
+      );
       return success;
     } else {
+      // Si l'API IPC n'est pas disponible, essayer d'ouvrir une nouvelle fenêtre
+      const previewWindow = window.open('', '_blank');
+      if (previewWindow) {
+        previewWindow.document.write(htmlContent);
+        previewWindow.document.title = 'Prévisualisation de l\'attestation';
+        previewWindow.document.close();
+        return true;
+      }
       throw new Error("L'API IPC n'est pas disponible");
     }
   } catch (error) {

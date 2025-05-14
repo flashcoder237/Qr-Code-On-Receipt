@@ -63,6 +63,38 @@ function createWindow() {
   }
 }
 
+
+async function cleanupTempFiles() {
+  try {
+    const tempDir = os.tmpdir();
+    const files = await fs.readdir(tempDir);
+    
+    // Cherche nos fichiers de prévisualisation temporaires
+    const previewFiles = files.filter(file => 
+      file.startsWith('preview-') && 
+      (file.endsWith('.html') || file.endsWith('.pdf'))
+    );
+    
+    // Supprime les fichiers plus anciens que 24 heures
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    
+    for (const file of previewFiles) {
+      const filePath = path.join(tempDir, file);
+      try {
+        const stats = await fs.stat(filePath);
+        if (stats.mtimeMs < oneDayAgo) {
+          await fs.unlink(filePath);
+          console.log(`Fichier temporaire nettoyé: ${filePath}`);
+        }
+      } catch (e) {
+        console.error(`Erreur lors du nettoyage du fichier temporaire ${filePath}:`, e);
+      }
+    }
+  } catch (error) {
+    console.error('Erreur lors du nettoyage des fichiers temporaires:', error);
+  }
+}
+
 // Setup file system handlers for the IPC bridge
 function setupFileSystemHandlers() {
   ipcMain.handle('fs:readFile', async (_, filePath, options) => {
@@ -230,7 +262,8 @@ app.on("activate", () => {
 
 app.whenReady().then(() => {
   // Configurer les gestionnaires PDF pour les relevés ET les attestations
-  setupPreviewHandlers()
+  cleanupTempFiles();
+  setupPreviewHandlers();
   setupPDFGenerationHandlers();
   createWindow();
 });

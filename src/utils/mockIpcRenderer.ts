@@ -194,8 +194,16 @@ class MockInvocationError extends Error {
 
   // Ajout d'un mock pour le rendu des attestations
   export const mockAttestationRenderer = {
-    async renderHTML(params: any) {
-      console.log('[MOCK] Rendering attestation HTML with params:', params);
+  async renderHTML(params: any) {
+    console.log('[MOCK] Rendering attestation HTML with params:', params);
+    
+    // Essayer d'importer le générateur HTML réel si disponible
+    try {
+      // Import dynamique pour éviter les erreurs de dépendance circulaire
+      const { generateAttestationHTML } = await import('../lib/attestation-generator/html-generator');
+      return await generateAttestationHTML(params.student, params.settings, params.options);
+    } catch (importError) {
+      console.warn('[MOCK] Could not import real HTML generator, using fallback:', importError);
       
       // Simuler un délai et retourner un HTML de base pour une attestation
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -214,6 +222,14 @@ class MockInvocationError extends Error {
               th, td { border: 1px solid #333; padding: 8px; text-align: center; }
               .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
               .disclaimer { position: absolute; bottom: 20px; font-size: 8px; font-style: italic; }
+              .qr-code { 
+                position: absolute;
+                ${params.options?.qrCodePosition ? 
+                  `left: ${params.options.qrCodePosition.x}px; top: ${params.options.qrCodePosition.y}px;` : 
+                  'right: 50px; top: 250px;'}
+                width: 100px;
+                height: 100px;
+              }
             </style>
           </head>
           <body>
@@ -275,6 +291,12 @@ class MockInvocationError extends Error {
               </div>
             </div>
             
+            <div class="qr-code">
+              ${params.options?.qrCodeImage ? 
+                `<img src="${params.options.qrCodeImage}" width="100" height="100" alt="QR Code">` :
+                '<div style="width: 100px; height: 100px; background-color: #eee;"></div>'}
+            </div>
+            
             <div class="disclaimer">
               Cette Attestation ne tient pas lieu de Diplôme et n'est délivrée qu'en un seul exemplaire et d'une validité de (6) mois 
               à partir de la date de signature. Le Diplôme lui sera délivré ultérieurement.
@@ -285,4 +307,5 @@ class MockInvocationError extends Error {
         </html>
       `;
     }
-  };
+  }
+};

@@ -1,9 +1,9 @@
 // src/lib/attestation-generator/html-to-pdf.ts - Version corrigée sans require
 import { StudentExcelRecord } from '../helpers/qrcode';
 import { generateAttestationHTML } from './html-generator';
-import { BrowserWindow, app } from 'electron';
+import { BrowserWindow } from 'electron';
 import * as path from 'path';
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as os from 'os';
 import QRCode from 'qrcode';
 
@@ -11,10 +11,6 @@ interface SchoolSettings {
   nameFrench: string;
   nameEnglish: string;
   nameAbreviation: string;
-  universityName: string;
-  universityNameEn: string;
-  facultyName: string;
-  facultyNameEn: string;
   postalBox: string;
   postalBoxEn: string;
   email: string;
@@ -81,11 +77,11 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
       });
 
       // Créer un fichier HTML temporaire
-      const tempDir = os.tmpdir(); // Utilisation de os.tmpdir() au lieu de require('os').tmpdir()
+      const tempDir = os.tmpdir();
       const htmlPath = path.join(tempDir, `attestation-${Date.now()}.html`);
       
       // Écrire le HTML dans le fichier temporaire
-      fs.writeFileSync(htmlPath, html);
+      await fs.writeFile(htmlPath, html);
 
       // Créer une fenêtre de navigateur cachée pour générer le PDF
       const win = new BrowserWindow({
@@ -123,7 +119,7 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
 
         // Supprimer le fichier temporaire
         try {
-          fs.unlinkSync(htmlPath);
+          await fs.unlink(htmlPath);
         } catch (cleanupError) {
           console.warn('Erreur lors de la suppression du fichier HTML temporaire:', cleanupError);
           // Continuer l'exécution même si le nettoyage échoue

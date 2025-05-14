@@ -855,17 +855,22 @@ export function setupPDFGenerationHandlers() {
     }
   });
 
-  ipcMain.handle('render-attestation-html', async (_, params) => {
-    try {
-      // Importer dynamiquement pour éviter les problèmes de dépendances circulaires
-      const { generateAttestationHTML } = require('./attestation-generator/html-generator');
-      const html = await generateAttestationHTML(params.student, params.settings, params.options);
-      return html;
-    } catch (error) {
-      console.error('Error generating attestation HTML:', error);
-      throw error;
-    }
-  });
+ ipcMain.handle('render-attestation-html', async (_, params) => {
+  try {
+    // Au lieu d'utiliser require, qui peut causer des problèmes,
+    // importons le module de manière dynamique avec la syntaxe import()
+    const attestationModule = await import('./attestation-generator/html-generator');
+    const html = await attestationModule.generateAttestationHTML(
+      params.student, 
+      params.settings, 
+      params.options
+    );
+    return html;
+  } catch (error) {
+    console.error('Error generating attestation HTML:', error);
+    throw error;
+  }
+});
   
   ipcMain.handle('generate-attestation-pdf', async (_, params) => {
     try {
