@@ -41,7 +41,7 @@ export async function generateAttestationHTML(
   const academicYear = student["ANNEE ACADEMIQUE"] || "2023/2024";
   
   // Date du jury
-  const juryDate = "28/08/2024"; // Date à paramétrer si nécessaire
+  const juryDate = student["DATE JURY"] || ''; // Date à paramétrer si nécessaire
   
   // Année courante pour le numéro de référence (les 2 derniers chiffres)
   const currentYear = new Date().getFullYear() % 100;
@@ -55,19 +55,19 @@ export async function generateAttestationHTML(
   const birthPlace = student["LIEU DE NAISSANCE"] || '';
   
   // Informations académiques
-  const fieldOfStudy = "SCIENCES MEDICO-SANITAIRES"; // Domaine d'études (à paramétrer si nécessaire)
-  const course = student.PARCOURS || "SCIENCES INFIRMIERES";
-  const specialization = student.SPECIALITE || "SCIENCES INFIRMIERES";
-  const option = student.OPTION || "SCIENCES INFIRMIERES";
+  const fieldOfStudy = student.DOMAINE; // Domaine d'études (à paramétrer si nécessaire)
+  const course = student.PARCOURS || "";
+  const specialization = student.SPECIALITE || "";
+  const option = student.OPTION || "";
   
   // Crédits et notes
-  const credits = "60"; // Nombre total de crédits (à paramétrer si nécessaire)
+  const credits = student["TOTAL CREDIT"] || ''; // Nombre total de crédits (à paramétrer si nécessaire)
   const average = typeof student.MOYENNE === 'number' ? student.MOYENNE.toFixed(2) : String(student.MOYENNE);
   const grade = student.GRADE || calculateGrade(typeof student.MOYENNE === 'number' ? student.MOYENNE : parseFloat(String(student.MOYENNE)));
   const mention = student.MENTION || calculateMention(typeof student.MOYENNE === 'number' ? student.MOYENNE : parseFloat(String(student.MOYENNE)));
   
   // Finalité
-  const finality = "LICENCE PROFESSIONNELLE";
+  const finality = student["FINALITE"] || '';
 
   
   // Styles CSS
@@ -80,8 +80,8 @@ export async function generateAttestationHTML(
       margin: 5mm;
       font-family: ${settings.themeFont || "'Times New Roman', Times, serif"};
       box-sizing: border-box;
-      font-size: 13px;
-      border: 2px solid #333;
+      font-size: 14px;
+      border: 2px double #333;
       width: 200mm;
       height: 287mm;
       position: relative;
@@ -89,7 +89,7 @@ export async function generateAttestationHTML(
     .container {
       width: 100%;
       height: 100%;
-      padding: 20px;
+      padding: 10px 20px;
       box-sizing: border-box;
       position: relative;
     }
@@ -97,7 +97,7 @@ export async function generateAttestationHTML(
       position: absolute;
       align-self: center;
       align-item: center;
-      opacity: 0.1;
+      opacity: 0;
       width: 80%;
       height: 80%;
       z-index: -1;
@@ -113,7 +113,7 @@ export async function generateAttestationHTML(
     }
     .header-row1{
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 5px;
       display: flex;
       justify-content: space-between;
     }
@@ -121,7 +121,7 @@ export async function generateAttestationHTML(
       font-size: 10px;
     }
     .header-content{
-      width: 35%;
+      width: 33%;
       font-size: 10px;
       line-height: 11px;
     }
@@ -139,7 +139,7 @@ export async function generateAttestationHTML(
     }
     .header-logo-content > div > img{
       max-width: 100%;
-      max-height: 70px;
+      min-height: 70px;
       object-fit: contain;
     }
     .header-row2 h1{
@@ -148,7 +148,7 @@ export async function generateAttestationHTML(
       font-size: large;
     }
     .header-row2 p{
-      font-size: 12px;
+      font-size: 16px;
     }
     .header-row2{
       text-align: center;
@@ -159,7 +159,7 @@ export async function generateAttestationHTML(
     }
     .title {
       text-align: center;
-      font-size: 20px;
+      font-size: 24px;
       font-weight: bold;
       margin: 0;
       text-transform: uppercase;
@@ -167,16 +167,16 @@ export async function generateAttestationHTML(
     .subtitle {
       text-align: center;
       font-style: italic;
-      font-size: 18px;
-      margin-bottom: 20px;
+      font-size: 22px;
+      margin-bottom: 10px;
     }
     .ref {
       text-align: center;
       margin: 5px 0;
-      font-size:13px;
+      font-size:18px;
     }
     .content {
-      margin: 20px 0;
+      margin: 0px 0;
     }
     .student-info {
       margin: 15px 0;
@@ -190,12 +190,11 @@ export async function generateAttestationHTML(
       border-collapse: collapse;
     }
     th, td {
-      border: 1px solid #333;
-      padding: 8px;
+      padding: 4px 8px;
       text-align: center;
     }
     .footer {
-      margin-top: 10px;
+      margin-top: 2px;
       display: flex;
       justify-content: space-between;
     }
@@ -203,6 +202,10 @@ export async function generateAttestationHTML(
       width: 48%;
       text-align: left;
     }
+      .sign-ipes{
+      width: 100%;
+      text-align: center;
+      }
     .qr-code {
       text-align: center;
       margin: 0px 0;
@@ -211,7 +214,6 @@ export async function generateAttestationHTML(
       width: 100px;
       height: 100px;
       background-color: #eee;
-      margin: 0 auto;
       display: block;
     }
     .disclaimer {
@@ -236,9 +238,9 @@ export async function generateAttestationHTML(
       margin: 10px 0;
     }
     .logo {
-      width: 80px;
-      height: 80px;
-      margin: 0 10px;
+      width: 100px;
+      height: 100px;
+      margin: 0 3px;
       background-color: #eee;
       border-radius: 50%;
       display: flex;
@@ -264,6 +266,19 @@ export async function generateAttestationHTML(
       width: 600px;
       height: auto;
     }
+      .nomination-list{
+       display : flex;
+       width: 100%;
+       gap: 30%;
+      }
+       .nomination-list-item{
+        border-top : 1px solid black;
+        width: 30%;
+        padding-top: 4px;
+       }
+        .recteur-sign{
+          margin-top : 65px;
+        }
   `;
 
   // Création du contenu HTML
@@ -278,11 +293,11 @@ export async function generateAttestationHTML(
 </head>
 <body>
     <div class="container">
-        <!-- IPES Logo Watermark -->
+        <!-- IPES Logo Watermark 
             <div class="watermark">
                 <img src=${schoolLogo} alt="IPES Watermark">
             </div>
-        
+        -->
         <div class="header">
             <div class="header-row1">
               <div class="header-content">
@@ -295,17 +310,20 @@ export async function generateAttestationHTML(
                 ********************<br>
                 <strong>FACULTE DE MEDECINE ET <br> DES SCIENCES PHARMACEUTIQUES</strong><br>
                 ********************<br>
-                B.P ${settings.postalBox}, Douala, Cameroun<br>
-                Email: <a href="mailto:${settings.email}">${settings.email}</a><br>
+                B.P 2701, Douala, Cameroun<br>
+                Email: <a href="mailto:mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a><br>
                 ********************<br>
-                <strong>${settings.nameFrench}</strong><br>
+                <strong>${settings.nameFrench
+                            .split(" ")
+                            .map((w, i) => (i > 0 && i % 4 === 0 ? "<br>" + w : w))
+                            .join(" ")}</strong><br>
                 ********************<br>
-                B.P ${settings.postalBox}, Douala, Cameroun<br>
+                ${settings.postalBox}<br>
                 Email: <a href="mailto:${settings.email}">${settings.email}</a></p>
               </div>
               <div class="header-logo-content">
                 <div>${universityLogo ? `<img src="${universityLogo}" alt="University Logo" height="70">` : ''}</div>
-                <div>${facultyLogo ? `<img src="${facultyLogo}" alt="Faculty Logo" height="50" style="margin: 5px;">` : ''}</div>
+                <div>${facultyLogo ? `<img src="${facultyLogo}" alt="Faculty Logo" height="50">` : ''}</div>
                 <div>${schoolLogo ? `<img src="${schoolLogo}" alt="IPES Logo" height="50">` : ''}</div>
               </div>
               <div class="header-content">
@@ -318,26 +336,37 @@ export async function generateAttestationHTML(
                 ********************<br>
                 <strong>FACULTY OF MEDICINE AND <br>PHARMACEUTICAL SCIENCES</strong><br>
                 ********************<br>
-                PO box ${settings.postalBoxEn}, Douala, Cameroun<br>
-                Email: <a href="mailto:${settings.email}">${settings.email}</a><br>
+                PO box 2701, Douala, Cameroon<br>
+                Email: <a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a><br>
                 ********************<br>
-                <strong>${settings.nameEnglish}</strong><br>
+                <strong>${settings.nameEnglish
+                            .split(" ")
+                            .map((w, i) => (i > 0 && i % 4 === 0 ? "<br>" + w : w))
+                            .join(" ")}</strong><br>
                 ********************<br>
-                PO box ${settings.postalBoxEn}, Douala, Cameroun<br>
+                ${settings.postalBoxEn}<br>
                 Email: <a href="mailto:${settings.email}">${settings.email}</a></p>    
               </div>
             </div>
             <div class="header-row2">
               <div class="title">ATTESTATION DE REUSSITE</div>
-              <div class="subtitle">ATTESTATION OF COMPLETION OF STUDIES</div>
+              <div class="subtitle"><strong>ATTESTATION OF COMPLETION OF STUDIES</strong></div>
               
-              <div class="ref">Ref N°............./${currentYear}/UDo/FMSP/VDRC/${settings.nameAbreviation}</div>
+              <div class="ref"><strong>Ref N°............./${currentYear-1}/UDo/FMSP/VDRC/${settings.nameAbreviation}</strong></div>
             </div>
         </div>
         
         <div class="content">
-            <p><strong>Je soussigné,</strong><br>
-            <em>I, the undersigned,</em></p>
+            <p><strong>Nous soussignés,</strong><br>
+            <em>We, the undersigned,</em></p><br>
+            <div class="nomination-list">
+              <div class="nomination-list-item">
+                <strong>Directeur de l’${settings.nameAbreviation}</strong>
+              </div>
+              <div class="nomination-list-item">
+                <strong>Recteur de l’Université de Douala</strong>
+              </div>
+            </div>
             
             <p><strong>Vu le procès-verbal du jury N°0001 en date du ${juryDate} atteste que,</strong><br>
             <em>Considering the jury's decision N° 0001 dated ${juryDate} Certify that,</em></p>
@@ -346,8 +375,8 @@ export async function generateAttestationHTML(
                 <p>M./Mme/Mlle <strong>${studentFullName}</strong><br>
                 <em>Mr/Mrs/Miss</em></p>
                 
-                <p>Né(e) le: <strong>${birthDate}</strong>   à <strong>${birthPlace}</strong><br>
-                <em>Born on: <strong style="opacity:0">${birthDate}</strong></em> <em>  at:</em></p>
+                <p>Né(e) le: <strong>${birthDate}</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;à&nbsp;<strong>${birthPlace}</strong><br>
+                <em>Born on: <strong style="opacity:0">${birthDate}</strong></em><em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;at:</em></p>
                 
                 <p>Inscrit(e) à <strong>${settings.nameFrench}</strong> sous le matricule: <strong>${matricule}</strong><br>
                 <em>Registered under the matricule number:</em></p>
@@ -356,16 +385,16 @@ export async function generateAttestationHTML(
             <div class="table-container">
                 <table>
                     <tr>
-                        <th>Domaine<br><em>Domain of the study</em></th>
-                        <th>Parcours<br><em>Course</em></th>
-                        <th>Spécialité<br><em>Specialization</em></th>
-                        <th>Option<br><em>Learning option</em></th>
+                        <th>Domaine<br><em style="font-weight: normal">Domain of the study</em></th>
+                        <th>Parcours<br><em style="font-weight: normal">Course</em></th>
+                        <th>Spécialité<br><em style="font-weight: normal">Specialization</em></th>
+                        <th>Option<br><em style="font-weight: normal">Learning option</em></th>
                     </tr>
-                    <tr>
-                        <td>${fieldOfStudy}</td>
-                        <td>${course}</td>
-                        <td>${specialization}</td>
-                        <td>${option}</td>
+                    <tr style="border-top: 1px solid #333; background-color:#eeeeee">
+                        <td><strong>${fieldOfStudy}</strong></td>
+                        <td><strong>${course}</strong></td>
+                        <td><strong>${specialization}</strong></td>
+                        <td><strong>${option}</strong></td>
                     </tr>
                 </table>
             </div>
@@ -373,18 +402,18 @@ export async function generateAttestationHTML(
             <div class="table-container">
                 <table>
                     <tr>
-                        <th>Total de credits<br><em>Credits earned</em></th>
-                        <th>Moyenne<br><em>Average</em></th>
-                        <th>Mention<br><em>Grade</em></th>
-                        <th>Année académique<br><em>Academic year</em></th>
-                        <th>Finalité/Voie<br><em>Finality/Vocation</em></th>
+                        <th>Total de credits<br><em style="font-weight: normal">Credits earned</em></th>
+                        <th>Moyenne<br><em style="font-weight: normal">Average</em></th>
+                        <th>Mention<br><em style="font-weight: normal">Grade</em></th>
+                        <th>Année académique<br><em style="font-weight: normal">Academic year</em></th>
+                        <th>Finalité/Voie<br><em style="font-weight: normal">Finality/Vocation</em></th>
                     </tr>
-                    <tr>
-                        <td>${credits}</td>
-                        <td>${average}</td>
-                        <td>${mention} ${grade}</td>
-                        <td>${academicYear}</td>
-                        <td>${finality}</td>
+                    <tr style="border-top: 1px solid #333; background-color:#eeeeee">
+                        <td><strong>${credits}</strong></td>
+                        <td><strong>${average}</strong></td>
+                        <td><strong>${mention} ${grade}</strong></td>
+                        <td><strong>${academicYear}</strong></td>
+                        <td><strong>${finality}</strong></td>
                     </tr>
                 </table>
             </div>
@@ -395,19 +424,21 @@ export async function generateAttestationHTML(
         
         <div class="footer">
             <div class="signature" style="display: flex; flex-direction: column; align-items: center;">
-                <div class="qr-code" style="margin-bottom: 5px;">
+                <div class="qr-code">
                     ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" />` : 
                       '<div class="qr-image"></div>'}
                 </div>
-                <p>Le Directeur de L'Institut Universitaire Des Bâtisseurs-SIGMEN<br>
-                <em>The Director of the University Institute of Builders-SIGMEN</em></p>
+                <div class="sign-ipes">
+                  <p><strong>Le Directeur de L'${settings.nameAbreviation}</strong><br>
+                  <em>The Director of the ${settings.nameAbreviation}</em></p>
+                </div>
             </div>
             
             <div class="signature">
-                <p>Douala, le<br>
+                <p><strong>Douala, le</strong><br>
                  <em>Douala, the</em></p>
 
-                <p>Le Recteur de l'Université de Douala<br>
+                <p class="recteur-sign"><strong>Le Recteur de l'Université de Douala</strong><br>
                 <em>The Rector of the University of Douala</em></p>
             </div>
         </div>

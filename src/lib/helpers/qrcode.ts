@@ -18,6 +18,11 @@ export type StudentExcelRecord = {
   PARCOURS?: string;
   SPECIALITE?: string;
   OPTION?: string;
+  "DATE JURY"?: string;
+  FINALITE?: string;
+  "TOTAL CREDIT"?: string;
+  "DOMAINE"?: string;
+
 };
 
 export function getQrCodePayload(

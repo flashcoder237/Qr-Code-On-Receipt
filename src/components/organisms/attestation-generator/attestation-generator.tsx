@@ -84,6 +84,10 @@ export const AttestationGenerator = () => {
               GRADE: row["GRADE"] || calculateGrade(row["MOYENNE"] || row["MOY"] || 0),
               MENTION: row["MENTION"] || calculateMention(row["MOYENNE"] || row["MOY"] || 0),
               "ANNEE ACADEMIQUE": row["ANNEE ACADEMIQUE"] || getCurrentAcademicYear(),
+              "DATE JURY": formatDate(row["DATE JURY"]),
+              "FINALITE": row["FINALITE"]|| "",
+              "TOTAL CREDIT": row["TOTAL CREDIT"]|| "",
+              "DOMAINE": row["DOMAINE"]|| "",
             };
             return standardizedRow;
           });
