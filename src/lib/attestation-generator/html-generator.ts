@@ -93,20 +93,8 @@ export async function generateAttestationHTML(
       box-sizing: border-box;
       position: relative;
     }
-    .watermark {
-      position: absolute;
-      align-self: center;
-      align-item: center;
-      opacity: 0;
-      width: 80%;
-      height: 80%;
-      z-index: -1;
-    }
-      .watermark img {
-      align-self: center;
-      width: 600px;
-      height: auto;
-    }
+
+      
     .header {    
       line-height: normal;
       font-size: 8px;
@@ -257,15 +245,17 @@ export async function generateAttestationHTML(
       width: 100%;
       height: 100%;
       z-index: -1;
+      display: flex;
       justify-content: center;
       align-items: center;
-      opacity: 0.1;
+      opacity:0.3;
       pointer-events: none;
     }
     .watermark img {
       width: 600px;
       height: auto;
     }
+
       .nomination-list{
        display : flex;
        width: 100%;
@@ -293,11 +283,11 @@ export async function generateAttestationHTML(
 </head>
 <body>
     <div class="container">
-        <!-- IPES Logo Watermark 
+        <!-- IPES Logo Watermark    -->
             <div class="watermark">
                 <img src=${schoolLogo} alt="IPES Watermark">
             </div>
-        -->
+     
         <div class="header">
             <div class="header-row1">
               <div class="header-content">
