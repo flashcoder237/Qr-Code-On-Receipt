@@ -137,5 +137,5 @@ export const defaultAttestationTheme: AttestationThemeSettingsPayload = {
   // Tableau académique
   showDomainTable: true,
   showAcademicDetails: true,
-  compactMode: false,
+  compactMode: true,
 };

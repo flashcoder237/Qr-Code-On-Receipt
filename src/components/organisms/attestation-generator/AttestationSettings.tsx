@@ -24,6 +24,7 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
     logo: "", // Base64 encoded logo
     universityLogo: "", // Base64 encoded university logo
     facultyLogo: "", // Base64 encoded faculty logo
+    
   });
 
   // État local pour la modification

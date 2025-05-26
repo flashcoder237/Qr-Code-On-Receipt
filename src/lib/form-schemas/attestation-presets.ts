@@ -61,7 +61,7 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       
       showDomainTable: true,
       showAcademicDetails: true,
-      compactMode: false,
+      compactMode: true,
     }
   },
   
@@ -116,7 +116,7 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       
       showDomainTable: true,
       showAcademicDetails: true,
-      compactMode: false,
+      compactMode: true,
     }
   },
   
@@ -226,7 +226,7 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       
       showDomainTable: true,
       showAcademicDetails: true,
-      compactMode: false,
+      compactMode: true,
     }
   },
   
@@ -336,7 +336,7 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       
       showDomainTable: true,
       showAcademicDetails: true,
-      compactMode: false,
+      compactMode: true,
     }
   }
 ];

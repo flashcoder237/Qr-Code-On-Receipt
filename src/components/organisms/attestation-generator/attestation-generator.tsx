@@ -1,4 +1,4 @@
-// src/components/organisms/attestation-generator/AttestationGenerator.tsx
+// src/components/organisms/attestation-generator/attestation-generator.tsx - Version mise à jour
 import React, { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -23,13 +23,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AttestationSettings } from "./AttestationSettings";
 import { AttestationPreviewButton } from "./AttestationPreviewButton";
 import { AttestationThemeEditor } from "./AttestationThemeEditor";
-import { FileDown, Loader2, Settings2, Table2, Palette, FileText, Eye } from "lucide-react";
+import { ThemePresetSelector } from "./ThemePresetSelector"; // Import ajouté
+import { FileDown, Loader2, Settings2, Table2, Palette, FileText, Eye, Wand2 } from "lucide-react";
 import { calculateGrade, calculateMention, getCurrentAcademicYear } from "@/lib/attestation-generator/utils";
 import { openAttestationPreview } from "@/lib/attestation-generator/preview";
 import { AttestationThemeSettingsPayload, defaultAttestationTheme } from "@/lib/form-schemas/attestation-theme-settings";
 
 export const AttestationGenerator: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"generator" | "settings" | "theme">("generator");
+  const [activeTab, setActiveTab] = useState<"generator" | "settings" | "theme" | "presets">("generator");
   const [excelData, setExcelData] = useState<StudentExcelRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,9 +39,9 @@ export const AttestationGenerator: React.FC = () => {
   
   // Position pour le QR code
   const [position, setPosition] = useLocalStorage("attestation-qrcode-position", {
-  x: 470,
-  y: 220,
-});
+    x: 470,
+    y: 220,
+  });
   
   // Paramètres de l'établissement
   const [schoolSettings, setSchoolSettings] = useLocalStorage("settings", {
@@ -142,55 +143,55 @@ export const AttestationGenerator: React.FC = () => {
   };
 
   const generateAttestations = async () => {
-  if (excelData.length === 0) {
-    setError("Veuillez d'abord importer des données depuis Excel");
-    return;
-  }
-
-  try {
-    setIsLoading(true);
-    setError(null);
-    setSuccess(null);
-    setProcessingProgress(0);
-    
-    // Vérification de sécurité pour la position
-    const safePosition = position && typeof position.x === 'number' && typeof position.y === 'number' 
-      ? position 
-      : { x: 470, y: 220 };
-    
-    const zip = new JSZip();
-    let processedCount = 0;
-
-    for (const student of excelData) {
-      try {
-        // Utiliser la nouvelle méthode de génération HTML-to-PDF via IPC avec le thème
-        const params = {
-          student,
-          settings: {
-            ...schoolSettings,
-            theme: attestationTheme,
-          },
-          options: {
-            qrCodePosition: safePosition, // Utiliser la position sécurisée
-            theme: attestationTheme,
-          }
-        };
-        
-        // Invoquer la fonction IPC pour générer le PDF
-        const pdfBytes = await window.ipcRenderer.invoke('generate-attestation-pdf', params);
-        
-        // Ajouter le PDF au ZIP
-        const fileName = `${student.MATRICULE}_Attestation.pdf`;
-        zip.file(fileName, pdfBytes);
-        
-        // Mettre à jour le compteur et la progression
-        processedCount++;
-        setProcessingProgress((processedCount / excelData.length) * 100);
-        
-      } catch (err) {
-        console.error(`Erreur lors de la génération de l'attestation pour ${student.MATRICULE}`, err);
-      }
+    if (excelData.length === 0) {
+      setError("Veuillez d'abord importer des données depuis Excel");
+      return;
     }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      setSuccess(null);
+      setProcessingProgress(0);
+      
+      // Vérification de sécurité pour la position
+      const safePosition = position && typeof position.x === 'number' && typeof position.y === 'number' 
+        ? position 
+        : { x: 470, y: 220 };
+      
+      const zip = new JSZip();
+      let processedCount = 0;
+
+      for (const student of excelData) {
+        try {
+          // Utiliser la nouvelle méthode de génération HTML-to-PDF via IPC avec le thème
+          const params = {
+            student,
+            settings: {
+              ...schoolSettings,
+              theme: attestationTheme,
+            },
+            options: {
+              qrCodePosition: safePosition,
+              theme: attestationTheme,
+            }
+          };
+          
+          // Invoquer la fonction IPC pour générer le PDF
+          const pdfBytes = await window.ipcRenderer.invoke('generate-attestation-pdf', params);
+          
+          // Ajouter le PDF au ZIP
+          const fileName = `${student.MATRICULE}_Attestation.pdf`;
+          zip.file(fileName, pdfBytes);
+          
+          // Mettre à jour le compteur et la progression
+          processedCount++;
+          setProcessingProgress((processedCount / excelData.length) * 100);
+          
+        } catch (err) {
+          console.error(`Erreur lors de la génération de l'attestation pour ${student.MATRICULE}`, err);
+        }
+      }
 
       // Générer le ZIP final
       const zipContent = await zip.generateAsync({ type: "blob" });
@@ -236,6 +237,14 @@ export const AttestationGenerator: React.FC = () => {
     setTimeout(() => setSuccess(null), 3000);
   };
 
+  const handlePresetSelect = (newTheme: AttestationThemeSettingsPayload) => {
+    setAttestationTheme(newTheme);
+    setSuccess("Préréglage appliqué avec succès");
+    setTimeout(() => setSuccess(null), 3000);
+    // Changer d'onglet pour voir le thème appliqué
+    setActiveTab("theme");
+  };
+
   const handleThemePreview = () => {
     if (excelData.length > 0) {
       previewAttestation(excelData[0]);
@@ -246,56 +255,60 @@ export const AttestationGenerator: React.FC = () => {
 
   // Fonction pour prévisualiser une attestation individuelle
   const previewAttestation = async (student: StudentExcelRecord) => {
-  try {
-    setIsLoading(true);
-    setError(null);
-    
-    // Vérification de sécurité pour la position
-    const safePosition = position && typeof position.x === 'number' && typeof position.y === 'number' 
-      ? position 
-      : { x: 470, y: 220 };
-    
-    // Utiliser la fonction de prévisualisation avec le thème
-    const success = await openAttestationPreview(
-      student, 
-      {
-        ...schoolSettings,
-        theme: attestationTheme,
-      }, 
-      { 
-        qrCodePosition: safePosition, // Utiliser la position sécurisée
-        theme: attestationTheme,
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Vérification de sécurité pour la position
+      const safePosition = position && typeof position.x === 'number' && typeof position.y === 'number' 
+        ? position 
+        : { x: 470, y: 220 };
+      
+      // Utiliser la fonction de prévisualisation avec le thème
+      const success = await openAttestationPreview(
+        student, 
+        {
+          ...schoolSettings,
+          theme: attestationTheme,
+        }, 
+        { 
+          qrCodePosition: safePosition,
+          theme: attestationTheme,
+        }
+      );
+      
+      if (!success) {
+        setError("Impossible d'ouvrir la fenêtre de prévisualisation. Veuillez vérifier vos paramètres de bloqueur de popups.");
       }
-    );
-    
-    if (!success) {
-      setError("Impossible d'ouvrir la fenêtre de prévisualisation. Veuillez vérifier vos paramètres de bloqueur de popups.");
+      
+    } catch (err) {
+      console.error("Erreur lors de la prévisualisation", err);
+      setError("Une erreur est survenue lors de la prévisualisation de l'attestation");
+    } finally {
+      setIsLoading(false);
     }
-    
-  } catch (err) {
-    console.error("Erreur lors de la prévisualisation", err);
-    setError("Une erreur est survenue lors de la prévisualisation de l'attestation");
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "generator" | "settings" | "theme")}>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "generator" | "settings" | "theme" | "presets")}>
         <div className="flex justify-between items-center mb-4">
-          <TabsList className="grid grid-cols-3">
+          <TabsList className="grid grid-cols-4">
             <TabsTrigger value="generator" className="flex items-center gap-2">
               <Table2 className="h-4 w-4" />
               Générateur
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings2 className="h-4 w-4" />
-              Paramètres
+            <TabsTrigger value="presets" className="flex items-center gap-2">
+              <Wand2 className="h-4 w-4" />
+              Préréglages
             </TabsTrigger>
             <TabsTrigger value="theme" className="flex items-center gap-2">
               <Palette className="h-4 w-4" />
               Thème
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings2 className="h-4 w-4" />
+              Paramètres
             </TabsTrigger>
           </TabsList>
         </div>
@@ -347,18 +360,6 @@ export const AttestationGenerator: React.FC = () => {
                 </div>
               )}
 
-              {/* Configuration du QR Code 
-              {excelData.length > 0 && (
-                <div className="space-y-4">
-                  <Label>Position du QR Code sur l'attestation</Label>
-                  <A4PositionPicker
-                    position={position}
-                    onPositionChange={setPosition}
-                    disabled={isLoading}
-                  />
-                </div>
-              )}*/}
-
               {/* Aperçu du thème actuel */}
               {excelData.length > 0 && (
                 <Card className="bg-blue-50 border-blue-200">
@@ -372,15 +373,26 @@ export const AttestationGenerator: React.FC = () => {
                           Style: {attestationTheme.contentLayout}
                         </p>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setActiveTab("theme")}
-                        className="border-blue-300 text-blue-700 hover:bg-blue-100"
-                      >
-                        <Palette className="h-4 w-4 mr-2" />
-                        Personnaliser
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActiveTab("presets")}
+                          className="border-purple-300 text-purple-700 hover:bg-purple-100"
+                        >
+                          <Wand2 className="h-4 w-4 mr-2" />
+                          Préréglages
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActiveTab("theme")}
+                          className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                        >
+                          <Palette className="h-4 w-4 mr-2" />
+                          Personnaliser
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -466,8 +478,12 @@ export const AttestationGenerator: React.FC = () => {
           )}
         </TabsContent>
 
-        <TabsContent value="settings">
-          <AttestationSettings onSettingsUpdated={handleSettingsUpdate} />
+        <TabsContent value="presets">
+          <ThemePresetSelector
+            currentTheme={attestationTheme}
+            onThemeSelect={handlePresetSelect}
+            onPreview={handleThemePreview}
+          />
         </TabsContent>
 
         <TabsContent value="theme">
@@ -477,6 +493,10 @@ export const AttestationGenerator: React.FC = () => {
             onSave={handleThemeSave}
             onPreview={handleThemePreview}
           />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <AttestationSettings onSettingsUpdated={handleSettingsUpdate} />
         </TabsContent>
       </Tabs>
     </div>

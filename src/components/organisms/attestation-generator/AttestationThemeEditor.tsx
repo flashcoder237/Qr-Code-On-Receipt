@@ -1,4 +1,4 @@
-// src/components/organisms/attestation-generator/AttestationThemeEditor.tsx
+// src/components/organisms/attestation-generator/AttestationThemeEditor.tsx - Version mise à jour
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,9 +10,10 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Save, Undo, Eye, Palette, Type, Layout, Settings, FileText } from "lucide-react";
+import { Save, Undo, Eye, Palette, Type, Layout, Settings, FileText, Wand2 } from "lucide-react";
 import { AttestationThemeSettingsPayload, defaultAttestationTheme } from "@/lib/form-schemas/attestation-theme-settings";
 import { AttestationThemePreview } from "./AttestationThemePreview";
+import { ThemePresetSelector } from "./ThemePresetSelector";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface AttestationThemeEditorProps {
@@ -30,7 +31,7 @@ export const AttestationThemeEditor: React.FC<AttestationThemeEditorProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState("colors");
   const [isModified, setIsModified] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [showPresetSelector, setShowPresetSelector] = useState(false);
 
   const updateTheme = (field: keyof AttestationThemeSettingsPayload, value: any) => {
     const newTheme = { ...theme, [field]: value };
@@ -49,10 +50,15 @@ export const AttestationThemeEditor: React.FC<AttestationThemeEditorProps> = ({
   };
 
   const handlePreview = () => {
-    setShowPreview(!showPreview);
     if (onPreview) {
       onPreview();
     }
+  };
+
+  const handlePresetSelect = (newTheme: AttestationThemeSettingsPayload) => {
+    onThemeChange(newTheme);
+    setIsModified(true);
+    setShowPresetSelector(false);
   };
 
   const ColorPicker = ({ label, value, onChange }) => (
@@ -113,11 +119,39 @@ export const AttestationThemeEditor: React.FC<AttestationThemeEditorProps> = ({
                   Modifications non sauvegardées
                 </Badge>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPresetSelector(!showPresetSelector)}
+                className="text-purple-600 border-purple-300 hover:bg-purple-50"
+              >
+                <Wand2 className="h-4 w-4 mr-2" />
+                Préréglages
+              </Button>
             </div>
           </div>
         </CardHeader>
 
         <CardContent>
+          <AnimatePresence>
+            {showPresetSelector && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-6 overflow-hidden"
+              >
+                <div className="border rounded-lg p-4 bg-gray-50">
+                  <ThemePresetSelector
+                    currentTheme={theme}
+                    onThemeSelect={handlePresetSelect}
+                    onPreview={onPreview}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid grid-cols-5 mb-6">
               <TabsTrigger value="colors" className="flex items-center gap-2">
