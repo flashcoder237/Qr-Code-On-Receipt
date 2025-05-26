@@ -25,6 +25,7 @@ import { StudentRecord } from "../../../types/student";
 const LOCAL_STORAGE_KEY = "academicConfigs";
 
 interface TranscriptSettings {
+  establishmentType: string;
   nameFrench: string;
   nameEnglish: string;
   postalBox: string;

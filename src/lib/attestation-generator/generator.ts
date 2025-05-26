@@ -4,6 +4,7 @@ import { StudentExcelRecord } from '../helpers/qrcode';
 import { formatDate } from './utils';
 
 interface SchoolSettings {
+  establishmentType: string;
   nameFrench: string;
   nameEnglish: string;
   postalBox: string;

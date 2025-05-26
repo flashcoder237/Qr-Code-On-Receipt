@@ -102,7 +102,7 @@ export const defaultAttestationTheme: AttestationThemeSettingsPayload = {
   // Mise en page
   headerLayout: "standard",
   logoSize: "medium",
-  logoPosition: "header",
+  logoPosition: "integrated",
   
   // Contenu
   contentLayout: "standard",

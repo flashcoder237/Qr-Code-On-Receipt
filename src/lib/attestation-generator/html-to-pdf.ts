@@ -8,6 +8,7 @@ import * as os from 'os';
 import QRCode from 'qrcode';
 
 interface SchoolSettings {
+  establishmentType: string;
   nameFrench: string;
   nameEnglish: string;
   nameAbreviation: string;

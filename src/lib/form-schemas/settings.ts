@@ -1,7 +1,13 @@
+// src/lib/form-schemas/settings.ts - Version mise à jour avec type d'établissement
 import * as z from "zod";
 import { ThemeSettingsSchema, defaultTheme } from "./theme-settings";
 
 export const TranscriptsettingsSchema = z.object({
+  // Nouveau champ pour le type d'établissement
+  establishmentType: z.enum(["ipes", "faculty"], {
+    errorMap: () => ({ message: "Le type d'établissement doit être 'ipes' ou 'faculty'" })
+  }),
+  
   nameFrench: z.string().min(1, "Le nom en français est requis"),
   nameEnglish: z.string().min(1, "Le nom en anglais est requis"),
   nameAbreviation: z.string().min(1, "L'abréviation du nom de l'établissement est requis"),

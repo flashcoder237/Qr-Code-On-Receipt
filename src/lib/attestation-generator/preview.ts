@@ -4,6 +4,7 @@ import { generateAttestationHTML } from './html-generator';
 import QRCode from 'qrcode';
 
 interface SchoolSettings {
+  establishmentType: string;
   nameFrench: string;
   nameEnglish: string;
   nameAbreviation: string;

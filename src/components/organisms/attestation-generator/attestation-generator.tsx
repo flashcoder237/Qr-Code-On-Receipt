@@ -46,6 +46,7 @@ export const AttestationGenerator: React.FC = () => {
   // Paramètres de l'établissement
   const [schoolSettings, setSchoolSettings] = useLocalStorage("settings", {
     nameFrench: "N/D",
+    establishmentType: "N/D",
     nameEnglish: "N/D",
     nameAbreviation: "N/D",
     postalBox: "N/D",

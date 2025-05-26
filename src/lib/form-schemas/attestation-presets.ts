@@ -33,7 +33,7 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       
       headerLayout: "standard",
       logoSize: "medium",
-      logoPosition: "header",
+      logoPosition: "integrated",
       
       contentLayout: "formal",
       tableStyle: "bordered",
@@ -143,7 +143,7 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       
       headerLayout: "compact",
       logoSize: "small",
-      logoPosition: "top",
+      logoPosition: "integrated",
       
       contentLayout: "standard",
       tableStyle: "simple",
@@ -198,7 +198,7 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       
       headerLayout: "standard",
       logoSize: "medium",
-      logoPosition: "header",
+      logoPosition: "integrated",
       
       contentLayout: "formal",
       tableStyle: "bordered",
@@ -308,7 +308,7 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       
       headerLayout: "extended",
       logoSize: "large",
-      logoPosition: "header",
+      logoPosition: "integrated",
       
       contentLayout: "modern",
       tableStyle: "modern",

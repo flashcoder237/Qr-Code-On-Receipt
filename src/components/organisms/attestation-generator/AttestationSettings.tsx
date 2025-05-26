@@ -1,12 +1,13 @@
-// src/components/organisms/attestation-generator/AttestationSettings.tsx - Version corrigée
+// src/components/organisms/attestation-generator/AttestationSettings.tsx - Version adaptée
 import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useLocalStorage } from "usehooks-ts";
 import { useDropzone } from "react-dropzone";
-import { Upload, Save, RotateCcw } from "lucide-react";
+import { Upload, Save, RotateCcw, Building, GraduationCap } from "lucide-react";
 
 interface AttestationSettingsProps {
   onSettingsUpdated?: () => void;
@@ -15,16 +16,16 @@ interface AttestationSettingsProps {
 export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSettingsUpdated }) => {
   // État des paramètres stockés dans localStorage
   const [settings, setSettings] = useLocalStorage("settings", {
+    establishmentType: "ipes", // Valeur par défaut
     nameFrench: "INSTITUT UNIVERSITAIRE DES BATISSEURS-SIGMEN",
     nameEnglish: "UNIVERSITY INSTITUTE OF BUILDERS-SIGMEN",
     nameAbreviation: "IUB-SIGMEN",
     postalBox: "5816, Douala Cameroun",
     postalBoxEn: "5816, Douala Cameroon",
     email: "institutsigmen@gmail.com",
-    logo: "", // Base64 encoded logo
-    universityLogo: "", // Base64 encoded university logo
-    facultyLogo: "", // Base64 encoded faculty logo
-    
+    logo: "",
+    universityLogo: "",
+    facultyLogo: "",
   });
 
   // État local pour la modification
@@ -52,6 +53,18 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
   // Taille maximale de fichier (1 MB)
   const MAX_FILE_SIZE = 1 * 1024 * 1024;
 
+  // Fonction pour obtenir les libellés conditionnels
+  const getEstablishmentLabels = () => {
+    const isIpes = formValues.establishmentType === "ipes";
+    return {
+      establishmentLogo: isIpes ? "Logo de l'IPES" : "Logo de l'établissement",
+      establishmentName: isIpes ? "Nom de l'IPES" : "Nom de l'établissement",
+      establishmentAbbr: isIpes ? "Abréviation de l'IPES" : "Abréviation de l'établissement",
+    };
+  };
+
+  const labels = getEstablishmentLabels();
+
   // Dropzones pour les logos
   const handleLogoUpload = (field: keyof typeof formValues) => (acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -66,7 +79,6 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
-          // DEBUG: Vérification du résultat de la lecture
           console.log(`AttestationSettings - Image ${field} chargée:`, 
             typeof e.target.result, 
             typeof e.target.result === 'string' ? e.target.result.substring(0, 30) + '...' : 'Non-string');
@@ -108,9 +120,16 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
     }));
   };
 
+  // Gestion du changement de type d'établissement
+  const handleEstablishmentTypeChange = (value: string) => {
+    setFormValues(prev => ({
+      ...prev,
+      establishmentType: value
+    }));
+  };
+
   // Enregistrement des modifications
   const handleSave = () => {
-    // DEBUG: Vérification des données avant sauvegarde
     console.log("AttestationSettings - Sauvegarde des valeurs:", 
       formValues.logo ? "Logo présent" : "Pas de logo",
       formValues.universityLogo ? "Logo université présent" : "Pas de logo université",
@@ -151,8 +170,34 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Côté Gauche - Informations textuelles */}
           <div className="space-y-4">
+            {/* Sélection du type d'établissement */}
             <div className="space-y-2">
-              <Label htmlFor="nameFrench">Nom de l'établissement (Français)</Label>
+              <Label>Type d'établissement</Label>
+              <RadioGroup
+                value={formValues.establishmentType}
+                onValueChange={handleEstablishmentTypeChange}
+                className="flex flex-row space-x-6"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="ipes" id="ipes" />
+                  <Label htmlFor="ipes" className="flex items-center cursor-pointer">
+                    <Building className="h-4 w-4 mr-2" />
+                    Institut Privé (IPES)
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="faculty" id="faculty" />
+                  <Label htmlFor="faculty" className="flex items-center cursor-pointer">
+                    <GraduationCap className="h-4 w-4 mr-2" />
+                    Faculté Universitaire
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+            { formValues.establishmentType === "ipes" && 
+            <div>
+              <div className="space-y-2">
+              <Label htmlFor="nameFrench">{labels.establishmentName} (Français)</Label>
               <Input 
                 id="nameFrench"
                 name="nameFrench"
@@ -162,7 +207,7 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="nameEnglish">Nom de l'établissement (Anglais)</Label>
+              <Label htmlFor="nameEnglish">{labels.establishmentName} (Anglais)</Label>
               <Input 
                 id="nameEnglish"
                 name="nameEnglish"
@@ -172,7 +217,7 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="nameAbreviation">Abréviation du nom</Label>
+              <Label htmlFor="nameAbreviation">{labels.establishmentAbbr}</Label>
               <Input 
                 id="nameAbreviation"
                 name="nameAbreviation"
@@ -181,7 +226,6 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
               />
             </div>
 
-            
             <div className="space-y-2">
               <Label htmlFor="postalBox">Boîte postale (Français)</Label>
               <Input 
@@ -212,12 +256,15 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
                 onChange={handleInputChange}
               />
             </div>
+            </div>
+}
           </div>
           
           {/* Côté Droit - Logos */}
           <div className="space-y-6">
+            { formValues.establishmentType === "ipes" && 
             <div className="space-y-2">
-              <Label>Logo de l'établissement</Label>
+              <Label>{labels.establishmentLogo}</Label>
               <div 
                 {...schoolLogoDropzone.getRootProps()} 
                 className={`border-2 border-dashed rounded-md p-4 text-center cursor-pointer ${
@@ -230,7 +277,7 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
                   <div className="flex flex-col items-center">
                     <img 
                       src={formValues.logo} 
-                      alt="Logo de l'établissement" 
+                      alt={labels.establishmentLogo} 
                       className="max-h-32 max-w-full mb-2" 
                     />
                     <p className="text-sm text-gray-500">
@@ -247,7 +294,7 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
                 )}
               </div>
             </div>
-            
+}
             <div className="space-y-2">
               <Label>Logo de l'université</Label>
               <div 

@@ -25,5 +25,6 @@ export interface ClassConfig {
   niveau: string;
   cycle: string;
   option: string;
+  establishmentType: 'ipes' | 'faculty';
   semesters: Semester[];
 }

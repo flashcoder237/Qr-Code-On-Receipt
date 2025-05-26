@@ -4,6 +4,7 @@ import { formatDate, calculateGrade, calculateMention } from './utils';
 import { AttestationThemeSettingsPayload, defaultAttestationTheme } from '../form-schemas/attestation-theme-settings';
 
 interface SchoolSettings {
+  establishmentType: string;
   nameFrench: string;
   nameEnglish: string;
   nameAbreviation: string;
@@ -50,6 +51,7 @@ export async function generateAttestationHTML(
   const universityLogo = settings.universityLogo || '';
   const facultyLogo = settings.facultyLogo || '';
   
+  
   // Année académique formatée
   const academicYear = student["ANNEE ACADEMIQUE"] || "2023/2024";
   
@@ -84,12 +86,23 @@ export async function generateAttestationHTML(
 
   // Générer les styles CSS basés sur le thème
   const generateThemeStyles = (): string => {
-  const logoSizeMap = {
-    small: { width: '40px', height: '40px' },
-    medium: { width: '60px', height: '60px' },
-    large: { width: '80px', height: '80px' }
-  };
 
+    function getLogoSize(){
+      if(settings.establishmentType=== "ipes"){
+      return  {
+        small: { width: '60px', height: '60px' },
+        medium: { width: '80px', height: '80px' },
+        large: { width: '100px', height: '100px' }
+      };
+    }return  {
+        small: { width: '60px', height: '60px' },
+        medium: { width: '80px', height: '80px' },
+        large: { width: '100px', height: '100px' }
+      };
+    }
+  const logoSizeMap = getLogoSize();
+
+  
   const qrCodeSizeMap = {
     small: { width: '80px', height: '80px' },
     medium: { width: '100px', height: '100px' },
@@ -117,7 +130,7 @@ export async function generateAttestationHTML(
     font-family: ${theme.mainFont};
     font-size: ${theme.contentFontSize}px;
     color: ${theme.primaryColor};
-    background-color: white;
+    background-color: none;
     ${theme.compactMode ? 'line-height: 1.2;' : 'line-height: 1.4;'}
   }
 
@@ -164,7 +177,6 @@ export async function generateAttestationHTML(
     }
     
     .header-logo-content {
-      
       ${theme.logoPosition === 'integrated' ? 'width: 30%;' : 'width: 30%;'}
       align-content: center;
       display: flex;
@@ -179,10 +191,18 @@ export async function generateAttestationHTML(
     }
     
     .header-logo-content > div > img {
-      width: ${currentLogoSize.width};
-      height: ${currentLogoSize.height};
+      max-width: ${currentLogoSize.width};
+      max-height: ${currentLogoSize.height};
       object-fit: contain;
     }
+
+    #to-hidden{
+     ${settings.establishmentType !== "ipes" ? 'display : none' : ''};
+    }
+     #to-nothidden{
+    ${settings.establishmentType === "ipes" ? 'display : none' : ''};
+    }
+
     
     .header-row2 {
       text-align: center;
@@ -351,7 +371,7 @@ export async function generateAttestationHTML(
       margin: 25px 0;
     }
     .student-info {
-      background: white;
+      background: none;
       padding: 15px;
       border-radius: 6px;
       border-left: 4px solid ${theme.accentColor};
@@ -415,7 +435,7 @@ export async function generateAttestationHTML(
     <div class="container">
         <!-- Filigrane IPES -->
         <div class="watermark">
-            <img src="${schoolLogo}" alt="IPES Watermark">
+            <img src="${settings.establishmentType === "ipes" ? schoolLogo : facultyLogo}" alt="IPES Watermark">
         </div>
      
         <div class="header">
@@ -432,7 +452,7 @@ export async function generateAttestationHTML(
                 ********************<br>
                 B.P 2701, Douala, Cameroun<br>
                 Email: <a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a><br>
-                ********************<br>
+                 <span id="to-hidden">********************<br>
                 <strong>${settings.nameFrench
                             .split(" ")
                             .map((w, i) => (i > 0 && i % 4 === 0 ? "<br>" + w : w))
@@ -440,13 +460,14 @@ export async function generateAttestationHTML(
                 ********************<br>
                 ${settings.postalBox}<br>
                 Email: <a href="mailto:${settings.email}">${settings.email}</a></p>
+                </span>
               </div>
               
               ${theme.logoPosition !== 'top' ? `
               <div class="header-logo-content">
                 <div>${universityLogo ? `<img src="${universityLogo}" alt="University Logo">` : ''}</div>
                 <div>${facultyLogo ? `<img src="${facultyLogo}" alt="Faculty Logo">` : ''}</div>
-                <div>${schoolLogo ? `<img src="${schoolLogo}" alt="IPES Logo">` : ''}</div>
+                <div id="to-hidden">${schoolLogo ? `<img src="${schoolLogo}" alt="IPES Logo">` : ''}</div>
               </div>
               ` : ''}
               
@@ -462,14 +483,15 @@ export async function generateAttestationHTML(
                 ********************<br>
                 PO box 2701, Douala, Cameroon<br>
                 Email: <a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a><br>
-                ********************<br>
-                <strong>${settings.nameEnglish
+               <span id="to-hidden">********************<br>
+                <strong >${settings.nameEnglish
                             .split(" ")
                             .map((w, i) => (i > 0 && i % 4 === 0 ? "<br>" + w : w))
                             .join(" ")}</strong><br>
                 ********************<br>
                 ${settings.postalBoxEn}<br>
-                Email: <a href="mailto:${settings.email}">${settings.email}</a></p>    
+                Email: <a href="mailto:${settings.email}">${settings.email}</a></p>   
+                </span> 
               </div>
             </div>
             
@@ -477,12 +499,12 @@ export async function generateAttestationHTML(
             <div class="header-logo-content" style="margin-bottom: 15px;">
               <div>${universityLogo ? `<img src="${universityLogo}" alt="University Logo">` : ''}</div>
               <div>${facultyLogo ? `<img src="${facultyLogo}" alt="Faculty Logo">` : ''}</div>
-              <div>${schoolLogo ? `<img src="${schoolLogo}" alt="IPES Logo">` : ''}</div>
+              <div id="to-hidden">${schoolLogo ? `<img src="${schoolLogo}" alt="IPES Logo">` : ''}</div>
             </div>
             ` : ''}
             
             <div class="header-row2">
-              <h1>${theme.customTitle || "ATTESTATION DE REUSSITE"}</h1>
+              <h1>${theme.customTitle || "ATTESTATION DE REUSSITE"} ${settings.establishmentType}</h1>
               ${theme.showBilingualText ? `<h2>${theme.customSubtitle || "ATTESTATION OF COMPLETION OF STUDIES"}</h2>` : ''}
               
               <p><strong>Ref N°............./${currentYear-1}/UDo/FMSP/VDRC/${settings.nameAbreviation}</strong></p>
@@ -490,10 +512,12 @@ export async function generateAttestationHTML(
         </div>
         
         <div class="content">
-            <p><strong>${theme.primaryLanguage === 'english' ? 'We, the undersigned,' : 'Nous soussignés,'}</strong><br>
+            <p id="to-hidden"><strong>${theme.primaryLanguage === 'english' ? 'We, the undersigned,' : 'Nous soussignés,'}</strong><br>
             ${theme.showBilingualText ? '<em>' + (theme.primaryLanguage === 'english' ? 'Nous soussignés,' : 'We, the undersigned,') + '</em>' : ''}</p>
-            
-            <div style="display: flex; justify-content: space-between; margin: 15px 0;">
+            <p id="to-nothidden"><strong>${theme.primaryLanguage === 'english' ? 'I, the undersigned, Professor EBOUMBOU MOUKOKO Carole Else,' : 'Je soussignée, Professeur EBOUMBOU MOUKOKO Carole Else,'}</strong><br>
+            ${theme.showBilingualText ? '<em>' + (theme.primaryLanguage === 'english' ? 'Je soussignée, Professeur EBOUMBOU MOUKOKO Carole Else,' : 'I, the undersigned, Professor EBOUMBOU MOUKOKO Carole Else,') + '</em>' : ''}</p>
+
+            <div id="to-hidden" style="${settings.establishmentType !== "ipes" ? 'display : none' : 'display: flex'}; justify-content: space-between; margin: 15px 0;">
               <div style="width: 45%; text-align: center; border-top: 1px solid ${theme.tableBorderColor}; padding-top: 4px;">
                 <strong>Directeur de l'${settings.nameAbreviation}</strong>
               </div>
@@ -512,8 +536,10 @@ export async function generateAttestationHTML(
                 <p>Né(e) le: <strong>${birthDate}</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;à&nbsp;<strong>${birthPlace}</strong><br>
                 ${theme.showBilingualText ? '<em>Born on:</em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>at:</em>' : ''}</p>
                 
-                <p>Inscrit(e) à <strong>${settings.nameFrench}</strong> sous le matricule: <strong>${matricule}</strong><br>
+                <p>Inscrit(e) à <strong id="to-hidden">${settings.nameFrench}</strong><strong id="to-nothidden">la Faculté de Medecine et des Sciences Pharmaceutiques</strong> sous le matricule: <strong>${matricule}</strong><br>
                 ${theme.showBilingualText ? '<em>Registered under the matricule number:</em>' : ''}</p>
+
+              
             </div>
             
             ${theme.showDomainTable ? `
@@ -558,44 +584,48 @@ export async function generateAttestationHTML(
             
             <p>En foi de quoi la présente Attestation est délivrée pour servir et valoir ce que de droit.<br>
             ${theme.showBilingualText ? '<em>In witness where of the present testimonial is given with all the privileges there to pertaining.</em>' : ''}</p>
-        </div>
         
-        <div class="footer">
-            <div class="signature">
-                ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-left' ? `
+            <div class="footer">
+                <div class="signature">
+                    ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-left' ? `
+                    <div class="qr-code">
+                        ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" alt="QR Code" />` : 
+                          '<div class="qr-image"></div>'}
+                    </div>
+                    ` : ''}
+                    
+                    <div id="to-hidden"><strong>Le Directeur de L'${settings.nameAbreviation}</strong><br>
+                    ${theme.showBilingualText ? `<em>The Director of the ${settings.nameAbreviation}</em>` : ''}</div>
+                </div>
+                
+                ${theme.qrCodePosition === 'bottom-center' ? `
                 <div class="qr-code">
                     ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" alt="QR Code" />` : 
                       '<div class="qr-image"></div>'}
                 </div>
                 ` : ''}
                 
-                <p><strong>Le Directeur de L'${settings.nameAbreviation}</strong><br>
-                ${theme.showBilingualText ? `<em>The Director of the ${settings.nameAbreviation}</em>` : ''}</p>
-            </div>
-            
-            ${theme.qrCodePosition === 'bottom-center' ? `
-            <div class="qr-code">
-                ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" alt="QR Code" />` : 
-                  '<div class="qr-image"></div>'}
-            </div>
-            ` : ''}
-            
-            <div class="signature">
-                <p><strong>Douala, le</strong><br>
-                ${theme.showBilingualText ? '<em>Douala, the</em>' : ''}</p>
-
-                <p style="margin-top: ${theme.signatureLayout === 'stacked' ? '10px' : '40px'};">
-                <strong>Le Recteur de l'Université de Douala</strong><br>
-                ${theme.showBilingualText ? '<em>The Rector of the University of Douala</em>' : ''}</p>
-                
-                ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-right' ? `
-                <div class="qr-code">
-                    ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" alt="QR Code" />` : 
-                      '<div class="qr-image"></div>'}
+                <div class="signature">
+                    <p><strong>Douala, le</strong><br>
+                    ${theme.showBilingualText ? '<em>Douala, the</em>' : ''}</p>
+    
+                    <p id="to-hidden" style="padding-bottom: 30px; margin-top: ${theme.signatureLayout === 'stacked' ? '2px' : '10px'};">
+                    <strong>Le Recteur de l'Université de Douala</strong><br>
+                    ${theme.showBilingualText ? '<em>The Rector of the University of Douala</em>' : ''}</p>
+                    <p id="to-nothidden" style="padding-bottom: 30px; margin-top: ${theme.signatureLayout === 'stacked' ? '2px' : '10px'};">
+                    <strong>Le DOYEN</strong><br>
+                    ${theme.showBilingualText ? '<em>The DEAN</em>' : ''}</p>
+                    
+                    ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-right' ? `
+                    <div class="qr-code">
+                        ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" alt="QR Code" />` : 
+                          '<div class="qr-image"></div>'}
+                    </div>
+                    ` : ''}
                 </div>
-                ` : ''}
             </div>
-        </div>
+            </div>
+        
         
         <div class="disclaimer">
             ${theme.customFooterText ? theme.customFooterText : `

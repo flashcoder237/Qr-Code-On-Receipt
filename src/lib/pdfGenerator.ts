@@ -11,6 +11,7 @@ import { ThemeSettingsPayload } from './form-schemas/theme-settings';
 import { generateAttestationPDF } from './attestation-generator/html-to-pdf';
 
 interface TranscriptSettingsPayload {
+  establishmentType: string;
   nameFrench: string;
   nameEnglish: string;
   nameAbreviation: string;

@@ -16,7 +16,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Edit, Save, X, Eye } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Edit, Save, X, Eye, Building, GraduationCap } from "lucide-react";
 import {
   TranscriptSettingsPayload,
   TranscriptsettingsSchema,
@@ -41,6 +43,7 @@ const SettingForm: React.FC = () => {
   // État pour stocker les données dans localStorage
   const [storedFormData, setStoredFormData] =
     useLocalStorage<TranscriptSettingsPayload>("settings", {
+      establishmentType: "ipes", // Valeur par défaut
       nameFrench: "",
       nameEnglish: "",
       nameAbreviation: "",
@@ -50,9 +53,9 @@ const SettingForm: React.FC = () => {
       logo: "",
       universityLogo: "",
       facultyLogo: "",
-      themeColor: "#000000", // Default black color
-      themeFont: "Times New Roman, serif", // Default Times New Roman font
-      theme: defaultTheme, // Ajouter le thème par défaut
+      themeColor: "#000000",
+      themeFont: "Times New Roman, serif",
+      theme: defaultTheme,
     });
 
   const form = useForm<TranscriptSettingsPayload>({
@@ -62,7 +65,10 @@ const SettingForm: React.FC = () => {
 
   const MAX_FILE_SIZE = 1000 * 1024;
 
-  // Dropzone pour le logo IPES
+  // Observer les changements du type d'établissement
+  const watchEstablishmentType = form.watch("establishmentType");
+
+  // Dropzone pour les logos
   const createImageDropzone = (fieldName: keyof TranscriptSettingsPayload) => {
     const onDrop = (acceptedFiles: File[]) => {
       if (!isEditing || !acceptedFiles || acceptedFiles.length === 0) return;
@@ -137,8 +143,6 @@ const SettingForm: React.FC = () => {
   // Fonction pour prévisualiser le relevé avec le thème actuel
   const previewTranscript = () => {
     setShowPreview(true);
-    // Ici, vous pourriez implémenter un aperçu réel du relevé
-    // Pour l'instant, on simule juste un message
     alert("Fonctionnalité d'aperçu à implémenter. Cette alerte sera remplacée par un aperçu réel.");
     setShowPreview(false);
   };
@@ -151,6 +155,18 @@ const SettingForm: React.FC = () => {
     saveChanges();
   };
 
+  // Fonction pour obtenir les libellés conditionnels
+  const getEstablishmentLabels = () => {
+    const isIpes = watchEstablishmentType === "ipes";
+    return {
+      establishmentLogo: isIpes ? "Logo de l'IPES" : "Logo de l'établissement",
+      establishmentName: isIpes ? "Nom de l'IPES" : "Nom de l'établissement",
+      establishmentAbbr: isIpes ? "Abréviation de l'IPES" : "Abréviation de l'établissement",
+    };
+  };
+
+  const labels = getEstablishmentLabels();
+
   return (
     <div className="space-y-8">
       <Card className="w-full max-w-6xl mx-auto my-10">
@@ -159,7 +175,7 @@ const SettingForm: React.FC = () => {
             <div>
               <CardTitle>Configuration des Entêtes</CardTitle>
               <CardDescription>
-                Personnalisez l'apparence des relevés de notes
+                Personnalisez l'apparence des relevés de notes et attestations
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -201,6 +217,41 @@ const SettingForm: React.FC = () => {
                 <TabsContent value="general" className="mt-0">
                   <div className="grid grid-cols-[2fr_1fr] gap-6">
                     <div className="space-y-4">
+                      {/* Sélection du type d'établissement */}
+                      <FormField
+                        control={form.control}
+                        name="establishmentType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Type d'établissement</FormLabel>
+                            <FormControl>
+                              <RadioGroup
+                                value={field.value}
+                                onValueChange={field.onChange}
+                                disabled={!isEditing}
+                                className="flex flex-row space-x-6"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="ipes" id="ipes" />
+                                  <Label htmlFor="ipes" className="flex items-center cursor-pointer">
+                                    <Building className="h-4 w-4 mr-2" />
+                                    Institut Privé (IPES)
+                                  </Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="faculty" id="faculty" />
+                                  <Label htmlFor="faculty" className="flex items-center cursor-pointer">
+                                    <GraduationCap className="h-4 w-4 mr-2" />
+                                    Faculté Universitaire
+                                  </Label>
+                                </div>
+                              </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
                       <div className="grid grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
@@ -243,12 +294,15 @@ const SettingForm: React.FC = () => {
                           )}
                         />
                       </div>
-                      <FormField
+                      {
+                        (watchEstablishmentType === "ipes") &&
+                        <div>
+                           <FormField
                         control={form.control}
                         name="nameFrench"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Nom de l'établissement en Français</FormLabel>
+                            <FormLabel>{labels.establishmentName} (Français)</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
@@ -264,7 +318,7 @@ const SettingForm: React.FC = () => {
                         name="nameEnglish"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Nom de l'établissement en Anglais</FormLabel>
+                            <FormLabel>{labels.establishmentName} (Anglais)</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
@@ -280,7 +334,7 @@ const SettingForm: React.FC = () => {
                         name="nameAbreviation"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>L'abréviation du nom de l'établissement</FormLabel>
+                            <FormLabel>{labels.establishmentAbbr}</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
@@ -296,7 +350,7 @@ const SettingForm: React.FC = () => {
                         name="postalBox"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Boîte Postale en Francais</FormLabel>
+                            <FormLabel>Boîte Postale (Français)</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
@@ -312,7 +366,7 @@ const SettingForm: React.FC = () => {
                         name="postalBoxEn"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Boîte Postale en Anglais</FormLabel>
+                            <FormLabel>Boîte Postale (Anglais)</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
@@ -340,14 +394,19 @@ const SettingForm: React.FC = () => {
                           </FormItem>
                         )}
                       />
+                        </div> 
+                      }
+                     
                     </div>
                     <div className="space-y-4">
+    
+                      {watchEstablishmentType === "ipes" && 
                       <FormField
                         control={form.control}
                         name="logo"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Logo de l'IPES</FormLabel>
+                            <FormLabel>{labels.establishmentLogo}</FormLabel>
                             <FormControl>
                               <div
                                 {...(isEditing ? logoDropzone.getRootProps() : {})}
@@ -377,7 +436,9 @@ const SettingForm: React.FC = () => {
                             <FormMessage />
                           </FormItem>
                         )}
-                      />
+                      />}
+                      
+                      {/* Logo de l'université - toujours affiché */}
                       <FormField
                         control={form.control}
                         name="universityLogo"
@@ -414,6 +475,7 @@ const SettingForm: React.FC = () => {
                           </FormItem>
                         )}
                       />
+                      
                       <FormField
                         control={form.control}
                         name="facultyLogo"
