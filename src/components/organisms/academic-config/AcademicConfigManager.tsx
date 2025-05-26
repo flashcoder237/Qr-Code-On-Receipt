@@ -672,7 +672,7 @@ export const AcademicConfigManager: React.FC = () => {
                 </CardContent>
               </Card>
 
-              <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+              <div className="grid grid-cols-1 xl:grid-cols-7 gap-6">
                 {/* Liste des configurations */}
                 <div className="xl:col-span-2">
                   <ClassList 
@@ -684,7 +684,7 @@ export const AcademicConfigManager: React.FC = () => {
                 </div>
 
                 {/* Détails de la configuration */}
-                <div className="xl:col-span-3">
+                <div className="xl:col-span-5">
                   <ClassDetail 
                     config={selectedConfig}
                     isEditing={isEditing}

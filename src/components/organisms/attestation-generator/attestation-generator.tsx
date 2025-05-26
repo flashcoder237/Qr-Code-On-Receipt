@@ -1,3 +1,4 @@
+// src/components/organisms/attestation-generator/AttestationGenerator.tsx
 import React, { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -21,12 +22,14 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AttestationSettings } from "./AttestationSettings";
 import { AttestationPreviewButton } from "./AttestationPreviewButton";
-import { FileDown, Loader2, Settings2, Table2 } from "lucide-react";
+import { AttestationThemeEditor } from "./AttestationThemeEditor";
+import { FileDown, Loader2, Settings2, Table2, Palette, FileText, Eye } from "lucide-react";
 import { calculateGrade, calculateMention, getCurrentAcademicYear } from "@/lib/attestation-generator/utils";
 import { openAttestationPreview } from "@/lib/attestation-generator/preview";
+import { AttestationThemeSettingsPayload, defaultAttestationTheme } from "@/lib/form-schemas/attestation-theme-settings";
 
-export const AttestationGenerator = () => {
-  const [activeTab, setActiveTab] = useState<"generator" | "settings">("generator");
+export const AttestationGenerator: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<"generator" | "settings" | "theme">("generator");
   const [excelData, setExcelData] = useState<StudentExcelRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +54,12 @@ export const AttestationGenerator = () => {
     universityLogo: "",
     facultyLogo: "",
   });
+
+  // Thème des attestations
+  const [attestationTheme, setAttestationTheme] = useLocalStorage<AttestationThemeSettingsPayload>(
+    "attestation-theme", 
+    defaultAttestationTheme
+  );
 
   const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -85,9 +94,9 @@ export const AttestationGenerator = () => {
               MENTION: row["MENTION"] || calculateMention(row["MOYENNE"] || row["MOY"] || 0),
               "ANNEE ACADEMIQUE": row["ANNEE ACADEMIQUE"] || getCurrentAcademicYear(),
               "DATE JURY": formatDate(row["DATE JURY"]),
-              "FINALITE": row["FINALITE"]|| "",
-              "TOTAL CREDIT": row["TOTAL CREDIT"]|| "",
-              "DOMAINE": row["DOMAINE"]|| "",
+              "FINALITE": row["FINALITE"] || "",
+              "TOTAL CREDIT": row["TOTAL CREDIT"] || "",
+              "DOMAINE": row["DOMAINE"] || "",
             };
             return standardizedRow;
           });
@@ -149,15 +158,19 @@ export const AttestationGenerator = () => {
 
       for (const student of excelData) {
         try {
-          // Utiliser la nouvelle méthode de génération HTML-to-PDF via IPC
+          // Utiliser la nouvelle méthode de génération HTML-to-PDF via IPC avec le thème
           const params = {
             student,
-            settings: schoolSettings,
+            settings: {
+              ...schoolSettings,
+              theme: attestationTheme, // Inclure le thème dans les paramètres
+            },
             options: {
               qrCodePosition: {
                 x: position.x,
                 y: position.y,
-              }
+              },
+              theme: attestationTheme, // Passer le thème aux options
             }
           };
           
@@ -199,7 +212,7 @@ export const AttestationGenerator = () => {
 
   const handleSettingsUpdate = () => {
     // Recharger les paramètres après mise à jour
-    const settings = localStorage.getItem("attestation");
+    const settings = localStorage.getItem("settings");
     if (settings) {
       try {
         setSchoolSettings(JSON.parse(settings));
@@ -209,17 +222,43 @@ export const AttestationGenerator = () => {
     }
   };
 
+  const handleThemeUpdate = (newTheme: AttestationThemeSettingsPayload) => {
+    setAttestationTheme(newTheme);
+    setSuccess("Thème mis à jour avec succès");
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  const handleThemeSave = () => {
+    // Le thème est déjà sauvegardé via useLocalStorage
+    setSuccess("Thème sauvegardé avec succès");
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  const handleThemePreview = () => {
+    if (excelData.length > 0) {
+      previewAttestation(excelData[0]);
+    } else {
+      setError("Veuillez importer des données pour prévisualiser avec le nouveau thème");
+    }
+  };
+
   // Fonction pour prévisualiser une attestation individuelle
   const previewAttestation = async (student: StudentExcelRecord) => {
     try {
       setIsLoading(true);
       setError(null);
       
-      // Utiliser la fonction de prévisualisation depuis le module attestation-generator/preview
+      // Utiliser la fonction de prévisualisation avec le thème
       const success = await openAttestationPreview(
         student, 
-        schoolSettings, 
-        { qrCodePosition: position }
+        {
+          ...schoolSettings,
+          theme: attestationTheme,
+        }, 
+        { 
+          qrCodePosition: position,
+          theme: attestationTheme,
+        }
       );
       
       if (!success) {
@@ -236,16 +275,20 @@ export const AttestationGenerator = () => {
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "generator" | "settings")}>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "generator" | "settings" | "theme")}>
         <div className="flex justify-between items-center mb-4">
-          <TabsList>
-            <TabsTrigger value="generator">
-              <Table2 className="mr-2 h-4 w-4" />
+          <TabsList className="grid grid-cols-3">
+            <TabsTrigger value="generator" className="flex items-center gap-2">
+              <Table2 className="h-4 w-4" />
               Générateur
             </TabsTrigger>
-            <TabsTrigger value="settings">
-              <Settings2 className="mr-2 h-4 w-4" />
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings2 className="h-4 w-4" />
               Paramètres
+            </TabsTrigger>
+            <TabsTrigger value="theme" className="flex items-center gap-2">
+              <Palette className="h-4 w-4" />
+              Thème
             </TabsTrigger>
           </TabsList>
         </div>
@@ -253,7 +296,10 @@ export const AttestationGenerator = () => {
         <TabsContent value="generator" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Génération d'Attestations</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Génération d'Attestations Personnalisées
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Importation des données Excel */}
@@ -294,7 +340,44 @@ export const AttestationGenerator = () => {
                 </div>
               )}
 
-              
+              {/* Configuration du QR Code */}
+              {excelData.length > 0 && (
+                <div className="space-y-4">
+                  <Label>Position du QR Code sur l'attestation</Label>
+                  <A4PositionPicker
+                    position={position}
+                    onPositionChange={setPosition}
+                    disabled={isLoading}
+                  />
+                </div>
+              )}
+
+              {/* Aperçu du thème actuel */}
+              {excelData.length > 0 && (
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-blue-900">Thème actuel</h4>
+                        <p className="text-sm text-blue-700">
+                          Police: {attestationTheme.mainFont.split(',')[0]} • 
+                          Couleur: {attestationTheme.primaryColor} • 
+                          Style: {attestationTheme.contentLayout}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setActiveTab("theme")}
+                        className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                      >
+                        <Palette className="h-4 w-4 mr-2" />
+                        Personnaliser
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Bouton de génération */}
               <div className="flex justify-end">
@@ -357,7 +440,10 @@ export const AttestationGenerator = () => {
                           <TableCell>
                             <AttestationPreviewButton
                               student={student}
-                              schoolSettings={schoolSettings}
+                              schoolSettings={{
+                                ...schoolSettings,
+                                theme: attestationTheme,
+                              }}
                               qrCodePosition={position}
                               onError={setError}
                               disabled={isLoading}
@@ -375,6 +461,15 @@ export const AttestationGenerator = () => {
 
         <TabsContent value="settings">
           <AttestationSettings onSettingsUpdated={handleSettingsUpdate} />
+        </TabsContent>
+
+        <TabsContent value="theme">
+          <AttestationThemeEditor
+            theme={attestationTheme}
+            onThemeChange={handleThemeUpdate}
+            onSave={handleThemeSave}
+            onPreview={handleThemePreview}
+          />
         </TabsContent>
       </Tabs>
     </div>

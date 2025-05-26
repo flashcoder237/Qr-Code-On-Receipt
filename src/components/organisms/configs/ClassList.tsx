@@ -112,7 +112,7 @@ export const ClassList: React.FC<ClassListProps> = ({
                             <div className="flex items-center gap-2 mb-1">
                               <BookOpen className={`h-4 w-4 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
                               <h4 className={`font-semibold truncate ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
-                                {config.name}
+                                {config.name.substring(0, 15)}...
                               </h4>
                             </div>
                             <p className={`text-xs truncate ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>

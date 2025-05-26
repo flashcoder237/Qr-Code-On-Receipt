@@ -1,4 +1,4 @@
-// src/App.tsx - Version améliorée avec le nouveau layout
+// src/App.tsx - Version avec gestion des licences restaurée
 import { useState, useEffect } from "react";
 import { useLocalStorage } from "usehooks-ts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,6 +10,9 @@ import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { menuItems } from "@/lib/constants/menu";
 import { Loader2, RefreshCw } from "lucide-react";
+import { useLicense } from "@/hooks/use-license";
+import { LicenseForm } from "@/components/organisms/license-form/LicenseForm";
+import { Spinner } from "@/components/ui/LoadingSpinner";
 
 // Contexte pour la gestion d'état globale
 import { createContext, useContext } from "react";
@@ -30,10 +33,21 @@ export const useAppContext = () => {
   return context;
 };
 
-function App() {
+// Composant principal de l'application avec gestion des licences
+const AppContent: React.FC = () => {
   const [currentPath, setCurrentPath] = useLocalStorage<string>("current_path", "receipts");
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Gestion des licences
+  const {
+    isLicensed,
+    isLoading: licenseLoading,
+    error: licenseError,
+    licenseKey,
+    setLicenseKey,
+    activateLicense
+  } = useLicense();
 
   // Initialisation de l'application
   useEffect(() => {
@@ -51,8 +65,11 @@ function App() {
       }
     };
 
-    initializeApp();
-  }, []);
+    // N'initialiser l'app que si la licence est validée
+    if (isLicensed && !isInitialized) {
+      initializeApp();
+    }
+  }, [isLicensed, isInitialized]);
 
   const refreshData = () => {
     setIsLoading(true);
@@ -67,10 +84,42 @@ function App() {
   const currentComponent = currentMenuItem?.component || <div>Page non trouvée</div>;
   const currentTitle = currentMenuItem?.title || "Page inconnue";
 
-  // Écran de chargement initial
+  // Affichage du chargement initial des licences
+  if (licenseLoading) {
+    return (
+      <div className="w-screen h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Spinner.Large label="Vérification de la licence" />
+          <h2 className="text-xl font-semibold text-gray-800">
+            Vérification de la licence...
+          </h2>
+          <p className="text-gray-600">
+            Veuillez patienter pendant que nous vérifions votre licence.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Affichage du formulaire de licence si non licencié
+  if (!isLicensed) {
+    return (
+      <div className="w-screen h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <LicenseForm
+          licenseKey={licenseKey}
+          onLicenseKeyChange={setLicenseKey}
+          onActivate={activateLicense}
+          error={licenseError}
+          isLoading={licenseLoading}
+        />
+      </div>
+    );
+  }
+
+  // Écran de chargement initial de l'application
   if (!isInitialized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="w-screen h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center space-y-4">
           <motion.div
             animate={{ rotate: 360 }}
@@ -90,79 +139,87 @@ function App() {
     );
   }
 
+  // Interface principale de l'application
+  return (
+    <AppContext.Provider value={{ isLoading, setIsLoading, refreshData }}>
+      <AppToolbarProvider>
+        <SidebarProvider defaultOpen>
+          <div className="flex w-screen h-screen bg-background overflow-auto">
+            <AppSidebar />
+            
+            <SidebarInset className="flex-1 flex flex-col">
+              <AppToolbar />
+              
+              <main className="flex-1 overflow-auto">
+                {/* Titre et menu de la page courante */}
+                <AppToolbarTitle>
+                  <div className="flex items-center gap-2">
+                    {currentMenuItem?.icon && (
+                      <currentMenuItem.icon className="h-5 w-5" />
+                    )}
+                    {currentTitle}
+                    {isLoading && (
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                    )}
+                  </div>
+                </AppToolbarTitle>
+                
+                <AppToolbarMenu>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={refreshData}
+                    disabled={isLoading}
+                    className="gap-2"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    Actualiser
+                  </Button>
+                </AppToolbarMenu>
+
+                {/* Contenu principal avec animation */}
+                <div className="relative flex-1 h-full">
+                  <AnimatePresence mode="wait">
+                    <PageLayout key={currentPath} locationKey={currentPath}>
+                      <div className="h-full overflow-auto p-4">
+                        {currentComponent}
+                      </div>
+                    </PageLayout>
+                  </AnimatePresence>
+                  
+                  {/* Overlay de chargement */}
+                  <AnimatePresence>
+                    {isLoading && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-50"
+                      >
+                        <div className="flex items-center gap-3 bg-white rounded-lg shadow-lg p-4">
+                          <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                          <span className="text-sm font-medium text-gray-700">
+                            Chargement en cours...
+                          </span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </main>
+            </SidebarInset>
+          </div>
+        </SidebarProvider>
+      </AppToolbarProvider>
+    </AppContext.Provider>
+  );
+};
+
+// Composant App principal avec ErrorBoundary
+function App() {
   return (
     <ErrorBoundary>
-      <AppContext.Provider value={{ isLoading, setIsLoading, refreshData }}>
-        <AppToolbarProvider>
-          <SidebarProvider defaultOpen>
-            <div className="flex min-h-screen bg-background">
-              <AppSidebar />
-              
-              <SidebarInset className="flex-1">
-                <AppToolbar />
-                
-                <main className="flex-1 overflow-hidden">
-                  {/* Titre et menu de la page courante */}
-                  <AppToolbarTitle>
-                    <div className="flex items-center gap-2">
-                      {currentMenuItem?.icon && (
-                        <currentMenuItem.icon className="h-5 w-5" />
-                      )}
-                      {currentTitle}
-                      {isLoading && (
-                        <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                      )}
-                    </div>
-                  </AppToolbarTitle>
-                  
-                  <AppToolbarMenu>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={refreshData}
-                      disabled={isLoading}
-                      className="gap-2"
-                    >
-                      <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                      Actualiser
-                    </Button>
-                  </AppToolbarMenu>
-
-                  {/* Contenu principal avec animation */}
-                  <div className="relative h-full">
-                    <AnimatePresence mode="wait">
-                      <PageLayout key={currentPath} locationKey={currentPath}>
-                        <div className="h-full overflow-auto">
-                          {currentComponent}
-                        </div>
-                      </PageLayout>
-                    </AnimatePresence>
-                    
-                    {/* Overlay de chargement */}
-                    <AnimatePresence>
-                      {isLoading && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-50"
-                        >
-                          <div className="flex items-center gap-3 bg-white rounded-lg shadow-lg p-4">
-                            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                            <span className="text-sm font-medium text-gray-700">
-                              Chargement en cours...
-                            </span>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </main>
-              </SidebarInset>
-            </div>
-          </SidebarProvider>
-        </AppToolbarProvider>
-      </AppContext.Provider>
+      <AppContent />
     </ErrorBoundary>
   );
 }

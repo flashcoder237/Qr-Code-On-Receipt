@@ -1,6 +1,7 @@
-// src/lib/attestation-generator/html-generator.ts
+// src/lib/attestation-generator/-html-generator.ts
 import { StudentExcelRecord } from '../helpers/qrcode';
 import { formatDate, calculateGrade, calculateMention } from './utils';
+import { AttestationThemeSettingsPayload, defaultAttestationTheme } from '../form-schemas/attestation-theme-settings';
 
 interface SchoolSettings {
   nameFrench: string;
@@ -14,24 +15,29 @@ interface SchoolSettings {
   facultyLogo?: string;
   themeColor?: string;
   themeFont?: string;
+  theme?: AttestationThemeSettingsPayload;
 }
 
 interface GenerationOptions {
-  qrCodeImage?: string; // Base64 encoded QR code image
+  qrCodeImage?: string;
   qrCodePosition?: {
     x: number;
     y: number;
   };
+  theme?: AttestationThemeSettingsPayload;
 }
 
 /**
- * Génère le HTML pour l'attestation de réussite
+ * Génère le HTML pour l'attestation de réussite avec support des thèmes personnalisés
  */
 export async function generateAttestationHTML(
   student: StudentExcelRecord,
   settings: SchoolSettings,
   options: GenerationOptions = {}
 ): Promise<string> {
+  // Utiliser le thème fourni ou celui des paramètres ou le thème par défaut
+  const theme = options.theme || settings.theme || defaultAttestationTheme;
+  
   // Récupérer les logos au format base64
   const schoolLogo = settings.logo || '';
   const universityLogo = settings.universityLogo || '';
@@ -41,7 +47,7 @@ export async function generateAttestationHTML(
   const academicYear = student["ANNEE ACADEMIQUE"] || "2023/2024";
   
   // Date du jury
-  const juryDate = student["DATE JURY"] || ''; // Date à paramétrer si nécessaire
+  const juryDate = student["DATE JURY"] || '';
   
   // Année courante pour le numéro de référence (les 2 derniers chiffres)
   const currentYear = new Date().getFullYear() % 100;
@@ -55,244 +61,322 @@ export async function generateAttestationHTML(
   const birthPlace = student["LIEU DE NAISSANCE"] || '';
   
   // Informations académiques
-  const fieldOfStudy = student.DOMAINE; // Domaine d'études (à paramétrer si nécessaire)
-  const course = student.PARCOURS || "";
-  const specialization = student.SPECIALITE || "";
+  const fieldOfStudy = student.DOMAINE || "SCIENCES MEDICO-SANITAIRES";
+  const course = student.PARCOURS || "SCIENCES INFIRMIÈRES";
+  const specialization = student.SPECIALITE || "SOINS INFIRMIERS";
   const option = student.OPTION || "";
   
   // Crédits et notes
-  const credits = student["TOTAL CREDIT"] || ''; // Nombre total de crédits (à paramétrer si nécessaire)
+  const credits = student["TOTAL CREDIT"] || '60';
   const average = typeof student.MOYENNE === 'number' ? student.MOYENNE.toFixed(2) : String(student.MOYENNE);
   const grade = student.GRADE || calculateGrade(typeof student.MOYENNE === 'number' ? student.MOYENNE : parseFloat(String(student.MOYENNE)));
   const mention = student.MENTION || calculateMention(typeof student.MOYENNE === 'number' ? student.MOYENNE : parseFloat(String(student.MOYENNE)));
   
   // Finalité
-  const finality = student["FINALITE"] || '';
+  const finality = student["FINALITE"] || 'LICENCE PROFESSIONNELLE';
 
-  
-  // Styles CSS
-  const styles = `
-    @page {
-      size: A4;
-      margin: 0;
-    }
-    body {
-      margin: 5mm;
-      font-family: ${settings.themeFont || "'Times New Roman', Times, serif"};
-      box-sizing: border-box;
-      font-size: 14px;
-      border: 2px double #333;
-      width: 200mm;
-      height: 287mm;
-      position: relative;
-    }
-    .container {
-      width: 100%;
-      height: 100%;
-      padding: 10px 20px;
-      box-sizing: border-box;
-      position: relative;
-    }
+  // Générer les styles CSS basés sur le thème
+  const generateThemeStyles = (): string => {
+    const logoSizeMap = {
+      small: { width: '40px', height: '40px' },
+      medium: { width: '60px', height: '60px' },
+      large: { width: '80px', height: '80px' }
+    };
 
+    const qrCodeSizeMap = {
+      small: { width: '80px', height: '80px' },
+      medium: { width: '100px', height: '100px' },
+      large: { width: '120px', height: '120px' }
+    };
+
+    const currentLogoSize = logoSizeMap[theme.logoSize];
+    const currentQrCodeSize = qrCodeSizeMap[theme.qrCodeSize];
+
+    return `
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: ${theme.documentPadding}px;
+        font-family: ${theme.mainFont};
+        box-sizing: border-box;
+        font-size: ${theme.contentFontSize}px;
+        ${theme.borderStyle !== 'none' ? `border: ${theme.borderWidth}px ${theme.borderStyle} ${theme.tableBorderColor};` : ''}
+        width: ${210 - (theme.documentPadding * 2)}mm;
+        min-height: ${297 - (theme.documentPadding * 2)}mm;
+        position: relative;
+        color: ${theme.primaryColor};
+        background-color: white;
+        ${theme.compactMode ? 'line-height: 1.2;' : 'line-height: 1.4;'}
+      }
       
-    .header {    
-      line-height: normal;
-      font-size: 8px;
-    }
-    .header-row1{
-      text-align: center;
-      margin-bottom: 5px;
-      display: flex;
-      justify-content: space-between;
-    }
-    .header h1 {
-      font-size: 10px;
-    }
-    .header-content{
-      width: 33%;
-      font-size: 10px;
-      line-height: 11px;
-    }
-    .header-logo-content{
-      align-content: center;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .header-logo-content > div{
-      width: 100%;
-      height: 100%;
-      align-items: center;
-      align-content: center;
-    }
-    .header-logo-content > div > img{
-      max-width: 100%;
-      min-height: 70px;
-      object-fit: contain;
-    }
-    .header-row2 h1{
-      font-weight: 100;
-      text-align: center;
-      font-size: large;
-    }
-    .header-row2 p{
-      font-size: 16px;
-    }
-    .header-row2{
-      text-align: center;
-    }
-    .divider {
-      text-align: center;
-      margin: 5px 0;
-    }
-    .title {
-      text-align: center;
-      font-size: 24px;
-      font-weight: bold;
-      margin: 0;
-      text-transform: uppercase;
-    }
-    .subtitle {
-      text-align: center;
-      font-style: italic;
-      font-size: 22px;
-      margin-bottom: 10px;
-    }
-    .ref {
-      text-align: center;
-      margin: 5px 0;
-      font-size:18px;
-    }
-    .content {
-      margin: 0px 0;
-    }
-    .student-info {
-      margin: 15px 0;
-    }
-    .table-container {
-      width: 100%;
-      margin: 0;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 4px 8px;
-      text-align: center;
-    }
-    .footer {
-      margin-top: 2px;
-      display: flex;
-      justify-content: space-between;
-    }
-    .signature {
-      width: 48%;
-      text-align: left;
-    }
-      .sign-ipes{
-      width: 100%;
-      text-align: center;
+      .container {
+        width: 100%;
+        height: 100%;
+        position: relative;
       }
-    .qr-code {
-      text-align: center;
-      margin: 0px 0;
-    }
-    .qr-image {
-      width: 100px;
-      height: 100px;
-      background-color: #eee;
-      display: block;
-    }
-    .disclaimer {
-      font-size: 8px;
-      font-style: italic;
-      text-align: left;
-      margin-top: 20px;
-      display: flex;
-      flex-direction: row;
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      right: 20px;
-    }
-    .disclaimer div{
-      padding-right: 10px;
-    }
-    .logos {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin: 10px 0;
-    }
-    .logo {
-      width: 100px;
-      height: 100px;
-      margin: 0 3px;
-      background-color: #eee;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    em {
-      font-style: italic;
-    }
-      .watermark {
-      position: absolute;
-      top: 25%;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: -1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      opacity:0.3;
-      pointer-events: none;
-    }
-    .watermark img {
-      width: 600px;
-      height: auto;
-    }
 
-      .nomination-list{
-       display : flex;
-       width: 100%;
-       gap: 30%;
+      /* En-tête */
+      .header {    
+        font-size: ${theme.headerFontSize}px;
+        font-family: ${theme.headerFont};
+        margin-bottom: ${theme.compactMode ? '10px' : '20px'};
       }
-       .nomination-list-item{
-        border-top : 1px solid black;
-        width: 30%;
-        padding-top: 4px;
-       }
-        .recteur-sign{
-          margin-top : 65px;
+      
+      .header-row1 {
+        text-align: center;
+        margin-bottom: ${theme.headerLayout === 'compact' ? '10px' : '15px'};
+        display: flex;
+        justify-content: space-between;
+        align-items: ${theme.logoPosition === 'integrated' ? 'center' : 'flex-start'};
+      }
+      
+      .header-content {
+        width: ${theme.headerLayout === 'extended' ? '40%' : theme.headerLayout === 'compact' ? '30%' : '35%'};
+        font-size: ${theme.headerFontSize}px;
+        line-height: ${theme.compactMode ? '1.1' : '1.3'};
+      }
+      
+      .header-logo-content {
+        ${theme.logoPosition === 'top' ? 'position: absolute; top: -10px; left: 50%; transform: translateX(-50%);' : ''}
+        ${theme.logoPosition === 'integrated' ? 'width: 30%;' : 'width: 30%;'}
+        display: flex;
+        align-items: center;
+        justify-content: ${theme.logoPosition === 'integrated' ? 'space-around' : 'space-between'};
+      }
+      
+      .header-logo-content > div {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .header-logo-content > div > img {
+        width: ${currentLogoSize.width};
+        height: ${currentLogoSize.height};
+        object-fit: contain;
+      }
+      
+      .header-row2 {
+        text-align: center;
+        margin-bottom: ${theme.compactMode ? '15px' : '25px'};
+      }
+      
+      .header-row2 h1 {
+        font-weight: bold;
+        font-size: ${theme.titleFontSize}px;
+        color: ${theme.accentColor};
+        margin: ${theme.compactMode ? '5px 0' : '10px 0'};
+        font-family: ${theme.headerFont};
+      }
+      
+      .header-row2 h2 {
+        font-weight: bold;
+        font-size: ${theme.subtitleFontSize}px;
+        color: ${theme.secondaryColor};
+        margin: ${theme.compactMode ? '3px 0' : '5px 0'};
+        font-style: italic;
+      }
+      
+      .header-row2 p {
+        font-size: ${theme.contentFontSize + 2}px;
+        margin: ${theme.compactMode ? '5px 0' : '10px 0'};
+      }
+
+      /* Contenu principal */
+      .content {
+        margin: ${theme.compactMode ? '10px 0' : '20px 0'};
+        font-size: ${theme.contentFontSize}px;
+      }
+      
+      .student-info {
+        margin: ${theme.compactMode ? '10px 0' : '15px 0'};
+      }
+      
+      .student-info p {
+        margin: ${theme.compactMode ? '3px 0' : '5px 0'};
+      }
+
+      /* Tableaux */
+      .table-container {
+        width: 100%;
+        margin: ${theme.compactMode ? '10px 0' : '15px 0'};
+      }
+      
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: ${theme.compactMode ? '8px' : '12px'};
+      }
+      
+      th, td {
+        padding: ${theme.tableCellPadding}px;
+        text-align: center;
+        border: ${theme.borderWidth}px ${theme.borderStyle} ${theme.tableBorderColor};
+        font-size: ${theme.contentFontSize}px;
+      }
+      
+      th {
+        background-color: ${theme.tableHeaderBgColor};
+        font-weight: bold;
+        color: ${theme.primaryColor};
+      }
+      
+      ${theme.tableStyle === 'striped' ? `
+      tbody tr:nth-child(even) {
+        background-color: ${theme.tableHeaderBgColor};
+      }` : ''}
+      
+      ${theme.tableStyle === 'modern' ? `
+      table {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+      th {
+        background: linear-gradient(135deg, ${theme.tableHeaderBgColor}, ${theme.accentColor}20);
+      }` : ''}
+      
+      ${theme.tableStyle === 'simple' ? `
+      table, th, td {
+        border: none;
+      }
+      th {
+        border-bottom: 2px solid ${theme.tableBorderColor};
+      }
+      td {
+        border-bottom: 1px solid ${theme.tableBorderColor}40;
+      }` : ''}
+
+      /* Pied de page et signatures */
+      .footer {
+        margin-top: ${theme.compactMode ? '15px' : '25px'};
+        ${theme.signatureLayout === 'side-by-side' ? 'display: flex; justify-content: space-between;' : ''}
+        ${theme.signatureLayout === 'centered' ? 'text-align: center;' : ''}
+        ${theme.signatureLayout === 'stacked' ? 'display: flex; flex-direction: column; align-items: center; gap: 20px;' : ''}
+      }
+      
+      .signature {
+        ${theme.signatureLayout === 'side-by-side' ? 'width: 48%;' : 'width: 100%;'}
+        ${theme.signatureLayout === 'centered' ? 'margin: 10px 0;' : ''}
+        font-size: ${theme.contentFontSize}px;
+        ${theme.signatureStyle === 'boxed' ? `border: 1px solid ${theme.primaryColor}; padding: 10px; border-radius: 4px;` : ''}
+        ${theme.signatureStyle === 'underlined' ? `border-bottom: 2px solid ${theme.primaryColor}; padding-bottom: 5px;` : ''}
+        ${theme.signatureStyle === 'modern' ? `background-color: ${theme.tableHeaderBgColor}; padding: 8px; border-radius: 6px; border-left: 4px solid ${theme.accentColor};` : ''}
+      }
+      
+      .qr-code {
+        ${theme.qrCodePosition === 'bottom-center' ? 'text-align: center; margin: 15px 0;' : ''}
+        ${theme.qrCodePosition === 'bottom-left' ? 'float: left; margin: 0 15px 15px 0;' : ''}
+        ${theme.qrCodePosition === 'bottom-right' ? 'float: right; margin: 0 0 15px 15px;' : ''}
+        ${!theme.showQRCode ? 'display: none;' : ''}
+      }
+      
+      .qr-image {
+        width: ${currentQrCodeSize.width};
+        height: ${currentQrCodeSize.height};
+        border: 1px solid ${theme.tableBorderColor};
+      }
+
+      /* Filigrane */
+      .watermark {
+        position: absolute;
+        top: 25%;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        display: ${theme.showWatermark ? 'flex' : 'none'};
+        justify-content: center;
+        align-items: center;
+        opacity: ${theme.watermarkOpacity};
+        pointer-events: none;
+      }
+      
+      .watermark img {
+        width: 600px;
+        height: auto;
+      }
+
+      /* Disclaimer */
+      .disclaimer {
+        font-size: ${theme.footerFontSize}px;
+        font-style: italic;
+        text-align: left;
+        margin-top: ${theme.compactMode ? '15px' : '25px'};
+        ${theme.contentLayout === 'formal' ? 'text-align: justify;' : ''}
+        color: ${theme.secondaryColor};
+        line-height: 1.3;
+      }
+
+      /* Styles pour les différents layouts de contenu */
+      ${theme.contentLayout === 'modern' ? `
+      .content {
+        background: linear-gradient(135deg, transparent, ${theme.tableHeaderBgColor}20);
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+      }
+      .student-info {
+        background: white;
+        padding: 12px;
+        border-radius: 6px;
+        border-left: 4px solid ${theme.accentColor};
+      }` : ''}
+      
+      ${theme.contentLayout === 'formal' ? `
+      .content {
+        text-align: justify;
+      }
+      .student-info {
+        border: 1px solid ${theme.tableBorderColor};
+        padding: 15px;
+        background-color: ${theme.tableHeaderBgColor}20;
+      }` : ''}
+
+      /* Texte bilingue */
+      em {
+        font-style: italic;
+        color: ${theme.secondaryColor};
+        ${!theme.showBilingualText ? 'display: none;' : ''}
+      }
+
+      /* Responsive pour l'impression */
+      @media print {
+        body {
+          margin: 0;
+          box-shadow: none;
         }
-  `;
+        .no-print {
+          display: none;
+        }
+      }
+    `;
+  };
 
   // Création du contenu HTML
   const html = `
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="${theme.primaryLanguage === 'english' ? 'en' : 'fr'}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attestation de Réussite</title>
-    <style>${styles}</style>
+    <title>Attestation de Réussite - ${studentFullName}</title>
+    <style>${generateThemeStyles()}</style>
 </head>
 <body>
     <div class="container">
-        <!-- IPES Logo Watermark    -->
-            <div class="watermark">
-                <img src=${schoolLogo} alt="IPES Watermark">
-            </div>
+        <!-- Filigrane IPES -->
+        <div class="watermark">
+            <img src="${schoolLogo}" alt="IPES Watermark">
+        </div>
      
         <div class="header">
             <div class="header-row1">
               <div class="header-content">
                 <p>REPUBLIQUE DU CAMEROUN <br>
-                <em>Paix – Travail – Patrie</em><br>
+                ${theme.showBilingualText ? '<em>Paix – Travail – Patrie</em>' : '<strong>Paix – Travail – Patrie</strong>'}<br>
                 ********************<br>
                 MINISTERE DE L'ENSEIGNEMENT SUPERIEUR<br>
                 ********************<br>
@@ -301,7 +385,7 @@ export async function generateAttestationHTML(
                 <strong>FACULTE DE MEDECINE ET <br> DES SCIENCES PHARMACEUTIQUES</strong><br>
                 ********************<br>
                 B.P 2701, Douala, Cameroun<br>
-                Email: <a href="mailto:mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a><br>
+                Email: <a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a><br>
                 ********************<br>
                 <strong>${settings.nameFrench
                             .split(" ")
@@ -311,14 +395,18 @@ export async function generateAttestationHTML(
                 ${settings.postalBox}<br>
                 Email: <a href="mailto:${settings.email}">${settings.email}</a></p>
               </div>
+              
+              ${theme.logoPosition !== 'top' ? `
               <div class="header-logo-content">
-                <div>${universityLogo ? `<img src="${universityLogo}" alt="University Logo" height="70">` : ''}</div>
-                <div>${facultyLogo ? `<img src="${facultyLogo}" alt="Faculty Logo" height="50">` : ''}</div>
-                <div>${schoolLogo ? `<img src="${schoolLogo}" alt="IPES Logo" height="50">` : ''}</div>
+                <div>${universityLogo ? `<img src="${universityLogo}" alt="University Logo">` : ''}</div>
+                <div>${facultyLogo ? `<img src="${facultyLogo}" alt="Faculty Logo">` : ''}</div>
+                <div>${schoolLogo ? `<img src="${schoolLogo}" alt="IPES Logo">` : ''}</div>
               </div>
+              ` : ''}
+              
               <div class="header-content">
                 <p>REPUBLIC OF CAMEROON<br>
-                <em>Peace – Work - Fatherland</em><br>
+                ${theme.showBilingualText ? '<em>Peace – Work - Fatherland</em>' : '<strong>Peace – Work - Fatherland</strong>'}<br>
                 ********************<br>
                 MINISTRY OF HIGHER EDUCATION<br>
                 ********************<br>
@@ -338,67 +426,80 @@ export async function generateAttestationHTML(
                 Email: <a href="mailto:${settings.email}">${settings.email}</a></p>    
               </div>
             </div>
+            
+            ${theme.logoPosition === 'top' ? `
+            <div class="header-logo-content" style="margin-bottom: 15px;">
+              <div>${universityLogo ? `<img src="${universityLogo}" alt="University Logo">` : ''}</div>
+              <div>${facultyLogo ? `<img src="${facultyLogo}" alt="Faculty Logo">` : ''}</div>
+              <div>${schoolLogo ? `<img src="${schoolLogo}" alt="IPES Logo">` : ''}</div>
+            </div>
+            ` : ''}
+            
             <div class="header-row2">
-              <div class="title">ATTESTATION DE REUSSITE</div>
-              <div class="subtitle"><strong>ATTESTATION OF COMPLETION OF STUDIES</strong></div>
+              <h1>${theme.customTitle || "ATTESTATION DE REUSSITE"}</h1>
+              ${theme.showBilingualText ? `<h2>${theme.customSubtitle || "ATTESTATION OF COMPLETION OF STUDIES"}</h2>` : ''}
               
-              <div class="ref"><strong>Ref N°............./${currentYear-1}/UDo/FMSP/VDRC/${settings.nameAbreviation}</strong></div>
+              <p><strong>Ref N°............./${currentYear-1}/UDo/FMSP/VDRC/${settings.nameAbreviation}</strong></p>
             </div>
         </div>
         
         <div class="content">
-            <p><strong>Nous soussignés,</strong><br>
-            <em>We, the undersigned,</em></p><br>
-            <div class="nomination-list">
-              <div class="nomination-list-item">
-                <strong>Directeur de l’${settings.nameAbreviation}</strong>
+            <p><strong>${theme.primaryLanguage === 'english' ? 'We, the undersigned,' : 'Nous soussignés,'}</strong><br>
+            ${theme.showBilingualText ? '<em>' + (theme.primaryLanguage === 'english' ? 'Nous soussignés,' : 'We, the undersigned,') + '</em>' : ''}</p>
+            
+            <div style="display: flex; justify-content: space-between; margin: 15px 0;">
+              <div style="width: 45%; text-align: center; border-top: 1px solid ${theme.tableBorderColor}; padding-top: 4px;">
+                <strong>Directeur de l'${settings.nameAbreviation}</strong>
               </div>
-              <div class="nomination-list-item">
-                <strong>Recteur de l’Université de Douala</strong>
+              <div style="width: 45%; text-align: center; border-top: 1px solid ${theme.tableBorderColor}; padding-top: 4px;">
+                <strong>Recteur de l'Université de Douala</strong>
               </div>
             </div>
             
             <p><strong>Vu le procès-verbal du jury N°0001 en date du ${juryDate} atteste que,</strong><br>
-            <em>Considering the jury's decision N° 0001 dated ${juryDate} Certify that,</em></p>
+            ${theme.showBilingualText ? `<em>Considering the jury's decision N° 0001 dated ${juryDate} Certify that,</em>` : ''}</p>
             
             <div class="student-info">
                 <p>M./Mme/Mlle <strong>${studentFullName}</strong><br>
-                <em>Mr/Mrs/Miss</em></p>
+                ${theme.showBilingualText ? '<em>Mr/Mrs/Miss</em>' : ''}</p>
                 
                 <p>Né(e) le: <strong>${birthDate}</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;à&nbsp;<strong>${birthPlace}</strong><br>
-                <em>Born on: <strong style="opacity:0">${birthDate}</strong></em><em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;at:</em></p>
+                ${theme.showBilingualText ? '<em>Born on:</em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>at:</em>' : ''}</p>
                 
                 <p>Inscrit(e) à <strong>${settings.nameFrench}</strong> sous le matricule: <strong>${matricule}</strong><br>
-                <em>Registered under the matricule number:</em></p>
+                ${theme.showBilingualText ? '<em>Registered under the matricule number:</em>' : ''}</p>
             </div>
             
+            ${theme.showDomainTable ? `
             <div class="table-container">
                 <table>
                     <tr>
-                        <th>Domaine<br><em style="font-weight: normal">Domain of the study</em></th>
-                        <th>Parcours<br><em style="font-weight: normal">Course</em></th>
-                        <th>Spécialité<br><em style="font-weight: normal">Specialization</em></th>
-                        <th>Option<br><em style="font-weight: normal">Learning option</em></th>
+                        <th>Domaine<br>${theme.showBilingualText ? '<em style="font-weight: normal">Domain of the study</em>' : ''}</th>
+                        <th>Parcours<br>${theme.showBilingualText ? '<em style="font-weight: normal">Course</em>' : ''}</th>
+                        <th>Spécialité<br>${theme.showBilingualText ? '<em style="font-weight: normal">Specialization</em>' : ''}</th>
+                        ${option ? '<th>Option<br>' + (theme.showBilingualText ? '<em style="font-weight: normal">Learning option</em>' : '') + '</th>' : ''}
                     </tr>
-                    <tr style="border-top: 1px solid #333; background-color:#eeeeee">
+                    <tr style="background-color:${theme.tableHeaderBgColor}">
                         <td><strong>${fieldOfStudy}</strong></td>
                         <td><strong>${course}</strong></td>
                         <td><strong>${specialization}</strong></td>
-                        <td><strong>${option}</strong></td>
+                        ${option ? `<td><strong>${option}</strong></td>` : ''}
                     </tr>
                 </table>
             </div>
+            ` : ''}
             
+            ${theme.showAcademicDetails ? `
             <div class="table-container">
                 <table>
                     <tr>
-                        <th>Total de credits<br><em style="font-weight: normal">Credits earned</em></th>
-                        <th>Moyenne<br><em style="font-weight: normal">Average</em></th>
-                        <th>Mention<br><em style="font-weight: normal">Grade</em></th>
-                        <th>Année académique<br><em style="font-weight: normal">Academic year</em></th>
-                        <th>Finalité/Voie<br><em style="font-weight: normal">Finality/Vocation</em></th>
+                        <th>Total de credits<br>${theme.showBilingualText ? '<em style="font-weight: normal">Credits earned</em>' : ''}</th>
+                        <th>Moyenne<br>${theme.showBilingualText ? '<em style="font-weight: normal">Average</em>' : ''}</th>
+                        <th>Mention<br>${theme.showBilingualText ? '<em style="font-weight: normal">Grade</em>' : ''}</th>
+                        <th>Année académique<br>${theme.showBilingualText ? '<em style="font-weight: normal">Academic year</em>' : ''}</th>
+                        <th>Finalité/Voie<br>${theme.showBilingualText ? '<em style="font-weight: normal">Finality/Vocation</em>' : ''}</th>
                     </tr>
-                    <tr style="border-top: 1px solid #333; background-color:#eeeeee">
+                    <tr style="background-color:${theme.tableHeaderBgColor}">
                         <td><strong>${credits}</strong></td>
                         <td><strong>${average}</strong></td>
                         <td><strong>${mention} ${grade}</strong></td>
@@ -407,40 +508,70 @@ export async function generateAttestationHTML(
                     </tr>
                 </table>
             </div>
+            ` : ''}
             
             <p>En foi de quoi la présente Attestation est délivrée pour servir et valoir ce que de droit.<br>
-            <em>In witness where of the present testimonial is given with all the privileges there to pertaining.</em></p>
+            ${theme.showBilingualText ? '<em>In witness where of the present testimonial is given with all the privileges there to pertaining.</em>' : ''}</p>
         </div>
         
         <div class="footer">
-            <div class="signature" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="signature">
+                ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-left' ? `
                 <div class="qr-code">
-                    ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" />` : 
+                    ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" alt="QR Code" />` : 
                       '<div class="qr-image"></div>'}
                 </div>
-                <div class="sign-ipes">
-                  <p><strong>Le Directeur de L'${settings.nameAbreviation}</strong><br>
-                  <em>The Director of the ${settings.nameAbreviation}</em></p>
-                </div>
+                ` : ''}
+                
+                <p><strong>Le Directeur de L'${settings.nameAbreviation}</strong><br>
+                ${theme.showBilingualText ? `<em>The Director of the ${settings.nameAbreviation}</em>` : ''}</p>
             </div>
+            
+            ${theme.qrCodePosition === 'bottom-center' ? `
+            <div class="qr-code">
+                ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" alt="QR Code" />` : 
+                  '<div class="qr-image"></div>'}
+            </div>
+            ` : ''}
             
             <div class="signature">
                 <p><strong>Douala, le</strong><br>
-                 <em>Douala, the</em></p>
+                ${theme.showBilingualText ? '<em>Douala, the</em>' : ''}</p>
 
-                <p class="recteur-sign"><strong>Le Recteur de l'Université de Douala</strong><br>
-                <em>The Rector of the University of Douala</em></p>
+                <p style="margin-top: ${theme.signatureLayout === 'stacked' ? '10px' : '40px'};">
+                <strong>Le Recteur de l'Université de Douala</strong><br>
+                ${theme.showBilingualText ? '<em>The Rector of the University of Douala</em>' : ''}</p>
+                
+                ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-right' ? `
+                <div class="qr-code">
+                    ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" alt="QR Code" />` : 
+                      '<div class="qr-image"></div>'}
+                </div>
+                ` : ''}
             </div>
         </div>
         
         <div class="disclaimer">
-            <div>
-                Cette Attestation ne tient pas lieu de Diplôme et n'est délivrée qu'en un seul exemplaire et d'une validité de (6) mois à partir de la date de signature. Le Diplôme lui sera délivré ultérieurement
+            ${theme.customFooterText ? theme.customFooterText : `
+            <div style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    Cette Attestation ne tient pas lieu de Diplôme et n'est délivrée qu'en un seul exemplaire et d'une validité de (6) mois à partir de la date de signature. Le Diplôme lui sera délivré ultérieurement
+                </div>
+                ${theme.showBilingualText ? `
+                <div style="flex: 1;">
+                    <em>Only one copy of this Attestation shall be delivered and is not a certificate. This Attestation is valid for (6) six months from the date of signature. The Certificate will be issued at a later date.</em>
+                </div>
+                ` : ''}
             </div>
-            <div>
-                <em>Only one copy of this Attestation shall be delivered and is not a certificate. This Attestation is valid for (6) six months from the date of signature. The Certificate will be issued at a later date.</em>
-            </div>
+            `}
         </div>
+        
+        ${theme.qrCodePosition === 'custom' && options.qrCodePosition ? `
+        <div style="position: absolute; left: ${options.qrCodePosition.x}px; top: ${options.qrCodePosition.y}px;" class="qr-code">
+            ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" alt="QR Code" />` : 
+              '<div class="qr-image"></div>'}
+        </div>
+        ` : ''}
     </div>
 </body>
 </html>
