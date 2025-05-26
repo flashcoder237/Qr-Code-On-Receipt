@@ -35,6 +35,13 @@ export async function generateAttestationHTML(
   settings: SchoolSettings,
   options: GenerationOptions = {}
 ): Promise<string> {
+  if (!student) {
+    throw new Error("Les données de l'étudiant sont requises");
+  }
+  
+  if (!settings) {
+    throw new Error("Les paramètres de l'école sont requis");
+  }
   // Utiliser le thème fourni ou celui des paramètres ou le thème par défaut
   const theme = options.theme || settings.theme || defaultAttestationTheme;
   

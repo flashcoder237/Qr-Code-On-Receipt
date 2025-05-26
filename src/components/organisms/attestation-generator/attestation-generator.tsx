@@ -38,9 +38,9 @@ export const AttestationGenerator: React.FC = () => {
   
   // Position pour le QR code
   const [position, setPosition] = useLocalStorage("attestation-qrcode-position", {
-    x: 470,
-    y: 220,
-  });
+  x: 470,
+  y: 220,
+});
   
   // Paramètres de l'établissement
   const [schoolSettings, setSchoolSettings] = useLocalStorage("settings", {
@@ -142,53 +142,55 @@ export const AttestationGenerator: React.FC = () => {
   };
 
   const generateAttestations = async () => {
-    if (excelData.length === 0) {
-      setError("Veuillez d'abord importer des données depuis Excel");
-      return;
-    }
+  if (excelData.length === 0) {
+    setError("Veuillez d'abord importer des données depuis Excel");
+    return;
+  }
 
-    try {
-      setIsLoading(true);
-      setError(null);
-      setSuccess(null);
-      setProcessingProgress(0);
-      
-      const zip = new JSZip();
-      let processedCount = 0;
+  try {
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
+    setProcessingProgress(0);
+    
+    // Vérification de sécurité pour la position
+    const safePosition = position && typeof position.x === 'number' && typeof position.y === 'number' 
+      ? position 
+      : { x: 470, y: 220 };
+    
+    const zip = new JSZip();
+    let processedCount = 0;
 
-      for (const student of excelData) {
-        try {
-          // Utiliser la nouvelle méthode de génération HTML-to-PDF via IPC avec le thème
-          const params = {
-            student,
-            settings: {
-              ...schoolSettings,
-              theme: attestationTheme, // Inclure le thème dans les paramètres
-            },
-            options: {
-              qrCodePosition: {
-                x: position.x,
-                y: position.y,
-              },
-              theme: attestationTheme, // Passer le thème aux options
-            }
-          };
-          
-          // Invoquer la fonction IPC pour générer le PDF
-          const pdfBytes = await window.ipcRenderer.invoke('generate-attestation-pdf', params);
-          
-          // Ajouter le PDF au ZIP
-          const fileName = `${student.MATRICULE}_Attestation.pdf`;
-          zip.file(fileName, pdfBytes);
-          
-          // Mettre à jour le compteur et la progression
-          processedCount++;
-          setProcessingProgress((processedCount / excelData.length) * 100);
-          
-        } catch (err) {
-          console.error(`Erreur lors de la génération de l'attestation pour ${student.MATRICULE}`, err);
-        }
+    for (const student of excelData) {
+      try {
+        // Utiliser la nouvelle méthode de génération HTML-to-PDF via IPC avec le thème
+        const params = {
+          student,
+          settings: {
+            ...schoolSettings,
+            theme: attestationTheme,
+          },
+          options: {
+            qrCodePosition: safePosition, // Utiliser la position sécurisée
+            theme: attestationTheme,
+          }
+        };
+        
+        // Invoquer la fonction IPC pour générer le PDF
+        const pdfBytes = await window.ipcRenderer.invoke('generate-attestation-pdf', params);
+        
+        // Ajouter le PDF au ZIP
+        const fileName = `${student.MATRICULE}_Attestation.pdf`;
+        zip.file(fileName, pdfBytes);
+        
+        // Mettre à jour le compteur et la progression
+        processedCount++;
+        setProcessingProgress((processedCount / excelData.length) * 100);
+        
+      } catch (err) {
+        console.error(`Erreur lors de la génération de l'attestation pour ${student.MATRICULE}`, err);
       }
+    }
 
       // Générer le ZIP final
       const zipContent = await zip.generateAsync({ type: "blob" });
@@ -244,34 +246,39 @@ export const AttestationGenerator: React.FC = () => {
 
   // Fonction pour prévisualiser une attestation individuelle
   const previewAttestation = async (student: StudentExcelRecord) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Utiliser la fonction de prévisualisation avec le thème
-      const success = await openAttestationPreview(
-        student, 
-        {
-          ...schoolSettings,
-          theme: attestationTheme,
-        }, 
-        { 
-          qrCodePosition: position,
-          theme: attestationTheme,
-        }
-      );
-      
-      if (!success) {
-        setError("Impossible d'ouvrir la fenêtre de prévisualisation. Veuillez vérifier vos paramètres de bloqueur de popups.");
+  try {
+    setIsLoading(true);
+    setError(null);
+    
+    // Vérification de sécurité pour la position
+    const safePosition = position && typeof position.x === 'number' && typeof position.y === 'number' 
+      ? position 
+      : { x: 470, y: 220 };
+    
+    // Utiliser la fonction de prévisualisation avec le thème
+    const success = await openAttestationPreview(
+      student, 
+      {
+        ...schoolSettings,
+        theme: attestationTheme,
+      }, 
+      { 
+        qrCodePosition: safePosition, // Utiliser la position sécurisée
+        theme: attestationTheme,
       }
-      
-    } catch (err) {
-      console.error("Erreur lors de la prévisualisation", err);
-      setError("Une erreur est survenue lors de la prévisualisation de l'attestation");
-    } finally {
-      setIsLoading(false);
+    );
+    
+    if (!success) {
+      setError("Impossible d'ouvrir la fenêtre de prévisualisation. Veuillez vérifier vos paramètres de bloqueur de popups.");
     }
-  };
+    
+  } catch (err) {
+    console.error("Erreur lors de la prévisualisation", err);
+    setError("Une erreur est survenue lors de la prévisualisation de l'attestation");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="space-y-6">
@@ -340,7 +347,7 @@ export const AttestationGenerator: React.FC = () => {
                 </div>
               )}
 
-              {/* Configuration du QR Code */}
+              {/* Configuration du QR Code 
               {excelData.length > 0 && (
                 <div className="space-y-4">
                   <Label>Position du QR Code sur l'attestation</Label>
@@ -350,7 +357,7 @@ export const AttestationGenerator: React.FC = () => {
                     disabled={isLoading}
                   />
                 </div>
-              )}
+              )}*/}
 
               {/* Aperçu du thème actuel */}
               {excelData.length > 0 && (

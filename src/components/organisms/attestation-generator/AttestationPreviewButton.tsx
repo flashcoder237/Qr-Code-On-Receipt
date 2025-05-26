@@ -1,4 +1,5 @@
-// src/components/organisms/attestation-generator/AttestationPreviewButton.tsx - Version robuste
+// src/components/organisms/attestation-generator/AttestationPreviewButton.tsx - Correction
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Eye, Loader2 } from "lucide-react";
@@ -31,23 +32,30 @@ export const AttestationPreviewButton: React.FC<AttestationPreviewButtonProps> =
     try {
       setIsLoading(true);
       
+      // Vérification de sécurité pour la position du QR code
+      const safeQrPosition = qrCodePosition && 
+        typeof qrCodePosition.x === 'number' && 
+        typeof qrCodePosition.y === 'number' 
+        ? qrCodePosition 
+        : { x: 470, y: 220 };
+      
       // Générer un QR code pour l'attestation
       let qrCodeBase64 = '';
       try {
         // Créer les données QR pour l'attestation
-        const qrData = `Établissement: ${schoolSettings.nameFrench}
-Nom: ${student.NOM}
-Prénom: ${student.PRENOM}
-Matricule: ${student.MATRICULE}
-Date de naissance: ${student["DATE DE NAISSANCE"]}
-Lieu de naissance: ${student["LIEU DE NAISSANCE"]}
+        const qrData = `Établissement: ${schoolSettings.nameFrench || 'N/D'}
+Nom: ${student.NOM || 'N/D'}
+Prénom: ${student.PRENOM || 'N/D'}
+Matricule: ${student.MATRICULE || 'N/D'}
+Date de naissance: ${student["DATE DE NAISSANCE"] || 'N/D'}
+Lieu de naissance: ${student["LIEU DE NAISSANCE"] || 'N/D'}
 Parcours: ${student.PARCOURS || ""}
 Spécialité: ${student.SPECIALITE || ""}
 Option: ${student.OPTION || ""}
-Moyenne: ${student.MOYENNE}
-Grade: ${student.GRADE}
-Mention: ${student.MENTION}
-Année académique: ${student["ANNEE ACADEMIQUE"]}`;
+Moyenne: ${student.MOYENNE || 'N/D'}
+Grade: ${student.GRADE || 'N/D'}
+Mention: ${student.MENTION || 'N/D'}
+Année académique: ${student["ANNEE ACADEMIQUE"] || 'N/D'}`;
 
         qrCodeBase64 = await QRCode.toDataURL(qrData);
       } catch (qrError) {
@@ -65,7 +73,7 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
             student,
             settings: schoolSettings,
             options: {
-              qrCodePosition,
+              qrCodePosition: safeQrPosition,
               qrCodeImage: qrCodeBase64
             }
           });
@@ -79,7 +87,7 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
       if (!htmlContent) {
         htmlContent = await generateAttestationHTML(student, schoolSettings, {
           qrCodeImage: qrCodeBase64,
-          qrCodePosition
+          qrCodePosition: safeQrPosition
         });
       }
       
@@ -123,7 +131,8 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
     } catch (error) {
       console.error("Erreur lors de la prévisualisation:", error);
       if (onError) {
-        onError(`Une erreur est survenue lors de la prévisualisation: ${error.message || "Erreur inconnue"}`);
+        const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
+        onError(`Une erreur est survenue lors de la prévisualisation: ${errorMessage}`);
       }
     } finally {
       setIsLoading(false);

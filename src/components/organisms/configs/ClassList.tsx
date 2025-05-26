@@ -61,7 +61,7 @@ export const ClassList: React.FC<ClassListProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <ScrollArea className="h-[calc(100vh-16rem)]">
+        <ScrollArea className="h-[calc(100vh)]">
           {configs.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
