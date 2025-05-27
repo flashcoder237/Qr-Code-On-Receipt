@@ -504,10 +504,10 @@ export async function generateAttestationHTML(
             ` : ''}
             
             <div class="header-row2">
-              <h1>${theme.customTitle || "ATTESTATION DE REUSSITE"} ${settings.establishmentType}</h1>
+              <h1>${theme.customTitle || "ATTESTATION DE REUSSITE"}</h1>
               ${theme.showBilingualText ? `<h2>${theme.customSubtitle || "ATTESTATION OF COMPLETION OF STUDIES"}</h2>` : ''}
               
-              <p><strong>Ref N°............./${currentYear-1}/UDo/FMSP/VDRC/${settings.nameAbreviation}</strong></p>
+              <p><strong>Ref N°............./${currentYear-1}/UDo/FMSP/VDRC/${settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE"}</strong></p>
             </div>
         </div>
         

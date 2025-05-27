@@ -148,6 +148,13 @@ function generateThemeStyles(params: GeneratePDFParams): string {
       ${theme.signatureStyle === 'encadré' ? 'border: 1px solid ' + theme.primaryColor + '; padding: 10px;' : ''}
       ${theme.signatureStyle === 'souligné' ? 'border-bottom: 2px solid ' + theme.primaryColor + ';' : ''}
     }
+
+    #to-hidden{
+     ${params.settings.establishmentType !== "ipes" ? 'display : none' : ''};
+    }
+     #to-nothidden{
+    ${params.settings.establishmentType === "ipes" ? 'display : none' : ''};
+    }
     
     /* Adaptation de la mise en page de l'en-tête basée sur le thème */
     .header-content{
@@ -504,7 +511,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
         <div class="container">
             <!-- IPES Logo Watermark -->
             <div class="watermark">
-                <img src=${settings.logo} alt="IPES Watermark">
+                <img src="${settings.establishmentType === "ipes" ? settings.logo : facultyLogoBase64}" alt="Watermark">
             </div>
             
             <div class="header">
@@ -516,11 +523,11 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                         MINISTERE DE L'ENSEIGNEMENT SUPERIEUR<br>
                         ********************<br>
                         <strong>UNIVERSITE DE DOUALA</strong><br>
-                        ********************<br>
+                        <span id="to-hidden">********************<br>
                         <strong>FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES</strong><br>
                         ********************<br>
                         B.P 2701, Douala, Cameroun<br>
-                        Email: <a href="">contact@fmsp-udo.cm</a><br>
+                        Email: <a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a><br>
                         ********************<br>
                         <strong>${
                           settings.nameFrench
@@ -530,7 +537,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                         }</strong><br>
                         ********************<br>
                         B.P ${settings.postalBox}<br>
-                        Email: <a href="">${settings.email}</a></p>
+                        Email: <a href="mailto:${settings.email}">${settings.email}</a></p></span>
                     </div>
                     <div class="header-logo-content">
                         <div>
@@ -553,11 +560,11 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                         MINISTRY OF HIGHER EDUCATION<br>
                         ********************<br>
                         <strong>THE UNIVERSITY OF DOUALA</strong><br>
-                        ********************<br>
+                        <span id="to-hidden">********************<br>
                         <strong>FACULTY OF MEDICINE AND<br>PHARMACEUTICAL SCIENCES</strong><br>
                         ********************<br>
                         PO box 2701, Douala, Cameroon<br>
-                        Email: <a href="">contact@fmsp-udo.cm</a><br>
+                        Email: <a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a><br>
                         ********************<br>
                         <strong>${
                           settings.nameEnglish
@@ -567,12 +574,16 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                         }</strong><br>
                         ********************<br>
                         PO box ${settings.postalBoxEn}<br>
-                        Email: <a href="">${settings.email}</a></p>    
+                        Email: <a href="mailto:${settings.email}">${settings.email}</a></p></span>   
                     </div>
                 </div>
                 <div class="header-row2">
+                <span id="to-nothidden">
+                    <h2 class="header-title"><strong>FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES</strong><br>
+                    <strong><em>FACULTY OF MEDICINE AND PHARMACEUTICAL SCIENCES</em></strong><br>
+                    <h4 class="header-title"><strong>B.P. 2701. e-mail : <em><a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a></em></strong></h4></h2></span>
                     <h1 class="header-title"><strong>RELEVE DE NOTES</strong> / TRANSCRIPT </h1>
-                    <p><strong>Ref No</strong>&nbsp;&nbsp;  /${currentYear}/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR/${settings.nameAbreviation}</p>
+                    <p><strong>Ref No</strong>&nbsp;&nbsp;  /${currentYear}/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR/${settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE"}</p>
                 </div>
             </div>
         
@@ -755,7 +766,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                 </div>
             </div>
 
-            <div class="signature-ipes"><strong>Le Directeur de L'${settings.nameFrench.length >= 30 ? settings.nameAbreviation : settings.nameFrench}</strong>
+            <div id="to-hidden" class="signature-ipes"><strong>Le Directeur de L'${settings.nameFrench.length >= 30 ? settings.nameAbreviation : settings.nameFrench}</strong>
             <br/><i>The Director of ${settings.nameFrench.length >= 30 ? settings.nameAbreviation : settings.nameEnglish}</i></div>
             </div>
             <!-- Footer note -->

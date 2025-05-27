@@ -1,3 +1,4 @@
+// src/components/organisms/receipts/ReleveGenerator.tsx - Version mise à jour avec sélection
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
@@ -5,7 +6,7 @@ import { Alert, AlertDescription } from "../../ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { Button } from "../../ui/button";
 import { useHotkeys } from "react-hotkeys-hook";
-import { Eye, Download, AlertCircle, CheckCircle } from "lucide-react";
+import { Eye, Download, AlertCircle, CheckCircle, Users } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 
 // Components
@@ -15,6 +16,7 @@ import { ConfigurationSelector } from "./ConfigurationSelector";
 import { ColumnMappingEditor } from "./ColumnMappingEditor";
 import { TranscriptPreview } from "./TranscriptPreview";
 import { SemesterSelector } from "./SemesterSelector";
+import { StudentSelector } from "../student-selector"; // Nouveau composant
 
 // Hooks
 import { useConfiguration } from "./hooks/useConfiguration";
@@ -46,6 +48,7 @@ export const ReleveGenerator: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [previewContentUrl, setPreviewContentUrl] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [selectedStudentMatricules, setSelectedStudentMatricules] = useState<string[]>([]);
   // Flag to avoid infinite update loop
   const [configsLoaded, setConfigsLoaded] = useState(false);
 
@@ -65,44 +68,43 @@ export const ReleveGenerator: React.FC = () => {
 
   // Load configurations from localStorage only once during component mount
   useEffect(() => {
-  if (!configsLoaded) {
-    try {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (stored) {
-        const parsedConfigs = JSON.parse(stored);
-        setConfigs(parsedConfigs);
+    if (!configsLoaded) {
+      try {
+        const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (stored) {
+          const parsedConfigs = JSON.parse(stored);
+          setConfigs(parsedConfigs);
+        }
+        setConfigsLoaded(true);
+      } catch (error) {
+        console.error("Erreur lors du chargement des configurations:", error);
       }
-      setConfigsLoaded(true);
-    } catch (error) {
-      console.error("Erreur lors du chargement des configurations:", error);
     }
-  }
-}, [configsLoaded])
+  }, [configsLoaded]);
 
-useEffect(() => {
-  if (previewContentUrl) {
-    console.log("previewContentUrl a changé, nouvelle valeur:", previewContentUrl);
-    // Potentiellement changer l'onglet ici si ce n'est pas fait ailleurs
-    setActiveTab("preview");
-  }
-}, [previewContentUrl]);
+  useEffect(() => {
+    if (previewContentUrl) {
+      console.log("previewContentUrl a changé, nouvelle valeur:", previewContentUrl);
+      setActiveTab("preview");
+    }
+  }, [previewContentUrl]);
 
   // Listen to localStorage changes
   useEffect(() => {
-  const handleStorageChange = (e) => {
-    if (e.key === LOCAL_STORAGE_KEY) {
-      try {
-        const parsedConfigs = JSON.parse(e.newValue);
-        setConfigs(parsedConfigs);
-      } catch (error) {
-        console.error("Erreur lors du traitement des nouvelles configurations:", error);
+    const handleStorageChange = (e) => {
+      if (e.key === LOCAL_STORAGE_KEY) {
+        try {
+          const parsedConfigs = JSON.parse(e.newValue);
+          setConfigs(parsedConfigs);
+        } catch (error) {
+          console.error("Erreur lors du traitement des nouvelles configurations:", error);
+        }
       }
-    }
-  };
+    };
 
-  window.addEventListener('storage', handleStorageChange);
-  return () => window.removeEventListener('storage', handleStorageChange);
-}, []);
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Custom hooks
   const {
@@ -114,7 +116,7 @@ useEffect(() => {
     handleSemesterChange,
     handleMappingChange,
     updateAvailableSemesters,
-    setColumnMapping // Utilisé pour charger un mapping existant
+    setColumnMapping
   } = useConfiguration({
     onConfigChange: (configId) => {
       const config = configs.find(c => c.id === configId);
@@ -127,6 +129,7 @@ useEffect(() => {
         );
       }
       setPreviewStudent(null);
+      setSelectedStudentMatricules([]); // Reset selection when config changes
       if (previewContentUrl) {
         URL.revokeObjectURL(previewContentUrl);
         setPreviewContentUrl(null);
@@ -134,8 +137,8 @@ useEffect(() => {
       setError(null);
     },
     onSemesterChange: () => {
-      // Reset preview when semester changes
       setPreviewStudent(null);
+      setSelectedStudentMatricules([]); // Reset selection when semester changes
       if (previewContentUrl) {
         URL.revokeObjectURL(previewContentUrl);
         setPreviewContentUrl(null);
@@ -187,23 +190,24 @@ useEffect(() => {
 
   // Check if mapping is complete when available ECs or column mapping changes
   useEffect(() => {
-  // Only run this check if we have a selected config and semester
-  if (!selectedConfigId || !selectedSemesterId) return;
-  
-  const availableECs = getAvailableECs();
-  // Only update if we actually have ECs to map
-  if (availableECs.length > 0) {
-    const complete = availableECs.every(ec => columnMapping[ec.id]);
-    setMappingStatus(complete);
-  }
-}, [getAvailableECs, columnMapping, setMappingStatus, selectedConfigId, selectedSemesterId]);
+    if (!selectedConfigId || !selectedSemesterId) return;
+    
+    const availableECs = getAvailableECs();
+    if (availableECs.length > 0) {
+      const complete = availableECs.every(ec => columnMapping[ec.id]);
+      setMappingStatus(complete);
+    }
+  }, [getAvailableECs, columnMapping, setMappingStatus, selectedConfigId, selectedSemesterId]);
+
+  // Reset selected students when excel data changes
+  useEffect(() => {
+    setSelectedStudentMatricules([]);
+  }, [excelData]);
 
   // Fonction pour charger un mapping complet
   const handleLoadMapping = useCallback((mapping: Record<string, string>) => {
     try {
-      // Appliquer les nouvelles valeurs de mapping une par une
       setColumnMapping(mapping);
-      // Afficher un message de succès
       setSuccessMessage("Correspondance chargée avec succès");
       setTimeout(() => {
         setSuccessMessage(null);
@@ -212,40 +216,34 @@ useEffect(() => {
       console.error("Erreur lors du chargement du mapping:", error);
       setError(`Erreur lors du chargement du mapping: ${error instanceof Error ? error.message : String(error)}`);
     }
-  }, [handleMappingChange]);
+  }, [setColumnMapping]);
 
   // Prepare student data for PDF generation
   const prepareStudentData = useCallback((rawStudent: any): StudentRecord => {
     if (!currentConfig || !currentSemester) return null;
   
-    // Group ECs by UE and calculate UE averages
     const courses: any[] = [];
     
-    // Ici le problème peut être dans le traitement des crédits UE
     currentSemester.ues.forEach((ue: any) => {
-      // Collecter les notes des EC pour cette UE
       ue.ecs.forEach((ec: any) => {
         const columnName = columnMapping[ec.id];
         if (columnName) {
           const grade = parseFloat(rawStudent[columnName]) || 0;
           
-          // Ajouter l'EC comme un cours dans la liste
           courses.push({
             CODE: ue.code || `UE ${ue.name}`,
             INTITULE: ue.name,
             EC_TITRE: ec.name,
             NOTE: grade,
-            UE_CREDIT: ue.credits || 0, // Ici, utilisez une valeur numérique directe
+            UE_CREDIT: ue.credits || 0,
             UE_ID: ue.id
           });
         }
       });
     });
   
-    // Calculer les moyennes par UE et les ajouter à chaque EC
     const ueMap = new Map();
     
-    // Première passe : regrouper les EC par UE et calculer les moyennes
     courses.forEach(course => {
       const ueId = course.UE_ID;
       if (!ueMap.has(ueId)) {
@@ -259,7 +257,6 @@ useEffect(() => {
       ueMap.get(ueId).grades.push(course.NOTE);
     });
     
-    // Deuxième passe : ajouter la moyenne UE à chaque EC
     courses.forEach(course => {
       const ueData = ueMap.get(course.UE_ID);
       const sum = ueData.grades.reduce((total: number, grade: number) => total + grade, 0);
@@ -280,74 +277,77 @@ useEffect(() => {
       SEMESTRE: currentSemester.name || "",
       OPTION: currentConfig.option || "",
       COURSES: courses,
-      TOTAL_CREDITS: 30 // Valeur fixe pour le dénominateur de la formule de moyenne
+      TOTAL_CREDITS: 30
     };
   }, [currentConfig, currentSemester, columnMapping]);
 
-  const handlePreviewReleve = useCallback(async () => {
-  if (!currentConfig || !currentSemester) {
-    setError("Veuillez sélectionner une configuration et un semestre");
-    return;
-  }
-
-  if (excelData.length === 0) {
-    setError("Veuillez charger des données");
-    return;
-  }
-
-  if (!mappingComplete) {
-    setError("Veuillez compléter la correspondance des colonnes avant de prévisualiser");
-    setActiveTab("mapping");
-    return;
-  }
-
-  try {
-    const student = prepareStudentData(excelData[0]);
-    if (!student) {
-      setError("Erreur lors de la préparation des données");
+  const handlePreviewReleve = useCallback(async (student?: any) => {
+    if (!currentConfig || !currentSemester) {
+      setError("Veuillez sélectionner une configuration et un semestre");
       return;
     }
 
-    console.log("Données étudiant préparées:", student);
-    console.log("Paramètres:", settings);
-
-    setPreviewStudent(student);
-    
-    // Vérifier si le renderer HTML est disponible
-    if (!window.transcriptRenderer) {
-      setError("Impossible de communiquer avec le processus de rendu HTML");
-      console.error("Transcript renderer n'est pas disponible. Êtes-vous dans un environnement non-Electron ?");
+    if (excelData.length === 0) {
+      setError("Veuillez charger des données");
       return;
     }
-    
+
+    if (!mappingComplete) {
+      setError("Veuillez compléter la correspondance des colonnes avant de prévisualiser");
+      setActiveTab("mapping");
+      return;
+    }
+
     try {
-      // Générer le HTML
-      const htmlContent = await window.transcriptRenderer.renderHTML({ student, settings });
-      console.log("Contenu HTML reçu:", htmlContent ? "Oui" : "Non", "Longueur:", htmlContent?.length);
+      // Utiliser l'étudiant fourni ou le premier étudiant sélectionné ou le premier de la liste
+      const studentToPreview = student || 
+        (selectedStudentMatricules.length > 0 
+          ? excelData.find(s => s.MATRICULE === selectedStudentMatricules[0])
+          : excelData[0]);
+
+      const preparedStudent = prepareStudentData(studentToPreview);
+      if (!preparedStudent) {
+        setError("Erreur lors de la préparation des données");
+        return;
+      }
+
+      console.log("Données étudiant préparées:", preparedStudent);
+      console.log("Paramètres:", settings);
+
+      setPreviewStudent(preparedStudent);
       
-      if (!htmlContent) {
-        throw new Error("Aucun contenu HTML reçu");
+      if (!window.transcriptRenderer) {
+        setError("Impossible de communiquer avec le processus de rendu HTML");
+        console.error("Transcript renderer n'est pas disponible. Êtes-vous dans un environnement non-Electron ?");
+        return;
       }
       
-      // Utiliser l'API IPC pour ouvrir une nouvelle fenêtre avec le contenu HTML
-      const success = await window.ipcRenderer.invoke('show-preview', htmlContent, 'Prévisualisation du relevé');
-      
-      if (!success) {
-        throw new Error("Impossible d'ouvrir la fenêtre de prévisualisation");
+      try {
+        const htmlContent = await window.transcriptRenderer.renderHTML({ student: preparedStudent, settings });
+        console.log("Contenu HTML reçu:", htmlContent ? "Oui" : "Non", "Longueur:", htmlContent?.length);
+        
+        if (!htmlContent) {
+          throw new Error("Aucun contenu HTML reçu");
+        }
+        
+        const success = await window.ipcRenderer.invoke('show-preview', htmlContent, 'Prévisualisation du relevé');
+        
+        if (!success) {
+          throw new Error("Impossible d'ouvrir la fenêtre de prévisualisation");
+        }
+        
+        setError(null);
+      } catch (err) {
+        console.error("Erreur pendant le rendu HTML:", err);
+        setError(`Erreur de communication avec le processus de rendu: ${err.message || 'Erreur inconnue'}`);
       }
-      
-      setError(null);
-    } catch (err) {
-      console.error("Erreur pendant le rendu HTML:", err);
-      setError(`Erreur de communication avec le processus de rendu: ${err.message || 'Erreur inconnue'}`);
+    } catch (error) {
+      console.error('Erreur de prévisualisation:', error);
+      setError(`Erreur lors de la génération de la prévisualisation: ${error.message || 'Erreur inconnue'}`);
     }
-  } catch (error) {
-    console.error('Erreur de prévisualisation:', error);
-    setError(`Erreur lors de la génération de la prévisualisation: ${error.message || 'Erreur inconnue'}`);
-  }
-}, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, settings]);
+  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, settings, selectedStudentMatricules]);
   
-  const handleGenerateAll = useCallback(async () => {
+  const handleGenerateSelected = useCallback(async (studentsToGenerate?: any[]) => {
     if (!currentConfig || !currentSemester) {
       setError("Veuillez sélectionner une configuration et un semestre");
       return;
@@ -364,8 +364,19 @@ useEffect(() => {
       return;
     }
 
+    // Utiliser les étudiants fournis ou les étudiants sélectionnés ou tous les étudiants
+    const dataToProcess = studentsToGenerate || 
+      (selectedStudentMatricules.length > 0 
+        ? excelData.filter(s => selectedStudentMatricules.includes(s.MATRICULE))
+        : excelData);
+
+    if (dataToProcess.length === 0) {
+      setError("Aucun étudiant sélectionné pour la génération");
+      return;
+    }
+
     try {
-      const preparedData = excelData.map(student => {
+      const preparedData = dataToProcess.map(student => {
         const prepared = prepareStudentData(student);
         if (!prepared) throw new Error("Erreur lors de la préparation des données");
         return { student: prepared, settings };
@@ -387,38 +398,50 @@ useEffect(() => {
       URL.revokeObjectURL(url);
       setError(null);
       
-      // Afficher un message de succès
       setSuccessMessage(`${results.size} relevé(s) généré(s) avec succès`);
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (error) {
       console.error('Generation error:', error);
       setError("Erreur lors de la génération des relevés");
     }
-  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, processBatch, generateZipFile, settings]);
+  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, processBatch, generateZipFile, settings, selectedStudentMatricules]);
 
   // Keyboard shortcuts
-  useHotkeys('ctrl+p', handlePreviewReleve, [handlePreviewReleve]);
-  useHotkeys('ctrl+g', handleGenerateAll, [handleGenerateAll]);
+  useHotkeys('ctrl+p', () => handlePreviewReleve(), [handlePreviewReleve]);
+  useHotkeys('ctrl+g', () => handleGenerateSelected(), [handleGenerateSelected]);
   useHotkeys('esc', () => setActiveTab("configuration"), []);
 
   // Fonction pour vérifier si les boutons doivent être activés
   const areButtonsEnabled = useCallback(() => {
-  return (
-    !processingState.isLoading && 
-    selectedConfigId && 
-    selectedSemesterId && 
-    mappingComplete && 
-    excelData.length > 0
-  );
-}, [processingState.isLoading, selectedConfigId, selectedSemesterId, mappingComplete, excelData.length]); 
+    return (
+      !processingState.isLoading && 
+      selectedConfigId && 
+      selectedSemesterId && 
+      mappingComplete && 
+      excelData.length > 0
+    );
+  }, [processingState.isLoading, selectedConfigId, selectedSemesterId, mappingComplete, excelData.length]); 
+
+  // Fonction pour gérer la sélection des étudiants
+  const handleStudentSelectionChange = useCallback((matricules: string[]) => {
+    setSelectedStudentMatricules(matricules);
+  }, []);
+
+  // Fonction pour prévisualiser un étudiant spécifique
+  const handlePreviewStudent = useCallback((student: any) => {
+    handlePreviewReleve(student);
+  }, [handlePreviewReleve]);
 
   return (
     <div className="container mx-auto">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
           <TabsTrigger value="mapping" disabled={!selectedConfigId || !selectedSemesterId}>
             Correspondance
+          </TabsTrigger>
+          <TabsTrigger value="selection" disabled={!mappingComplete || excelData.length === 0}>
+            Sélection ({selectedStudentMatricules.length})
           </TabsTrigger>
           <TabsTrigger value="preview" disabled={!previewContentUrl}>
             Prévisualisation
@@ -492,9 +515,20 @@ useEffect(() => {
                       animate={{ opacity: 1, y: 0 }}
                       className="pt-4"
                     >
-                      <p className="text-sm text-gray-600 mb-4">
-                        {excelData.length} ligne(s) chargée(s)
-                      </p>
+                      <div className="flex items-center justify-between mb-4">
+                        <p className="text-sm text-gray-600">
+                          {excelData.length} ligne(s) chargée(s)
+                        </p>
+                        
+                        {selectedStudentMatricules.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-600">
+                              {selectedStudentMatricules.length} sélectionné(s)
+                            </span>
+                          </div>
+                        )}
+                      </div>
                       
                       <div className="flex gap-2">
                         <Button 
@@ -505,22 +539,37 @@ useEffect(() => {
                           Configurer la correspondance
                         </Button>
                         
-                        <Button 
-                          onClick={handlePreviewReleve}
-                          variant="secondary"
-                          disabled={!areButtonsEnabled()}
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          Prévisualiser
-                        </Button>
+                        {mappingComplete && (
+                          <>
+                            <Button 
+                              onClick={() => setActiveTab("selection")}
+                              variant="outline"
+                            >
+                              <Users className="mr-2 h-4 w-4" />
+                              Sélectionner les étudiants
+                            </Button>
 
-                        <Button
-                          onClick={handleGenerateAll}
-                          disabled={!areButtonsEnabled()}
-                        >
-                          <Download className="mr-2 h-4 w-4" />
-                          Générer tous les relevés
-                        </Button>
+                            <Button 
+                              onClick={() => handlePreviewReleve()}
+                              variant="secondary"
+                              disabled={!areButtonsEnabled()}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              Prévisualiser
+                            </Button>
+
+                            <Button
+                              onClick={() => handleGenerateSelected()}
+                              disabled={!areButtonsEnabled()}
+                            >
+                              <Download className="mr-2 h-4 w-4" />
+                              {selectedStudentMatricules.length > 0 
+                                ? `Générer (${selectedStudentMatricules.length})` 
+                                : 'Générer tous les relevés'
+                              }
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </motion.div>
                   )}
@@ -547,13 +596,25 @@ useEffect(() => {
               </Card>
             </TabsContent>
 
+            <TabsContent value="selection">
+              <StudentSelector
+                students={excelData}
+                selectedStudents={selectedStudentMatricules}
+                onSelectionChange={handleStudentSelectionChange}
+                onPreview={handlePreviewStudent}
+                onGenerateSelected={handleGenerateSelected}
+                documentType="releve"
+                isLoading={processingState.isLoading}
+              />
+            </TabsContent>
+
             <TabsContent value="preview">
               <TranscriptPreview
                 previewStudent={previewStudent}
                 previewContentUrl={previewContentUrl}
                 isLoading={processingState.isLoading}
                 onBack={() => setActiveTab("configuration")}
-                onGenerateAll={handleGenerateAll}
+                onGenerateAll={() => handleGenerateSelected()}
               />
             </TabsContent>
           </motion.div>
@@ -563,7 +624,7 @@ useEffect(() => {
       {/* Keyboard shortcuts help */}
       <div className="fixed bottom-4 right-4 text-sm text-gray-500">
         <p>Ctrl+P: Prévisualiser</p>
-        <p>Ctrl+G: Générer tout</p>
+        <p>Ctrl+G: Générer</p>
         <p>Esc: Retour</p>
       </div>
     </div>

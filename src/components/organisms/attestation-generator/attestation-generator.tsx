@@ -1,4 +1,4 @@
-// src/components/organisms/attestation-generator/attestation-generator.tsx - Version mise à jour
+// src/components/organisms/attestation-generator/attestation-generator.tsx - Version mise à jour avec sélection
 import React, { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -23,19 +23,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AttestationSettings } from "./AttestationSettings";
 import { AttestationPreviewButton } from "./AttestationPreviewButton";
 import { AttestationThemeEditor } from "./AttestationThemeEditor";
-import { ThemePresetSelector } from "./ThemePresetSelector"; // Import ajouté
-import { FileDown, Loader2, Settings2, Table2, Palette, FileText, Eye, Wand2 } from "lucide-react";
+import { ThemePresetSelector } from "./ThemePresetSelector";
+import { StudentSelector } from "../student-selector"; // Nouveau composant
+import { FileDown, Loader2, Settings2, Table2, Palette, FileText, Eye, Wand2, Users } from "lucide-react";
 import { calculateGrade, calculateMention, getCurrentAcademicYear } from "@/lib/attestation-generator/utils";
 import { openAttestationPreview } from "@/lib/attestation-generator/preview";
 import { AttestationThemeSettingsPayload, defaultAttestationTheme } from "@/lib/form-schemas/attestation-theme-settings";
 
 export const AttestationGenerator: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"generator" | "settings" | "theme" | "presets">("generator");
+  const [activeTab, setActiveTab] = useState<"generator" | "settings" | "theme" | "presets" | "selection">("generator");
   const [excelData, setExcelData] = useState<StudentExcelRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
+  const [selectedStudentMatricules, setSelectedStudentMatricules] = useState<string[]>([]);
   
   // Position pour le QR code
   const [position, setPosition] = useLocalStorage("attestation-qrcode-position", {
@@ -63,6 +65,11 @@ export const AttestationGenerator: React.FC = () => {
     defaultAttestationTheme
   );
 
+  // Reset selected students when excel data changes
+  useEffect(() => {
+    setSelectedStudentMatricules([]);
+  }, [excelData]);
+
   const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -78,9 +85,7 @@ export const AttestationGenerator: React.FC = () => {
             raw: true,
           }) as any[];
 
-          // Traitement spécifique pour les attestations
           const convertedData = jsonData.map((row) => {
-            // Normalisation des champs pour les attestations
             const standardizedRow: StudentExcelRecord = {
               ETABLISSEMENT: row["ETABLISSEMENT"] || schoolSettings.nameFrench,
               NOM: row["NOM"] || "",
@@ -123,12 +128,10 @@ export const AttestationGenerator: React.FC = () => {
   const formatDate = (dateValue: any): string => {
     if (!dateValue) return "";
     
-    // Si c'est déjà une chaîne formatée, la retourner
     if (typeof dateValue === 'string' && dateValue.includes('/')) {
       return dateValue;
     }
     
-    // Si c'est un nombre (format Excel), le convertir
     if (typeof dateValue === 'number') {
       try {
         const date = XLSX.SSF.parse_date_code(dateValue);
@@ -143,9 +146,15 @@ export const AttestationGenerator: React.FC = () => {
     return String(dateValue);
   };
 
-  const generateAttestations = async () => {
-    if (excelData.length === 0) {
-      setError("Veuillez d'abord importer des données depuis Excel");
+  const generateAttestations = async (studentsToGenerate?: StudentExcelRecord[]) => {
+    // Utiliser les étudiants fournis ou les étudiants sélectionnés ou tous les étudiants
+    const dataToProcess = studentsToGenerate || 
+      (selectedStudentMatricules.length > 0 
+        ? excelData.filter(s => selectedStudentMatricules.includes(s.MATRICULE))
+        : excelData);
+
+    if (dataToProcess.length === 0) {
+      setError("Aucun étudiant sélectionné pour la génération");
       return;
     }
 
@@ -155,7 +164,6 @@ export const AttestationGenerator: React.FC = () => {
       setSuccess(null);
       setProcessingProgress(0);
       
-      // Vérification de sécurité pour la position
       const safePosition = position && typeof position.x === 'number' && typeof position.y === 'number' 
         ? position 
         : { x: 470, y: 220 };
@@ -163,9 +171,8 @@ export const AttestationGenerator: React.FC = () => {
       const zip = new JSZip();
       let processedCount = 0;
 
-      for (const student of excelData) {
+      for (const student of dataToProcess) {
         try {
-          // Utiliser la nouvelle méthode de génération HTML-to-PDF via IPC avec le thème
           const params = {
             student,
             settings: {
@@ -178,23 +185,19 @@ export const AttestationGenerator: React.FC = () => {
             }
           };
           
-          // Invoquer la fonction IPC pour générer le PDF
           const pdfBytes = await window.ipcRenderer.invoke('generate-attestation-pdf', params);
           
-          // Ajouter le PDF au ZIP
           const fileName = `${student.MATRICULE}_Attestation.pdf`;
           zip.file(fileName, pdfBytes);
           
-          // Mettre à jour le compteur et la progression
           processedCount++;
-          setProcessingProgress((processedCount / excelData.length) * 100);
+          setProcessingProgress((processedCount / dataToProcess.length) * 100);
           
         } catch (err) {
           console.error(`Erreur lors de la génération de l'attestation pour ${student.MATRICULE}`, err);
         }
       }
 
-      // Générer le ZIP final
       const zipContent = await zip.generateAsync({ type: "blob" });
       const url = window.URL.createObjectURL(zipContent);
       const link = document.createElement("a");
@@ -215,7 +218,6 @@ export const AttestationGenerator: React.FC = () => {
   };
 
   const handleSettingsUpdate = () => {
-    // Recharger les paramètres après mise à jour
     const settings = localStorage.getItem("settings");
     if (settings) {
       try {
@@ -233,7 +235,6 @@ export const AttestationGenerator: React.FC = () => {
   };
 
   const handleThemeSave = () => {
-    // Le thème est déjà sauvegardé via useLocalStorage
     setSuccess("Thème sauvegardé avec succès");
     setTimeout(() => setSuccess(null), 3000);
   };
@@ -242,30 +243,32 @@ export const AttestationGenerator: React.FC = () => {
     setAttestationTheme(newTheme);
     setSuccess("Préréglage appliqué avec succès");
     setTimeout(() => setSuccess(null), 3000);
-    // Changer d'onglet pour voir le thème appliqué
     setActiveTab("theme");
   };
 
   const handleThemePreview = () => {
     if (excelData.length > 0) {
-      previewAttestation(excelData[0]);
+      const studentToPreview = selectedStudentMatricules.length > 0 
+        ? excelData.find(s => s.MATRICULE === selectedStudentMatricules[0])
+        : excelData[0];
+      
+      if (studentToPreview) {
+        previewAttestation(studentToPreview);
+      }
     } else {
       setError("Veuillez importer des données pour prévisualiser avec le nouveau thème");
     }
   };
 
-  // Fonction pour prévisualiser une attestation individuelle
   const previewAttestation = async (student: StudentExcelRecord) => {
     try {
       setIsLoading(true);
       setError(null);
       
-      // Vérification de sécurité pour la position
       const safePosition = position && typeof position.x === 'number' && typeof position.y === 'number' 
         ? position 
         : { x: 470, y: 220 };
       
-      // Utiliser la fonction de prévisualisation avec le thème
       const success = await openAttestationPreview(
         student, 
         {
@@ -290,14 +293,28 @@ export const AttestationGenerator: React.FC = () => {
     }
   };
 
+  // Fonction pour gérer la sélection des étudiants
+  const handleStudentSelectionChange = (matricules: string[]) => {
+    setSelectedStudentMatricules(matricules);
+  };
+
+  // Fonction pour prévisualiser un étudiant spécifique
+  const handlePreviewStudent = (student: StudentExcelRecord) => {
+    previewAttestation(student);
+  };
+
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "generator" | "settings" | "theme" | "presets")}>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
         <div className="flex justify-between items-center mb-4">
-          <TabsList className="grid grid-cols-4">
+          <TabsList className="grid grid-cols-5">
             <TabsTrigger value="generator" className="flex items-center gap-2">
               <Table2 className="h-4 w-4" />
               Générateur
+            </TabsTrigger>
+            <TabsTrigger value="selection" disabled={excelData.length === 0} className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Sélection ({selectedStudentMatricules.length})
             </TabsTrigger>
             <TabsTrigger value="presets" className="flex items-center gap-2">
               <Wand2 className="h-4 w-4" />
@@ -323,7 +340,6 @@ export const AttestationGenerator: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Importation des données Excel */}
               <div className="space-y-2">
                 <Label>Fichier Excel des étudiants</Label>
                 <Input
@@ -337,7 +353,6 @@ export const AttestationGenerator: React.FC = () => {
                 </p>
               </div>
 
-              {/* Messages de succès et d'erreur */}
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
@@ -350,7 +365,6 @@ export const AttestationGenerator: React.FC = () => {
                 </Alert>
               )}
 
-              {/* Barre de progression */}
               {isLoading && (
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
@@ -361,13 +375,15 @@ export const AttestationGenerator: React.FC = () => {
                 </div>
               )}
 
-              {/* Aperçu du thème actuel */}
               {excelData.length > 0 && (
                 <Card className="bg-blue-50 border-blue-200">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-medium text-blue-900">Thème actuel</h4>
+                        <h4 className="font-medium text-blue-900">Données chargées</h4>
+                        <p className="text-sm text-blue-700">
+                          {excelData.length} étudiant(s) • {selectedStudentMatricules.length} sélectionné(s)
+                        </p>
                         <p className="text-sm text-blue-700">
                           Police: {attestationTheme.mainFont.split(',')[0]} • 
                           Couleur: {attestationTheme.primaryColor} • 
@@ -375,6 +391,15 @@ export const AttestationGenerator: React.FC = () => {
                         </p>
                       </div>
                       <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActiveTab("selection")}
+                          className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                        >
+                          <Users className="h-4 w-4 mr-2" />
+                          Sélectionner
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -399,10 +424,9 @@ export const AttestationGenerator: React.FC = () => {
                 </Card>
               )}
 
-              {/* Bouton de génération */}
               <div className="flex justify-end">
                 <Button 
-                  onClick={generateAttestations} 
+                  onClick={() => generateAttestations()} 
                   disabled={isLoading || excelData.length === 0}
                   className="min-w-32"
                 >
@@ -414,69 +438,28 @@ export const AttestationGenerator: React.FC = () => {
                   ) : (
                     <>
                       <FileDown className="mr-2 h-4 w-4" />
-                      Générer les attestations
+                      {selectedStudentMatricules.length > 0 
+                        ? `Générer (${selectedStudentMatricules.length})` 
+                        : 'Générer toutes les attestations'
+                      }
                     </>
                   )}
                 </Button>
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {/* Tableau des étudiants importés */}
-          {excelData.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Données importées ({excelData.length} étudiant(s))</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nom</TableHead>
-                        <TableHead>Prénom</TableHead>
-                        <TableHead>Matricule</TableHead>
-                        <TableHead>Date de naissance</TableHead>
-                        <TableHead>Moyenne</TableHead>
-                        <TableHead>Grade</TableHead>
-                        <TableHead>Mention</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {excelData.map((student, index) => (
-                        <TableRow key={`${student.MATRICULE || index}`}>
-                          <TableCell>{student.NOM}</TableCell>
-                          <TableCell>{student.PRENOM}</TableCell>
-                          <TableCell>{student.MATRICULE}</TableCell>
-                          <TableCell>{student["DATE DE NAISSANCE"]}</TableCell>
-                          <TableCell>
-                            {typeof student.MOYENNE === 'number' 
-                              ? student.MOYENNE.toFixed(2) 
-                              : student.MOYENNE}
-                          </TableCell>
-                          <TableCell>{student.GRADE}</TableCell>
-                          <TableCell>{student.MENTION}</TableCell>
-                          <TableCell>
-                            <AttestationPreviewButton
-                              student={student}
-                              schoolSettings={{
-                                ...schoolSettings,
-                                theme: attestationTheme,
-                              }}
-                              qrCodePosition={position}
-                              onError={setError}
-                              disabled={isLoading}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+        <TabsContent value="selection">
+          <StudentSelector
+            students={excelData}
+            selectedStudents={selectedStudentMatricules}
+            onSelectionChange={handleStudentSelectionChange}
+            onPreview={handlePreviewStudent}
+            onGenerateSelected={generateAttestations}
+            documentType="attestation"
+            isLoading={isLoading}
+          />
         </TabsContent>
 
         <TabsContent value="presets">
