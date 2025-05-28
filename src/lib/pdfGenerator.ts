@@ -548,7 +548,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                           ${facultyLogoBase64 ? `<img src="${facultyLogoBase64}" alt="Faculty Logo" height="50" style="margin: 5px;">` : 
                             '<div style="height: 50px; border: 1px solid black; margin: 5px;"> Faculty Logo</div>'}
                         </div>
-                        <div>
+                        <div id="to-hidden">
                           ${settings.logo ? `<img src="${settings.logo}" alt="IPES Logo" height="50">` : 
                             '<div style="height: 50px; border: 1px solid black;"> IPES Logo</div>'}
                         </div>
