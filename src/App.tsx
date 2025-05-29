@@ -13,6 +13,7 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { useLicense } from "@/hooks/use-license";
 import { LicenseForm } from "@/components/organisms/license-form/LicenseForm";
 import { Spinner } from "@/components/ui/LoadingSpinner";
+import { NotificationProvider } from "./components/ui/notification-system";
 
 // Contexte pour la gestion d'état globale
 import { createContext, useContext } from "react";
@@ -142,6 +143,7 @@ const AppContent: React.FC = () => {
   // Interface principale de l'application
   return (
     <AppContext.Provider value={{ isLoading, setIsLoading, refreshData }}>
+      <NotificationProvider>
       <AppToolbarProvider>
         <SidebarProvider defaultOpen>
           <div className="flex w-screen h-screen bg-background overflow-auto">
@@ -211,6 +213,7 @@ const AppContent: React.FC = () => {
           </div>
         </SidebarProvider>
       </AppToolbarProvider>
+    </NotificationProvider>
     </AppContext.Provider>
   );
 };

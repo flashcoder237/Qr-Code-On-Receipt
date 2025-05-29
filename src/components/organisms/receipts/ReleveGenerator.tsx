@@ -1,4 +1,4 @@
-// src/components/organisms/receipts/ReleveGenerator.tsx - Version mise à jour avec sélection
+// src/components/organisms/receipts/ReleveGenerator.tsx - Version mise à jour avec notifications et historique
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
@@ -8,6 +8,8 @@ import { Button } from "../../ui/button";
 import { useHotkeys } from "react-hotkeys-hook";
 import { Eye, Download, AlertCircle, CheckCircle, Users } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
+import { useNotifications } from "@/components/ui/notification-system";
+import { useDocumentHistory } from "@/components/organisms/document-history/DocumentHistoryManager";
 
 // Components
 import { FileUploader } from "./components/FileUploader";
@@ -16,7 +18,7 @@ import { ConfigurationSelector } from "./ConfigurationSelector";
 import { ColumnMappingEditor } from "./ColumnMappingEditor";
 import { TranscriptPreview } from "./TranscriptPreview";
 import { SemesterSelector } from "./SemesterSelector";
-import { StudentSelector } from "../student-selector"; // Nouveau composant
+import { StudentSelector } from "../student-selector";
 
 // Hooks
 import { useConfiguration } from "./hooks/useConfiguration";
@@ -47,10 +49,12 @@ export const ReleveGenerator: React.FC = () => {
   const [configs, setConfigs] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [previewContentUrl, setPreviewContentUrl] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [selectedStudentMatricules, setSelectedStudentMatricules] = useState<string[]>([]);
-  // Flag to avoid infinite update loop
   const [configsLoaded, setConfigsLoaded] = useState(false);
+
+  // Hooks pour notifications et historique
+  const { notifySuccess, notifyError, notifyWarning } = useNotifications();
+  const { addDocumentRecord } = useDocumentHistory();
 
   // Load settings from localStorage
   const [settings] = useLocalStorage<TranscriptSettings>("settings", {
@@ -78,9 +82,10 @@ export const ReleveGenerator: React.FC = () => {
         setConfigsLoaded(true);
       } catch (error) {
         console.error("Erreur lors du chargement des configurations:", error);
+        notifyError("Erreur", "Impossible de charger les configurations");
       }
     }
-  }, [configsLoaded]);
+  }, [configsLoaded, notifyError]);
 
   useEffect(() => {
     if (previewContentUrl) {
@@ -98,13 +103,14 @@ export const ReleveGenerator: React.FC = () => {
           setConfigs(parsedConfigs);
         } catch (error) {
           console.error("Erreur lors du traitement des nouvelles configurations:", error);
+          notifyError("Erreur", "Erreur lors de la mise à jour des configurations");
         }
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [notifyError]);
 
   // Custom hooks
   const {
@@ -127,18 +133,26 @@ export const ReleveGenerator: React.FC = () => {
             name: sem.name
           }))
         );
+        notifySuccess("Configuration", `Configuration "${config.name}" sélectionnée`);
       }
       setPreviewStudent(null);
-      setSelectedStudentMatricules([]); // Reset selection when config changes
+      setSelectedStudentMatricules([]);
       if (previewContentUrl) {
         URL.revokeObjectURL(previewContentUrl);
         setPreviewContentUrl(null);
       }
       setError(null);
     },
-    onSemesterChange: () => {
+    onSemesterChange: (semesterId) => {
+      const config = configs.find(c => c.id === selectedConfigId);
+      if (config) {
+        const semester = config.semesters.find(s => s.id === semesterId);
+        if (semester) {
+          notifySuccess("Semestre", `Semestre "${semester.name}" sélectionné`);
+        }
+      }
       setPreviewStudent(null);
-      setSelectedStudentMatricules([]); // Reset selection when semester changes
+      setSelectedStudentMatricules([]);
       if (previewContentUrl) {
         URL.revokeObjectURL(previewContentUrl);
         setPreviewContentUrl(null);
@@ -196,27 +210,32 @@ export const ReleveGenerator: React.FC = () => {
     if (availableECs.length > 0) {
       const complete = availableECs.every(ec => columnMapping[ec.id]);
       setMappingStatus(complete);
+      
+      if (complete) {
+        notifySuccess("Correspondance", "Correspondance des colonnes complétée");
+      }
     }
-  }, [getAvailableECs, columnMapping, setMappingStatus, selectedConfigId, selectedSemesterId]);
+  }, [getAvailableECs, columnMapping, setMappingStatus, selectedConfigId, selectedSemesterId, notifySuccess]);
 
   // Reset selected students when excel data changes
   useEffect(() => {
     setSelectedStudentMatricules([]);
-  }, [excelData]);
+    if (excelData.length > 0) {
+      notifySuccess("Import", `${excelData.length} étudiant(s) importé(s) avec succès`);
+    }
+  }, [excelData, notifySuccess]);
 
   // Fonction pour charger un mapping complet
   const handleLoadMapping = useCallback((mapping: Record<string, string>) => {
     try {
       setColumnMapping(mapping);
-      setSuccessMessage("Correspondance chargée avec succès");
-      setTimeout(() => {
-        setSuccessMessage(null);
-      }, 3000);
+      notifySuccess("Correspondance", "Correspondance chargée avec succès");
     } catch (error) {
       console.error("Erreur lors du chargement du mapping:", error);
       setError(`Erreur lors du chargement du mapping: ${error instanceof Error ? error.message : String(error)}`);
+      notifyError("Erreur", "Impossible de charger la correspondance");
     }
-  }, [setColumnMapping]);
+  }, [setColumnMapping, notifySuccess, notifyError]);
 
   // Prepare student data for PDF generation
   const prepareStudentData = useCallback((rawStudent: any): StudentRecord => {
@@ -283,23 +302,28 @@ export const ReleveGenerator: React.FC = () => {
 
   const handlePreviewReleve = useCallback(async (student?: any) => {
     if (!currentConfig || !currentSemester) {
-      setError("Veuillez sélectionner une configuration et un semestre");
+      const message = "Veuillez sélectionner une configuration et un semestre";
+      setError(message);
+      notifyWarning("Configuration manquante", message);
       return;
     }
 
     if (excelData.length === 0) {
-      setError("Veuillez charger des données");
+      const message = "Veuillez charger des données";
+      setError(message);
+      notifyWarning("Données manquantes", message);
       return;
     }
 
     if (!mappingComplete) {
-      setError("Veuillez compléter la correspondance des colonnes avant de prévisualiser");
+      const message = "Veuillez compléter la correspondance des colonnes avant de prévisualiser";
+      setError(message);
+      notifyWarning("Correspondance incomplète", message);
       setActiveTab("mapping");
       return;
     }
 
     try {
-      // Utiliser l'étudiant fourni ou le premier étudiant sélectionné ou le premier de la liste
       const studentToPreview = student || 
         (selectedStudentMatricules.length > 0 
           ? excelData.find(s => s.MATRICULE === selectedStudentMatricules[0])
@@ -307,8 +331,7 @@ export const ReleveGenerator: React.FC = () => {
 
       const preparedStudent = prepareStudentData(studentToPreview);
       if (!preparedStudent) {
-        setError("Erreur lors de la préparation des données");
-        return;
+        throw new Error("Erreur lors de la préparation des données");
       }
 
       console.log("Données étudiant préparées:", preparedStudent);
@@ -317,9 +340,7 @@ export const ReleveGenerator: React.FC = () => {
       setPreviewStudent(preparedStudent);
       
       if (!window.transcriptRenderer) {
-        setError("Impossible de communiquer avec le processus de rendu HTML");
-        console.error("Transcript renderer n'est pas disponible. Êtes-vous dans un environnement non-Electron ?");
-        return;
+        throw new Error("Impossible de communiquer avec le processus de rendu HTML");
       }
       
       try {
@@ -337,43 +358,57 @@ export const ReleveGenerator: React.FC = () => {
         }
         
         setError(null);
+        notifySuccess("Prévisualisation", `Aperçu généré pour ${preparedStudent.NOM} ${preparedStudent.PRENOM}`);
       } catch (err) {
         console.error("Erreur pendant le rendu HTML:", err);
-        setError(`Erreur de communication avec le processus de rendu: ${err.message || 'Erreur inconnue'}`);
+        const message = `Erreur de communication avec le processus de rendu: ${err.message || 'Erreur inconnue'}`;
+        setError(message);
+        notifyError("Erreur de rendu", message);
       }
     } catch (error) {
       console.error('Erreur de prévisualisation:', error);
-      setError(`Erreur lors de la génération de la prévisualisation: ${error.message || 'Erreur inconnue'}`);
+      const message = `Erreur lors de la génération de la prévisualisation: ${error.message || 'Erreur inconnue'}`;
+      setError(message);
+      notifyError("Erreur", message);
     }
-  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, settings, selectedStudentMatricules]);
+  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, settings, selectedStudentMatricules, notifySuccess, notifyError, notifyWarning]);
   
   const handleGenerateSelected = useCallback(async (studentsToGenerate?: any[]) => {
     if (!currentConfig || !currentSemester) {
-      setError("Veuillez sélectionner une configuration et un semestre");
+      const message = "Veuillez sélectionner une configuration et un semestre";
+      setError(message);
+      notifyWarning("Configuration manquante", message);
       return;
     }
 
     if (excelData.length === 0) {
-      setError("Veuillez charger des données");
+      const message = "Veuillez charger des données";
+      setError(message);
+      notifyWarning("Données manquantes", message);
       return;
     }
 
     if (!mappingComplete) {
-      setError("Veuillez compléter la correspondance des colonnes avant de générer les relevés");
+      const message = "Veuillez compléter la correspondance des colonnes avant de générer les relevés";
+      setError(message);
+      notifyWarning("Correspondance incomplète", message);
       setActiveTab("mapping");
       return;
     }
 
-    // Utiliser les étudiants fournis ou les étudiants sélectionnés ou tous les étudiants
     const dataToProcess = studentsToGenerate || 
       (selectedStudentMatricules.length > 0 
         ? excelData.filter(s => selectedStudentMatricules.includes(s.MATRICULE))
         : excelData);
 
     if (dataToProcess.length === 0) {
-      setError("Aucun étudiant sélectionné pour la génération");
+      const message = "Aucun étudiant sélectionné pour la génération";
+      setError(message);
+      notifyWarning("Sélection vide", message);
       return;
     }
+
+    notifySuccess("Génération", `Début de la génération de ${dataToProcess.length} relevé(s)`);
 
     try {
       const preparedData = dataToProcess.map(student => {
@@ -392,19 +427,44 @@ export const ReleveGenerator: React.FC = () => {
       
       const link = document.createElement("a");
       link.href = url;
-      link.download = `releves_${new Date().toISOString().split('T')[0]}.zip`;
+      const fileName = `releves_${new Date().toISOString().split('T')[0]}.zip`;
+      link.download = fileName;
       link.click();
       
       URL.revokeObjectURL(url);
       setError(null);
       
-      setSuccessMessage(`${results.size} relevé(s) généré(s) avec succès`);
-      setTimeout(() => setSuccessMessage(null), 5000);
+      // Ajouter les documents à l'historique
+      dataToProcess.forEach(student => {
+        const preparedStudent = prepareStudentData(student);
+        if (preparedStudent) {
+          // Calculer la moyenne pour l'historique
+          const totalNotes = preparedStudent.COURSES.reduce((sum, course) => sum + course.NOTE, 0);
+          const averageScore = preparedStudent.COURSES.length > 0 ? totalNotes / preparedStudent.COURSES.length : 0;
+          
+          addDocumentRecord({
+            type: 'releve',
+            studentName: `${preparedStudent.NOM} ${preparedStudent.PRENOM}`,
+            studentMatricule: preparedStudent.MATRICULE,
+            academicYear: preparedStudent["ANNEE ACADÉMIQUE"],
+            level: preparedStudent.NIVEAU,
+            semester: preparedStudent.SEMESTRE,
+            average: averageScore,
+            fileName: `${preparedStudent.MATRICULE}_releve.pdf`,
+            status: 'generated'
+          });
+        }
+      });
+      
+      const successMessage = `${results.size} relevé(s) généré(s) avec succès`;
+      notifySuccess("Génération terminée", successMessage);
     } catch (error) {
       console.error('Generation error:', error);
-      setError("Erreur lors de la génération des relevés");
+      const message = "Erreur lors de la génération des relevés";
+      setError(message);
+      notifyError("Erreur de génération", message);
     }
-  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, processBatch, generateZipFile, settings, selectedStudentMatricules]);
+  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, processBatch, generateZipFile, settings, selectedStudentMatricules, notifySuccess, notifyError, notifyWarning, addDocumentRecord]);
 
   // Keyboard shortcuts
   useHotkeys('ctrl+p', () => handlePreviewReleve(), [handlePreviewReleve]);
@@ -425,7 +485,10 @@ export const ReleveGenerator: React.FC = () => {
   // Fonction pour gérer la sélection des étudiants
   const handleStudentSelectionChange = useCallback((matricules: string[]) => {
     setSelectedStudentMatricules(matricules);
-  }, []);
+    if (matricules.length > 0) {
+      notifySuccess("Sélection", `${matricules.length} étudiant(s) sélectionné(s)`);
+    }
+  }, [notifySuccess]);
 
   // Fonction pour prévisualiser un étudiant spécifique
   const handlePreviewStudent = useCallback((student: any) => {
@@ -480,7 +543,10 @@ export const ReleveGenerator: React.FC = () => {
 
                   <FileUploader
                     onFileLoaded={handleFileLoaded}
-                    onError={(error) => setError(error)}
+                    onError={(error) => {
+                      setError(error);
+                      notifyError("Erreur de fichier", error);
+                    }}
                     isLoading={processingState.isLoading}
                   />
 
@@ -491,11 +557,11 @@ export const ReleveGenerator: React.FC = () => {
                     </Alert>
                   )}
 
-                  {(successMessage || processingState.successMessage) && (
+                  {processingState.successMessage && (
                     <Alert variant="default" className="bg-green-50 border-green-300">
                       <CheckCircle className="h-4 w-4 text-green-500" />
                       <AlertDescription className="text-green-700">
-                        {successMessage || processingState.successMessage}
+                        {processingState.successMessage}
                       </AlertDescription>
                     </Alert>
                   )}

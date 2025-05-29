@@ -1,4 +1,4 @@
-// Mise à jour de src/lib/constants/menu.tsx
+// src/lib/constants/menu.tsx - Mise à jour avec l'historique des documents
 
 import { QrCodeOnPdf } from "@/components/organisms/qrcode-on-pdf";
 import { AttestationGenerator } from "@/components/organisms/attestation-generator";
@@ -6,6 +6,7 @@ import { SettingsForm } from "@/components/organisms/settings-form";
 import { CoursesList } from "@/components/organisms/courses-list";
 import { ReleveGenerator } from "@/components/organisms/receipts/ReleveGenerator";
 import { AcademicConfigManager } from "@/components/organisms/academic-config/AcademicConfigManager";
+import { DocumentHistoryManager } from "@/components/organisms/document-history/DocumentHistoryManager";
 import {
   FileDownIcon,
   HelpCircleIcon,
@@ -14,6 +15,7 @@ import {
   Award,
   File,
   FileText,
+  History,
 } from "lucide-react";
 
 const menuItems = [
@@ -34,6 +36,12 @@ const menuItems = [
     url: "attestation",
     icon: Award,
     component: <AttestationGenerator />,
+  },
+  {
+    title: "Historique des documents",
+    url: "history",
+    icon: History,
+    component: <DocumentHistoryManager />,
   },
   {
     title: "Configurer les entêtes",

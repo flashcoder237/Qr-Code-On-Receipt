@@ -1,4 +1,4 @@
-// src/components/organisms/attestation-generator/attestation-generator.tsx - Version mise à jour avec sélection
+// src/components/organisms/attestation-generator/attestation-generator.tsx - Version mise à jour avec notifications
 import React, { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -24,20 +24,25 @@ import { AttestationSettings } from "./AttestationSettings";
 import { AttestationPreviewButton } from "./AttestationPreviewButton";
 import { AttestationThemeEditor } from "./AttestationThemeEditor";
 import { ThemePresetSelector } from "./ThemePresetSelector";
-import { StudentSelector } from "../student-selector"; // Nouveau composant
-import { FileDown, Loader2, Settings2, Table2, Palette, FileText, Eye, Wand2, Users } from "lucide-react";
+import { StudentSelector } from "../student-selector";
+import { FileDown, Loader2, Settings2, Table2, Palette, FileText, Eye, Wand2, Users, AlertCircle, CheckCircle } from "lucide-react";
 import { calculateGrade, calculateMention, getCurrentAcademicYear } from "@/lib/attestation-generator/utils";
 import { openAttestationPreview } from "@/lib/attestation-generator/preview";
 import { AttestationThemeSettingsPayload, defaultAttestationTheme } from "@/lib/form-schemas/attestation-theme-settings";
+import { useNotifications } from "@/components/ui/notification-system";
+import { useDocumentHistory } from "@/components/organisms/document-history/DocumentHistoryManager";
 
 export const AttestationGenerator: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"generator" | "settings" | "theme" | "presets" | "selection">("generator");
   const [excelData, setExcelData] = useState<StudentExcelRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [selectedStudentMatricules, setSelectedStudentMatricules] = useState<string[]>([]);
+  
+  // Hooks pour notifications et historique
+  const { notifySuccess, notifyError, notifyWarning } = useNotifications();
+  const { addDocumentRecord } = useDocumentHistory();
   
   // Position pour le QR code
   const [position, setPosition] = useLocalStorage("attestation-qrcode-position", {
@@ -68,7 +73,10 @@ export const AttestationGenerator: React.FC = () => {
   // Reset selected students when excel data changes
   useEffect(() => {
     setSelectedStudentMatricules([]);
-  }, [excelData]);
+    if (excelData.length > 0) {
+      notifySuccess("Import", `${excelData.length} étudiant(s) importé(s) avec succès`);
+    }
+  }, [excelData, notifySuccess]);
 
   const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -110,15 +118,12 @@ export const AttestationGenerator: React.FC = () => {
 
           setExcelData(convertedData);
           setError(null);
-          setSuccess(`${convertedData.length} étudiant(s) importé(s) avec succès.`);
-          
-          setTimeout(() => {
-            setSuccess(null);
-          }, 5000);
           
         } catch (err) {
           console.error("Erreur lors de la lecture du fichier Excel", err);
-          setError("Erreur lors de la lecture du fichier Excel");
+          const errorMessage = "Erreur lors de la lecture du fichier Excel";
+          setError(errorMessage);
+          notifyError("Erreur d'import", errorMessage);
         }
       };
       reader.readAsArrayBuffer(file);
@@ -147,21 +152,23 @@ export const AttestationGenerator: React.FC = () => {
   };
 
   const generateAttestations = async (studentsToGenerate?: StudentExcelRecord[]) => {
-    // Utiliser les étudiants fournis ou les étudiants sélectionnés ou tous les étudiants
     const dataToProcess = studentsToGenerate || 
       (selectedStudentMatricules.length > 0 
         ? excelData.filter(s => selectedStudentMatricules.includes(s.MATRICULE))
         : excelData);
 
     if (dataToProcess.length === 0) {
-      setError("Aucun étudiant sélectionné pour la génération");
+      const message = "Aucun étudiant sélectionné pour la génération";
+      setError(message);
+      notifyWarning("Sélection vide", message);
       return;
     }
+
+    notifySuccess("Génération", `Début de la génération de ${dataToProcess.length} attestation(s)`);
 
     try {
       setIsLoading(true);
       setError(null);
-      setSuccess(null);
       setProcessingProgress(0);
       
       const safePosition = position && typeof position.x === 'number' && typeof position.y === 'number' 
@@ -170,6 +177,7 @@ export const AttestationGenerator: React.FC = () => {
       
       const zip = new JSZip();
       let processedCount = 0;
+      let successCount = 0;
 
       for (const student of dataToProcess) {
         try {
@@ -190,27 +198,55 @@ export const AttestationGenerator: React.FC = () => {
           const fileName = `${student.MATRICULE}_Attestation.pdf`;
           zip.file(fileName, pdfBytes);
           
-          processedCount++;
-          setProcessingProgress((processedCount / dataToProcess.length) * 100);
+          // Ajouter à l'historique
+          addDocumentRecord({
+            type: 'attestation',
+            studentName: `${student.NOM} ${student.PRENOM}`,
+            studentMatricule: student.MATRICULE,
+            academicYear: student["ANNEE ACADEMIQUE"],
+            parcours: student.PARCOURS,
+            speciality: student.SPECIALITE,
+            average: typeof student.MOYENNE === 'number' ? student.MOYENNE : parseFloat(String(student.MOYENNE)) || undefined,
+            grade: student.GRADE,
+            mention: student.MENTION,
+            fileName: fileName,
+            status: 'generated'
+          });
+          
+          successCount++;
           
         } catch (err) {
           console.error(`Erreur lors de la génération de l'attestation pour ${student.MATRICULE}`, err);
+          notifyError("Erreur", `Échec de génération pour ${student.NOM} ${student.PRENOM}`);
         }
+        
+        processedCount++;
+        setProcessingProgress((processedCount / dataToProcess.length) * 100);
       }
 
-      const zipContent = await zip.generateAsync({ type: "blob" });
-      const url = window.URL.createObjectURL(zipContent);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "attestations.zip";
-      link.click();
-      window.URL.revokeObjectURL(url);
+      if (successCount > 0) {
+        const zipContent = await zip.generateAsync({ type: "blob" });
+        const url = window.URL.createObjectURL(zipContent);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `attestations_${new Date().toISOString().split('T')[0]}.zip`;
+        link.click();
+        window.URL.revokeObjectURL(url);
 
-      setSuccess(`${processedCount} attestation(s) générée(s) avec succès`);
+        const successMessage = `${successCount} attestation(s) générée(s) avec succès`;
+        notifySuccess("Génération terminée", successMessage);
+      }
+      
+      if (successCount < dataToProcess.length) {
+        const errorCount = dataToProcess.length - successCount;
+        notifyWarning("Génération incomplète", `${errorCount} attestation(s) ont échoué`);
+      }
       
     } catch (err) {
       console.error("Erreur lors de la génération des attestations", err);
-      setError("Une erreur est survenue lors de la génération des attestations");
+      const message = "Une erreur est survenue lors de la génération des attestations";
+      setError(message);
+      notifyError("Erreur de génération", message);
     } finally {
       setIsLoading(false);
       setProcessingProgress(0);
@@ -222,27 +258,26 @@ export const AttestationGenerator: React.FC = () => {
     if (settings) {
       try {
         setSchoolSettings(JSON.parse(settings));
+        notifySuccess("Paramètres", "Paramètres mis à jour avec succès");
       } catch (error) {
         console.error("Erreur lors du chargement des paramètres:", error);
+        notifyError("Erreur", "Impossible de charger les paramètres");
       }
     }
   };
 
   const handleThemeUpdate = (newTheme: AttestationThemeSettingsPayload) => {
     setAttestationTheme(newTheme);
-    setSuccess("Thème mis à jour avec succès");
-    setTimeout(() => setSuccess(null), 3000);
+    notifySuccess("Thème", "Thème mis à jour avec succès");
   };
 
   const handleThemeSave = () => {
-    setSuccess("Thème sauvegardé avec succès");
-    setTimeout(() => setSuccess(null), 3000);
+    notifySuccess("Thème", "Thème sauvegardé avec succès");
   };
 
   const handlePresetSelect = (newTheme: AttestationThemeSettingsPayload) => {
     setAttestationTheme(newTheme);
-    setSuccess("Préréglage appliqué avec succès");
-    setTimeout(() => setSuccess(null), 3000);
+    notifySuccess("Préréglage", "Préréglage appliqué avec succès");
     setActiveTab("theme");
   };
 
@@ -256,7 +291,9 @@ export const AttestationGenerator: React.FC = () => {
         previewAttestation(studentToPreview);
       }
     } else {
-      setError("Veuillez importer des données pour prévisualiser avec le nouveau thème");
+      const message = "Veuillez importer des données pour prévisualiser avec le nouveau thème";
+      setError(message);
+      notifyWarning("Données manquantes", message);
     }
   };
 
@@ -282,12 +319,18 @@ export const AttestationGenerator: React.FC = () => {
       );
       
       if (!success) {
-        setError("Impossible d'ouvrir la fenêtre de prévisualisation. Veuillez vérifier vos paramètres de bloqueur de popups.");
+        const message = "Impossible d'ouvrir la fenêtre de prévisualisation. Veuillez vérifier vos paramètres de bloqueur de popups.";
+        setError(message);
+        notifyError("Erreur de prévisualisation", message);
+      } else {
+        notifySuccess("Prévisualisation", `Aperçu généré pour ${student.NOM} ${student.PRENOM}`);
       }
       
     } catch (err) {
       console.error("Erreur lors de la prévisualisation", err);
-      setError("Une erreur est survenue lors de la prévisualisation de l'attestation");
+      const message = "Une erreur est survenue lors de la prévisualisation de l'attestation";
+      setError(message);
+      notifyError("Erreur", message);
     } finally {
       setIsLoading(false);
     }
@@ -296,6 +339,9 @@ export const AttestationGenerator: React.FC = () => {
   // Fonction pour gérer la sélection des étudiants
   const handleStudentSelectionChange = (matricules: string[]) => {
     setSelectedStudentMatricules(matricules);
+    if (matricules.length > 0) {
+      notifySuccess("Sélection", `${matricules.length} étudiant(s) sélectionné(s)`);
+    }
   };
 
   // Fonction pour prévisualiser un étudiant spécifique
@@ -355,13 +401,8 @@ export const AttestationGenerator: React.FC = () => {
 
               {error && (
                 <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              
-              {success && (
-                <Alert variant="default" className="bg-green-50 border-green-200">
-                  <AlertDescription className="text-green-700">{success}</AlertDescription>
                 </Alert>
               )}
 
