@@ -1,7 +1,8 @@
-// src/lib/attestation-generator/-html-generator.ts
+// src/lib/attestation-generator/html-generator.ts - Version mise à jour avec chiffrement
 import { StudentExcelRecord } from '../helpers/qrcode';
 import { formatDate, calculateGrade, calculateMention } from './utils';
 import { AttestationThemeSettingsPayload, defaultAttestationTheme } from '../form-schemas/attestation-theme-settings';
+import { generateQrCodeBase64, getQrCodePayloadWithEncryption } from '../helpers/qrcode';
 
 interface SchoolSettings {
   establishmentType: string;
@@ -26,10 +27,11 @@ interface GenerationOptions {
     y: number;
   };
   theme?: AttestationThemeSettingsPayload;
+  encryptionEnabled?: boolean; // Nouveau paramètre
 }
 
 /**
- * Génère le HTML pour l'attestation de réussite avec support des thèmes personnalisés
+ * Génère le HTML pour l'attestation de réussite avec support des thèmes personnalisés et du chiffrement
  */
 export async function generateAttestationHTML(
   student: StudentExcelRecord,
@@ -43,6 +45,10 @@ export async function generateAttestationHTML(
   if (!settings) {
     throw new Error("Les paramètres de l'école sont requis");
   }
+
+  console.log(`🔄 Génération HTML attestation pour ${student.NOM} ${student.PRENOM}...`);
+  console.log(`🔐 Chiffrement: ${options.encryptionEnabled ? 'Activé' : 'Désactivé'}`);
+
   // Utiliser le thème fourni ou celui des paramètres ou le thème par défaut
   const theme = options.theme || settings.theme || defaultAttestationTheme;
   
@@ -50,7 +56,6 @@ export async function generateAttestationHTML(
   const schoolLogo = settings.logo || '';
   const universityLogo = settings.universityLogo || '';
   const facultyLogo = settings.facultyLogo || '';
-  
   
   // Année académique formatée
   const academicYear = student["ANNEE ACADEMIQUE"] || "2023/2024";
@@ -84,9 +89,29 @@ export async function generateAttestationHTML(
   // Finalité
   const finality = student["FINALITE"] || 'LICENCE PROFESSIONNELLE';
 
+  // Générer le QR code avec chiffrement si nécessaire
+  let qrCodeImage = options.qrCodeImage;
+  if (!qrCodeImage && theme.showQRCode) {
+    try {
+      const encryptionEnabled = options.encryptionEnabled !== false; // Par défaut activé
+      console.log(`🔄 Génération QR Code intégré (Chiffrement: ${encryptionEnabled})`);
+      
+      qrCodeImage = await generateQrCodeBase64(student, 'attestation', encryptionEnabled);
+      
+      if (encryptionEnabled) {
+        console.log('✅ QR Code avec chiffrement généré pour le HTML');
+      } else {
+        console.log('📋 QR Code sans chiffrement généré pour le HTML');
+      }
+    } catch (qrError) {
+      console.error('❌ Erreur lors de la génération du QR code pour le HTML:', qrError);
+      // Continuer sans QR code
+      qrCodeImage = '';
+    }
+  }
+
   // Générer les styles CSS basés sur le thème
   const generateThemeStyles = (): string => {
-
     function getLogoSize(){
       if(settings.establishmentType=== "ipes"){
       return  {
@@ -329,6 +354,20 @@ export async function generateAttestationHTML(
       border: 1px solid ${theme.tableBorderColor};
     }
 
+    /* Indicateur de chiffrement */
+    .encryption-indicator {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: rgba(0, 128, 0, 0.1);
+      border: 1px solid rgba(0, 128, 0, 0.3);
+      color: #006400;
+      font-size: 8px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      display: ${options.encryptionEnabled ? 'block' : 'none'};
+    }
+
     /* Filigrane */
     .watermark {
       position: absolute;
@@ -417,6 +456,10 @@ export async function generateAttestationHTML(
       .container {
         min-height: calc(297mm - ${theme.documentPadding * 2}px);
       }
+      
+      .encryption-indicator {
+        display: none; /* Masquer en impression */
+      }
     }
   `;
 };
@@ -433,6 +476,11 @@ export async function generateAttestationHTML(
 </head>
 <body>
     <div class="container">
+        <!-- Indicateur de chiffrement -->
+        <div class="encryption-indicator no-print">
+            🔐 QR Chiffré
+        </div>
+
         <!-- Filigrane IPES -->
         <div class="watermark">
             <img src="${settings.establishmentType === "ipes" ? schoolLogo : facultyLogo}" alt="IPES Watermark">
@@ -589,7 +637,7 @@ export async function generateAttestationHTML(
                 <div class="signature">
                     ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-left' ? `
                     <div class="qr-code">
-                        ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" alt="QR Code" />` : 
+                        ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code" />` : 
                           '<div class="qr-image"></div>'}
                     </div>
                     ` : ''}
@@ -600,7 +648,7 @@ export async function generateAttestationHTML(
                 
                 ${theme.qrCodePosition === 'bottom-center' ? `
                 <div class="qr-code">
-                    ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" alt="QR Code" />` : 
+                    ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code" />` : 
                       '<div class="qr-image"></div>'}
                 </div>
                 ` : ''}
@@ -618,7 +666,7 @@ export async function generateAttestationHTML(
                     
                     ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-right' ? `
                     <div class="qr-code">
-                        ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" alt="QR Code" />` : 
+                        ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code" />` : 
                           '<div class="qr-image"></div>'}
                     </div>
                     ` : ''}
@@ -644,14 +692,19 @@ export async function generateAttestationHTML(
         
         ${theme.qrCodePosition === 'custom' && options.qrCodePosition ? `
         <div style="position: absolute; left: ${options.qrCodePosition.x}px; top: ${options.qrCodePosition.y}px;" class="qr-code">
-            ${options.qrCodeImage ? `<img src="${options.qrCodeImage}" class="qr-image" alt="QR Code" />` : 
+            ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code" />` : 
               '<div class="qr-image"></div>'}
         </div>
         ` : ''}
     </div>
+    
+ 
 </body>
 </html>
   `;
+  
+  console.log(`✅ HTML généré avec succès pour ${studentFullName}`);
+  console.log(`🔐 Chiffrement QR: ${options.encryptionEnabled ? 'Activé' : 'Désactivé'}`);
   
   return html;
 }

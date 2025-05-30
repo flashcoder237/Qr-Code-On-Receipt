@@ -346,7 +346,7 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
                     }}
                   >
                     <Filter className="h-4 w-4 mr-1" />
-                    Reset
+                    Reinitialiser
                   </Button>
                 </div>
               </div>
