@@ -1,16 +1,16 @@
-// src/components/organisms/attestation-generator/AttestationPreviewButton.tsx - Correction
+// src/components/organisms/attestation-generator/AttestationPreviewButton.tsx - Version corrigée
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Eye, Loader2 } from "lucide-react";
 import { StudentExcelRecord } from "@/lib/helpers/qrcode";
-import QRCode from "qrcode";
 import { generateAttestationHTML } from "@/lib/attestation-generator/html-generator";
 
 interface AttestationPreviewButtonProps {
   student: StudentExcelRecord;
   schoolSettings: any;
   qrCodePosition: { x: number; y: number };
+  encryptionEnabled?: boolean; // Nouveau prop pour contrôler le chiffrement
   onError?: (message: string) => void;
   variant?: "default" | "outline" | "secondary" | "destructive" | "ghost" | "link";
   size?: "default" | "sm" | "lg" | "icon";
@@ -21,6 +21,7 @@ export const AttestationPreviewButton: React.FC<AttestationPreviewButtonProps> =
   student,
   schoolSettings,
   qrCodePosition,
+  encryptionEnabled = true, // Par défaut, le chiffrement est activé
   onError,
   variant = "outline",
   size = "sm",
@@ -32,6 +33,8 @@ export const AttestationPreviewButton: React.FC<AttestationPreviewButtonProps> =
     try {
       setIsLoading(true);
       
+      console.log('🔄 Début de la prévisualisation avec chiffrement:', encryptionEnabled);
+      
       // Vérification de sécurité pour la position du QR code
       const safeQrPosition = qrCodePosition && 
         typeof qrCodePosition.x === 'number' && 
@@ -39,56 +42,49 @@ export const AttestationPreviewButton: React.FC<AttestationPreviewButtonProps> =
         ? qrCodePosition 
         : { x: 470, y: 220 };
       
-      // Générer un QR code pour l'attestation
-      let qrCodeBase64 = '';
-      try {
-        // Créer les données QR pour l'attestation
-        const qrData = `Établissement: ${schoolSettings.nameFrench || 'N/D'}
-Nom: ${student.NOM || 'N/D'}
-Prénom: ${student.PRENOM || 'N/D'}
-Matricule: ${student.MATRICULE || 'N/D'}
-Date de naissance: ${student["DATE DE NAISSANCE"] || 'N/D'}
-Lieu de naissance: ${student["LIEU DE NAISSANCE"] || 'N/D'}
-Parcours: ${student.PARCOURS || ""}
-Spécialité: ${student.SPECIALITE || ""}
-Option: ${student.OPTION || ""}
-Moyenne: ${student.MOYENNE || 'N/D'}
-Grade: ${student.GRADE || 'N/D'}
-Mention: ${student.MENTION || 'N/D'}
-Année académique: ${student["ANNEE ACADEMIQUE"] || 'N/D'}`;
-
-        qrCodeBase64 = await QRCode.toDataURL(qrData);
-      } catch (qrError) {
-        console.error("Erreur lors de la génération du QR code:", qrError);
-        // Continuer sans QR code
-      }
+      // S'assurer que l'étudiant a un établissement défini
+      const studentWithEstablishment = {
+        ...student,
+        ETABLISSEMENT: student.ETABLISSEMENT || schoolSettings.nameFrench || "ETABLISSEMENT NON DEFINI"
+      };
+      
+      console.log('📊 Données étudiant pour prévisualisation:', {
+        nom: studentWithEstablishment.NOM,
+        prenom: studentWithEstablishment.PRENOM,
+        matricule: studentWithEstablishment.MATRICULE,
+        etablissement: studentWithEstablishment.ETABLISSEMENT,
+        encryptionEnabled
+      });
       
       let htmlContent = null;
       
       // Approche hybride : essayer d'abord avec le renderer IPC, puis en fallback direct
       if (window.attestationRenderer) {
         try {
-          // Essayer avec l'API IPC
+          console.log('🔄 Utilisation du renderer IPC...');
           htmlContent = await window.attestationRenderer.renderHTML({
-            student,
+            student: studentWithEstablishment,
             settings: schoolSettings,
             options: {
               qrCodePosition: safeQrPosition,
-              qrCodeImage: qrCodeBase64
+              encryptionEnabled: encryptionEnabled
             }
           });
+          console.log('✅ HTML généré via IPC');
         } catch (ipcError) {
-          console.warn("Échec du rendu via IPC, utilisation du fallback direct:", ipcError);
+          console.warn("⚠️ Échec du rendu via IPC, utilisation du fallback direct:", ipcError);
           // Continuer avec le fallback
         }
       }
       
       // Si htmlContent n'est pas défini, utiliser directement la fonction de génération HTML
       if (!htmlContent) {
-        htmlContent = await generateAttestationHTML(student, schoolSettings, {
-          qrCodeImage: qrCodeBase64,
-          qrCodePosition: safeQrPosition
+        console.log('🔄 Utilisation du générateur HTML direct...');
+        htmlContent = await generateAttestationHTML(studentWithEstablishment, schoolSettings, {
+          qrCodePosition: safeQrPosition,
+          encryptionEnabled: encryptionEnabled
         });
+        console.log('✅ HTML généré directement');
       }
       
       if (!htmlContent) {
@@ -101,25 +97,29 @@ Année académique: ${student["ANNEE ACADEMIQUE"] || 'N/D'}`;
       // Essayer d'abord l'API IPC
       if (window.ipcRenderer) {
         try {
+          console.log('🔄 Ouverture de la fenêtre de prévisualisation via IPC...');
           success = await window.ipcRenderer.invoke(
             'show-preview', 
             htmlContent, 
             'Prévisualisation de l\'attestation'
           );
+          console.log('✅ Fenêtre de prévisualisation ouverte via IPC');
         } catch (showPreviewError) {
-          console.warn("Échec de l'ouverture via IPC, utilisation du fallback:", showPreviewError);
+          console.warn("⚠️ Échec de l'ouverture via IPC, utilisation du fallback:", showPreviewError);
           // Continuer avec le fallback
         }
       }
       
       // Si l'API IPC n'est pas disponible ou a échoué, essayer d'ouvrir une nouvelle fenêtre
       if (!success) {
+        console.log('🔄 Ouverture de la fenêtre de prévisualisation en fallback...');
         const previewWindow = window.open('', '_blank');
         if (previewWindow) {
           previewWindow.document.write(htmlContent);
           previewWindow.document.title = 'Prévisualisation de l\'attestation';
           previewWindow.document.close();
           success = true;
+          console.log('✅ Fenêtre de prévisualisation ouverte en fallback');
         } else {
           throw new Error("Impossible d'ouvrir la fenêtre de prévisualisation. Vérifiez que les popups ne sont pas bloqués.");
         }
@@ -128,8 +128,11 @@ Année académique: ${student["ANNEE ACADEMIQUE"] || 'N/D'}`;
       if (!success && onError) {
         onError("Impossible d'ouvrir la prévisualisation. Vérifiez que les popups ne sont pas bloqués.");
       }
+      
+      console.log('✅ Prévisualisation terminée avec succès');
+      
     } catch (error) {
-      console.error("Erreur lors de la prévisualisation:", error);
+      console.error("❌ Erreur lors de la prévisualisation:", error);
       if (onError) {
         const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
         onError(`Une erreur est survenue lors de la prévisualisation: ${errorMessage}`);

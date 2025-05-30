@@ -84,10 +84,10 @@ export function AppSidebar() {
           </div>
           <div>
             <h2 className="font-semibold text-gray-900 dark:text-white">
-              Générateur Relevés
+              Générateur de certifi...
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Gestion académique
+              Rélevés et Attestations
             </p>
           </div>
         </div>

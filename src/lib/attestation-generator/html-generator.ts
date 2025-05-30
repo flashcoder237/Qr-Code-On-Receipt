@@ -1,8 +1,8 @@
-// src/lib/attestation-generator/html-generator.ts - Version mise à jour avec chiffrement
+// src/lib/attestation-generator/html-generator.ts - Version corrigée avec chiffrement
 import { StudentExcelRecord } from '../helpers/qrcode';
 import { formatDate, calculateGrade, calculateMention } from './utils';
 import { AttestationThemeSettingsPayload, defaultAttestationTheme } from '../form-schemas/attestation-theme-settings';
-import { generateQrCodeBase64, getQrCodePayloadWithEncryption } from '../helpers/qrcode';
+import { createCryptoDataFromStudent } from '../helpers/qrcode';
 
 interface SchoolSettings {
   establishmentType: string;
@@ -27,11 +27,11 @@ interface GenerationOptions {
     y: number;
   };
   theme?: AttestationThemeSettingsPayload;
-  encryptionEnabled?: boolean; // Nouveau paramètre
+  encryptionEnabled?: boolean;
 }
 
 /**
- * Génère le HTML pour l'attestation de réussite avec support des thèmes personnalisés et du chiffrement
+ * Génère le HTML pour l'attestation de réussite avec support du chiffrement
  */
 export async function generateAttestationHTML(
   student: StudentExcelRecord,
@@ -47,7 +47,10 @@ export async function generateAttestationHTML(
   }
 
   console.log(`🔄 Génération HTML attestation pour ${student.NOM} ${student.PRENOM}...`);
-  console.log(`🔐 Chiffrement: ${options.encryptionEnabled ? 'Activé' : 'Désactivé'}`);
+  
+  // Par défaut, le chiffrement est activé sauf indication contraire
+  const encryptionEnabled = options.encryptionEnabled !== false;
+  console.log(`🔐 Chiffrement: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
 
   // Utiliser le thème fourni ou celui des paramètres ou le thème par défaut
   const theme = options.theme || settings.theme || defaultAttestationTheme;
@@ -89,14 +92,19 @@ export async function generateAttestationHTML(
   // Finalité
   const finality = student["FINALITE"] || 'LICENCE PROFESSIONNELLE';
 
-  // Générer le QR code avec chiffrement si nécessaire
+  // Générer le QR code avec chiffrement
   let qrCodeImage = options.qrCodeImage;
   if (!qrCodeImage && theme.showQRCode) {
     try {
-      const encryptionEnabled = options.encryptionEnabled !== false; // Par défaut activé
       console.log(`🔄 Génération QR Code intégré (Chiffrement: ${encryptionEnabled})`);
       
-      qrCodeImage = await generateQrCodeBase64(student, 'attestation', encryptionEnabled);
+      // CORRECTION: S'assurer que l'établissement est défini
+      const studentWithEstablishment = {
+        ...student,
+        ETABLISSEMENT: student.ETABLISSEMENT || settings.nameFrench
+      };
+      
+      qrCodeImage = await createCryptoDataFromStudent(studentWithEstablishment, 'attestation', encryptionEnabled);
       
       if (encryptionEnabled) {
         console.log('✅ QR Code avec chiffrement généré pour le HTML');
@@ -365,7 +373,7 @@ export async function generateAttestationHTML(
       font-size: 8px;
       padding: 2px 6px;
       border-radius: 3px;
-      display: ${options.encryptionEnabled ? 'block' : 'none'};
+      display: ${encryptionEnabled ? 'block' : 'none'};
     }
 
     /* Filigrane */
@@ -458,7 +466,7 @@ export async function generateAttestationHTML(
       }
       
       .encryption-indicator {
-        display: none; /* Masquer en impression */
+        display: none;
       }
     }
   `;
@@ -586,6 +594,8 @@ export async function generateAttestationHTML(
                 
                 <p>Inscrit(e) à <strong id="to-hidden">${settings.nameFrench}</strong><strong id="to-nothidden">la Faculté de Medecine et des Sciences Pharmaceutiques</strong> sous le matricule: <strong>${matricule}</strong><br>
                 ${theme.showBilingualText ? '<em>Registered under the matricule number:</em>' : ''}</p>
+                <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : ${settings.cycle} en ${settings.cycle}<br>
+                ${theme.showBilingualText ? '<em>Having successfully fufilled the requirements qualifying for the :</em>' : ''}</p>
 
               
             </div>
@@ -704,7 +714,7 @@ export async function generateAttestationHTML(
   `;
   
   console.log(`✅ HTML généré avec succès pour ${studentFullName}`);
-  console.log(`🔐 Chiffrement QR: ${options.encryptionEnabled ? 'Activé' : 'Désactivé'}`);
+  console.log(`🔐 Chiffrement QR: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
   
   return html;
 }

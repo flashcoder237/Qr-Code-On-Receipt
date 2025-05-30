@@ -608,27 +608,27 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                 </div>
                 <div></div>
                 <div>
-                    <p><strong>CYCLE:</strong> <strong>${student.CYCLE || "N/D"}</strong></p>
+                    <p><strong>CYCLE:</strong> <strong>${settings.cycle || "N/D"}</strong></p>
                     <div><em>Training cycle:</em></div>
                 </div>
                 <div>
-                    <p><strong>ANNÉE ACADÉMIQUE:</strong> <strong>${student["ANNEE ACADÉMIQUE"] || "N/D"}</strong></p>
+                    <p><strong>ANNÉE ACADÉMIQUE:</strong> <strong>${settings.academicYear|| "N/D"}</strong></p>
                     <div><em>Academic Year:</em></div>
                 </div>
                 <div>
-                    <p><strong>FILIÈRE:</strong> <strong>${student.FILIERE || "N/D"}</strong></p>
+                    <p><strong>FILIÈRE:</strong> <strong>${settings.filiere || "N/D"}</strong></p>
                     <div><em>Field of Study:</em></div>
                 </div>
                 <div>
-                    <p><strong>NIVEAU:</strong> <strong>${student.NIVEAU || "N/D"}</strong></p>
+                    <p><strong>NIVEAU:</strong> <strong>${settings.niveau || "N/D"}</strong></p>
                     <div><em>Level:</em></div>
                 </div>
                 <div>
-                    <p><strong>SEMESTRE:</strong> <strong>${student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "N/D") : "N/D"}</strong></p>
+                    <p><strong>SEMESTRE:</strong> <strong>${settings.semesters ? (student.semesters.split(" ")[1] || "N/D") : "N/D"}</strong></p>
                     <div><em>Semester:</em></div>
                 </div>
                 <div>
-                    <p><strong>OPTION:</strong> <strong>${student.OPTION || "N/D"}</strong></p>
+                    <p><strong>OPTION:</strong> <strong>${settings.options || "N/D"}</strong></p>
                     <div><em>Option:</em></div>
                 </div>
             </div>
