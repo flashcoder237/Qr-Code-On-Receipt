@@ -1,24 +1,67 @@
-// src/lib/attestation-generator/AttestationService.ts
+// src/lib/attestation-generator/AttestationService.ts - Version mise à jour avec chiffrement
 import { StudentExcelRecord } from '../helpers/qrcode';
 import { generateAttestationHTML } from './html-generator';
 import { generateAttestationPDF } from './html-to-pdf';
-import QRCode from 'qrcode';
+import { generateQrCodeBase64 } from '../helpers/qrcode';
+import { encryptStudentData, StudentCryptoData } from '../crypto/encryption';
 
 /**
- * Service centralisé pour la gestion des attestations
- * Cette classe encapsule toute la logique liée aux attestations
+ * Service centralisé pour la gestion des attestations avec support du chiffrement
  */
 export class AttestationService {
   /**
-   * Génère un code QR pour une attestation
-   * @param student Les données de l'étudiant
-   * @param schoolSettings Les paramètres de l'école
-   * @returns Une promesse qui résout vers une chaîne base64 du QR code
+   * Génère un code QR pour une attestation avec chiffrement
    */
-  public static async generateQRCode(student: StudentExcelRecord, schoolSettings: any): Promise<string> {
+  public static async generateQRCode(
+    student: StudentExcelRecord, 
+    schoolSettings: any,
+    includeEncryption: boolean = true
+  ): Promise<string> {
     try {
-      // Créer les données QR pour l'attestation
-      const qrData = `Établissement: ${schoolSettings.nameFrench}
+      return await generateQrCodeBase64(student, 'attestation', includeEncryption);
+    } catch (error) {
+      console.error("Erreur lors de la génération du QR code:", error);
+      throw new Error(`Échec de génération du QR code: ${error.message}`);
+    }
+  }
+
+  /**
+   * Génère les données chiffrées pour une attestation
+   */
+  public static generateEncryptedData(student: StudentExcelRecord, schoolSettings: any): string {
+    try {
+      const cryptoData: StudentCryptoData = {
+        etablissement: schoolSettings.nameFrench || student.ETABLISSEMENT,
+        nom: student.NOM,
+        prenom: student.PRENOM,
+        matricule: student.MATRICULE,
+        dateDeNaissance: student["DATE DE NAISSANCE"],
+        lieuDeNaissance: student["LIEU DE NAISSANCE"],
+        parcours: student.PARCOURS || "",
+        specialite: student.SPECIALITE || "",
+        option: student.OPTION || "",
+        moyenne: student.MOYENNE,
+        grade: student.GRADE,
+        mention: student.MENTION,
+        anneeAcademique: student["ANNEE ACADEMIQUE"],
+        finalite: student.FINALITE || "",
+        totalCredit: student["TOTAL CREDIT"] || "",
+        domaine: student.DOMAINE || ""
+      };
+
+      return encryptStudentData(cryptoData, student.MATRICULE);
+    } catch (error) {
+      console.error("Erreur lors du chiffrement des données:", error);
+      throw new Error(`Échec du chiffrement: ${error.message}`);
+    }
+  }
+
+  /**
+   * Crée le contenu QR complet avec données visibles et chiffrées
+   */
+  public static createQRContent(student: StudentExcelRecord, schoolSettings: any): string {
+    // Partie visible
+    const visibleContent = `Établissement: ${schoolSettings.nameFrench || student.ETABLISSEMENT}
 Nom: ${student.NOM}
 Prénom: ${student.PRENOM}
 Matricule: ${student.MATRICULE}
@@ -32,19 +75,16 @@ Grade: ${student.GRADE}
 Mention: ${student.MENTION}
 Année académique: ${student["ANNEE ACADEMIQUE"]}`;
 
-      return await QRCode.toDataURL(qrData);
-    } catch (error) {
-      console.error("Erreur lors de la génération du QR code:", error);
-      throw new Error(`Échec de génération du QR code: ${error.message}`);
-    }
+    // Partie chiffrée
+    const encryptedData = this.generateEncryptedData(student, schoolSettings);
+    
+    return `${visibleContent}
+
+Informations cryptées: CRPY-${encryptedData}`;
   }
 
   /**
-   * Prévisualise une attestation
-   * @param student Les données de l'étudiant
-   * @param settings Les paramètres de l'école
-   * @param options Options supplémentaires (position du QR code, etc.)
-   * @returns Promise<boolean> Indiquant si la prévisualisation a réussi
+   * Prévisualise une attestation avec QR code chiffré
    */
   public static async previewAttestation(
     student: StudentExcelRecord, 
@@ -52,9 +92,9 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
     options: any = {}
   ): Promise<boolean> {
     try {
-      // Générer le QR code si non fourni
+      // Générer le QR code avec chiffrement si non fourni
       if (!options.qrCodeImage) {
-        options.qrCodeImage = await this.generateQRCode(student, settings);
+        options.qrCodeImage = await this.generateQRCode(student, settings, true);
       }
       
       // Générer le HTML pour l'attestation
@@ -117,11 +157,7 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
   }
 
   /**
-   * Génère un PDF d'attestation
-   * @param student Les données de l'étudiant
-   * @param settings Les paramètres de l'école
-   * @param options Options supplémentaires (position du QR code, etc.)
-   * @returns Promise<Uint8Array> Le PDF généré sous forme de Uint8Array
+   * Génère un PDF d'attestation avec QR code chiffré
    */
   public static async generatePDF(
     student: StudentExcelRecord, 
@@ -129,9 +165,9 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
     options: any = {}
   ): Promise<Uint8Array> {
     try {
-      // Générer le QR code si non fourni
+      // Générer le QR code avec chiffrement si non fourni
       if (!options.qrCodeImage) {
-        const qrCodeBase64 = await this.generateQRCode(student, settings);
+        const qrCodeBase64 = await this.generateQRCode(student, settings, true);
         // Convertir le base64 en ArrayBuffer
         const qrCodeData = qrCodeBase64.split(',')[1];
         options.qrCodeImage = Buffer.from(qrCodeData, 'base64');
@@ -156,12 +192,7 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
   }
 
   /**
-   * Génère plusieurs attestations en lot et les compresse dans un fichier ZIP
-   * @param students Les données des étudiants
-   * @param settings Les paramètres de l'école
-   * @param options Options supplémentaires (position du QR code, etc.)
-   * @param onProgress Callback pour suivre la progression
-   * @returns Promise<Blob> Le fichier ZIP contenant tous les PDFs
+   * Génère plusieurs attestations en lot avec QR codes chiffrés
    */
   public static async generateBatch(
     students: StudentExcelRecord[], 
@@ -179,7 +210,7 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
       
       for (const student of students) {
         try {
-          // Générer le PDF pour cet étudiant
+          // Générer le PDF pour cet étudiant avec QR code chiffré
           const pdfBytes = await this.generatePDF(student, settings, options);
           
           // Ajouter au ZIP avec un nom de fichier approprié
@@ -210,8 +241,6 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
   
   /**
    * Sanitize un nom de fichier en retirant les caractères spéciaux
-   * @param fileName Le nom de fichier à nettoyer
-   * @returns Le nom de fichier nettoyé
    */
   private static sanitizeFileName(fileName: string): string {
     return fileName
@@ -221,5 +250,22 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
       .replace(/_+/g, '_')             // Remplacer les multiples underscores par un seul
       .replace(/^_|_$/g, '')           // Enlever les underscores au début et à la fin
       .toLowerCase();
+  }
+
+  /**
+   * Méthode utilitaire pour tester le chiffrement/déchiffrement
+   */
+  public static testEncryption(student: StudentExcelRecord, settings: any): boolean {
+    try {
+      const encryptedData = this.generateEncryptedData(student, settings);
+      console.log('Données chiffrées générées:', encryptedData.substring(0, 50) + '...');
+      
+      // Pour tester le déchiffrement, vous devrez implémenter cette fonction
+      // dans votre application mobile
+      return true;
+    } catch (error) {
+      console.error('Test de chiffrement échoué:', error);
+      return false;
+    }
   }
 }

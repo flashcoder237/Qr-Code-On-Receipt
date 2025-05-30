@@ -1,26 +1,79 @@
-// src/components/organisms/student-selector/StudentSelector.tsx
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Filter, CheckCircle, Circle, Users, FileText, Eye, Download } from 'lucide-react';
-import { StudentExcelRecord } from '@/lib/helpers/qrcode';
-import { motion, AnimatePresence } from 'framer-motion';
+// src/components/organisms/student-selector/StudentSelector.tsx - Version mise à jour
+import React, { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Users,
+  Search,
+  Filter,
+  Eye,
+  FileDown,
+  CheckCircle2,
+  Circle,
+  Shield,
+  ShieldCheck,
+  AlertCircle,
+  Loader2,
+  SortAsc,
+  SortDesc,
+  MoreHorizontal
+} from "lucide-react";
+
+interface Student {
+  NOM: string;
+  PRENOM: string;
+  MATRICULE: string;
+  "DATE DE NAISSANCE": string;
+  "LIEU DE NAISSANCE": string;
+  MOYENNE?: number | string;
+  GRADE?: string;
+  MENTION?: string;
+  NIVEAU?: string;
+  SEMESTRE?: string;
+  PARCOURS?: string;
+  SPECIALITE?: string;
+  "ANNEE ACADEMIQUE"?: string;
+  [key: string]: any;
+}
 
 interface StudentSelectorProps {
-  students: StudentExcelRecord[];
-  selectedStudents: string[]; // Array of matricules
-  onSelectionChange: (selectedMatricules: string[]) => void;
-  onPreview?: (student: StudentExcelRecord) => void;
-  onGenerateSelected?: (selectedStudents: StudentExcelRecord[]) => void;
-  documentType?: 'releve' | 'attestation';
+  students: Student[];
+  selectedStudents: string[];
+  onSelectionChange: (matricules: string[]) => void;
+  onPreview: (student: Student) => void;
+  onGenerateSelected: (students?: Student[]) => void;
+  documentType: "releve" | "attestation" | "diplome";
   isLoading?: boolean;
+  additionalInfo?: string; // Nouveau prop pour informations supplémentaires
+  maxSelection?: number;
+  showFilters?: boolean;
+  showPreview?: boolean;
+  enableBulkActions?: boolean;
 }
+
+type SortField = 'nom' | 'prenom' | 'matricule' | 'moyenne' | 'niveau';
+type SortOrder = 'asc' | 'desc';
 
 export const StudentSelector: React.FC<StudentSelectorProps> = ({
   students,
@@ -28,332 +81,549 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
   onSelectionChange,
   onPreview,
   onGenerateSelected,
-  documentType = 'releve',
-  isLoading = false
+  documentType,
+  isLoading = false,
+  additionalInfo,
+  maxSelection,
+  showFilters = true,
+  showPreview = true,
+  enableBulkActions = true
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterBy, setFilterBy] = useState<'all' | 'selected' | 'unselected'>('all');
-  const [sortBy, setSortBy] = useState<'nom' | 'matricule' | 'moyenne'>('nom');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterGrade, setFilterGrade] = useState<string>("all");
+  const [filterMention, setFilterMention] = useState<string>("all");
+  const [sortField, setSortField] = useState<SortField>('nom');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [studentsPerPage] = useState(10);
+
+  // Fonctions de tri
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return <MoreHorizontal className="h-4 w-4 opacity-50" />;
+    return sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />;
+  };
 
   // Filtrage et tri des étudiants
   const filteredAndSortedStudents = useMemo(() => {
     let filtered = students.filter(student => {
-      const matchesSearch = 
-        student.NOM.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.PRENOM.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.MATRICULE.toLowerCase().includes(searchTerm.toLowerCase());
+      const searchMatch = !searchTerm || 
+        `${student.NOM} ${student.PRENOM} ${student.MATRICULE}`.toLowerCase()
+          .includes(searchTerm.toLowerCase());
       
-      const matchesFilter = 
-        filterBy === 'all' || 
-        (filterBy === 'selected' && selectedStudents.includes(student.MATRICULE)) ||
-        (filterBy === 'unselected' && !selectedStudents.includes(student.MATRICULE));
+      const gradeMatch = filterGrade === "all" || student.GRADE === filterGrade;
+      const mentionMatch = filterMention === "all" || student.MENTION === filterMention;
       
-      return matchesSearch && matchesFilter;
+      return searchMatch && gradeMatch && mentionMatch;
     });
 
     // Tri
     filtered.sort((a, b) => {
-      let comparison = 0;
-      
-      switch (sortBy) {
+      let aValue: string | number = '';
+      let bValue: string | number = '';
+
+      switch (sortField) {
         case 'nom':
-          comparison = a.NOM.localeCompare(b.NOM);
+          aValue = a.NOM || '';
+          bValue = b.NOM || '';
+          break;
+        case 'prenom':
+          aValue = a.PRENOM || '';
+          bValue = b.PRENOM || '';
           break;
         case 'matricule':
-          comparison = a.MATRICULE.localeCompare(b.MATRICULE);
+          aValue = a.MATRICULE || '';
+          bValue = b.MATRICULE || '';
           break;
         case 'moyenne':
-          const avgA = typeof a.MOYENNE === 'number' ? a.MOYENNE : parseFloat(String(a.MOYENNE)) || 0;
-          const avgB = typeof b.MOYENNE === 'number' ? b.MOYENNE : parseFloat(String(b.MOYENNE)) || 0;
-          comparison = avgA - avgB;
+          aValue = typeof a.MOYENNE === 'number' ? a.MOYENNE : parseFloat(String(a.MOYENNE)) || 0;
+          bValue = typeof b.MOYENNE === 'number' ? b.MOYENNE : parseFloat(String(b.MOYENNE)) || 0;
+          break;
+        case 'niveau':
+          aValue = a.NIVEAU || '';
+          bValue = b.NIVEAU || '';
           break;
       }
-      
-      return sortOrder === 'asc' ? comparison : -comparison;
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
     });
 
     return filtered;
-  }, [students, searchTerm, filterBy, sortBy, sortOrder, selectedStudents]);
+  }, [students, searchTerm, filterGrade, filterMention, sortField, sortOrder]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredAndSortedStudents.length / studentsPerPage);
+  const startIndex = (currentPage - 1) * studentsPerPage;
+  const paginatedStudents = filteredAndSortedStudents.slice(startIndex, startIndex + studentsPerPage);
+
+  // Options uniques pour les filtres
+  const uniqueGrades = useMemo(() => 
+    [...new Set(students.map(s => s.GRADE).filter(Boolean))].sort()
+  , [students]);
+
+  const uniqueMentions = useMemo(() => 
+    [...new Set(students.map(s => s.MENTION).filter(Boolean))].sort()
+  , [students]);
 
   // Gestion de la sélection
-  const handleSelectAll = () => {
-    if (selectedStudents.length === students.length) {
-      onSelectionChange([]);
-    } else {
-      onSelectionChange(students.map(s => s.MATRICULE));
-    }
-  };
-
-  const handleSelectFiltered = () => {
-    const filteredMatricules = filteredAndSortedStudents.map(s => s.MATRICULE);
-    const newSelection = [...new Set([...selectedStudents, ...filteredMatricules])];
-    onSelectionChange(newSelection);
-  };
-
-  const handleDeselectFiltered = () => {
-    const filteredMatricules = new Set(filteredAndSortedStudents.map(s => s.MATRICULE));
-    const newSelection = selectedStudents.filter(m => !filteredMatricules.has(m));
-    onSelectionChange(newSelection);
-  };
-
   const handleStudentSelect = (matricule: string, selected: boolean) => {
     if (selected) {
-      onSelectionChange([...selectedStudents, matricule]);
+      if (!maxSelection || selectedStudents.length < maxSelection) {
+        onSelectionChange([...selectedStudents, matricule]);
+      }
     } else {
       onSelectionChange(selectedStudents.filter(m => m !== matricule));
     }
   };
 
-  const handleGenerateSelected = () => {
-    const selectedStudentRecords = students.filter(s => selectedStudents.includes(s.MATRICULE));
-    onGenerateSelected?.(selectedStudentRecords);
+  const handleSelectAll = () => {
+    const currentPageMatricules = paginatedStudents.map(s => s.MATRICULE);
+    const allSelected = currentPageMatricules.every(m => selectedStudents.includes(m));
+    
+    if (allSelected) {
+      // Désélectionner tous les étudiants de la page courante
+      onSelectionChange(selectedStudents.filter(m => !currentPageMatricules.includes(m)));
+    } else {
+      // Sélectionner tous les étudiants de la page courante (en respectant la limite)
+      const toAdd = currentPageMatricules.filter(m => !selectedStudents.includes(m));
+      const availableSlots = maxSelection ? maxSelection - selectedStudents.length : toAdd.length;
+      const newSelected = [...selectedStudents, ...toAdd.slice(0, availableSlots)];
+      onSelectionChange(newSelected);
+    }
   };
 
-  const isAllSelected = selectedStudents.length === students.length;
-  const isPartiallySelected = selectedStudents.length > 0 && selectedStudents.length < students.length;
+  const handleClearSelection = () => {
+    onSelectionChange([]);
+  };
+
+  const handleGenerateSelected = () => {
+    const selectedStudentObjects = students.filter(s => selectedStudents.includes(s.MATRICULE));
+    onGenerateSelected(selectedStudentObjects);
+  };
+
+  // Fonction pour obtenir l'icône du type de document
+  const getDocumentIcon = () => {
+    if (additionalInfo?.includes("Chiffrement")) {
+      return <ShieldCheck className="h-4 w-4 text-green-600" />;
+    }
+    switch (documentType) {
+      case "releve": return <FileDown className="h-4 w-4" />;
+      case "attestation": return <Shield className="h-4 w-4" />;
+      case "diplome": return <CheckCircle2 className="h-4 w-4" />;
+      default: return <FileDown className="h-4 w-4" />;
+    }
+  };
+
+  // Calcul de la progression de sélection
+  const selectionProgress = maxSelection ? (selectedStudents.length / maxSelection) * 100 : 0;
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Sélection des étudiants
-            </CardTitle>
-            <p className="text-sm text-gray-500 mt-1">
-              {selectedStudents.length} étudiant(s) sélectionné(s) sur {students.length}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            {selectedStudents.length > 0 && (
-              <Button
-                onClick={handleGenerateSelected}
-                disabled={isLoading}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Générer ({selectedStudents.length})
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Barre de recherche et filtres */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Rechercher par nom, prénom ou matricule..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+    <div className="space-y-6">
+      {/* En-tête avec informations et statistiques */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-blue-900">
+                <Users className="h-5 w-5" />
+                Sélection des Étudiants
+                {getDocumentIcon()}
+              </CardTitle>
+              <div className="flex items-center gap-4 mt-2 text-sm text-blue-700">
+                <span>{filteredAndSortedStudents.length} étudiant(s) disponible(s)</span>
+                <span>•</span>
+                <span className="font-medium">{selectedStudents.length} sélectionné(s)</span>
+                {additionalInfo && (
+                  <>
+                    <span>•</span>
+                    <Badge variant="outline" className="border-blue-300 text-blue-700">
+                      {additionalInfo}
+                    </Badge>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-blue-900">
+                {selectedStudents.length}
+              </div>
+              <div className="text-xs text-blue-600 uppercase tracking-wide">
+                Sélectionnés
+              </div>
+            </div>
           </div>
           
-          <div className="flex gap-2">
-            <Select value={filterBy} onValueChange={(value: 'all' | 'selected' | 'unselected') => setFilterBy(value)}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="selected">Sélectionnés</SelectItem>
-                <SelectItem value="unselected">Non sélectionnés</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={sortBy} onValueChange={(value: 'nom' | 'matricule' | 'moyenne') => setSortBy(value)}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="nom">Nom</SelectItem>
-                <SelectItem value="matricule">Matricule</SelectItem>
-                <SelectItem value="moyenne">Moyenne</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-            >
-              {sortOrder === 'asc' ? '↑' : '↓'}
-            </Button>
-          </div>
-        </div>
-
-        {/* Actions de sélection groupée */}
-        <div className="flex justify-between items-center py-2 border-b">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={isAllSelected}
-                ref={(checkbox) => {
-                  if (checkbox) checkbox.indeterminate = isPartiallySelected;
-                }}
-                onCheckedChange={handleSelectAll}
+          {maxSelection && (
+            <div className="mt-4">
+              <div className="flex justify-between text-sm text-blue-700 mb-2">
+                <span>Progression de sélection</span>
+                <span>{selectedStudents.length} / {maxSelection}</span>
+              </div>
+              <Progress 
+                value={selectionProgress} 
+                className="h-2 bg-blue-100"
               />
-              <span className="text-sm font-medium">
-                Tout sélectionner
-              </span>
             </div>
-            
-            {filteredAndSortedStudents.length < students.length && (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSelectFiltered}
-                >
-                  Sélectionner filtrés ({filteredAndSortedStudents.length})
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDeselectFiltered}
-                >
-                  Désélectionner filtrés
-                </Button>
+          )}
+        </CardHeader>
+      </Card>
+
+      {/* Filtres et recherche */}
+      {showFilters && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>Recherche</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Nom, prénom ou matricule..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
-            )}
-          </div>
 
-          <Badge variant="secondary">
-            {filteredAndSortedStudents.length} résultat(s)
-          </Badge>
-        </div>
+              <div className="space-y-2">
+                <Label>Grade</Label>
+                <Select value={filterGrade} onValueChange={setFilterGrade}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les grades</SelectItem>
+                    {uniqueGrades.map(grade => (
+                      <SelectItem key={grade} value={grade}>{grade}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        {/* Table des étudiants */}
-        <ScrollArea className="h-[400px]">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
-                  <span className="sr-only">Sélection</span>
-                </TableHead>
-                <TableHead>Nom</TableHead>
-                <TableHead>Prénom</TableHead>
-                <TableHead>Matricule</TableHead>
-                <TableHead>Date de naissance</TableHead>
-                {documentType === 'releve' && <TableHead>Niveau/Semestre</TableHead>}
-                {documentType === 'attestation' && <TableHead>Parcours</TableHead>}
-                <TableHead>Moyenne</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <AnimatePresence>
-                {filteredAndSortedStudents.map((student, index) => {
-                  const isSelected = selectedStudents.includes(student.MATRICULE);
-                  
-                  return (
-                    <motion.tr
-                      key={student.MATRICULE}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.2, delay: index * 0.02 }}
-                      className={`${isSelected ? 'bg-blue-50 border-blue-200' : ''} hover:bg-gray-50`}
-                    >
-                      <TableCell>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={(checked) => 
-                            handleStudentSelect(student.MATRICULE, checked as boolean)
-                          }
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">{student.NOM}</TableCell>
-                      <TableCell>{student.PRENOM}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{student.MATRICULE}</Badge>
-                      </TableCell>
-                      <TableCell>{student["DATE DE NAISSANCE"] || '-'}</TableCell>
-                      {documentType === 'releve' && (
-                        <TableCell>
-                          {student.NIVEAU && student.SEMESTRE 
-                            ? `${student.NIVEAU} - ${student.SEMESTRE}`
-                            : '-'
-                          }
-                        </TableCell>
-                      )}
-                      {documentType === 'attestation' && (
-                        <TableCell>{student.PARCOURS || '-'}</TableCell>
-                      )}
-                      <TableCell>
-                        <Badge 
-                          variant={
-                            typeof student.MOYENNE === 'number' && student.MOYENNE >= 10 
-                              ? 'success' 
-                              : 'secondary'
-                          }
-                        >
-                          {typeof student.MOYENNE === 'number' 
-                            ? student.MOYENNE.toFixed(2) 
-                            : String(student.MOYENNE)
-                          }
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {onPreview && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onPreview(student)}
-                            disabled={isLoading}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </TableCell>
-                    </motion.tr>
-                  );
-                })}
-              </AnimatePresence>
-            </TableBody>
-          </Table>
-        </ScrollArea>
+              <div className="space-y-2">
+                <Label>Mention</Label>
+                <Select value={filterMention} onValueChange={setFilterMention}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes les mentions</SelectItem>
+                    {uniqueMentions.map(mention => (
+                      <SelectItem key={mention} value={mention}>{mention}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        {/* Résumé de la sélection */}
-        {selectedStudents.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200"
-          >
+              <div className="space-y-2">
+                <Label>Actions</Label>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setFilterGrade("all");
+                      setFilterMention("all");
+                    }}
+                  >
+                    <Filter className="h-4 w-4 mr-1" />
+                    Reset
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Actions de sélection en lot */}
+      {enableBulkActions && (
+        <Card>
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-blue-600" />
-                <span className="font-medium text-blue-900">
-                  {selectedStudents.length} étudiant(s) sélectionné(s)
-                </span>
-              </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-4">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => onSelectionChange([])}
+                  onClick={handleSelectAll}
+                  disabled={isLoading || paginatedStudents.length === 0}
                 >
-                  Tout désélectionner
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  {paginatedStudents.every(s => selectedStudents.includes(s.MATRICULE)) 
+                    ? "Désélectionner la page" 
+                    : "Sélectionner la page"
+                  }
                 </Button>
+                
+                {selectedStudents.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearSelection}
+                    disabled={isLoading}
+                  >
+                    Tout désélectionner
+                  </Button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {showPreview && selectedStudents.length > 0 && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      const firstSelected = students.find(s => selectedStudents.includes(s.MATRICULE));
+                      if (firstSelected) onPreview(firstSelected);
+                    }}
+                    disabled={isLoading}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Aperçu
+                  </Button>
+                )}
+
                 <Button
                   onClick={handleGenerateSelected}
-                  disabled={isLoading}
-                  size="sm"
+                  disabled={isLoading || selectedStudents.length === 0}
+                  className="min-w-32"
                 >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Générer les {documentType === 'releve' ? 'relevés' : 'attestations'}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Génération...
+                    </>
+                  ) : (
+                    <>
+                      <FileDown className="mr-2 h-4 w-4" />
+                      {additionalInfo?.includes("Chiffrement") && <Shield className="mr-1 h-3 w-3" />}
+                      Générer ({selectedStudents.length})
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
-          </motion.div>
-        )}
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tableau des étudiants */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={paginatedStudents.length > 0 && paginatedStudents.every(s => selectedStudents.includes(s.MATRICULE))}
+                      onCheckedChange={handleSelectAll}
+                      disabled={isLoading}
+                    />
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('nom')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Nom {getSortIcon('nom')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('prenom')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Prénom {getSortIcon('prenom')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('matricule')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Matricule {getSortIcon('matricule')}
+                    </div>
+                  </TableHead>
+                  {documentType === "releve" && (
+                    <>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('niveau')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Niveau {getSortIcon('niveau')}
+                        </div>
+                      </TableHead>
+                      <TableHead>Semestre</TableHead>
+                    </>
+                  )}
+                  {(documentType === "attestation" || documentType === "diplome") && (
+                    <>
+                      <TableHead>Parcours</TableHead>
+                      <TableHead>Spécialité</TableHead>
+                    </>
+                  )}
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('moyenne')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Moyenne {getSortIcon('moyenne')}
+                    </div>
+                  </TableHead>
+                  <TableHead>Grade</TableHead>
+                  <TableHead>Mention</TableHead>
+                  {showPreview && <TableHead className="w-24">Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <AnimatePresence>
+                  {paginatedStudents.map((student, index) => {
+                    const isSelected = selectedStudents.includes(student.MATRICULE);
+                    const canSelect = !maxSelection || selectedStudents.length < maxSelection || isSelected;
+                    
+                    return (
+                      <motion.tr
+                        key={student.MATRICULE}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.2, delay: index * 0.05 }}
+                        className={`
+                          hover:bg-gray-50 transition-colors
+                          ${isSelected ? 'bg-blue-50 border-l-4 border-blue-500' : ''}
+                          ${!canSelect ? 'opacity-50' : ''}
+                        `}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(checked) => 
+                              handleStudentSelect(student.MATRICULE, checked as boolean)
+                            }
+                            disabled={isLoading || (!canSelect && !isSelected)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{student.NOM}</TableCell>
+                        <TableCell>{student.PRENOM}</TableCell>
+                        <TableCell>
+                          <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                            {student.MATRICULE}
+                          </code>
+                        </TableCell>
+                        {documentType === "releve" && (
+                          <>
+                            <TableCell>{student.NIVEAU}</TableCell>
+                            <TableCell>{student.SEMESTRE}</TableCell>
+                          </>
+                        )}
+                        {(documentType === "attestation" || documentType === "diplome") && (
+                          <>
+                            <TableCell>{student.PARCOURS}</TableCell>
+                            <TableCell>{student.SPECIALITE}</TableCell>
+                          </>
+                        )}
+                        <TableCell>
+                          <Badge variant="outline" className="font-mono">
+                            {typeof student.MOYENNE === 'number' 
+                              ? student.MOYENNE.toFixed(2) 
+                              : student.MOYENNE || 'N/A'
+                            }
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{student.GRADE}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{student.MENTION}</Badge>
+                        </TableCell>
+                        {showPreview && (
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onPreview(student)}
+                              disabled={isLoading}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        )}
+                      </motion.tr>
+                    );
+                  })}
+                </AnimatePresence>
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Page {currentPage} sur {totalPages} ({filteredAndSortedStudents.length} étudiants)
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Précédent
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Suivant
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Message si aucun étudiant trouvé */}
+      {filteredAndSortedStudents.length === 0 && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              Aucun étudiant trouvé
+            </h3>
+            <p className="text-gray-600">
+              Essayez de modifier vos critères de recherche ou de filtrage.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 };
