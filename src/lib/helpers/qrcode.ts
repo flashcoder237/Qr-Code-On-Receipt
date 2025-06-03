@@ -1,14 +1,14 @@
-// src/lib/helpers/qrcode.ts - Version mise à jour avec chiffrement sélectif
+// src/lib/helpers/qrcode.ts - Version mise à jour avec chiffrement compact
 import QRCode from 'qrcode';
 import { 
-  createSelectiveDataFromStudent,
-  createSelectiveQRCodeData,
-  formatSelectiveQRCodeForDisplay,
+  createCompactDataFromStudent,
+  createCompactQRCodeData,
+  formatCompactQRCodeForDisplay,
   PublicData,
-  SensitiveData,
-  QRCodeData,
-  testSelectiveEncryption
-} from '../crypto/selective-encryption';
+  CompactSensitiveData,
+  CompactQRCodeData,
+  testCompactEncryption
+} from '../crypto/compact-encryption';
 
 export interface StudentExcelRecord {
   ETABLISSEMENT?: string;
@@ -65,10 +65,11 @@ export function sanitizeStudentData(student: StudentExcelRecord): StudentExcelRe
 }
 
 /**
- * Génère le contenu du QR code avec chiffrement sélectif
+ * Génère le contenu du QR code avec chiffrement compact
  * NOUVELLES RÈGLES :
- * - Données publiques (non chiffrées): établissement, nom, prénom, grade, mention, informations académiques de base
- * - Données sensibles (chiffrées): matricule_complet, date_naissance_complete, lieu_naissance_precis, moyenne_exacte, credits_details, timestamp_generation
+ * - Chiffrement basé uniquement sur le matricule
+ * - Contenu chiffré très court (50-80 caractères typiquement)
+ * - Données publiques visibles, données sensibles chiffrées
  */
 export function getQrCodePayloadWithEncryption(
   student: StudentExcelRecord, 
@@ -76,7 +77,7 @@ export function getQrCodePayloadWithEncryption(
   encryptionEnabled: boolean = true
 ): string {
   try {
-    console.log(`🔄 Génération contenu QR sélectif pour ${student.MATRICULE} (Chiffrement: ${encryptionEnabled})`);
+    console.log(`🔄 Génération contenu QR compact pour ${student.MATRICULE} (Chiffrement: ${encryptionEnabled})`);
     
     // Sanitiser les données de l'étudiant
     const sanitizedStudent = sanitizeStudentData(student);
@@ -92,88 +93,37 @@ export function getQrCodePayloadWithEncryption(
       return generateTraditionalQRContent(sanitizedStudent, documentType);
     }
 
-    // Mode avec chiffrement sélectif
+    // Mode avec chiffrement compact
     try {
-      console.log('🔐 Début du processus de chiffrement sélectif...');
+      console.log('🔐 Début du processus de chiffrement compact...');
+      console.log('🔑 Clé basée uniquement sur le matricule:', sanitizedStudent.MATRICULE);
       
       // Créer les données publiques et sensibles selon les nouvelles règles
-      const { publicData, sensitiveData } = createSelectiveDataFromStudent(sanitizedStudent, documentType);
+      const { publicData, sensitiveData } = createCompactDataFromStudent(sanitizedStudent, documentType);
       console.log('📋 Données séparées en publiques et sensibles');
       console.log('📢 Données publiques (non chiffrées):', Object.keys(publicData));
       console.log('🔒 Données sensibles (chiffrées):', Object.keys(sensitiveData));
       
-      // Créer la structure QR avec chiffrement sélectif
-      const qrData = createSelectiveQRCodeData(publicData, sensitiveData);
-      console.log('🔒 Structure QR avec chiffrement sélectif créée');
+      // Créer la structure QR avec chiffrement compact
+      const qrData = createCompactQRCodeData(publicData, sensitiveData);
+      console.log('🔒 Structure QR avec chiffrement compact créée');
+      console.log('📊 Longueur du contenu chiffré:', qrData.encrypted.length, 'caractères');
       
       // Formater pour affichage avec section claire des données publiques
-      const formattedContent = formatSelectiveQRForDisplayWithSeparation(qrData, documentType);
+      const formattedContent = formatCompactQRCodeForDisplay(qrData, documentType);
       
-      console.log('✅ QR Code avec chiffrement sélectif généré');
-      console.log('📊 Répartition: Données publiques visibles + Données sensibles chiffrées');
+      console.log('✅ QR Code avec chiffrement compact généré');
+      console.log('📊 Répartition: Données publiques visibles + Données sensibles chiffrées (compact)');
+      console.log('📱 Longueur totale du contenu QR:', formattedContent.length, 'caractères');
       return formattedContent;
     } catch (encryptionError) {
-      console.error('❌ Erreur de chiffrement sélectif, utilisation du mode traditionnel:', encryptionError);
+      console.error('❌ Erreur de chiffrement compact, utilisation du mode traditionnel:', encryptionError);
       return generateTraditionalQRContent(sanitizedStudent, documentType) + '\n\n⚠️ Erreur de chiffrement - Données en mode traditionnel';
     }
   } catch (error) {
-    console.error('❌ Erreur lors de la génération du contenu QR sélectif:', error);
+    console.error('❌ Erreur lors de la génération du contenu QR compact:', error);
     throw error;
   }
-}
-
-/**
- * Formate le QR code avec séparation claire entre données publiques et chiffrées
- */
-function formatSelectiveQRForDisplayWithSeparation(
-  qrData: QRCodeData, 
-  documentType: 'releve' | 'attestation' | 'diplome'
-): string {
-  // Section des informations publiques (toujours visibles)
-  let publicSection = `📋 INFORMATIONS PUBLIQUES:
-Établissement: ${qrData.public.etablissement}
-Nom: ${qrData.public.nom}
-Prénom: ${qrData.public.prenom}`;
-
-  // Ajouter les informations académiques publiques selon le type de document
-  if (documentType === 'releve') {
-    if (qrData.public.niveau) publicSection += `\nNiveau: ${qrData.public.niveau}`;
-    if (qrData.public.semestre) publicSection += `\nSemestre: ${qrData.public.semestre}`;
-    if (qrData.public.filiere) publicSection += `\nFilière: ${qrData.public.filiere}`;
-    if (qrData.public.cycle) publicSection += `\nCycle: ${qrData.public.cycle}`;
-  } else if (documentType === 'attestation' || documentType === 'diplome') {
-    if (qrData.public.parcours) publicSection += `\nParcours: ${qrData.public.parcours}`;
-    if (qrData.public.specialite) publicSection += `\nSpécialité: ${qrData.public.specialite}`;
-    if (qrData.public.domaine) publicSection += `\nDomaine: ${qrData.public.domaine}`;
-    if (qrData.public.finalite) publicSection += `\nFinalité: ${qrData.public.finalite}`;
-  }
-
-  // Informations générales publiques
-  if (qrData.public.anneeAcademique) publicSection += `\nAnnée académique: ${qrData.public.anneeAcademique}`;
-  if (qrData.public.grade) publicSection += `\nGrade: ${qrData.public.grade}`;
-  if (qrData.public.mention) publicSection += `\nMention: ${qrData.public.mention}`;
-
-  // Section des données chiffrées
-  const encryptedSection = `
-
-🔐 DONNÉES SENSIBLES CHIFFRÉES:
-Les informations suivantes sont sécurisées :
-• Matricule complet
-• Date de naissance complète  
-• Lieu de naissance précis
-• Moyenne exacte
-• Détails des crédits
-• Horodatage de génération
-
-Données chiffrées: ${qrData.encrypted}`;
-
-  // Section de vérification
-  const verificationSection = `
-
-🔍 Vérification: ${qrData.verification}
-📱 Scanner avec l'app mobile officielle pour accéder aux détails complets et déchiffrer les données sensibles.`;
-
-  return publicSection + encryptedSection + verificationSection;
 }
 
 /**
@@ -227,7 +177,7 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
 }
 
 /**
- * Génère un QR code sous forme de base64 avec chiffrement sélectif
+ * Génère un QR code sous forme de base64 avec chiffrement compact
  */
 export async function generateQrCodeBase64(
   student: StudentExcelRecord, 
@@ -235,19 +185,20 @@ export async function generateQrCodeBase64(
   encryptionEnabled: boolean = true
 ): Promise<string> {
   try {
-    console.log(`🔄 Génération QR Code base64 sélectif pour ${student.MATRICULE}`);
-    console.log(`🔐 Mode: ${encryptionEnabled ? 'Chiffrement sélectif activé' : 'Mode traditionnel'}`);
+    console.log(`🔄 Génération QR Code base64 compact pour ${student.MATRICULE}`);
+    console.log(`🔐 Mode: ${encryptionEnabled ? 'Chiffrement compact activé' : 'Mode traditionnel'}`);
     
     const qrContent = getQrCodePayloadWithEncryption(student, documentType, encryptionEnabled);
     console.log('📋 Contenu QR généré, longueur:', qrContent.length);
     
     if (encryptionEnabled) {
-      console.log('📊 Structure: Données publiques visibles + Données sensibles chiffrées');
+      console.log('📊 Structure: Données publiques visibles + Données sensibles chiffrées (compact)');
+      console.log('🔑 Chiffrement basé uniquement sur le matricule');
     }
     
     const qrCodeDataUrl = await QRCode.toDataURL(qrContent, {
-      errorCorrectionLevel: 'H', // Niveau élevé pour supporter plus de données
-      margin: 2,
+      errorCorrectionLevel: 'M', // Niveau moyen (au lieu de H) pour QR plus compact
+      margin: 1, // Marge réduite pour compacité
       width: 300,
       color: {
         dark: '#000000',
@@ -255,16 +206,16 @@ export async function generateQrCodeBase64(
       }
     });
     
-    console.log(`✅ QR Code base64 généré (${qrCodeDataUrl.length} caractères)`);
+    console.log(`✅ QR Code base64 compact généré (${qrCodeDataUrl.length} caractères)`);
     return qrCodeDataUrl;
   } catch (error) {
-    console.error('❌ Erreur lors de la génération du QR code base64:', error);
+    console.error('❌ Erreur lors de la génération du QR code base64 compact:', error);
     throw error;
   }
 }
 
 /**
- * Génère un QR code sous forme d'ArrayBuffer pour les PDFs avec chiffrement sélectif
+ * Génère un QR code sous forme d'ArrayBuffer pour les PDFs avec chiffrement compact
  */
 export async function generateQrCode(
   student: StudentExcelRecord, 
@@ -272,14 +223,14 @@ export async function generateQrCode(
   encryptionEnabled: boolean = true
 ): Promise<ArrayBuffer> {
   try {
-    console.log(`🔄 Génération QR Code ArrayBuffer sélectif pour ${student.MATRICULE}`);
-    console.log(`🔐 Mode: ${encryptionEnabled ? 'Chiffrement sélectif activé' : 'Mode traditionnel'}`);
+    console.log(`🔄 Génération QR Code ArrayBuffer compact pour ${student.MATRICULE}`);
+    console.log(`🔐 Mode: ${encryptionEnabled ? 'Chiffrement compact activé' : 'Mode traditionnel'}`);
     
     const qrContent = getQrCodePayloadWithEncryption(student, documentType, encryptionEnabled);
     
     const qrCodeBuffer = await QRCode.toBuffer(qrContent, {
-      errorCorrectionLevel: 'H', // Niveau élevé pour supporter plus de données
-      margin: 2,
+      errorCorrectionLevel: 'M', // Niveau moyen pour optimiser la taille
+      margin: 1, // Marge réduite
       width: 300,
       color: {
         dark: '#000000',
@@ -287,58 +238,60 @@ export async function generateQrCode(
       }
     });
     
-    console.log(`✅ QR Code ArrayBuffer généré (${qrCodeBuffer.length} bytes)`);
+    console.log(`✅ QR Code ArrayBuffer compact généré (${qrCodeBuffer.length} bytes)`);
     return qrCodeBuffer.buffer.slice(
       qrCodeBuffer.byteOffset,
       qrCodeBuffer.byteOffset + qrCodeBuffer.byteLength
     );
   } catch (error) {
-    console.error('❌ Erreur lors de la génération du QR code ArrayBuffer:', error);
+    console.error('❌ Erreur lors de la génération du QR code ArrayBuffer compact:', error);
     throw error;
   }
 }
 
 /**
- * Fonction de test pour le chiffrement sélectif
+ * Fonction de test pour le chiffrement compact
  */
-export function testStudentEncryptionSelective(student: StudentExcelRecord, documentType: 'releve' | 'attestation' | 'diplome'): boolean {
+export function testStudentEncryptionCompact(student: StudentExcelRecord, documentType: 'releve' | 'attestation' | 'diplome'): boolean {
   try {
-    console.log('🧪 Test de génération QR avec chiffrement sélectif...');
-    console.log('🔐 Données sensibles chiffrées: matricule_complet, date_naissance_complete, lieu_naissance_precis, moyenne_exacte, credits_details, timestamp_generation');
+    console.log('🧪 Test de génération QR avec chiffrement compact...');
+    console.log('🔑 Chiffrement basé uniquement sur le matricule:', student.MATRICULE);
+    console.log('🔐 Données sensibles chiffrées: matricule complet, date naissance, lieu naissance, moyenne, timestamp');
     console.log('📢 Données publiques visibles: établissement, nom, prénom, grade, mention, informations académiques de base');
     
     const sanitizedStudent = sanitizeStudentData(student);
-    const { publicData, sensitiveData } = createSelectiveDataFromStudent(sanitizedStudent, documentType);
+    const { publicData, sensitiveData } = createCompactDataFromStudent(sanitizedStudent, documentType);
     
     console.log('📋 Données publiques générées:', Object.keys(publicData));
     console.log('🔒 Données sensibles générées:', Object.keys(sensitiveData));
     
-    const testResult = testSelectiveEncryption(publicData, sensitiveData);
+    const testResult = testCompactEncryption(publicData, sensitiveData);
     
     if (testResult) {
-      console.log('✅ Test de chiffrement sélectif réussi');
-      console.log('📊 Répartition confirmée: Données publiques lisibles + Données sensibles sécurisées');
+      console.log('✅ Test de chiffrement compact réussi');
+      console.log('📊 Répartition confirmée: Données publiques lisibles + Données sensibles sécurisées (compact)');
+      console.log('🔑 Clé basée uniquement sur:', sensitiveData.m);
     } else {
-      console.log('❌ Test de chiffrement sélectif échoué');
+      console.log('❌ Test de chiffrement compact échoué');
     }
     
     return testResult;
   } catch (error) {
-    console.error('❌ Test QR sélectif échoué:', error);
+    console.error('❌ Test QR compact échoué:', error);
     return false;
   }
 }
 
 /**
  * Export pour compatibilité avec l'ancien système
- * @deprecated Utilisez createSelectiveDataFromStudent
+ * @deprecated Utilisez createCompactDataFromStudent
  */
-export { createSelectiveDataFromStudent as createCryptoDataFromStudent } from '../crypto/selective-encryption';
+export { createCompactDataFromStudent as createCryptoDataFromStudent } from '../crypto/compact-encryption';
 
 /**
  * Export des types pour utilisation externe
  */
-export type { PublicData, SensitiveData, QRCodeData } from '../crypto/selective-encryption';
+export type { PublicData, CompactSensitiveData, CompactQRCodeData } from '../crypto/compact-encryption';
 
 /**
  * Fonction utilitaire pour obtenir un aperçu de la répartition des données
@@ -351,13 +304,73 @@ export function getDataDistributionInfo(
   sensitiveFields: string[];
   documentType: string;
   encryptionMethod: string;
+  keySource: string;
+  estimatedEncryptedSize: string;
 } {
-  const { publicData, sensitiveData } = createSelectiveDataFromStudent(student, documentType);
+  const { publicData, sensitiveData } = createCompactDataFromStudent(student, documentType);
   
   return {
     publicFields: Object.keys(publicData).filter(key => publicData[key] !== 'N/D'),
     sensitiveFields: Object.keys(sensitiveData),
     documentType,
-    encryptionMethod: 'AES-256-CBC (Sélectif)'
+    encryptionMethod: 'AES-128-ECB (Compact)',
+    keySource: 'Matricule uniquement',
+    estimatedEncryptedSize: '50-80 caractères'
+  };
+}
+
+/**
+ * Fonction utilitaire pour obtenir des statistiques sur la taille du QR code
+ */
+export function getQRCodeSizeEstimate(
+  student: StudentExcelRecord,
+  documentType: 'releve' | 'attestation' | 'diplome',
+  encryptionEnabled: boolean = true
+): {
+  totalContentLength: number;
+  publicDataLength: number;
+  encryptedDataLength: number;
+  estimatedQRSize: 'Small' | 'Medium' | 'Large';
+  recommendations: string[];
+} {
+  const content = getQrCodePayloadWithEncryption(student, documentType, encryptionEnabled);
+  const { publicData, sensitiveData } = createCompactDataFromStudent(student, documentType);
+  
+  // Estimer les longueurs
+  const publicContent = Object.values(publicData).join(' ');
+  const encryptedLength = encryptionEnabled ? 
+    (sensitiveData ? 60 : 0) : // Estimation compact
+    Object.values(sensitiveData || {}).join(' ').length;
+  
+  const totalLength = content.length;
+  
+  // Déterminer la taille estimée du QR code
+  let estimatedQRSize: 'Small' | 'Medium' | 'Large';
+  const recommendations: string[] = [];
+  
+  if (totalLength < 300) {
+    estimatedQRSize = 'Small';
+    recommendations.push('✅ Taille optimale pour QR codes');
+  } else if (totalLength < 600) {
+    estimatedQRSize = 'Medium';
+    recommendations.push('⚠️ Taille moyenne - QR code lisible');
+  } else {
+    estimatedQRSize = 'Large';
+    recommendations.push('❌ QR code volumineux - risque de lisibilité');
+    recommendations.push('💡 Considérer réduire les données publiques');
+  }
+  
+  if (encryptionEnabled) {
+    recommendations.push('🔐 Chiffrement compact activé - taille optimisée');
+  } else {
+    recommendations.push('📋 Mode sans chiffrement - taille plus importante');
+  }
+  
+  return {
+    totalContentLength: totalLength,
+    publicDataLength: publicContent.length,
+    encryptedDataLength: encryptedLength,
+    estimatedQRSize,
+    recommendations
   };
 }

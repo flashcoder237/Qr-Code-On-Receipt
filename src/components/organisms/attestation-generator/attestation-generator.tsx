@@ -1,4 +1,4 @@
-// src/components/organisms/attestation-generator/attestation-generator.tsx - Version corrigée avec chiffrement
+// src/components/organisms/attestation-generator/attestation-generator.tsx - Version avec chiffrement compact
 
 import React, { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -6,23 +6,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { generateQrCodeBase64, StudentExcelRecord, sanitizeStudentData } from "@/lib/helpers/qrcode";
-import JSZip from "jszip";
-import { useLocalStorage } from "usehooks-ts";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { generateQrCodeBase64, StudentExcelRecord, sanitizeStudentData, getQRCodeSizeEstimate } from "@/lib/helpers/qrcode";
+import JSZip from "jszip";
+import { useLocalStorage } from "usehooks-ts";
 import { AttestationSettings } from "./AttestationSettings";
 import { AttestationThemeEditor } from "./AttestationThemeEditor";
 import { ThemePresetSelector } from "./ThemePresetSelector";
 import { StudentSelector } from "../student-selector";
 import { FileUploader } from "@/components/organisms/receipts/ExcelUploader.tsx";
-import { FileDown, Loader2, Settings2, Table2, Palette, FileText, Eye, Wand2, Users, AlertCircle, CheckCircle, Shield, ShieldCheck } from "lucide-react";
+import { FileDown, Loader2, Settings2, Table2, Palette, FileText, Eye, Wand2, Users, AlertCircle, CheckCircle, Shield, ShieldCheck, Info } from "lucide-react";
 import { calculateGrade, calculateMention, getCurrentAcademicYear } from "@/lib/attestation-generator/utils";
 import { openAttestationPreview } from "@/lib/attestation-generator/preview";
 import { AttestationThemeSettingsPayload, defaultAttestationTheme } from "@/lib/form-schemas/attestation-theme-settings";
 import { useNotifications } from "@/components/ui/notification-system";
 import { useDocumentHistory } from "@/components/organisms/document-history/DocumentHistoryManager";
-import { testEncryptionDecryption, createCryptoDataFromStudent } from "@/lib/crypto/encryption";
+import { testCompactEncryption, createCompactDataFromStudent, getCompactEncryptionInfo } from "@/lib/crypto/compact-encryption";
 import { validateExcelColumns, ValidationResult } from "@/lib/validators/excel-columns";
 import { Label } from "@/components/ui/label";
 
@@ -36,11 +36,11 @@ export const AttestationGenerator: React.FC = () => {
   const [selectedStudentMatricules, setSelectedStudentMatricules] = useState<string[]>([]);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   
-  // Option pour activer/désactiver le chiffrement
+  // Option pour activer/désactiver le chiffrement compact
   const [encryptionEnabled, setEncryptionEnabled] = useLocalStorage("attestation-encryption-enabled", true);
   
   // Hooks pour notifications et historique
-  const { notifySuccess, notifyError, notifyWarning } = useNotifications();
+  const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotifications();
   const { addDocumentRecord } = useDocumentHistory();
   
   // Position pour le QR code
@@ -75,32 +75,67 @@ export const AttestationGenerator: React.FC = () => {
     if (excelData.length > 0) {
       notifySuccess("Import", `${excelData.length} étudiant(s) importé(s) avec succès`);
       
-      // Test du chiffrement sur le premier étudiant si le chiffrement est activé
+      // Test du chiffrement compact sur le premier étudiant si le chiffrement est activé
       if (encryptionEnabled && excelData.length > 0) {
-        testStudentEncryption(excelData[0]);
+        testStudentEncryptionCompact(excelData[0]);
+      }
+      
+      // Analyser la taille estimée des QR codes
+      if (excelData.length > 0) {
+        analyzeQRCodeSizes(excelData[0]);
       }
     }
   }, [excelData, notifySuccess, encryptionEnabled]);
 
-  // Fonction pour tester le chiffrement sur un étudiant
-  const testStudentEncryption = (student: StudentExcelRecord) => {
+  // Fonction pour tester le chiffrement compact sur un étudiant
+  const testStudentEncryptionCompact = (student: StudentExcelRecord) => {
     try {
-      console.log('🧪 Test du chiffrement pour:', student.NOM, student.PRENOM);
+      console.log('🧪 Test du chiffrement compact pour:', student.NOM, student.PRENOM);
+      console.log('🔑 Clé basée sur le matricule:', student.MATRICULE);
       
       const sanitizedStudent = sanitizeStudentData(student);
-      const cryptoData = createCryptoDataFromStudent(sanitizedStudent, 'attestation');
-      const testResult = testEncryptionDecryption(cryptoData);
+      const { publicData, sensitiveData } = createCompactDataFromStudent(sanitizedStudent, 'attestation');
+      const testResult = testCompactEncryption(publicData, sensitiveData);
       
       if (testResult) {
-        console.log('✅ Test de chiffrement réussi');
-        notifySuccess("Chiffrement", "Système de chiffrement opérationnel");
+        console.log('✅ Test de chiffrement compact réussi');
+        const encryptionInfo = getCompactEncryptionInfo(student.MATRICULE);
+        notifySuccess(
+          "Chiffrement compact", 
+          `Système opérationnel - Clé: ${encryptionInfo.algorithm}`,
+          { duration: 5000 }
+        );
       } else {
-        console.warn('⚠️ Test de chiffrement échoué');
-        notifyWarning("Chiffrement", "Problème détecté avec le chiffrement");
+        console.warn('⚠️ Test de chiffrement compact échoué');
+        notifyWarning("Chiffrement", "Problème détecté avec le chiffrement compact");
       }
     } catch (error) {
-      console.error('❌ Erreur lors du test de chiffrement:', error);
-      notifyError("Chiffrement", "Erreur lors du test de chiffrement");
+      console.error('❌ Erreur lors du test de chiffrement compact:', error);
+      notifyError("Chiffrement", "Erreur lors du test de chiffrement compact");
+    }
+  };
+
+  // Fonction pour analyser la taille des QR codes
+  const analyzeQRCodeSizes = (student: StudentExcelRecord) => {
+    try {
+      const sizeAnalysis = getQRCodeSizeEstimate(student, 'attestation', encryptionEnabled);
+      
+      console.log('📊 Analyse de taille QR Code:', sizeAnalysis);
+      
+      if (sizeAnalysis.estimatedQRSize === 'Small') {
+        notifyInfo(
+          "Taille QR Code", 
+          `Optimal (${sizeAnalysis.totalContentLength} caractères) ${encryptionEnabled ? '🔐' : '📋'}`,
+          { duration: 3000 }
+        );
+      } else if (sizeAnalysis.estimatedQRSize === 'Large') {
+        notifyWarning(
+          "Taille QR Code", 
+          `Volumineux (${sizeAnalysis.totalContentLength} caractères) - Vérifiez la lisibilité`
+        );
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'analyse de taille QR:', error);
     }
   };
 
@@ -187,7 +222,7 @@ export const AttestationGenerator: React.FC = () => {
       return;
     }
 
-    const encryptionMessage = encryptionEnabled ? "avec chiffrement" : "sans chiffrement";
+    const encryptionMessage = encryptionEnabled ? "avec chiffrement compact" : "sans chiffrement";
     notifySuccess("Génération", `Début de la génération de ${dataToProcess.length} attestation(s) ${encryptionMessage}`);
 
     try {
@@ -203,6 +238,19 @@ export const AttestationGenerator: React.FC = () => {
       let processedCount = 0;
       let successCount = 0;
 
+      // Analyser la taille totale estimée
+      if (encryptionEnabled && dataToProcess.length > 0) {
+        const sampleAnalysis = getQRCodeSizeEstimate(dataToProcess[0], 'attestation', true);
+        console.log('📊 Analyse de taille pour le lot:', sampleAnalysis);
+        
+        if (sampleAnalysis.estimatedQRSize === 'Large') {
+          notifyWarning(
+            "Taille QR Codes", 
+            "QR codes volumineux détectés - Vérifiez la lisibilité après génération"
+          );
+        }
+      }
+
       for (const student of dataToProcess) {
         try {
           console.log(`🔄 Génération pour ${student.MATRICULE} (${student.NOM} ${student.PRENOM})`);
@@ -211,14 +259,18 @@ export const AttestationGenerator: React.FC = () => {
           const sanitizedStudent = sanitizeStudentData(student);
           console.log('🧹 Données étudiant sanitisées');
           
-          // Générer le QR code avec ou sans chiffrement selon la configuration
+          // Générer le QR code compact avec ou sans chiffrement selon la configuration
           let qrCodeBase64 = '';
           try {
-            console.log(`🔄 Génération QR pour ${sanitizedStudent.MATRICULE} (Chiffrement: ${encryptionEnabled})`);
+            console.log(`🔄 Génération QR compact pour ${sanitizedStudent.MATRICULE} (Chiffrement: ${encryptionEnabled})`);
             qrCodeBase64 = await generateQrCodeBase64(sanitizedStudent, 'attestation', encryptionEnabled);
             
             if (encryptionEnabled) {
-              console.log('🔐 QR Code généré avec chiffrement');
+              console.log('🔐 QR Code compact généré avec chiffrement (clé: matricule)');
+              
+              // Analyser la taille pour cet étudiant spécifique
+              const studentSizeAnalysis = getQRCodeSizeEstimate(sanitizedStudent, 'attestation', true);
+              console.log(`📊 Taille QR pour ${sanitizedStudent.MATRICULE}:`, studentSizeAnalysis.totalContentLength, 'caractères');
             } else {
               console.log('📋 QR Code généré sans chiffrement');
             }
@@ -245,7 +297,7 @@ export const AttestationGenerator: React.FC = () => {
           console.log('📄 Génération du PDF...');
           const pdfBytes = await window.ipcRenderer.invoke('generate-attestation-pdf', params);
           
-          const fileName = `${sanitizedStudent.MATRICULE}_Attestation${encryptionEnabled ? '_Chiffre' : ''}.pdf`;
+          const fileName = `${sanitizedStudent.MATRICULE}_Attestation${encryptionEnabled ? '_Compact' : ''}.pdf`;
           zip.file(fileName, pdfBytes);
           
           // Ajouter à l'historique avec information sur le chiffrement
@@ -261,7 +313,7 @@ export const AttestationGenerator: React.FC = () => {
             mention: sanitizedStudent.MENTION,
             fileName: fileName,
             status: 'generated',
-            additionalInfo: encryptionEnabled ? 'Chiffrement activé' : 'Sans chiffrement'
+            additionalInfo: encryptionEnabled ? 'Chiffrement compact activé' : 'Sans chiffrement'
           });
           
           successCount++;
@@ -282,7 +334,7 @@ export const AttestationGenerator: React.FC = () => {
         const link = document.createElement("a");
         link.href = url;
         const timestamp = new Date().toISOString().split('T')[0];
-        const zipName = `attestations_${timestamp}${encryptionEnabled ? '_chiffrees' : ''}.zip`;
+        const zipName = `attestations_${timestamp}${encryptionEnabled ? '_compact' : ''}.zip`;
         link.download = zipName;
         link.click();
         window.URL.revokeObjectURL(url);
@@ -356,7 +408,7 @@ export const AttestationGenerator: React.FC = () => {
       setIsLoading(true);
       setError(null);
       
-      console.log('🔄 Début de la prévisualisation');
+      console.log('🔄 Début de la prévisualisation avec chiffrement compact');
       
       // Sanitiser les données de l'étudiant
       const sanitizedStudent = sanitizeStudentData(student);
@@ -384,7 +436,7 @@ export const AttestationGenerator: React.FC = () => {
         setError(message);
         notifyError("Erreur de prévisualisation", message);
       } else {
-        const encryptionStatus = encryptionEnabled ? " (avec chiffrement)" : " (sans chiffrement)";
+        const encryptionStatus = encryptionEnabled ? " (avec chiffrement compact)" : " (sans chiffrement)";
         notifySuccess("Prévisualisation", `Aperçu généré pour ${sanitizedStudent.NOM} ${sanitizedStudent.PRENOM}${encryptionStatus}`);
       }
       
@@ -438,17 +490,17 @@ export const AttestationGenerator: React.FC = () => {
             </TabsTrigger>
           </TabsList>
           
-          {/* Indicateur de chiffrement */}
+          {/* Indicateur de chiffrement compact */}
           <div className="flex items-center gap-2">
             {encryptionEnabled ? (
               <Badge variant="default" className="bg-green-600">
                 <ShieldCheck className="h-3 w-3 mr-1" />
-                Chiffrement activé
+                Chiffrement compact
               </Badge>
             ) : (
               <Badge variant="secondary">
                 <Shield className="h-3 w-3 mr-1" />
-                Chiffrement désactivé
+                Sans chiffrement
               </Badge>
             )}
           </div>
@@ -459,18 +511,21 @@ export const AttestationGenerator: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Génération d'Attestations avec Chiffrement
+                Génération d'Attestations avec Chiffrement Compact
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Option de chiffrement */}
+              {/* Option de chiffrement compact */}
               <Card className="bg-blue-50 border-blue-200">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-medium text-blue-900 mb-1">Sécurité des QR Codes</h4>
+                      <h4 className="font-medium text-blue-900 mb-1">Sécurité des QR Codes (Compact)</h4>
                       <p className="text-sm text-blue-700">
-                        Chiffrer les informations sensibles dans les QR codes pour une sécurité renforcée
+                        Chiffrement compact basé uniquement sur le matricule - QR codes plus petits et plus lisibles
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1">
+                        🔑 Clé de chiffrement: Matricule uniquement • 📊 Taille: 50-80 caractères chiffrés
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -482,8 +537,12 @@ export const AttestationGenerator: React.FC = () => {
                         checked={encryptionEnabled}
                         onCheckedChange={(checked) => {
                           setEncryptionEnabled(checked);
-                          const message = checked ? "Chiffrement activé" : "Chiffrement désactivé";
+                          const message = checked ? "Chiffrement compact activé" : "Chiffrement désactivé";
                           notifySuccess("Sécurité", message);
+                          
+                          // Analyser l'impact sur la taille si des données sont déjà chargées
+                          if (excelData.length > 0) {
+                            setTimeout(() => analyzeQRCodeSizes(excelData[0]), 500);}
                         }}
                       />
                     </div>
@@ -491,7 +550,7 @@ export const AttestationGenerator: React.FC = () => {
                   {encryptionEnabled && (
                     <div className="mt-3 text-xs text-blue-600">
                       <Shield className="h-3 w-3 inline mr-1" />
-                      Les QR codes contiendront des données chiffrées déchiffrables uniquement avec l'application mobile
+                      QR codes compacts avec chiffrement AES-128-ECB basé sur le matricule uniquement
                     </div>
                   )}
                 </CardContent>
@@ -536,12 +595,14 @@ export const AttestationGenerator: React.FC = () => {
                         <p className="text-sm text-blue-700">
                           {excelData.length} étudiant(s) • {selectedStudentMatricules.length} sélectionné(s)
                         </p>
-                        <p className="text-sm text-blue-700">
-                          Police: {attestationTheme.mainFont.split(',')[0]} • 
-                          Couleur: {attestationTheme.primaryColor} • 
-                          Style: {attestationTheme.contentLayout} •
-                          Chiffrement: {encryptionEnabled ? 'Activé' : 'Désactivé'}
-                        </p>
+                        <div className="flex items-center gap-4 text-sm text-blue-700 mt-1">
+                          <span>Police: {attestationTheme.mainFont.split(',')[0]}</span>
+                          <span>Couleur: {attestationTheme.primaryColor}</span>
+                          <span>Style: {attestationTheme.contentLayout}</span>
+                          <span className="font-medium">
+                            {encryptionEnabled ? '🔐 Compact' : '📋 Standard'}
+                          </span>
+                        </div>
                         {validationResult && !validationResult.isValid && (
                           <p className="text-sm text-yellow-700 mt-1">
                             ⚠️ {validationResult.missingRequired.length} colonne(s) requise(s) manquante(s)
@@ -618,7 +679,7 @@ export const AttestationGenerator: React.FC = () => {
             onGenerateSelected={generateAttestations}
             documentType="attestation"
             isLoading={isLoading}
-            additionalInfo={encryptionEnabled ? "Chiffrement activé" : "Sans chiffrement"}
+            additionalInfo={encryptionEnabled ? "Chiffrement compact activé" : "Sans chiffrement"}
           />
         </TabsContent>
 
@@ -644,11 +705,11 @@ export const AttestationGenerator: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Boutons de test pour développeurs */}
+      {/* Informations sur le chiffrement compact en mode développement */}
       {process.env.NODE_ENV === 'development' && excelData.length > 0 && (
         <Card className="border-dashed border-gray-300">
           <CardContent className="p-4">
-            <h4 className="font-medium mb-2">🧪 Outils de développement</h4>
+            <h4 className="font-medium mb-2">🧪 Outils de développement - Chiffrement Compact</h4>
             <div className="flex gap-2 flex-wrap">
               <Button
                 variant="outline"
@@ -663,9 +724,9 @@ export const AttestationGenerator: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => testStudentEncryption(excelData[0])}
+                onClick={() => testStudentEncryptionCompact(excelData[0])}
               >
-                Test chiffrement
+                Test chiffrement compact
               </Button>
               <Button
                 variant="outline"
@@ -675,28 +736,135 @@ export const AttestationGenerator: React.FC = () => {
                     const testStudent = sanitizeStudentData(excelData[0]);
                     const qrCode = await generateQrCodeBase64(testStudent, 'attestation', encryptionEnabled);
                     console.log('📱 QR Code généré:', qrCode.substring(0, 50) + '...');
-                    notifySuccess("Test", "QR Code généré avec succès");
+                    
+                    // Analyser la taille
+                    const sizeAnalysis = getQRCodeSizeEstimate(testStudent, 'attestation', encryptionEnabled);
+                    console.log('📊 Analyse de taille:', sizeAnalysis);
+                    
+                    notifySuccess("Test", `QR Code généré avec succès (${sizeAnalysis.totalContentLength} caractères)`);
                   } catch (error) {
                     console.error('❌ Erreur QR:', error);
                     notifyError("Test", "Erreur lors de la génération du QR Code");
                   }
                 }}
               >
-                Test QR Code
+                Test QR Code compact
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  console.log('📊 État actuel:');
-                  console.log('- Données Excel:', excelData.length, 'étudiants');
-                  console.log('- Chiffrement:', encryptionEnabled);
-                  console.log('- Paramètres école:', schoolSettings);
-                  console.log('- Thème:', attestationTheme);
+                  if (excelData.length > 0) {
+                    const sizeAnalysis = getQRCodeSizeEstimate(excelData[0], 'attestation', encryptionEnabled);
+                    console.log('📊 Analyse complète de taille:', sizeAnalysis);
+                    
+                    const encryptionInfo = encryptionEnabled ? 
+                      getCompactEncryptionInfo(excelData[0].MATRICULE) : null;
+                    
+                    console.log('📊 État actuel du système:');
+                    console.log('- Données Excel:', excelData.length, 'étudiants');
+                    console.log('- Chiffrement compact:', encryptionEnabled);
+                    console.log('- Taille QR estimée:', sizeAnalysis.estimatedQRSize);
+                    console.log('- Longueur contenu:', sizeAnalysis.totalContentLength, 'caractères');
+                    console.log('- Paramètres école:', schoolSettings);
+                    console.log('- Thème:', attestationTheme);
+                    if (encryptionInfo) {
+                      console.log('- Info chiffrement:', encryptionInfo);
+                    }
+                  }
                 }}
               >
-                État du système
+                Analyse de taille
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (excelData.length > 0 && encryptionEnabled) {
+                    const student = sanitizeStudentData(excelData[0]);
+                    const { publicData, sensitiveData } = createCompactDataFromStudent(student, 'attestation');
+                    
+                    console.log('🔑 Test de clé de chiffrement compact:');
+                    console.log('- Matricule utilisé:', sensitiveData.m);
+                    
+                    const encryptionInfo = getCompactEncryptionInfo(sensitiveData.m);
+                    console.log('- Info clé:', encryptionInfo);
+                    
+                    console.log('📊 Répartition des données:');
+                    console.log('- Publiques:', Object.keys(publicData));
+                    console.log('- Sensibles:', Object.keys(sensitiveData));
+                    
+                    notifyInfo(
+                      "Info chiffrement", 
+                      `Clé basée sur: ${sensitiveData.m} | Algorithme: ${encryptionInfo.algorithm}`
+                    );
+                  }
+                }}
+                disabled={!encryptionEnabled}
+              >
+                Info clé de chiffrement
+              </Button>
+            </div>
+            
+            {encryptionEnabled && excelData.length > 0 && (
+              <div className="mt-3 p-3 bg-green-50 rounded-md border border-green-200">
+                <h5 className="text-sm font-medium text-green-800 mb-2">🔐 Chiffrement Compact Activé</h5>
+                <div className="text-xs text-green-700 space-y-1">
+                  <p>• Clé basée uniquement sur le matricule de l'étudiant</p>
+                  <p>• Algorithme: AES-128-ECB (optimisé pour la compacité)</p>
+                  <p>• Taille chiffrée estimée: 50-80 caractères</p>
+                  <p>• QR codes plus petits et plus lisibles</p>
+                  <p>• Déchiffrement possible avec juste le matricule</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Indicateur de performance du chiffrement */}
+      {excelData.length > 0 && (
+        <Card className="bg-gray-50">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 text-blue-500" />
+                  <span className="text-gray-600">Performance QR Codes:</span>
+                </div>
+                {(() => {
+                  if (excelData.length > 0) {
+                    const sizeAnalysis = getQRCodeSizeEstimate(excelData[0], 'attestation', encryptionEnabled);
+                    return (
+                      <div className="flex items-center gap-4">
+                        <span className="text-gray-700">
+                          Taille: <span className="font-medium">{sizeAnalysis.estimatedQRSize}</span>
+                        </span>
+                        <span className="text-gray-700">
+                          Contenu: <span className="font-medium">{sizeAnalysis.totalContentLength} caractères</span>
+                        </span>
+                        {encryptionEnabled && (
+                          <span className="text-green-700">
+                            🔐 <span className="font-medium">Compact</span>
+                          </span>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+              
+              {excelData.length > 0 && (() => {
+                const sizeAnalysis = getQRCodeSizeEstimate(excelData[0], 'attestation', encryptionEnabled);
+                if (sizeAnalysis.estimatedQRSize === 'Small') {
+                  return <Badge variant="default" className="bg-green-600">Optimal</Badge>;
+                } else if (sizeAnalysis.estimatedQRSize === 'Medium') {
+                  return <Badge variant="secondary">Moyen</Badge>;
+                } else {
+                  return <Badge variant="destructive">Volumineux</Badge>;
+                }
+              })()}
             </div>
           </CardContent>
         </Card>

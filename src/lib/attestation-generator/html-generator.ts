@@ -1,7 +1,8 @@
-// src/lib/attestation-generator/html-generator.ts - Version corrigée avec chiffrement
+// src/lib/attestation-generator/html-generator.ts - Version mise à jour avec chiffrement compact
 import { StudentExcelRecord, sanitizeStudentData, generateQrCodeBase64 } from '../helpers/qrcode';
 import { formatDate, calculateGrade, calculateMention } from './utils';
 import { AttestationThemeSettingsPayload, defaultAttestationTheme } from '../form-schemas/attestation-theme-settings';
+import { getQRCodeSizeEstimate } from '../helpers/qrcode';
 
 interface SchoolSettings {
   establishmentType: string;
@@ -26,11 +27,11 @@ interface GenerationOptions {
     y: number;
   };
   theme?: AttestationThemeSettingsPayload;
-  encryptionEnabled?: boolean;
+  encryptionEnabled?: boolean; // Support du chiffrement compact
 }
 
 /**
- * Génère le HTML pour l'attestation de réussite avec support du chiffrement
+ * Génère le HTML pour l'attestation de réussite avec support du chiffrement compact
  */
 export async function generateAttestationHTML(
   student: StudentExcelRecord,
@@ -51,9 +52,9 @@ export async function generateAttestationHTML(
   const sanitizedStudent = sanitizeStudentData(student);
   console.log('🧹 Données étudiant sanitisées');
   
-  // Par défaut, le chiffrement est activé sauf indication contraire
+  // Par défaut, le chiffrement compact est activé sauf indication contraire
   const encryptionEnabled = options.encryptionEnabled !== false;
-  console.log(`🔐 Chiffrement: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
+  console.log(`🔐 Chiffrement compact: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
 
   // Utiliser le thème fourni ou celui des paramètres ou le thème par défaut
   const theme = options.theme || settings.theme || defaultAttestationTheme;
@@ -96,18 +97,26 @@ export async function generateAttestationHTML(
   // Finalité
   const finality = sanitizedStudent["FINALITE"];
 
-  // Générer le QR code avec chiffrement
+  // Générer le QR code avec chiffrement compact
   let qrCodeImage = options.qrCodeImage;
+  let qrCodeAnalysis = null;
+  
   if (!qrCodeImage && theme.showQRCode) {
     try {
-      console.log(`🔄 Génération QR Code intégré (Chiffrement: ${encryptionEnabled})`);
+      console.log(`🔄 Génération QR Code intégré (Chiffrement compact: ${encryptionEnabled})`);
       
       qrCodeImage = await generateQrCodeBase64(sanitizedStudent, 'attestation', encryptionEnabled);
       
+      // Analyser la taille du QR code généré
+      qrCodeAnalysis = getQRCodeSizeEstimate(sanitizedStudent, 'attestation', encryptionEnabled);
+      
       if (encryptionEnabled) {
-        console.log('✅ QR Code avec chiffrement généré pour le HTML');
+        console.log('✅ QR Code avec chiffrement compact généré pour le HTML');
+        console.log(`📊 Taille: ${qrCodeAnalysis.estimatedQRSize} (${qrCodeAnalysis.totalContentLength} caractères)`);
+        console.log(`🔑 Clé basée sur le matricule: ${matricule}`);
       } else {
         console.log('📋 QR Code sans chiffrement généré pour le HTML');
+        console.log(`📊 Taille: ${qrCodeAnalysis.estimatedQRSize} (${qrCodeAnalysis.totalContentLength} caractères)`);
       }
     } catch (qrError) {
       console.error('❌ Erreur lors de la génération du QR code pour le HTML:', qrError);
@@ -360,19 +369,40 @@ export async function generateAttestationHTML(
       border: 1px solid ${theme.tableBorderColor};
     }
 
-    /* Indicateur de chiffrement */
+    /* Indicateur de chiffrement compact */
     .encryption-indicator {
       position: absolute;
       top: 5px;
       right: 5px;
-      background: rgba(0, 128, 0, 0.1);
-      border: 1px solid rgba(0, 128, 0, 0.3);
-      color: #006400;
+      background: ${encryptionEnabled ? 'rgba(0, 128, 0, 0.1)' : 'rgba(128, 128, 128, 0.1)'};
+      border: 1px solid ${encryptionEnabled ? 'rgba(0, 128, 0, 0.3)' : 'rgba(128, 128, 128, 0.3)'};
+      color: ${encryptionEnabled ? '#006400' : '#666'};
       font-size: 8px;
       padding: 2px 6px;
       border-radius: 3px;
-      display: ${encryptionEnabled ? 'block' : 'none'};
+      display: ${theme.showQRCode ? 'block' : 'none'};
       z-index: 1000;
+    }
+
+    /* Indicateur de performance QR */
+    .qr-performance-indicator {
+      position: absolute;
+      top: 25px;
+      right: 5px;
+      background: ${qrCodeAnalysis?.estimatedQRSize === 'Small' ? 'rgba(0, 128, 0, 0.1)' : 
+                   qrCodeAnalysis?.estimatedQRSize === 'Medium' ? 'rgba(255, 165, 0, 0.1)' : 
+                   'rgba(255, 0, 0, 0.1)'};
+      border: 1px solid ${qrCodeAnalysis?.estimatedQRSize === 'Small' ? 'rgba(0, 128, 0, 0.3)' : 
+                          qrCodeAnalysis?.estimatedQRSize === 'Medium' ? 'rgba(255, 165, 0, 0.3)' : 
+                          'rgba(255, 0, 0, 0.3)'};
+      color: ${qrCodeAnalysis?.estimatedQRSize === 'Small' ? '#006400' : 
+                qrCodeAnalysis?.estimatedQRSize === 'Medium' ? '#FF8C00' : 
+                '#DC143C'};
+      font-size: 7px;
+      padding: 1px 4px;
+      border-radius: 2px;
+      display: ${qrCodeAnalysis && process.env.NODE_ENV === 'development' ? 'block' : 'none'};
+      z-index: 999;
     }
 
     /* Filigrane */
@@ -465,7 +495,11 @@ export async function generateAttestationHTML(
       }
       
       .encryption-indicator {
-        display: ${encryptionEnabled ? 'block' : 'none'} !important;
+        display: ${encryptionEnabled && theme.showQRCode ? 'block' : 'none'} !important;
+      }
+      
+      .qr-performance-indicator {
+        display: none !important;
       }
     }
   `;
@@ -483,10 +517,17 @@ export async function generateAttestationHTML(
 </head>
 <body>
     <div class="container">
-        <!-- Indicateur de chiffrement -->
+        <!-- Indicateur de chiffrement compact -->
         <div class="encryption-indicator no-print">
-            🔐 QR ${encryptionEnabled ? 'Chiffré' : 'Non Chiffré'}
+            ${encryptionEnabled ? '🔐 QR Compact' : '📋 QR Standard'}
         </div>
+
+        <!-- Indicateur de performance QR (dev uniquement) -->
+        ${qrCodeAnalysis ? `
+        <div class="qr-performance-indicator no-print">
+            ${qrCodeAnalysis.estimatedQRSize} (${qrCodeAnalysis.totalContentLength}c)
+        </div>
+        ` : ''}
 
         <!-- Filigrane IPES -->
         <div class="watermark">
@@ -595,8 +636,6 @@ export async function generateAttestationHTML(
                 ${theme.showBilingualText ? '<em>Registered under the matricule number:</em>' : ''}</p>
                 <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : ${settings.cycle || 'N/D'} en ${settings.cycle || 'N/D'}<br>
                 ${theme.showBilingualText ? '<em>Having successfully fufilled the requirements qualifying for the :</em>' : ''}</p>
-
-              
             </div>
             
             ${theme.showDomainTable ? `
@@ -647,7 +686,7 @@ export async function generateAttestationHTML(
             <div class="signature">
                 ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-left' ? `
                 <div class="qr-code">
-                    ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffré)' : ''}" />` : 
+                    ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : ''}" />` : 
                       '<div class="qr-image" style="background: #eee; display: flex; align-items: center; justify-content: center; font-size: 10px;">QR Code</div>'}
                 </div>
                 ` : ''}
@@ -658,7 +697,7 @@ export async function generateAttestationHTML(
             
             ${theme.qrCodePosition === 'bottom-center' ? `
             <div class="qr-code">
-                ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffré)' : ''}" />` : 
+                ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : ''}" />` : 
                   '<div class="qr-image" style="background: #eee; display: flex; align-items: center; justify-content: center; font-size: 10px;">QR Code</div>'}
             </div>
             ` : ''}
@@ -676,7 +715,7 @@ export async function generateAttestationHTML(
                 
                 ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-right' ? `
                 <div class="qr-code">
-                    ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffré)' : ''}" />` : 
+                    ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : ''}" />` : 
                       '<div class="qr-image" style="background: #eee; display: flex; align-items: center; justify-content: center; font-size: 10px;">QR Code</div>'}
                 </div>
                 ` : ''}
@@ -696,12 +735,13 @@ export async function generateAttestationHTML(
                 ` : ''}
             </div>
             `}
-            ${encryptionEnabled ? '<br><small style="color: #006400;">🔐 QR Code sécurisé avec chiffrement pour vérification mobile.</small>' : ''}
+            ${encryptionEnabled ? '<br><small style="color: #006400;">🔐 QR Code sécurisé avec chiffrement compact basé sur le matricule.</small>' : ''}
+            ${qrCodeAnalysis && qrCodeAnalysis.estimatedQRSize === 'Large' ? '<br><small style="color: #FF8C00;">⚠️ QR Code volumineux - Vérifiez la lisibilité.</small>' : ''}
         </div>
         
         ${theme.qrCodePosition === 'custom' && options.qrCodePosition ? `
         <div style="position: absolute; left: ${options.qrCodePosition.x}px; top: ${options.qrCodePosition.y}px;" class="qr-code">
-            ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffré)' : ''}" />` : 
+            ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : ''}" />` : 
               '<div class="qr-image" style="background: #eee; display: flex; align-items: center; justify-content: center; font-size: 10px;">QR Code</div>'}
         </div>
         ` : ''}
@@ -711,8 +751,17 @@ export async function generateAttestationHTML(
   `;
   
   console.log(`✅ HTML généré avec succès pour ${studentFullName}`);
-  console.log(`🔐 Chiffrement QR: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
+  console.log(`🔐 Chiffrement compact: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
   console.log(`📋 QR Code inclus: ${qrCodeImage ? 'Oui' : 'Non'}`);
+  
+  if (qrCodeAnalysis) {
+    console.log(`📊 Performance QR: ${qrCodeAnalysis.estimatedQRSize} (${qrCodeAnalysis.totalContentLength} caractères)`);
+    console.log(`🔧 Données chiffrées estimées: ${qrCodeAnalysis.encryptedDataLength} caractères`);
+  }
+  
+  if (encryptionEnabled) {
+    console.log(`🔑 Clé de chiffrement basée sur: ${matricule}`);
+  }
   
   return html;
 }
