@@ -12,7 +12,7 @@ import { useNotifications } from "@/components/ui/notification-system";
 import { useDocumentHistory } from "@/components/organisms/document-history/DocumentHistoryManager";
 
 // Components
-import { FileUploader } from "./components/FileUploader";
+import { FileUploader } from "@/components/organisms/receipts/ExcelUploader.tsx";
 import { ProcessingProgress } from "./components/ProcessingProgress";
 import { ConfigurationSelector } from "./ConfigurationSelector";
 import { ColumnMappingEditor } from "./ColumnMappingEditor";
@@ -245,7 +245,7 @@ export const ReleveGenerator: React.FC = () => {
         .join('\n');
       
       setTimeout(() => {
-        notifyInfo(
+        notifySuccess(
           "Correspondances automatiques", 
           `Colonnes mappées automatiquement :\n${mappings}`,
           { duration: 8000 }
@@ -273,7 +273,7 @@ export const ReleveGenerator: React.FC = () => {
       );
     }
   }
-}, [notifySuccess, notifyError, notifyWarning, notifyInfo]);
+}, [notifySuccess, notifyError, notifyWarning]);
 
   // Check if mapping is complete when available ECs or column mapping changes
   useEffect(() => {

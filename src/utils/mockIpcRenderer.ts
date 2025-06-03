@@ -1,5 +1,4 @@
-// src/utils/mockIpcRenderer.ts - Mise à jour pour ajouter le support du chiffrement
-// This file provides a mock implementation of the IPC renderer for development
+// src/utils/mockIpcRenderer.ts - Version corrigée avec support du chiffrement
 
 class MockInvocationError extends Error {
     constructor(message: string) {
@@ -180,31 +179,95 @@ class MockInvocationError extends Error {
       // Essayer d'importer le générateur HTML réel si disponible
       try {
         const { generateAttestationHTML } = await import('../lib/attestation-generator/html-generator');
+        const { sanitizeStudentData } = await import('../lib/helpers/qrcode');
+        
         console.log('[MOCK] ✅ Utilisation du générateur HTML réel');
-        return await generateAttestationHTML(params.student, params.settings, params.options);
+        
+        // Sanitiser les données de l'étudiant
+        const sanitizedStudent = sanitizeStudentData(params.student);
+        console.log('[MOCK] 🧹 Données étudiant sanitisées');
+        
+        return await generateAttestationHTML(sanitizedStudent, params.settings, params.options);
       } catch (importError) {
         console.warn('[MOCK] ⚠️ Générateur HTML réel non disponible, utilisation du fallback:', importError);
         
         // Simuler un délai et retourner un HTML de base pour une attestation
         await new Promise(resolve => setTimeout(resolve, 300));
         
+        // Sanitiser les données dans le fallback
+        const sanitizedStudent = {
+          ...params.student,
+          NOM: params.student.NOM || 'N/D',
+          PRENOM: params.student.PRENOM || 'N/D',
+          MATRICULE: params.student.MATRICULE || 'N/D',
+          'DATE DE NAISSANCE': params.student['DATE DE NAISSANCE'] || 'N/D',
+          'LIEU DE NAISSANCE': params.student['LIEU DE NAISSANCE'] || 'N/D',
+          PARCOURS: params.student.PARCOURS || 'N/D',
+          SPECIALITE: params.student.SPECIALITE || 'N/D',
+          OPTION: params.student.OPTION || 'N/D',
+          MOYENNE: params.student.MOYENNE || '0.00',
+          GRADE: params.student.GRADE || 'N/D',
+          MENTION: params.student.MENTION || 'N/D',
+          'ANNEE ACADEMIQUE': params.student['ANNEE ACADEMIQUE'] || 'N/D',
+          FINALITE: params.student.FINALITE || 'N/D',
+          'TOTAL CREDIT': params.student['TOTAL CREDIT'] || 'N/D',
+          DOMAINE: params.student.DOMAINE || 'N/D',
+          ETABLISSEMENT: params.student.ETABLISSEMENT || params.settings.nameFrench || 'N/D'
+        };
+        
         const encryptionIndicator = params.options?.encryptionEnabled ? 
-          '<div style="position: absolute; top: 10px; right: 10px; background: rgba(0,128,0,0.1); padding: 5px; border-radius: 3px; font-size: 10px;">🔐 Chiffré</div>' : '';
+          '<div style="position: absolute; top: 10px; right: 10px; background: rgba(0,128,0,0.1); padding: 5px; border-radius: 3px; font-size: 10px; color: #006400; z-index: 1000;">🔐 QR Chiffré</div>' : 
+          '<div style="position: absolute; top: 10px; right: 10px; background: rgba(128,128,128,0.1); padding: 5px; border-radius: 3px; font-size: 10px; color: #666; z-index: 1000;">📋 QR Non Chiffré</div>';
+        
+        // Générer un QR code factice avec indication du chiffrement
+        const mockQrCode = params.options?.qrCodeImage || 
+          `data:image/svg+xml;base64,${btoa(`
+            <svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+              <rect width="100" height="100" fill="#eee" stroke="#ccc"/>
+              <text x="50" y="40" text-anchor="middle" font-size="8" fill="#666">QR Code</text>
+              <text x="50" y="55" text-anchor="middle" font-size="6" fill="#666">${params.options?.encryptionEnabled ? '🔐 Chiffré' : '📋 Standard'}</text>
+              <text x="50" y="70" text-anchor="middle" font-size="6" fill="#666">${sanitizedStudent.MATRICULE}</text>
+            </svg>
+          `)}`;
         
         return `
           <!DOCTYPE html>
           <html>
             <head>
               <style>
-                body { font-family: Times New Roman; margin: 20px; position: relative; }
+                body { 
+                  font-family: Times New Roman; 
+                  margin: 20px; 
+                  position: relative; 
+                  background: white;
+                }
                 .header { text-align: center; margin-bottom: 20px; }
-                .title { font-size: 24px; font-weight: bold; text-transform: uppercase; }
-                .subtitle { font-size: 18px; font-style: italic; }
+                .title { font-size: 24px; font-weight: bold; text-transform: uppercase; color: #0066cc; }
+                .subtitle { font-size: 18px; font-style: italic; color: #333; }
                 .student-info { margin: 30px 0; }
-                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                th, td { border: 1px solid #333; padding: 8px; text-align: center; }
-                .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
-                .disclaimer { position: absolute; bottom: 20px; font-size: 8px; font-style: italic; }
+                table { 
+                  width: 100%; 
+                  border-collapse: collapse; 
+                  margin: 20px 0; 
+                }
+                th, td { 
+                  border: 1px solid #333; 
+                  padding: 8px; 
+                  text-align: center; 
+                  background-color: #f0f0f0;
+                }
+                .signatures { 
+                  display: flex; 
+                  justify-content: space-between; 
+                  margin-top: 50px; 
+                }
+                .disclaimer { 
+                  position: absolute; 
+                  bottom: 20px; 
+                  font-size: 8px; 
+                  font-style: italic; 
+                  width: 90%;
+                }
                 .qr-code { 
                   position: absolute;
                   ${params.options?.qrCodePosition ? 
@@ -212,6 +275,7 @@ class MockInvocationError extends Error {
                     'right: 50px; top: 250px;'}
                   width: 100px;
                   height: 100px;
+                  border: 1px solid #ccc;
                 }
                 .encryption-indicator {
                   position: absolute;
@@ -222,6 +286,19 @@ class MockInvocationError extends Error {
                   border-radius: 3px;
                   font-size: 10px;
                   color: #006400;
+                  z-index: 1000;
+                }
+                .debug-info {
+                  position: fixed;
+                  bottom: 10px;
+                  left: 10px;
+                  background: rgba(0,0,0,0.8);
+                  color: white;
+                  padding: 8px;
+                  font-size: 10px;
+                  border-radius: 4px;
+                  z-index: 9999;
+                  max-width: 300px;
                 }
               </style>
             </head>
@@ -231,14 +308,15 @@ class MockInvocationError extends Error {
               <div class="header">
                 <div class="title">Attestation de Réussite</div>
                 <div class="subtitle">Attestation of Completion of Studies</div>
-                <p>Ref N° ............./24/UDo/FMSP/VDRC/${params.settings.nameAbreviation}</p>
+                <p>Ref N° ............./24/UDo/FMSP/VDRC/${params.settings.nameAbreviation || 'INSTITUTION'}</p>
               </div>
               
               <div class="student-info">
-                <p><strong>Nom:</strong> ${params.student.NOM} ${params.student.PRENOM}</p>
-                <p><strong>Matricule:</strong> ${params.student.MATRICULE}</p>
-                <p><strong>Date de naissance:</strong> ${params.student["DATE DE NAISSANCE"]}</p>
-                <p><strong>Lieu de naissance:</strong> ${params.student["LIEU DE NAISSANCE"]}</p>
+                <p><strong>Nom:</strong> ${sanitizedStudent.NOM} ${sanitizedStudent.PRENOM}</p>
+                <p><strong>Matricule:</strong> ${sanitizedStudent.MATRICULE}</p>
+                <p><strong>Date de naissance:</strong> ${sanitizedStudent["DATE DE NAISSANCE"]}</p>
+                <p><strong>Lieu de naissance:</strong> ${sanitizedStudent["LIEU DE NAISSANCE"]}</p>
+                <p><strong>Établissement:</strong> ${sanitizedStudent.ETABLISSEMENT}</p>
               </div>
               
               <table>
@@ -249,10 +327,10 @@ class MockInvocationError extends Error {
                   <th>Option</th>
                 </tr>
                 <tr>
-                  <td>SCIENCES MEDICO-SANITAIRES</td>
-                  <td>${params.student.PARCOURS || "SCIENCES INFIRMIERES"}</td>
-                  <td>${params.student.SPECIALITE || "SCIENCES INFIRMIERES"}</td>
-                  <td>${params.student.OPTION || "SCIENCES INFIRMIERES"}</td>
+                  <td>${sanitizedStudent.DOMAINE}</td>
+                  <td>${sanitizedStudent.PARCOURS}</td>
+                  <td>${sanitizedStudent.SPECIALITE}</td>
+                  <td>${sanitizedStudent.OPTION}</td>
                 </tr>
               </table>
               
@@ -265,12 +343,12 @@ class MockInvocationError extends Error {
                   <th>Finalité/Voie</th>
                 </tr>
                 <tr>
-                  <td>60</td>
-                  <td>${typeof params.student.MOYENNE === 'number' ? 
-                        params.student.MOYENNE.toFixed(2) : params.student.MOYENNE}</td>
-                  <td>${params.student.MENTION || "Bien"} ${params.student.GRADE || "B+"}</td>
-                  <td>${params.student["ANNEE ACADEMIQUE"] || "2023/2024"}</td>
-                  <td>LICENCE PROFESSIONNELLE</td>
+                  <td>${sanitizedStudent["TOTAL CREDIT"]}</td>
+                  <td>${typeof sanitizedStudent.MOYENNE === 'number' ? 
+                        sanitizedStudent.MOYENNE.toFixed(2) : sanitizedStudent.MOYENNE}</td>
+                  <td>${sanitizedStudent.MENTION} ${sanitizedStudent.GRADE}</td>
+                  <td>${sanitizedStudent["ANNEE ACADEMIQUE"]}</td>
+                  <td>${sanitizedStudent.FINALITE}</td>
                 </tr>
               </table>
               
@@ -287,17 +365,22 @@ class MockInvocationError extends Error {
               </div>
               
               <div class="qr-code">
-                ${params.options?.qrCodeImage ? 
-                  `<img src="${params.options.qrCodeImage}" width="100" height="100" alt="QR Code ${params.options?.encryptionEnabled ? '(Chiffré)' : ''}">` :
-                  `<div style="width: 100px; height: 100px; background-color: #eee; display: flex; align-items: center; justify-content: center; font-size: 8px;">
-                    QR Code${params.options?.encryptionEnabled ? '<br>🔐 Chiffré' : ''}
-                   </div>`}
+                <img src="${mockQrCode}" width="100" height="100" alt="QR Code ${params.options?.encryptionEnabled ? '(Chiffré)' : '(Standard)'}">
               </div>
               
               <div class="disclaimer">
                 Cette Attestation ne tient pas lieu de Diplôme et n'est délivrée qu'en un seul exemplaire et d'une validité de (6) mois 
                 à partir de la date de signature. Le Diplôme lui sera délivré ultérieurement.
-                ${params.options?.encryptionEnabled ? '<br><strong>QR Code sécurisé avec chiffrement.</strong>' : ''}
+                ${params.options?.encryptionEnabled ? '<br><strong>🔐 QR Code sécurisé avec chiffrement pour vérification mobile.</strong>' : '<br><strong>📋 QR Code standard (non chiffré).</strong>'}
+              </div>
+              
+              <div class="debug-info">
+                🔧 DEBUG MODE<br>
+                🔐 Chiffrement: ${params.options?.encryptionEnabled ? 'Activé' : 'Désactivé'}<br>
+                📊 Étudiant: ${sanitizedStudent.NOM} ${sanitizedStudent.PRENOM}<br>
+                🏢 Établissement: ${sanitizedStudent.ETABLISSEMENT}<br>
+                📋 Type: Attestation (Mock)<br>
+                🎯 Données sanitisées: ${Object.keys(sanitizedStudent).filter(k => sanitizedStudent[k] !== 'N/D').length}/${Object.keys(sanitizedStudent).length}
               </div>
             </body>
           </html>
@@ -325,13 +408,13 @@ class MockInvocationError extends Error {
       }
       
       if (!window.attestationRenderer) {
-        console.log('[MOCK] 🎓 Initializing mock attestation renderer');
+        console.log('[MOCK] 🎓 Initializing mock attestation renderer with encryption support');
         window.attestationRenderer = mockAttestationRenderer;
       }
       
       // Fonction d'initialisation globale pour faciliter le débogage
       window.initMockIpc = initMockIpc;
       
-      console.log('[MOCK] ✅ Mock IPC system initialized with encryption support');
+      console.log('[MOCK] ✅ Mock IPC system initialized with full encryption support and data sanitization');
     }
   }

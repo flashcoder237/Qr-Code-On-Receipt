@@ -1,4 +1,4 @@
-// src/components/organisms/receipts/components/FileUploader.tsx
+// src/components/organisms/receipts/components/FileUploader.tsx - Version corrigée
 import React, { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, AlertTriangle, CheckCircle, X, RefreshCw } from 'lucide-react';
@@ -19,7 +19,107 @@ interface FileUploaderProps {
   onValidationResult?: (result: ValidationResult) => void;
   isLoading: boolean;
   documentType: 'releve' | 'attestation';
-  allowPartialImport?: boolean; // Permet l'import même avec des colonnes manquantes
+  allowPartialImport?: boolean;
+}
+
+/**
+ * Sanitise une ligne de données Excel en remplaçant les valeurs vides par des valeurs par défaut
+ */
+function sanitizeExcelRow(row: any, documentType: 'releve' | 'attestation'): any {
+  const sanitized = { ...row };
+  
+  // Champs communs à tous les types de documents
+  const commonFields = [
+    'NOM', 'PRENOM', 'MATRICULE', 'DATE DE NAISSANCE', 'LIEU DE NAISSANCE',
+    'ANNEE ACADEMIQUE', 'SEXE', 'EMAIL'
+  ];
+  
+  // Champs spécifiques aux relevés
+  const releveFields = [
+    'NIVEAU', 'SEMESTRE', 'CYCLE', 'FILIERE'
+  ];
+  
+  // Champs spécifiques aux attestations
+  const attestationFields = [
+    'PARCOURS', 'SPECIALITE', 'OPTION', 'MOYENNE', 'GRADE', 'MENTION',
+    'FINALITE', 'TOTAL CREDIT', 'DOMAINE', 'DATE JURY'
+  ];
+  
+  // Déterminer les champs à sanitiser selon le type de document
+  let fieldsToSanitize = [...commonFields];
+  if (documentType === 'releve') {
+    fieldsToSanitize = [...fieldsToSanitize, ...releveFields];
+  } else if (documentType === 'attestation') {
+    fieldsToSanitize = [...fieldsToSanitize, ...attestationFields];
+  }
+  
+  // Sanitiser les champs
+  fieldsToSanitize.forEach(field => {
+    if (sanitized[field] === undefined || 
+        sanitized[field] === null || 
+        sanitized[field] === '' || 
+        (typeof sanitized[field] === 'string' && sanitized[field].trim() === '')) {
+      
+      // Valeurs par défaut spécifiques
+      if (field === 'MOYENNE') {
+        sanitized[field] = 0;
+      } else if (field === 'SEXE') {
+        sanitized[field] = 'N/D';
+      } else if (field === 'EMAIL') {
+        sanitized[field] = '';
+      } else {
+        sanitized[field] = 'N/D';
+      }
+    }
+  });
+  
+  // Traitement spécial pour les dates
+  if (sanitized['DATE DE NAISSANCE'] && typeof sanitized['DATE DE NAISSANCE'] === 'number') {
+    try {
+      const date = XLSX.SSF.parse_date_code(sanitized['DATE DE NAISSANCE']);
+      if (date) {
+        sanitized['DATE DE NAISSANCE'] = `${String(date.d).padStart(2, "0")}/${String(date.m).padStart(2, "0")}/${date.y}`;
+      }
+    } catch (e) {
+      console.warn('Erreur lors de la conversion de la date de naissance:', e);
+      sanitized['DATE DE NAISSANCE'] = 'N/D';
+    }
+  }
+  
+  if (sanitized['DATE JURY'] && typeof sanitized['DATE JURY'] === 'number') {
+    try {
+      const date = XLSX.SSF.parse_date_code(sanitized['DATE JURY']);
+      if (date) {
+        sanitized['DATE JURY'] = `${String(date.d).padStart(2, "0")}/${String(date.m).padStart(2, "0")}/${date.y}`;
+      }
+    } catch (e) {
+      console.warn('Erreur lors de la conversion de la date du jury:', e);
+      sanitized['DATE JURY'] = 'N/D';
+    }
+  }
+  
+  return sanitized;
+}
+
+/**
+ * Applique le mapping des colonnes à une ligne de données
+ */
+function applyColumnMapping(row: any, mapping: { [key: string]: string }): any {
+  const mappedRow: any = {};
+  
+  // Copier toutes les données originales
+  Object.keys(row).forEach(key => {
+    mappedRow[key] = row[key];
+  });
+  
+  // Appliquer le mapping
+  Object.entries(mapping).forEach(([targetKey, sourceKey]) => {
+    if (sourceKey && row[sourceKey] !== undefined) {
+      mappedRow[targetKey] = row[sourceKey];
+    }
+  });
+  
+  return mappedRow;
 }
 
 export const FileUploader: React.FC<FileUploaderProps> = ({
@@ -34,11 +134,14 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   const [pendingData, setPendingData] = useState<{
     data: any[];
     columns: string[];
+    mapping: { [key: string]: string };
   } | null>(null);
   const [showValidationDetails, setShowValidationDetails] = useState(false);
 
   const processFile = async (file: File) => {
     try {
+      console.log('📁 Traitement du fichier:', file.name);
+      
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: 'array' });
       const sheetName = workbook.SheetNames[0];
@@ -50,6 +153,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       }
 
       const columns = Object.keys(jsonData[0]);
+      console.log('📋 Colonnes détectées:', columns);
       
       // Valider les colonnes
       const validation = validateExcelColumns(columns, documentType);
@@ -59,20 +163,44 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         onValidationResult(validation);
       }
 
+      // Générer le mapping automatique
+      const automaticMapping = generateColumnMapping(columns, documentType);
+      console.log('🔄 Mapping automatique généré:', automaticMapping);
+
       if (validation.isValid) {
         // Toutes les colonnes requises sont présentes
-        const mapping = generateColumnMapping(columns, documentType);
-        console.log("✅ Validation réussie - Mapping automatique:", mapping);
-        onFileLoaded(jsonData, columns, mapping);
+        console.log('✅ Validation réussie - Application du mapping et sanitisation');
+        
+        // Appliquer le mapping et sanitiser les données
+        const processedData = jsonData.map(row => {
+          const mappedRow = applyColumnMapping(row, automaticMapping);
+          return sanitizeExcelRow(mappedRow, documentType);
+        });
+        
+        console.log('📊 Données traitées:', processedData.length, 'lignes');
+        onFileLoaded(processedData, columns, automaticMapping);
         setPendingData(null);
+        
       } else if (allowPartialImport && validation.missingRequired.length === 0) {
         // Seules des colonnes optionnelles manquent, on peut continuer
-        const mapping = generateColumnMapping(columns, documentType);
-        onFileLoaded(jsonData, columns, mapping);
+        console.log('⚠️ Validation partielle - Application du mapping et sanitisation');
+        
+        const processedData = jsonData.map(row => {
+          const mappedRow = applyColumnMapping(row, automaticMapping);
+          return sanitizeExcelRow(mappedRow, documentType);
+        });
+        
+        onFileLoaded(processedData, columns, automaticMapping);
         setPendingData(null);
+        
       } else {
         // Des colonnes requises manquent
-        setPendingData({ data: jsonData, columns });
+        console.log('❌ Validation échouée - Colonnes requises manquantes');
+        setPendingData({ 
+          data: jsonData, 
+          columns, 
+          mapping: automaticMapping 
+        });
         setShowValidationDetails(true);
         
         const errorMessage = formatValidationErrorMessage(validation);
@@ -80,6 +208,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Erreur lors du chargement du fichier";
+      console.error('❌ Erreur de traitement:', errorMessage);
       onError(errorMessage);
       setValidationResult(null);
       setPendingData(null);
@@ -101,8 +230,15 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
   const handleForceImport = () => {
     if (pendingData) {
-      const mapping = generateColumnMapping(pendingData.columns, documentType);
-      onFileLoaded(pendingData.data, pendingData.columns, mapping);
+      console.log('🔄 Import forcé avec données partielles');
+      
+      // Appliquer le mapping et sanitiser les données même avec des colonnes manquantes
+      const processedData = pendingData.data.map(row => {
+        const mappedRow = applyColumnMapping(row, pendingData.mapping);
+        return sanitizeExcelRow(mappedRow, documentType);
+      });
+      
+      onFileLoaded(processedData, pendingData.columns, pendingData.mapping);
       setPendingData(null);
       setValidationResult(null);
       setShowValidationDetails(false);
@@ -173,7 +309,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             
             {!validationResult && (
               <p className="text-xs text-gray-500 mt-1">
-                Formats acceptés: .xlsx, .xls
+                Formats acceptés: .xlsx, .xls (Les données manquantes seront remplacées par "N/D")
               </p>
             )}
           </div>
@@ -216,6 +352,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                       ✅ {Object.keys(validationResult.mappedColumns).length} correspondance(s) automatique(s) trouvée(s)
                     </p>
                   )}
+                  <p className="text-xs text-blue-600 mt-1">
+                    🧹 Les données manquantes seront automatiquement remplacées par "N/D"
+                  </p>
                 </div>
               </div>
               
@@ -249,7 +388,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                         Importer quand même
                       </Button>
                     )}
-                  </>
+                    </>
                 )}
               </div>
             </div>
@@ -298,6 +437,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                               Alternatives acceptées: {req.alternatives.join(', ')}
                             </p>
                           )}
+                          <p className="text-xs text-blue-600 mt-1">
+                            💡 Cette colonne sera automatiquement remplie avec "N/D" si vous importez quand même
+                          </p>
                         </div>
                         {validationResult.suggestions[req.key]?.length > 0 && (
                           <div className="ml-4">
@@ -334,6 +476,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                               Alternatives acceptées: {req.alternatives.join(', ')}
                             </p>
                           )}
+                          <p className="text-xs text-blue-600 mt-1">
+                            💡 Cette colonne sera automatiquement remplie avec "N/D"
+                          </p>
                         </div>
                         {validationResult.suggestions[req.key]?.length > 0 && (
                           <div className="ml-4">
@@ -381,9 +526,12 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                   {allowPartialImport && (
                     <>
                       <br />
-                      4. Vous pouvez aussi continuer avec "Importer quand même" (fonctionnalités limitées)
+                      4. Vous pouvez aussi continuer avec "Importer quand même" - les colonnes manquantes seront remplies avec "N/D"
                     </>
                   )}
+                  <br />
+                  <br />
+                  <strong>🧹 Sanitisation automatique :</strong> Toutes les cellules vides ou manquantes seront automatiquement remplacées par "N/D" pour garantir la cohérence des données.
                 </AlertDescription>
               </Alert>
             </div>

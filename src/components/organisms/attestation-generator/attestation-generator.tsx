@@ -1,33 +1,21 @@
-// src/components/organisms/attestation-generator/attestation-generator.tsx - Version mise à jour avec validation et chiffrement
+// src/components/organisms/attestation-generator/attestation-generator.tsx - Version corrigée avec chiffrement
+
 import React, { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { generateQrCodeBase64, StudentExcelRecord } from "@/lib/helpers/qrcode";
+import { generateQrCodeBase64, StudentExcelRecord, sanitizeStudentData } from "@/lib/helpers/qrcode";
 import JSZip from "jszip";
-import * as XLSX from "xlsx";
 import { useLocalStorage } from "usehooks-ts";
-import { A4PositionPicker } from "../a4-position-picker";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AttestationSettings } from "./AttestationSettings";
-import { AttestationPreviewButton } from "./AttestationPreviewButton";
 import { AttestationThemeEditor } from "./AttestationThemeEditor";
 import { ThemePresetSelector } from "./ThemePresetSelector";
 import { StudentSelector } from "../student-selector";
-import { FileUploader } from "../receipts/components/FileUploader";
+import { FileUploader } from "@/components/organisms/receipts/ExcelUploader.tsx";
 import { FileDown, Loader2, Settings2, Table2, Palette, FileText, Eye, Wand2, Users, AlertCircle, CheckCircle, Shield, ShieldCheck } from "lucide-react";
 import { calculateGrade, calculateMention, getCurrentAcademicYear } from "@/lib/attestation-generator/utils";
 import { openAttestationPreview } from "@/lib/attestation-generator/preview";
@@ -36,6 +24,7 @@ import { useNotifications } from "@/components/ui/notification-system";
 import { useDocumentHistory } from "@/components/organisms/document-history/DocumentHistoryManager";
 import { testEncryptionDecryption, createCryptoDataFromStudent } from "@/lib/crypto/encryption";
 import { validateExcelColumns, ValidationResult } from "@/lib/validators/excel-columns";
+import { Label } from "@/components/ui/label";
 
 export const AttestationGenerator: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"generator" | "settings" | "theme" | "presets" | "selection">("generator");
@@ -47,7 +36,7 @@ export const AttestationGenerator: React.FC = () => {
   const [selectedStudentMatricules, setSelectedStudentMatricules] = useState<string[]>([]);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   
-  // Nouveau: Option pour activer/désactiver le chiffrement
+  // Option pour activer/désactiver le chiffrement
   const [encryptionEnabled, setEncryptionEnabled] = useLocalStorage("attestation-encryption-enabled", true);
   
   // Hooks pour notifications et historique
@@ -63,7 +52,7 @@ export const AttestationGenerator: React.FC = () => {
   // Paramètres de l'établissement
   const [schoolSettings, setSchoolSettings] = useLocalStorage("settings", {
     nameFrench: "N/D",
-    establishmentType: "N/D",
+    establishmentType: "ipes",
     nameEnglish: "N/D",
     nameAbreviation: "N/D",
     postalBox: "N/D",
@@ -98,7 +87,8 @@ export const AttestationGenerator: React.FC = () => {
     try {
       console.log('🧪 Test du chiffrement pour:', student.NOM, student.PRENOM);
       
-      const cryptoData = createCryptoDataFromStudent(student, 'attestation');
+      const sanitizedStudent = sanitizeStudentData(student);
+      const cryptoData = createCryptoDataFromStudent(sanitizedStudent, 'attestation');
       const testResult = testEncryptionDecryption(cryptoData);
       
       if (testResult) {
@@ -114,7 +104,7 @@ export const AttestationGenerator: React.FC = () => {
     }
   };
 
-  // Gestionnaire d'upload Excel amélioré avec validation
+  // Gestionnaire d'upload Excel amélioré avec validation et sanitisation
   const handleFileLoaded = (data: any[], columns: string[], mapping?: { [key: string]: string }) => {
     try {
       console.log('📊 Données reçues du fichier:', { 
@@ -123,48 +113,30 @@ export const AttestationGenerator: React.FC = () => {
         mapping: Object.keys(mapping || {}).length 
       });
 
-      // Appliquer le mapping automatique si fourni
-      let processedData = data;
-      if (mapping) {
-        processedData = data.map(row => {
-          const mappedRow: any = {};
-          
-          // Copier toutes les données originales
-          Object.keys(row).forEach(key => {
-            mappedRow[key] = row[key];
-          });
-          
-          // Appliquer le mapping
-          Object.entries(mapping).forEach(([targetKey, sourceKey]) => {
-            if (sourceKey && row[sourceKey] !== undefined) {
-              mappedRow[targetKey] = row[sourceKey];
-            }
-          });
-          
-          return mappedRow;
-        });
-      }
-
-      // Conversion et normalisation des données
-      const convertedData = processedData.map((row) => {
+      // Les données ont déjà été traitées par le FileUploader avec sanitisation
+      console.log('🧹 Données déjà sanitisées par FileUploader');
+      
+      // Conversion finale et validation
+      const convertedData = data.map((row) => {
+        // S'assurer que les champs critiques existent
         const standardizedRow: StudentExcelRecord = {
-          ETABLISSEMENT: row["ETABLISSEMENT"] || schoolSettings.nameFrench,
-          NOM: row["NOM"] || "",
-          PRENOM: row["PRENOM"] || "",
-          MATRICULE: row["MATRICULE"] || row["MAT"] || "",
-          "DATE DE NAISSANCE": formatDate(row["DATE DE NAISSANCE"]),
-          "LIEU DE NAISSANCE": row["LIEU DE NAISSANCE"] || "",
-          PARCOURS: row["PARCOURS"] || row["FILIERE"] || "",
-          SPECIALITE: row["SPECIALITE"] || row["OPTION"] || "",
-          OPTION: row["OPTION"] || "",
-          MOYENNE: row["MOYENNE"] || row["MOY"] || 0,
-          GRADE: row["GRADE"] || calculateGrade(row["MOYENNE"] || row["MOY"] || 0),
-          MENTION: row["MENTION"] || calculateMention(row["MOYENNE"] || row["MOY"] || 0),
+          ETABLISSEMENT: row.ETABLISSEMENT || schoolSettings.nameFrench || 'N/D',
+          NOM: row.NOM || 'N/D',
+          PRENOM: row.PRENOM || 'N/D',
+          MATRICULE: row.MATRICULE || 'N/D',
+          "DATE DE NAISSANCE": row["DATE DE NAISSANCE"] || 'N/D',
+          "LIEU DE NAISSANCE": row["LIEU DE NAISSANCE"] || 'N/D',
+          PARCOURS: row.PARCOURS || 'N/D',
+          SPECIALITE: row.SPECIALITE || 'N/D',
+          OPTION: row.OPTION || 'N/D',
+          MOYENNE: row.MOYENNE || 0,
+          GRADE: row.GRADE || calculateGrade(parseFloat(String(row.MOYENNE)) || 0),
+          MENTION: row.MENTION || calculateMention(parseFloat(String(row.MOYENNE)) || 0),
           "ANNEE ACADEMIQUE": row["ANNEE ACADEMIQUE"] || getCurrentAcademicYear(),
-          "DATE JURY": formatDate(row["DATE JURY"]),
-          "FINALITE": row["FINALITE"] || "",
-          "TOTAL CREDIT": row["TOTAL CREDIT"] || "",
-          "DOMAINE": row["DOMAINE"] || "",
+          "DATE JURY": row["DATE JURY"] || 'N/D',
+          "FINALITE": row.FINALITE || 'N/D',
+          "TOTAL CREDIT": row["TOTAL CREDIT"] || '60',
+          "DOMAINE": row.DOMAINE || 'SCIENCES MEDICO-SANITAIRES',
         };
         return standardizedRow;
       });
@@ -172,6 +144,8 @@ export const AttestationGenerator: React.FC = () => {
       setExcelData(convertedData);
       setExcelColumns(columns);
       setError(null);
+      
+      console.log('✅ Données converties et stockées:', convertedData.length, 'étudiants');
       
     } catch (err) {
       console.error("Erreur lors du traitement du fichier Excel", err);
@@ -198,27 +172,6 @@ export const AttestationGenerator: React.FC = () => {
         );
       }
     }
-  };
-
-  const formatDate = (dateValue: any): string => {
-    if (!dateValue) return "";
-    
-    if (typeof dateValue === 'string' && dateValue.includes('/')) {
-      return dateValue;
-    }
-    
-    if (typeof dateValue === 'number') {
-      try {
-        const date = XLSX.SSF.parse_date_code(dateValue);
-        if (date) {
-          return `${String(date.d).padStart(2, "0")}/${String(date.m).padStart(2, "0")}/${date.y}`;
-        }
-      } catch (e) {
-        console.error("Erreur lors de la conversion de la date", e);
-      }
-    }
-    
-    return String(dateValue);
   };
 
   const generateAttestations = async (studentsToGenerate?: StudentExcelRecord[]) => {
@@ -252,11 +205,17 @@ export const AttestationGenerator: React.FC = () => {
 
       for (const student of dataToProcess) {
         try {
+          console.log(`🔄 Génération pour ${student.MATRICULE} (${student.NOM} ${student.PRENOM})`);
+          
+          // Sanitiser les données de l'étudiant
+          const sanitizedStudent = sanitizeStudentData(student);
+          console.log('🧹 Données étudiant sanitisées');
+          
           // Générer le QR code avec ou sans chiffrement selon la configuration
           let qrCodeBase64 = '';
           try {
-            console.log(`🔄 Génération QR pour ${student.MATRICULE} (Chiffrement: ${encryptionEnabled})`);
-            qrCodeBase64 = await generateQrCodeBase64(student, 'attestation', encryptionEnabled);
+            console.log(`🔄 Génération QR pour ${sanitizedStudent.MATRICULE} (Chiffrement: ${encryptionEnabled})`);
+            qrCodeBase64 = await generateQrCodeBase64(sanitizedStudent, 'attestation', encryptionEnabled);
             
             if (encryptionEnabled) {
               console.log('🔐 QR Code généré avec chiffrement');
@@ -265,12 +224,12 @@ export const AttestationGenerator: React.FC = () => {
             }
           } catch (qrError) {
             console.error("Erreur lors de la génération du QR code:", qrError);
-            notifyWarning("QR Code", `Erreur QR pour ${student.NOM} ${student.PRENOM}`);
+            notifyWarning("QR Code", `Erreur QR pour ${sanitizedStudent.NOM} ${sanitizedStudent.PRENOM}`);
             // Continuer sans QR code
           }
 
           const params = {
-            student,
+            student: sanitizedStudent,
             settings: {
               ...schoolSettings,
               theme: attestationTheme,
@@ -283,28 +242,30 @@ export const AttestationGenerator: React.FC = () => {
             }
           };
           
+          console.log('📄 Génération du PDF...');
           const pdfBytes = await window.ipcRenderer.invoke('generate-attestation-pdf', params);
           
-          const fileName = `${student.MATRICULE}_Attestation${encryptionEnabled ? '_Chiffre' : ''}.pdf`;
+          const fileName = `${sanitizedStudent.MATRICULE}_Attestation${encryptionEnabled ? '_Chiffre' : ''}.pdf`;
           zip.file(fileName, pdfBytes);
           
           // Ajouter à l'historique avec information sur le chiffrement
           addDocumentRecord({
             type: 'attestation',
-            studentName: `${student.NOM} ${student.PRENOM}`,
-            studentMatricule: student.MATRICULE,
-            academicYear: student["ANNEE ACADEMIQUE"],
-            parcours: student.PARCOURS,
-            speciality: student.SPECIALITE,
-            average: typeof student.MOYENNE === 'number' ? student.MOYENNE : parseFloat(String(student.MOYENNE)) || undefined,
-            grade: student.GRADE,
-            mention: student.MENTION,
+            studentName: `${sanitizedStudent.NOM} ${sanitizedStudent.PRENOM}`,
+            studentMatricule: sanitizedStudent.MATRICULE,
+            academicYear: sanitizedStudent["ANNEE ACADEMIQUE"],
+            parcours: sanitizedStudent.PARCOURS,
+            speciality: sanitizedStudent.SPECIALITE,
+            average: typeof sanitizedStudent.MOYENNE === 'number' ? sanitizedStudent.MOYENNE : parseFloat(String(sanitizedStudent.MOYENNE)) || undefined,
+            grade: sanitizedStudent.GRADE,
+            mention: sanitizedStudent.MENTION,
             fileName: fileName,
             status: 'generated',
-            additionalInfo: encryptionEnabled ? 'Chiffrement activé' : undefined
+            additionalInfo: encryptionEnabled ? 'Chiffrement activé' : 'Sans chiffrement'
           });
           
           successCount++;
+          console.log(`✅ PDF généré avec succès pour ${sanitizedStudent.MATRICULE}`);
           
         } catch (err) {
           console.error(`Erreur lors de la génération de l'attestation pour ${student.MATRICULE}`, err);
@@ -395,12 +356,18 @@ export const AttestationGenerator: React.FC = () => {
       setIsLoading(true);
       setError(null);
       
+      console.log('🔄 Début de la prévisualisation');
+      
+      // Sanitiser les données de l'étudiant
+      const sanitizedStudent = sanitizeStudentData(student);
+      console.log('🧹 Données étudiant sanitisées pour prévisualisation');
+      
       const safePosition = position && typeof position.x === 'number' && typeof position.y === 'number' 
         ? position 
         : { x: 470, y: 220 };
       
       const success = await openAttestationPreview(
-        student, 
+        sanitizedStudent, 
         {
           ...schoolSettings,
           theme: attestationTheme,
@@ -418,7 +385,7 @@ export const AttestationGenerator: React.FC = () => {
         notifyError("Erreur de prévisualisation", message);
       } else {
         const encryptionStatus = encryptionEnabled ? " (avec chiffrement)" : " (sans chiffrement)";
-        notifySuccess("Prévisualisation", `Aperçu généré pour ${student.NOM} ${student.PRENOM}${encryptionStatus}`);
+        notifySuccess("Prévisualisation", `Aperçu généré pour ${sanitizedStudent.NOM} ${sanitizedStudent.PRENOM}${encryptionStatus}`);
       }
       
     } catch (err) {
@@ -651,7 +618,7 @@ export const AttestationGenerator: React.FC = () => {
             onGenerateSelected={generateAttestations}
             documentType="attestation"
             isLoading={isLoading}
-            additionalInfo={encryptionEnabled ? "Chiffrement activé" : undefined}
+            additionalInfo={encryptionEnabled ? "Chiffrement activé" : "Sans chiffrement"}
           />
         </TabsContent>
 
@@ -677,18 +644,21 @@ export const AttestationGenerator: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Bouton de test pour développeurs */}
+      {/* Boutons de test pour développeurs */}
       {process.env.NODE_ENV === 'development' && excelData.length > 0 && (
         <Card className="border-dashed border-gray-300">
           <CardContent className="p-4">
             <h4 className="font-medium mb-2">🧪 Outils de développement</h4>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => console.log('QR Content:', getQrCodePayloadWithEncryption(excelData[0], 'attestation', encryptionEnabled))}
+                onClick={() => {
+                  const testStudent = sanitizeStudentData(excelData[0]);
+                  console.log('🧹 Données sanitisées:', testStudent);
+                }}
               >
-                Voir contenu QR
+                Test sanitisation
               </Button>
               <Button
                 variant="outline"
@@ -696,6 +666,36 @@ export const AttestationGenerator: React.FC = () => {
                 onClick={() => testStudentEncryption(excelData[0])}
               >
                 Test chiffrement
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const testStudent = sanitizeStudentData(excelData[0]);
+                    const qrCode = await generateQrCodeBase64(testStudent, 'attestation', encryptionEnabled);
+                    console.log('📱 QR Code généré:', qrCode.substring(0, 50) + '...');
+                    notifySuccess("Test", "QR Code généré avec succès");
+                  } catch (error) {
+                    console.error('❌ Erreur QR:', error);
+                    notifyError("Test", "Erreur lors de la génération du QR Code");
+                  }
+                }}
+              >
+                Test QR Code
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  console.log('📊 État actuel:');
+                  console.log('- Données Excel:', excelData.length, 'étudiants');
+                  console.log('- Chiffrement:', encryptionEnabled);
+                  console.log('- Paramètres école:', schoolSettings);
+                  console.log('- Thème:', attestationTheme);
+                }}
+              >
+                État du système
               </Button>
             </div>
           </CardContent>

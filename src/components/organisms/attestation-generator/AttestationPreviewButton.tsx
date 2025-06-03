@@ -3,14 +3,14 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Eye, Loader2 } from "lucide-react";
-import { StudentExcelRecord } from "@/lib/helpers/qrcode";
+import { StudentExcelRecord, sanitizeStudentData } from "@/lib/helpers/qrcode";
 import { generateAttestationHTML } from "@/lib/attestation-generator/html-generator";
 
 interface AttestationPreviewButtonProps {
   student: StudentExcelRecord;
   schoolSettings: any;
   qrCodePosition: { x: number; y: number };
-  encryptionEnabled?: boolean; // Nouveau prop pour contrôler le chiffrement
+  encryptionEnabled?: boolean;
   onError?: (message: string) => void;
   variant?: "default" | "outline" | "secondary" | "destructive" | "ghost" | "link";
   size?: "default" | "sm" | "lg" | "icon";
@@ -21,7 +21,7 @@ export const AttestationPreviewButton: React.FC<AttestationPreviewButtonProps> =
   student,
   schoolSettings,
   qrCodePosition,
-  encryptionEnabled = true, // Par défaut, le chiffrement est activé
+  encryptionEnabled = true,
   onError,
   variant = "outline",
   size = "sm",
@@ -35,6 +35,10 @@ export const AttestationPreviewButton: React.FC<AttestationPreviewButtonProps> =
       
       console.log('🔄 Début de la prévisualisation avec chiffrement:', encryptionEnabled);
       
+      // Sanitiser les données de l'étudiant
+      const sanitizedStudent = sanitizeStudentData(student);
+      console.log('🧹 Données étudiant sanitisées');
+      
       // Vérification de sécurité pour la position du QR code
       const safeQrPosition = qrCodePosition && 
         typeof qrCodePosition.x === 'number' && 
@@ -43,16 +47,15 @@ export const AttestationPreviewButton: React.FC<AttestationPreviewButtonProps> =
         : { x: 470, y: 220 };
       
       // S'assurer que l'étudiant a un établissement défini
-      const studentWithEstablishment = {
-        ...student,
-        ETABLISSEMENT: student.ETABLISSEMENT || schoolSettings.nameFrench || "ETABLISSEMENT NON DEFINI"
-      };
+      if (!sanitizedStudent.ETABLISSEMENT || sanitizedStudent.ETABLISSEMENT === 'N/D') {
+        sanitizedStudent.ETABLISSEMENT = schoolSettings.nameFrench || "ETABLISSEMENT NON DEFINI";
+      }
       
       console.log('📊 Données étudiant pour prévisualisation:', {
-        nom: studentWithEstablishment.NOM,
-        prenom: studentWithEstablishment.PRENOM,
-        matricule: studentWithEstablishment.MATRICULE,
-        etablissement: studentWithEstablishment.ETABLISSEMENT,
+        nom: sanitizedStudent.NOM,
+        prenom: sanitizedStudent.PRENOM,
+        matricule: sanitizedStudent.MATRICULE,
+        etablissement: sanitizedStudent.ETABLISSEMENT,
         encryptionEnabled
       });
       
@@ -63,7 +66,7 @@ export const AttestationPreviewButton: React.FC<AttestationPreviewButtonProps> =
         try {
           console.log('🔄 Utilisation du renderer IPC...');
           htmlContent = await window.attestationRenderer.renderHTML({
-            student: studentWithEstablishment,
+            student: sanitizedStudent,
             settings: schoolSettings,
             options: {
               qrCodePosition: safeQrPosition,
@@ -80,7 +83,7 @@ export const AttestationPreviewButton: React.FC<AttestationPreviewButtonProps> =
       // Si htmlContent n'est pas défini, utiliser directement la fonction de génération HTML
       if (!htmlContent) {
         console.log('🔄 Utilisation du générateur HTML direct...');
-        htmlContent = await generateAttestationHTML(studentWithEstablishment, schoolSettings, {
+        htmlContent = await generateAttestationHTML(sanitizedStudent, schoolSettings, {
           qrCodePosition: safeQrPosition,
           encryptionEnabled: encryptionEnabled
         });
@@ -89,6 +92,17 @@ export const AttestationPreviewButton: React.FC<AttestationPreviewButtonProps> =
       
       if (!htmlContent) {
         throw new Error("Aucun contenu HTML généré");
+      }
+      
+      // Ajouter des informations de débogage dans le HTML si en mode développement
+      if (process.env.NODE_ENV === 'development') {
+        htmlContent = htmlContent.replace('</body>', `
+          <div style="position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.8); color: white; padding: 5px; font-size: 10px; z-index: 9999;">
+            🔐 Chiffrement: ${encryptionEnabled ? 'Activé' : 'Désactivé'}<br>
+            📊 Étudiant: ${sanitizedStudent.NOM} ${sanitizedStudent.PRENOM}<br>
+            🏢 Établissement: ${sanitizedStudent.ETABLISSEMENT}
+          </div>
+        </body>`);
       }
       
       // Ouvrir la prévisualisation
@@ -101,7 +115,7 @@ export const AttestationPreviewButton: React.FC<AttestationPreviewButtonProps> =
           success = await window.ipcRenderer.invoke(
             'show-preview', 
             htmlContent, 
-            'Prévisualisation de l\'attestation'
+            `Prévisualisation de l'attestation - ${sanitizedStudent.NOM} ${sanitizedStudent.PRENOM}`
           );
           console.log('✅ Fenêtre de prévisualisation ouverte via IPC');
         } catch (showPreviewError) {
@@ -116,7 +130,7 @@ export const AttestationPreviewButton: React.FC<AttestationPreviewButtonProps> =
         const previewWindow = window.open('', '_blank');
         if (previewWindow) {
           previewWindow.document.write(htmlContent);
-          previewWindow.document.title = 'Prévisualisation de l\'attestation';
+          previewWindow.document.title = `Prévisualisation de l'attestation - ${sanitizedStudent.NOM} ${sanitizedStudent.PRENOM}`;
           previewWindow.document.close();
           success = true;
           console.log('✅ Fenêtre de prévisualisation ouverte en fallback');
@@ -154,7 +168,7 @@ export const AttestationPreviewButton: React.FC<AttestationPreviewButtonProps> =
       ) : (
         <>
           <Eye className="h-4 w-4 mr-1" />
-          Aperçu
+          Aperçu{encryptionEnabled ? ' 🔐' : ''}
         </>
       )}
     </Button>

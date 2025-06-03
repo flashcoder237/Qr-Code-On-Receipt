@@ -1,8 +1,7 @@
 // src/lib/attestation-generator/html-generator.ts - Version corrigée avec chiffrement
-import { StudentExcelRecord } from '../helpers/qrcode';
+import { StudentExcelRecord, sanitizeStudentData, generateQrCodeBase64 } from '../helpers/qrcode';
 import { formatDate, calculateGrade, calculateMention } from './utils';
 import { AttestationThemeSettingsPayload, defaultAttestationTheme } from '../form-schemas/attestation-theme-settings';
-import { createCryptoDataFromStudent } from '../helpers/qrcode';
 
 interface SchoolSettings {
   establishmentType: string;
@@ -48,6 +47,10 @@ export async function generateAttestationHTML(
 
   console.log(`🔄 Génération HTML attestation pour ${student.NOM} ${student.PRENOM}...`);
   
+  // Sanitiser les données de l'étudiant
+  const sanitizedStudent = sanitizeStudentData(student);
+  console.log('🧹 Données étudiant sanitisées');
+  
   // Par défaut, le chiffrement est activé sauf indication contraire
   const encryptionEnabled = options.encryptionEnabled !== false;
   console.log(`🔐 Chiffrement: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
@@ -61,36 +64,37 @@ export async function generateAttestationHTML(
   const facultyLogo = settings.facultyLogo || '';
   
   // Année académique formatée
-  const academicYear = student["ANNEE ACADEMIQUE"] || "2023/2024";
+  const academicYear = sanitizedStudent["ANNEE ACADEMIQUE"];
   
   // Date du jury
-  const juryDate = student["DATE JURY"] || '';
+  const juryDate = sanitizedStudent["DATE JURY"];
   
   // Année courante pour le numéro de référence (les 2 derniers chiffres)
   const currentYear = new Date().getFullYear() % 100;
   
   // Étudiant infos
-  const studentName = student.NOM;
-  const studentFirstname = student.PRENOM;
+  const studentName = sanitizedStudent.NOM;
+  const studentFirstname = sanitizedStudent.PRENOM;
   const studentFullName = `${studentName} ${studentFirstname}`;
-  const matricule = student.MATRICULE;
-  const birthDate = student["DATE DE NAISSANCE"] || '';
-  const birthPlace = student["LIEU DE NAISSANCE"] || '';
+  const matricule = sanitizedStudent.MATRICULE;
+  const birthDate = sanitizedStudent["DATE DE NAISSANCE"];
+  const birthPlace = sanitizedStudent["LIEU DE NAISSANCE"];
   
   // Informations académiques
-  const fieldOfStudy = student.DOMAINE || "SCIENCES MEDICO-SANITAIRES";
-  const course = student.PARCOURS || "SCIENCES INFIRMIÈRES";
-  const specialization = student.SPECIALITE || "SOINS INFIRMIERS";
-  const option = student.OPTION || "";
+  const fieldOfStudy = sanitizedStudent.DOMAINE;
+  const course = sanitizedStudent.PARCOURS;
+  const specialization = sanitizedStudent.SPECIALITE;
+  const option = sanitizedStudent.OPTION;
   
   // Crédits et notes
-  const credits = student["TOTAL CREDIT"] || '60';
-  const average = typeof student.MOYENNE === 'number' ? student.MOYENNE.toFixed(2) : String(student.MOYENNE);
-  const grade = student.GRADE || calculateGrade(typeof student.MOYENNE === 'number' ? student.MOYENNE : parseFloat(String(student.MOYENNE)));
-  const mention = student.MENTION || calculateMention(typeof student.MOYENNE === 'number' ? student.MOYENNE : parseFloat(String(student.MOYENNE)));
+  const credits = sanitizedStudent["TOTAL CREDIT"];
+  const average = typeof sanitizedStudent.MOYENNE === 'number' ? 
+    sanitizedStudent.MOYENNE.toFixed(2) : String(sanitizedStudent.MOYENNE);
+  const grade = sanitizedStudent.GRADE;
+  const mention = sanitizedStudent.MENTION;
   
   // Finalité
-  const finality = student["FINALITE"] || 'LICENCE PROFESSIONNELLE';
+  const finality = sanitizedStudent["FINALITE"];
 
   // Générer le QR code avec chiffrement
   let qrCodeImage = options.qrCodeImage;
@@ -98,13 +102,7 @@ export async function generateAttestationHTML(
     try {
       console.log(`🔄 Génération QR Code intégré (Chiffrement: ${encryptionEnabled})`);
       
-      // CORRECTION: S'assurer que l'établissement est défini
-      const studentWithEstablishment = {
-        ...student,
-        ETABLISSEMENT: student.ETABLISSEMENT || settings.nameFrench
-      };
-      
-      qrCodeImage = await createCryptoDataFromStudent(studentWithEstablishment, 'attestation', encryptionEnabled);
+      qrCodeImage = await generateQrCodeBase64(sanitizedStudent, 'attestation', encryptionEnabled);
       
       if (encryptionEnabled) {
         console.log('✅ QR Code avec chiffrement généré pour le HTML');
@@ -374,6 +372,7 @@ export async function generateAttestationHTML(
       padding: 2px 6px;
       border-radius: 3px;
       display: ${encryptionEnabled ? 'block' : 'none'};
+      z-index: 1000;
     }
 
     /* Filigrane */
@@ -466,7 +465,7 @@ export async function generateAttestationHTML(
       }
       
       .encryption-indicator {
-        display: none;
+        display: ${encryptionEnabled ? 'block' : 'none'} !important;
       }
     }
   `;
@@ -486,7 +485,7 @@ export async function generateAttestationHTML(
     <div class="container">
         <!-- Indicateur de chiffrement -->
         <div class="encryption-indicator no-print">
-            🔐 QR Chiffré
+            🔐 QR ${encryptionEnabled ? 'Chiffré' : 'Non Chiffré'}
         </div>
 
         <!-- Filigrane IPES -->
@@ -594,7 +593,7 @@ export async function generateAttestationHTML(
                 
                 <p>Inscrit(e) à <strong id="to-hidden">${settings.nameFrench}</strong><strong id="to-nothidden">la Faculté de Medecine et des Sciences Pharmaceutiques</strong> sous le matricule: <strong>${matricule}</strong><br>
                 ${theme.showBilingualText ? '<em>Registered under the matricule number:</em>' : ''}</p>
-                <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : ${settings.cycle} en ${settings.cycle}<br>
+                <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : ${settings.cycle || 'N/D'} en ${settings.cycle || 'N/D'}<br>
                 ${theme.showBilingualText ? '<em>Having successfully fufilled the requirements qualifying for the :</em>' : ''}</p>
 
               
@@ -607,13 +606,13 @@ export async function generateAttestationHTML(
                         <th>Domaine<br>${theme.showBilingualText ? '<em style="font-weight: normal">Domain of the study</em>' : ''}</th>
                         <th>Parcours<br>${theme.showBilingualText ? '<em style="font-weight: normal">Course</em>' : ''}</th>
                         <th>Spécialité<br>${theme.showBilingualText ? '<em style="font-weight: normal">Specialization</em>' : ''}</th>
-                        ${option ? '<th>Option<br>' + (theme.showBilingualText ? '<em style="font-weight: normal">Learning option</em>' : '') + '</th>' : ''}
+                        ${option && option !== 'N/D' ? '<th>Option<br>' + (theme.showBilingualText ? '<em style="font-weight: normal">Learning option</em>' : '') + '</th>' : ''}
                     </tr>
                     <tr style="background-color:${theme.tableHeaderBgColor}">
                         <td><strong>${fieldOfStudy}</strong></td>
                         <td><strong>${course}</strong></td>
                         <td><strong>${specialization}</strong></td>
-                        ${option ? `<td><strong>${option}</strong></td>` : ''}
+                        ${option && option !== 'N/D' ? `<td><strong>${option}</strong></td>` : ''}
                     </tr>
                 </table>
             </div>
@@ -642,48 +641,47 @@ export async function generateAttestationHTML(
             
             <p>En foi de quoi la présente Attestation est délivrée pour servir et valoir ce que de droit.<br>
             ${theme.showBilingualText ? '<em>In witness where of the present testimonial is given with all the privileges there to pertaining.</em>' : ''}</p>
+        </div>
         
-            <div class="footer">
-                <div class="signature">
-                    ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-left' ? `
-                    <div class="qr-code">
-                        ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code" />` : 
-                          '<div class="qr-image"></div>'}
-                    </div>
-                    ` : ''}
-                    
-                    <div id="to-hidden"><strong>Le Directeur de L'${settings.nameAbreviation}</strong><br>
-                    ${theme.showBilingualText ? `<em>The Director of the ${settings.nameAbreviation}</em>` : ''}</div>
-                </div>
-                
-                ${theme.qrCodePosition === 'bottom-center' ? `
+        <div class="footer">
+            <div class="signature">
+                ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-left' ? `
                 <div class="qr-code">
-                    ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code" />` : 
-                      '<div class="qr-image"></div>'}
+                    ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffré)' : ''}" />` : 
+                      '<div class="qr-image" style="background: #eee; display: flex; align-items: center; justify-content: center; font-size: 10px;">QR Code</div>'}
                 </div>
                 ` : ''}
                 
-                <div class="signature">
-                    <p><strong>Douala, le</strong><br>
-                    ${theme.showBilingualText ? '<em>Douala, the</em>' : ''}</p>
-    
-                    <p id="to-hidden" style="padding-bottom: 30px; margin-top: ${theme.signatureLayout === 'stacked' ? '2px' : '10px'};">
-                    <strong>Le Recteur de l'Université de Douala</strong><br>
-                    ${theme.showBilingualText ? '<em>The Rector of the University of Douala</em>' : ''}</p>
-                    <p id="to-nothidden" style="padding-bottom: 30px; margin-top: ${theme.signatureLayout === 'stacked' ? '2px' : '10px'};">
-                    <strong>Le DOYEN</strong><br>
-                    ${theme.showBilingualText ? '<em>The DEAN</em>' : ''}</p>
-                    
-                    ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-right' ? `
-                    <div class="qr-code">
-                        ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code" />` : 
-                          '<div class="qr-image"></div>'}
-                    </div>
-                    ` : ''}
+                <div id="to-hidden"><strong>Le Directeur de L'${settings.nameAbreviation}</strong><br>
+                ${theme.showBilingualText ? `<em>The Director of the ${settings.nameAbreviation}</em>` : ''}</div>
+            </div>
+            
+            ${theme.qrCodePosition === 'bottom-center' ? `
+            <div class="qr-code">
+                ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffré)' : ''}" />` : 
+                  '<div class="qr-image" style="background: #eee; display: flex; align-items: center; justify-content: center; font-size: 10px;">QR Code</div>'}
+            </div>
+            ` : ''}
+            
+            <div class="signature">
+                <p><strong>Douala, le</strong><br>
+                ${theme.showBilingualText ? '<em>Douala, the</em>' : ''}</p>
+
+                <p id="to-hidden" style="padding-bottom: 30px; margin-top: ${theme.signatureLayout === 'stacked' ? '2px' : '10px'};">
+                <strong>Le Recteur de l'Université de Douala</strong><br>
+                ${theme.showBilingualText ? '<em>The Rector of the University of Douala</em>' : ''}</p>
+                <p id="to-nothidden" style="padding-bottom: 30px; margin-top: ${theme.signatureLayout === 'stacked' ? '2px' : '10px'};">
+                <strong>Le DOYEN</strong><br>
+                ${theme.showBilingualText ? '<em>The DEAN</em>' : ''}</p>
+                
+                ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-right' ? `
+                <div class="qr-code">
+                    ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffré)' : ''}" />` : 
+                      '<div class="qr-image" style="background: #eee; display: flex; align-items: center; justify-content: center; font-size: 10px;">QR Code</div>'}
                 </div>
+                ` : ''}
             </div>
-            </div>
-        
+        </div>
         
         <div class="disclaimer">
             ${theme.customFooterText ? theme.customFooterText : `
@@ -698,23 +696,23 @@ export async function generateAttestationHTML(
                 ` : ''}
             </div>
             `}
+            ${encryptionEnabled ? '<br><small style="color: #006400;">🔐 QR Code sécurisé avec chiffrement pour vérification mobile.</small>' : ''}
         </div>
         
         ${theme.qrCodePosition === 'custom' && options.qrCodePosition ? `
         <div style="position: absolute; left: ${options.qrCodePosition.x}px; top: ${options.qrCodePosition.y}px;" class="qr-code">
-            ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code" />` : 
-              '<div class="qr-image"></div>'}
+            ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffré)' : ''}" />` : 
+              '<div class="qr-image" style="background: #eee; display: flex; align-items: center; justify-content: center; font-size: 10px;">QR Code</div>'}
         </div>
         ` : ''}
     </div>
-    
- 
 </body>
 </html>
   `;
   
   console.log(`✅ HTML généré avec succès pour ${studentFullName}`);
   console.log(`🔐 Chiffrement QR: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
+  console.log(`📋 QR Code inclus: ${qrCodeImage ? 'Oui' : 'Non'}`);
   
   return html;
 }
