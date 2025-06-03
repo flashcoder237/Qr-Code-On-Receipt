@@ -301,7 +301,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                 : isLoading
                 ? "Chargement en cours..."
                 : validationResult?.isValid
-                ? "✅ Fichier validé avec succès"
+                ? "✅ Fichier validé avec succès cliquer pour charger un autre fichier"
                 : validationResult && !validationResult.isValid
                 ? "❌ Problèmes détectés dans le fichier"
                 : `Glissez-déposez un fichier Excel pour ${documentType === 'releve' ? 'les relevés' : 'les attestations'}`}
