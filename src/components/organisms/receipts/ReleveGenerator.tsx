@@ -1,4 +1,4 @@
-// src/components/organisms/receipts/ReleveGenerator.tsx - Version mise à jour avec notifications et historique
+// src/components/organisms/receipts/ReleveGenerator.tsx - Version mise à jour avec validation
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from "../../ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { Button } from "../../ui/button";
 import { useHotkeys } from "react-hotkeys-hook";
-import { Eye, Download, AlertCircle, CheckCircle, Users } from "lucide-react";
+import { Eye, Download, AlertCircle, CheckCircle, Users, RefreshCw, AlertTriangle } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { useNotifications } from "@/components/ui/notification-system";
 import { useDocumentHistory } from "@/components/organisms/document-history/DocumentHistoryManager";
@@ -25,6 +25,9 @@ import { useConfiguration } from "./hooks/useConfiguration";
 import { useProcessing } from "./hooks/useProcessing";
 import { useTranscriptData } from "./hooks/useTranscriptData";
 import { StudentRecord } from "../../../types/student";
+
+// Validators
+import { ValidationResult } from "@/lib/validators/excel-columns";
 
 const LOCAL_STORAGE_KEY = "academicConfigs";
 
@@ -51,6 +54,8 @@ export const ReleveGenerator: React.FC = () => {
   const [previewContentUrl, setPreviewContentUrl] = useState<string | null>(null);
   const [selectedStudentMatricules, setSelectedStudentMatricules] = useState<string[]>([]);
   const [configsLoaded, setConfigsLoaded] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [forceShowMapping, setForceShowMapping] = useState(false);
 
   // Hooks pour notifications et historique
   const { notifySuccess, notifyError, notifyWarning } = useNotifications();
@@ -142,6 +147,8 @@ export const ReleveGenerator: React.FC = () => {
         setPreviewContentUrl(null);
       }
       setError(null);
+      setValidationResult(null);
+      setForceShowMapping(false);
     },
     onSemesterChange: (semesterId) => {
       const config = configs.find(c => c.id === selectedConfigId);
@@ -165,7 +172,7 @@ export const ReleveGenerator: React.FC = () => {
     excelData,
     excelColumns,
     mappingComplete,
-    handleFileLoaded,
+    handleFileLoaded: handleDataLoaded,
     clearData,
     setMappingStatus,
   } = useTranscriptData();
@@ -202,6 +209,72 @@ export const ReleveGenerator: React.FC = () => {
     return ecs;
   }, [currentConfig, currentSemester]);
 
+  // Handle file loading with validation and automatic mapping
+  const handleFileLoadedWithMapping = useCallback((data: any[], columns: string[], mapping?: { [key: string]: string }) => {
+    handleDataLoaded(data, columns);
+    
+    if (mapping) {
+      // Appliquer le mapping automatique si fourni
+      Object.entries(mapping).forEach(([ecId, columnName]) => {
+        if (columnName && columns.includes(columnName)) {
+          handleMappingChange(ecId, columnName);
+        }
+      });
+    }
+
+    setError(null);
+    setForceShowMapping(false);
+  }, [handleDataLoaded, handleMappingChange]);
+
+  // Handle validation results
+  const handleValidationResult = useCallback((result: ValidationResult) => {
+  setValidationResult(result);
+  
+  if (result.isValid) {
+    // Succès avec correspondances automatiques
+    const mappedCount = Object.keys(result.mappedColumns || {}).length;
+    if (mappedCount > 0) {
+      notifySuccess(
+        "Validation réussie", 
+        `Toutes les colonnes requises détectées avec ${mappedCount} correspondance(s) automatique(s)`
+      );
+      
+      // Afficher les correspondances dans une notification détaillée
+      const mappings = Object.entries(result.mappedColumns || {})
+        .map(([key, col]) => `• ${key} ← "${col}"`)
+        .join('\n');
+      
+      setTimeout(() => {
+        notifyInfo(
+          "Correspondances automatiques", 
+          `Colonnes mappées automatiquement :\n${mappings}`,
+          { duration: 8000 }
+        );
+      }, 1000);
+    } else {
+      notifySuccess("Validation", "Toutes les colonnes requises sont présentes");
+    }
+  } else {
+    if (result.missingRequired.length > 0) {
+      const missingList = result.missingRequired
+        .map(req => req.displayName)
+        .join(', ');
+      
+      notifyError(
+        "Colonnes manquantes", 
+        `Colonnes obligatoires manquantes : ${missingList}`
+      );
+      setForceShowMapping(true);
+    } else {
+      const optionalCount = result.missingOptional.length;
+      notifyWarning(
+        "Validation partielle", 
+        `${optionalCount} colonne(s) optionnelle(s) manquante(s). Vous pouvez continuer ou les ajouter.`
+      );
+    }
+  }
+}, [notifySuccess, notifyError, notifyWarning, notifyInfo]);
+
   // Check if mapping is complete when available ECs or column mapping changes
   useEffect(() => {
     if (!selectedConfigId || !selectedSemesterId) return;
@@ -213,6 +286,7 @@ export const ReleveGenerator: React.FC = () => {
       
       if (complete) {
         notifySuccess("Correspondance", "Correspondance des colonnes complétée");
+        setForceShowMapping(false);
       }
     }
   }, [getAvailableECs, columnMapping, setMappingStatus, selectedConfigId, selectedSemesterId, notifySuccess]);
@@ -224,6 +298,13 @@ export const ReleveGenerator: React.FC = () => {
       notifySuccess("Import", `${excelData.length} étudiant(s) importé(s) avec succès`);
     }
   }, [excelData, notifySuccess]);
+
+  // Auto-switch to mapping tab if validation issues
+  useEffect(() => {
+    if (forceShowMapping && validationResult && !validationResult.isValid) {
+      setActiveTab("mapping");
+    }
+  }, [forceShowMapping, validationResult]);
 
   // Fonction pour charger un mapping complet
   const handleLoadMapping = useCallback((mapping: Record<string, string>) => {
@@ -495,6 +576,14 @@ export const ReleveGenerator: React.FC = () => {
     handlePreviewReleve(student);
   }, [handlePreviewReleve]);
 
+  // Force retry upload
+  const handleRetryUpload = useCallback(() => {
+    setValidationResult(null);
+    setError(null);
+    setForceShowMapping(false);
+    clearData();
+  }, [clearData]);
+
   return (
     <div className="container mx-auto">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -502,6 +591,9 @@ export const ReleveGenerator: React.FC = () => {
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
           <TabsTrigger value="mapping" disabled={!selectedConfigId || !selectedSemesterId}>
             Correspondance
+            {validationResult && !validationResult.isValid && (
+              <AlertTriangle className="ml-2 h-4 w-4 text-red-500" />
+            )}
           </TabsTrigger>
           <TabsTrigger value="selection" disabled={!mappingComplete || excelData.length === 0}>
             Sélection ({selectedStudentMatricules.length})
@@ -522,7 +614,20 @@ export const ReleveGenerator: React.FC = () => {
             <TabsContent value="configuration">
               <Card>
                 <CardHeader>
-                  <CardTitle>Configuration des relevés de notes</CardTitle>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Configuration des relevés de notes</CardTitle>
+                    {validationResult && !validationResult.isValid && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRetryUpload}
+                        className="text-orange-600 border-orange-300"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Réimporter le fichier
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <ConfigurationSelector 
@@ -542,18 +647,21 @@ export const ReleveGenerator: React.FC = () => {
                   )}
 
                   <FileUploader
-                    onFileLoaded={handleFileLoaded}
+                    onFileLoaded={handleFileLoadedWithMapping}
                     onError={(error) => {
                       setError(error);
                       notifyError("Erreur de fichier", error);
                     }}
+                    onValidationResult={handleValidationResult}
                     isLoading={processingState.isLoading}
+                    documentType="releve"
+                    allowPartialImport={true}
                   />
 
                   {error && (
                     <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{error}</AlertDescription>
+                      <AlertDescription className="whitespace-pre-wrap">{error}</AlertDescription>
                     </Alert>
                   )}
 
@@ -582,9 +690,21 @@ export const ReleveGenerator: React.FC = () => {
                       className="pt-4"
                     >
                       <div className="flex items-center justify-between mb-4">
-                        <p className="text-sm text-gray-600">
-                          {excelData.length} ligne(s) chargée(s)
-                        </p>
+                        <div className="space-y-1">
+                          <p className="text-sm text-gray-600">
+                            {excelData.length} ligne(s) chargée(s)
+                          </p>
+                          {validationResult && (
+                            <p className={`text-xs ${
+                              validationResult.isValid ? 'text-green-600' : 'text-orange-600'
+                            }`}>
+                              {validationResult.isValid 
+                                ? "✅ Validation réussie"
+                                : `⚠️ ${validationResult.missingRequired.length} colonne(s) manquante(s)`
+                              }
+                            </p>
+                          )}
+                        </div>
                         
                         {selectedStudentMatricules.length > 0 && (
                           <div className="flex items-center gap-2">
@@ -603,6 +723,9 @@ export const ReleveGenerator: React.FC = () => {
                           disabled={!selectedConfigId || !selectedSemesterId}
                         >
                           Configurer la correspondance
+                          {validationResult && !validationResult.isValid && (
+                            <AlertTriangle className="ml-2 h-4 w-4 text-orange-500" />
+                          )}
                         </Button>
                         
                         {mappingComplete && (
@@ -646,7 +769,17 @@ export const ReleveGenerator: React.FC = () => {
             <TabsContent value="mapping">
               <Card>
                 <CardHeader>
-                  <CardTitle>Correspondance des colonnes</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    Correspondance des colonnes
+                    {validationResult && !validationResult.isValid && (
+                      <AlertTriangle className="h-5 w-5 text-orange-500" />
+                    )}
+                  </CardTitle>
+                  {validationResult && !validationResult.isValid && (
+                    <div className="text-sm text-orange-600">
+                      Des colonnes sont manquantes. Configurez la correspondance ou corrigez votre fichier Excel.
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <ColumnMappingEditor

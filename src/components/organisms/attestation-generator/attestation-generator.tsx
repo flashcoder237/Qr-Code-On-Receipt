@@ -1,4 +1,4 @@
-// src/components/organisms/attestation-generator/attestation-generator.tsx - Version mise à jour avec chiffrement
+// src/components/organisms/attestation-generator/attestation-generator.tsx - Version mise à jour avec validation et chiffrement
 import React, { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { generateQrCodeBase64, StudentExcelRecord, getQrCodePayloadWithEncryption } from "@/lib/helpers/qrcode";
+import { generateQrCodeBase64, StudentExcelRecord } from "@/lib/helpers/qrcode";
 import JSZip from "jszip";
 import * as XLSX from "xlsx";
 import { useLocalStorage } from "usehooks-ts";
@@ -27,6 +27,7 @@ import { AttestationPreviewButton } from "./AttestationPreviewButton";
 import { AttestationThemeEditor } from "./AttestationThemeEditor";
 import { ThemePresetSelector } from "./ThemePresetSelector";
 import { StudentSelector } from "../student-selector";
+import { FileUploader } from "../receipts/components/FileUploader";
 import { FileDown, Loader2, Settings2, Table2, Palette, FileText, Eye, Wand2, Users, AlertCircle, CheckCircle, Shield, ShieldCheck } from "lucide-react";
 import { calculateGrade, calculateMention, getCurrentAcademicYear } from "@/lib/attestation-generator/utils";
 import { openAttestationPreview } from "@/lib/attestation-generator/preview";
@@ -34,14 +35,17 @@ import { AttestationThemeSettingsPayload, defaultAttestationTheme } from "@/lib/
 import { useNotifications } from "@/components/ui/notification-system";
 import { useDocumentHistory } from "@/components/organisms/document-history/DocumentHistoryManager";
 import { testEncryptionDecryption, createCryptoDataFromStudent } from "@/lib/crypto/encryption";
+import { validateExcelColumns, ValidationResult } from "@/lib/validators/excel-columns";
 
 export const AttestationGenerator: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"generator" | "settings" | "theme" | "presets" | "selection">("generator");
   const [excelData, setExcelData] = useState<StudentExcelRecord[]>([]);
+  const [excelColumns, setExcelColumns] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [selectedStudentMatricules, setSelectedStudentMatricules] = useState<string[]>([]);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   
   // Nouveau: Option pour activer/désactiver le chiffrement
   const [encryptionEnabled, setEncryptionEnabled] = useLocalStorage("attestation-encryption-enabled", true);
@@ -110,55 +114,89 @@ export const AttestationGenerator: React.FC = () => {
     }
   };
 
-  const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: "array" });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
+  // Gestionnaire d'upload Excel amélioré avec validation
+  const handleFileLoaded = (data: any[], columns: string[], mapping?: { [key: string]: string }) => {
+    try {
+      console.log('📊 Données reçues du fichier:', { 
+        rows: data.length, 
+        columns: columns.length,
+        mapping: Object.keys(mapping || {}).length 
+      });
 
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-            raw: true,
-          }) as any[];
-
-          const convertedData = jsonData.map((row) => {
-            const standardizedRow: StudentExcelRecord = {
-              ETABLISSEMENT: row["ETABLISSEMENT"] || schoolSettings.nameFrench,
-              NOM: row["NOM"] || "",
-              PRENOM: row["PRENOM"] || "",
-              MATRICULE: row["MATRICULE"] || row["MAT"] || "",
-              "DATE DE NAISSANCE": formatDate(row["DATE DE NAISSANCE"]),
-              "LIEU DE NAISSANCE": row["LIEU DE NAISSANCE"] || "",
-              PARCOURS: row["PARCOURS"] || row["FILIERE"] || "",
-              SPECIALITE: row["SPECIALITE"] || row["OPTION"] || "",
-              OPTION: row["OPTION"] || "",
-              MOYENNE: row["MOYENNE"] || row["MOY"] || 0,
-              GRADE: row["GRADE"] || calculateGrade(row["MOYENNE"] || row["MOY"] || 0),
-              MENTION: row["MENTION"] || calculateMention(row["MOYENNE"] || row["MOY"] || 0),
-              "ANNEE ACADEMIQUE": row["ANNEE ACADEMIQUE"] || getCurrentAcademicYear(),
-              "DATE JURY": formatDate(row["DATE JURY"]),
-              "FINALITE": row["FINALITE"] || "",
-              "TOTAL CREDIT": row["TOTAL CREDIT"] || "",
-              "DOMAINE": row["DOMAINE"] || "",
-            };
-            return standardizedRow;
-          });
-
-          setExcelData(convertedData);
-          setError(null);
+      // Appliquer le mapping automatique si fourni
+      let processedData = data;
+      if (mapping) {
+        processedData = data.map(row => {
+          const mappedRow: any = {};
           
-        } catch (err) {
-          console.error("Erreur lors de la lecture du fichier Excel", err);
-          const errorMessage = "Erreur lors de la lecture du fichier Excel";
-          setError(errorMessage);
-          notifyError("Erreur d'import", errorMessage);
-        }
-      };
-      reader.readAsArrayBuffer(file);
+          // Copier toutes les données originales
+          Object.keys(row).forEach(key => {
+            mappedRow[key] = row[key];
+          });
+          
+          // Appliquer le mapping
+          Object.entries(mapping).forEach(([targetKey, sourceKey]) => {
+            if (sourceKey && row[sourceKey] !== undefined) {
+              mappedRow[targetKey] = row[sourceKey];
+            }
+          });
+          
+          return mappedRow;
+        });
+      }
+
+      // Conversion et normalisation des données
+      const convertedData = processedData.map((row) => {
+        const standardizedRow: StudentExcelRecord = {
+          ETABLISSEMENT: row["ETABLISSEMENT"] || schoolSettings.nameFrench,
+          NOM: row["NOM"] || "",
+          PRENOM: row["PRENOM"] || "",
+          MATRICULE: row["MATRICULE"] || row["MAT"] || "",
+          "DATE DE NAISSANCE": formatDate(row["DATE DE NAISSANCE"]),
+          "LIEU DE NAISSANCE": row["LIEU DE NAISSANCE"] || "",
+          PARCOURS: row["PARCOURS"] || row["FILIERE"] || "",
+          SPECIALITE: row["SPECIALITE"] || row["OPTION"] || "",
+          OPTION: row["OPTION"] || "",
+          MOYENNE: row["MOYENNE"] || row["MOY"] || 0,
+          GRADE: row["GRADE"] || calculateGrade(row["MOYENNE"] || row["MOY"] || 0),
+          MENTION: row["MENTION"] || calculateMention(row["MOYENNE"] || row["MOY"] || 0),
+          "ANNEE ACADEMIQUE": row["ANNEE ACADEMIQUE"] || getCurrentAcademicYear(),
+          "DATE JURY": formatDate(row["DATE JURY"]),
+          "FINALITE": row["FINALITE"] || "",
+          "TOTAL CREDIT": row["TOTAL CREDIT"] || "",
+          "DOMAINE": row["DOMAINE"] || "",
+        };
+        return standardizedRow;
+      });
+
+      setExcelData(convertedData);
+      setExcelColumns(columns);
+      setError(null);
+      
+    } catch (err) {
+      console.error("Erreur lors du traitement du fichier Excel", err);
+      const errorMessage = "Erreur lors du traitement du fichier Excel";
+      setError(errorMessage);
+      notifyError("Erreur de traitement", errorMessage);
+    }
+  };
+
+  // Gestionnaire de validation
+  const handleValidationResult = (result: ValidationResult) => {
+    setValidationResult(result);
+    
+    if (!result.isValid) {
+      if (result.missingRequired.length > 0) {
+        notifyError(
+          "Colonnes manquantes", 
+          `${result.missingRequired.length} colonne(s) obligatoire(s) manquante(s)`
+        );
+      } else {
+        notifyWarning(
+          "Colonnes optionnelles", 
+          `${result.missingOptional.length} colonne(s) optionnelle(s) manquante(s)`
+        );
+      }
     }
   };
 
@@ -406,38 +444,6 @@ export const AttestationGenerator: React.FC = () => {
     previewAttestation(student);
   };
 
-  // Fonction pour tester le contenu d'un QR code
-  const previewQRContent = async (student: StudentExcelRecord) => {
-    try {
-      const qrContent = getQrCodePayloadWithEncryption(student, 'attestation');
-      console.log('📋 Contenu du QR Code:');
-      console.log(qrContent);
-      
-      // Créer une nouvelle fenêtre pour afficher le contenu
-      const previewWindow = window.open('', '_blank', 'width=600,height=800');
-      if (previewWindow) {
-        previewWindow.document.write(`
-          <html>
-            <head><title>Contenu QR Code - ${student.NOM} ${student.PRENOM}</title></head>
-            <body style="font-family: monospace; padding: 20px;">
-              <h2>Contenu du QR Code</h2>
-              <h3>Étudiant: ${student.NOM} ${student.PRENOM}</h3>
-              <h4>Chiffrement: ${encryptionEnabled ? 'Activé' : 'Désactivé'}</h4>
-              <hr>
-              <pre style="white-space: pre-wrap; word-wrap: break-word;">${qrContent}</pre>
-            </body>
-          </html>
-        `);
-        previewWindow.document.close();
-      }
-      
-      notifySuccess("QR Preview", "Contenu du QR code affiché");
-    } catch (error) {
-      console.error('Erreur lors de la prévisualisation du QR code:', error);
-      notifyError("Erreur", "Impossible de prévisualiser le contenu du QR code");
-    }
-  };
-
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
@@ -524,17 +530,17 @@ export const AttestationGenerator: React.FC = () => {
                 </CardContent>
               </Card>
 
+              {/* Upload de fichier amélioré */}
               <div className="space-y-2">
                 <Label>Fichier Excel des étudiants</Label>
-                <Input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleExcelUpload}
-                  disabled={isLoading}
+                <FileUploader
+                  onFileLoaded={handleFileLoaded}
+                  onError={setError}
+                  onValidationResult={handleValidationResult}
+                  isLoading={isLoading}
+                  documentType="attestation"
+                  allowPartialImport={true}
                 />
-                <p className="text-sm text-gray-500">
-                  Le fichier doit contenir au minimum: NOM, PRENOM, MATRICULE, DATE DE NAISSANCE, LIEU DE NAISSANCE, MOYENNE.
-                </p>
               </div>
 
               {error && (
@@ -569,6 +575,11 @@ export const AttestationGenerator: React.FC = () => {
                           Style: {attestationTheme.contentLayout} •
                           Chiffrement: {encryptionEnabled ? 'Activé' : 'Désactivé'}
                         </p>
+                        {validationResult && !validationResult.isValid && (
+                          <p className="text-sm text-yellow-700 mt-1">
+                            ⚠️ {validationResult.missingRequired.length} colonne(s) requise(s) manquante(s)
+                          </p>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <Button
@@ -675,7 +686,7 @@ export const AttestationGenerator: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => previewQRContent(excelData[0])}
+                onClick={() => console.log('QR Content:', getQrCodePayloadWithEncryption(excelData[0], 'attestation', encryptionEnabled))}
               >
                 Voir contenu QR
               </Button>

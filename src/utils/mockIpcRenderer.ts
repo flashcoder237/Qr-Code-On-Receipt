@@ -1,4 +1,4 @@
-// src/utils/mockIpcRenderer.ts - Mise à jour pour ajouter le support des attestations
+// src/utils/mockIpcRenderer.ts - Mise à jour pour ajouter le support du chiffrement
 // This file provides a mock implementation of the IPC renderer for development
 
 class MockInvocationError extends Error {
@@ -21,9 +21,9 @@ class MockInvocationError extends Error {
       return mockPdfData;
     },
     
-    // Ajout du support pour la génération d'attestations
     'generate-attestation-pdf': async (params: any) => {
       console.log('Mock attestation PDF generation called with:', params);
+      console.log('🔐 Chiffrement dans les paramètres:', params.options?.encryptionEnabled);
       
       // Simulate PDF generation with a delay
       await new Promise(resolve => setTimeout(resolve, 800));
@@ -38,7 +38,6 @@ class MockInvocationError extends Error {
   export const mockIpcRenderer = {
     on(channel: string, listener: (...args: any[]) => void) {
       console.log(`[MOCK] Registering listener for channel: ${channel}`);
-      // In a real implementation, we would store the listener
       return () => {
         console.log(`[MOCK] Removing listener for channel: ${channel}`);
       };
@@ -63,28 +62,28 @@ class MockInvocationError extends Error {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       // Implémentation pour le gestionnaire show-preview
-    if (channel === 'show-preview') {
-      const [htmlContent, title] = args;
-      console.log(`[MOCK] Affichage de la prévisualisation avec titre: ${title}`);
-      
-      // Ouvrir une nouvelle fenêtre avec le contenu
-      const previewWindow = window.open('', '_blank');
-      if (previewWindow) {
-        previewWindow.document.write(htmlContent);
-        previewWindow.document.title = title || 'Prévisualisation';
-        previewWindow.document.close();
-        return true;
-      } else {
-        console.error('[MOCK] Impossible d\'ouvrir la fenêtre de prévisualisation. Vérifiez que les popups ne sont pas bloqués.');
-        return false;
+      if (channel === 'show-preview') {
+        const [htmlContent, title] = args;
+        console.log(`[MOCK] Affichage de la prévisualisation avec titre: ${title}`);
+        
+        // Ouvrir une nouvelle fenêtre avec le contenu
+        const previewWindow = window.open('', '_blank');
+        if (previewWindow) {
+          previewWindow.document.write(htmlContent);
+          previewWindow.document.title = title || 'Prévisualisation';
+          previewWindow.document.close();
+          return true;
+        } else {
+          console.error('[MOCK] Impossible d\'ouvrir la fenêtre de prévisualisation. Vérifiez que les popups ne sont pas bloqués.');
+          return false;
+        }
       }
-    }
+      
       // Handle specific mock implementations
       if (channel === 'generate-transcript-pdf') {
         return await mockPdfGenerator[channel](args[0]);
       }
       
-      // Ajout du support pour les attestations
       if (channel === 'generate-attestation-pdf') {
         return await mockPdfGenerator[channel](args[0]);
       }
@@ -117,26 +116,6 @@ class MockInvocationError extends Error {
       return new Uint8Array(100);
     }
   };
-  
-  // Initialize the global objects if not already defined (for development environment)
-  export function initMockIpc() {
-    if (typeof window !== 'undefined') {
-      if (!window.ipcRenderer) {
-        console.log('[MOCK] Initializing mock IPC renderer');
-        window.ipcRenderer = mockIpcRenderer;
-      }
-      
-      if (!window.fs) {
-        console.log('[MOCK] Initializing mock fs');
-        window.fs = mockFs;
-      }
-      
-      if (!window.transcriptRenderer) {
-        console.log('[MOCK] Initializing mock transcript renderer');
-        window.transcriptRenderer = mockTranscriptRenderer;
-      }
-    }
-  }
 
   export const mockTranscriptRenderer = {
     async renderHTML(params: any) {
@@ -192,120 +171,167 @@ class MockInvocationError extends Error {
     }
   };
 
-  // Ajout d'un mock pour le rendu des attestations
+  // Mock pour le rendu des attestations avec support du chiffrement
   export const mockAttestationRenderer = {
-  async renderHTML(params: any) {
-    console.log('[MOCK] Rendering attestation HTML with params:', params);
-    
-    // Essayer d'importer le générateur HTML réel si disponible
-    try {
-      // Import dynamique pour éviter les erreurs de dépendance circulaire
-      const { generateAttestationHTML } = await import('../lib/attestation-generator/html-generator');
-      return await generateAttestationHTML(params.student, params.settings, params.options);
-    } catch (importError) {
-      console.warn('[MOCK] Could not import real HTML generator, using fallback:', importError);
+    async renderHTML(params: any) {
+      console.log('[MOCK] Rendering attestation HTML with params:', params);
+      console.log('[MOCK] 🔐 Chiffrement activé:', params.options?.encryptionEnabled);
       
-      // Simuler un délai et retourner un HTML de base pour une attestation
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Essayer d'importer le générateur HTML réel si disponible
+      try {
+        const { generateAttestationHTML } = await import('../lib/attestation-generator/html-generator');
+        console.log('[MOCK] ✅ Utilisation du générateur HTML réel');
+        return await generateAttestationHTML(params.student, params.settings, params.options);
+      } catch (importError) {
+        console.warn('[MOCK] ⚠️ Générateur HTML réel non disponible, utilisation du fallback:', importError);
+        
+        // Simuler un délai et retourner un HTML de base pour une attestation
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        const encryptionIndicator = params.options?.encryptionEnabled ? 
+          '<div style="position: absolute; top: 10px; right: 10px; background: rgba(0,128,0,0.1); padding: 5px; border-radius: 3px; font-size: 10px;">🔐 Chiffré</div>' : '';
+        
+        return `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <style>
+                body { font-family: Times New Roman; margin: 20px; position: relative; }
+                .header { text-align: center; margin-bottom: 20px; }
+                .title { font-size: 24px; font-weight: bold; text-transform: uppercase; }
+                .subtitle { font-size: 18px; font-style: italic; }
+                .student-info { margin: 30px 0; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                th, td { border: 1px solid #333; padding: 8px; text-align: center; }
+                .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
+                .disclaimer { position: absolute; bottom: 20px; font-size: 8px; font-style: italic; }
+                .qr-code { 
+                  position: absolute;
+                  ${params.options?.qrCodePosition ? 
+                    `left: ${params.options.qrCodePosition.x}px; top: ${params.options.qrCodePosition.y}px;` : 
+                    'right: 50px; top: 250px;'}
+                  width: 100px;
+                  height: 100px;
+                }
+                .encryption-indicator {
+                  position: absolute;
+                  top: 10px;
+                  right: 10px;
+                  background: rgba(0,128,0,0.1);
+                  padding: 5px;
+                  border-radius: 3px;
+                  font-size: 10px;
+                  color: #006400;
+                }
+              </style>
+            </head>
+            <body>
+              ${encryptionIndicator}
+              
+              <div class="header">
+                <div class="title">Attestation de Réussite</div>
+                <div class="subtitle">Attestation of Completion of Studies</div>
+                <p>Ref N° ............./24/UDo/FMSP/VDRC/${params.settings.nameAbreviation}</p>
+              </div>
+              
+              <div class="student-info">
+                <p><strong>Nom:</strong> ${params.student.NOM} ${params.student.PRENOM}</p>
+                <p><strong>Matricule:</strong> ${params.student.MATRICULE}</p>
+                <p><strong>Date de naissance:</strong> ${params.student["DATE DE NAISSANCE"]}</p>
+                <p><strong>Lieu de naissance:</strong> ${params.student["LIEU DE NAISSANCE"]}</p>
+              </div>
+              
+              <table>
+                <tr>
+                  <th>Domaine</th>
+                  <th>Parcours</th>
+                  <th>Spécialité</th>
+                  <th>Option</th>
+                </tr>
+                <tr>
+                  <td>SCIENCES MEDICO-SANITAIRES</td>
+                  <td>${params.student.PARCOURS || "SCIENCES INFIRMIERES"}</td>
+                  <td>${params.student.SPECIALITE || "SCIENCES INFIRMIERES"}</td>
+                  <td>${params.student.OPTION || "SCIENCES INFIRMIERES"}</td>
+                </tr>
+              </table>
+              
+              <table>
+                <tr>
+                  <th>Total de crédits</th>
+                  <th>Moyenne</th>
+                  <th>Mention</th>
+                  <th>Année académique</th>
+                  <th>Finalité/Voie</th>
+                </tr>
+                <tr>
+                  <td>60</td>
+                  <td>${typeof params.student.MOYENNE === 'number' ? 
+                        params.student.MOYENNE.toFixed(2) : params.student.MOYENNE}</td>
+                  <td>${params.student.MENTION || "Bien"} ${params.student.GRADE || "B+"}</td>
+                  <td>${params.student["ANNEE ACADEMIQUE"] || "2023/2024"}</td>
+                  <td>LICENCE PROFESSIONNELLE</td>
+                </tr>
+              </table>
+              
+              <div class="signatures">
+                <div>
+                  <p>Le Directeur de L'Institut</p>
+                  <p>The Director of the Institute</p>
+                </div>
+                <div>
+                  <p>Douala, le</p>
+                  <p>Le Recteur de l'Université de Douala</p>
+                  <p>The Rector of the University of Douala</p>
+                </div>
+              </div>
+              
+              <div class="qr-code">
+                ${params.options?.qrCodeImage ? 
+                  `<img src="${params.options.qrCodeImage}" width="100" height="100" alt="QR Code ${params.options?.encryptionEnabled ? '(Chiffré)' : ''}">` :
+                  `<div style="width: 100px; height: 100px; background-color: #eee; display: flex; align-items: center; justify-content: center; font-size: 8px;">
+                    QR Code${params.options?.encryptionEnabled ? '<br>🔐 Chiffré' : ''}
+                   </div>`}
+              </div>
+              
+              <div class="disclaimer">
+                Cette Attestation ne tient pas lieu de Diplôme et n'est délivrée qu'en un seul exemplaire et d'une validité de (6) mois 
+                à partir de la date de signature. Le Diplôme lui sera délivré ultérieurement.
+                ${params.options?.encryptionEnabled ? '<br><strong>QR Code sécurisé avec chiffrement.</strong>' : ''}
+              </div>
+            </body>
+          </html>
+        `;
+      }
+    }
+  };
+  
+  // Initialize the global objects if not already defined (for development environment)
+  export function initMockIpc() {
+    if (typeof window !== 'undefined') {
+      if (!window.ipcRenderer) {
+        console.log('[MOCK] 🔧 Initializing mock IPC renderer');
+        window.ipcRenderer = mockIpcRenderer;
+      }
       
-      return `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <style>
-              body { font-family: Times New Roman; margin: 20px; }
-              .header { text-align: center; margin-bottom: 20px; }
-              .title { font-size: 24px; font-weight: bold; text-transform: uppercase; }
-              .subtitle { font-size: 18px; font-style: italic; }
-              .student-info { margin: 30px 0; }
-              table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-              th, td { border: 1px solid #333; padding: 8px; text-align: center; }
-              .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
-              .disclaimer { position: absolute; bottom: 20px; font-size: 8px; font-style: italic; }
-              .qr-code { 
-                position: absolute;
-                ${params.options?.qrCodePosition ? 
-                  `left: ${params.options.qrCodePosition.x}px; top: ${params.options.qrCodePosition.y}px;` : 
-                  'right: 50px; top: 250px;'}
-                width: 100px;
-                height: 100px;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <div class="title">Attestation de Réussite</div>
-              <div class="subtitle">Attestation of Completion of Studies</div>
-              <p>Ref N° ............./24/UDo/FMSP/VDRC/${params.settings.nameAbreviation}</p>
-            </div>
-            
-            <div class="student-info">
-              <p><strong>Nom:</strong> ${params.student.NOM} ${params.student.PRENOM}</p>
-              <p><strong>Matricule:</strong> ${params.student.MATRICULE}</p>
-              <p><strong>Date de naissance:</strong> ${params.student["DATE DE NAISSANCE"]}</p>
-              <p><strong>Lieu de naissance:</strong> ${params.student["LIEU DE NAISSANCE"]}</p>
-            </div>
-            
-            <table>
-              <tr>
-                <th>Domaine</th>
-                <th>Parcours</th>
-                <th>Spécialité</th>
-                <th>Option</th>
-              </tr>
-              <tr>
-                <td>SCIENCES MEDICO-SANITAIRES</td>
-                <td>${params.student.PARCOURS || "SCIENCES INFIRMIERES"}</td>
-                <td>${params.student.SPECIALITE || "SCIENCES INFIRMIERES"}</td>
-                <td>${params.student.OPTION || "SCIENCES INFIRMIERES"}</td>
-              </tr>
-            </table>
-            
-            <table>
-              <tr>
-                <th>Total de crédits</th>
-                <th>Moyenne</th>
-                <th>Mention</th>
-                <th>Année académique</th>
-                <th>Finalité/Voie</th>
-              </tr>
-              <tr>
-                <td>60</td>
-                <td>${typeof params.student.MOYENNE === 'number' ? 
-                      params.student.MOYENNE.toFixed(2) : params.student.MOYENNE}</td>
-                <td>${params.student.MENTION || "Bien"} ${params.student.GRADE || "B+"}</td>
-                <td>${params.student["ANNEE ACADEMIQUE"] || "2023/2024"}</td>
-                <td>LICENCE PROFESSIONNELLE</td>
-              </tr>
-            </table>
-            
-            <div class="signatures">
-              <div>
-                <p>Le Directeur de L'Institut</p>
-                <p>The Director of the Institute</p>
-              </div>
-              <div>
-                <p>Douala, le</p>
-                <p>Le Recteur de l'Université de Douala</p>
-                <p>The Rector of the University of Douala</p>
-              </div>
-            </div>
-            
-            <div class="qr-code">
-              ${params.options?.qrCodeImage ? 
-                `<img src="${params.options.qrCodeImage}" width="100" height="100" alt="QR Code">` :
-                '<div style="width: 100px; height: 100px; background-color: #eee;"></div>'}
-            </div>
-            
-            <div class="disclaimer">
-              Cette Attestation ne tient pas lieu de Diplôme et n'est délivrée qu'en un seul exemplaire et d'une validité de (6) mois 
-              à partir de la date de signature. Le Diplôme lui sera délivré ultérieurement.
-              Only one copy of this Attestation shall be delivered and is not a certificate. 
-              This Attestation is valid for (6) six months from the date of signature. The Certificate will be issued at a later date.
-            </div>
-          </body>
-        </html>
-      `;
+      if (!window.fs) {
+        console.log('[MOCK] 📁 Initializing mock fs');
+        window.fs = mockFs;
+      }
+      
+      if (!window.transcriptRenderer) {
+        console.log('[MOCK] 📄 Initializing mock transcript renderer');
+        window.transcriptRenderer = mockTranscriptRenderer;
+      }
+      
+      if (!window.attestationRenderer) {
+        console.log('[MOCK] 🎓 Initializing mock attestation renderer');
+        window.attestationRenderer = mockAttestationRenderer;
+      }
+      
+      // Fonction d'initialisation globale pour faciliter le débogage
+      window.initMockIpc = initMockIpc;
+      
+      console.log('[MOCK] ✅ Mock IPC system initialized with encryption support');
     }
   }
-};

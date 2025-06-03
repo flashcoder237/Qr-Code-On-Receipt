@@ -1,4 +1,4 @@
-// src/components/organisms/app-toolbar/app-toolbar.tsx - Version complète
+// src/components/organisms/app-toolbar/app-toolbar.tsx - Version corrigée
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,27 +39,38 @@ interface Notification {
   read: boolean;
 }
 
-const ToolbarCtx = createContext({
-  title: "" as ReactNode,
-  menu: (<></>) as ReactNode,
-  setTitle: (_: ReactNode) => {},
-  setMenu: (_: ReactNode) => {},
-  notifications: [] as Notification[],
-  addNotification: (_: Omit<Notification, "id" | "timestamp" | "read">) => {},
-  markAsRead: (_: string) => {},
+interface ToolbarContextType {
+  title: ReactNode;
+  menu: ReactNode;
+  setTitle: (title: ReactNode) => void;
+  setMenu: (menu: ReactNode) => void;
+  notifications: Notification[];
+  addNotification: (notification: Omit<Notification, "id" | "timestamp" | "read">) => void;
+  markAsRead: (id: string) => void;
+  clearNotifications: () => void;
+}
+
+const ToolbarCtx = createContext<ToolbarContextType>({
+  title: "",
+  menu: <></>,
+  setTitle: () => {},
+  setMenu: () => {},
+  notifications: [],
+  addNotification: () => {},
+  markAsRead: () => {},
   clearNotifications: () => {},
 });
 
 export const AppToolbarTitle = ({ children }: PropsWithChildren) => {
   const { setTitle } = useContext(ToolbarCtx);
   useEffect(() => setTitle(children), [children, setTitle]);
-  return <></>;
+  return null;
 };
 
 export const AppToolbarMenu = ({ children }: PropsWithChildren) => {
   const { setMenu } = useContext(ToolbarCtx);
   useEffect(() => setMenu(children), [children, setMenu]);
-  return <></>;
+  return null;
 };
 
 export function useAppToolbar() {
@@ -70,15 +81,24 @@ export function useAppToolbar() {
 }
 
 export const AppToolbarProvider = ({ children }: PropsWithChildren) => {
-  const [title, setTitle] = useState<ReactNode>(<></>);
+  const [title, setTitle] = useState<ReactNode>("");
   const [menu, setMenu] = useState<ReactNode>(<></>);
   const [notifications, setNotifications] = useLocalStorage<Notification[]>("notifications", []);
   const [isDarkMode, setIsDarkMode] = useLocalStorage("dark-mode", false);
 
+  // Applique le mode sombre au chargement
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
   const addNotification = (notification: Omit<Notification, "id" | "timestamp" | "read">) => {
     const newNotification: Notification = {
       ...notification,
-      id: Date.now().toString(),
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       timestamp: new Date(),
       read: false,
     };
@@ -97,8 +117,13 @@ export const AppToolbarProvider = ({ children }: PropsWithChildren) => {
 
   // Toggle dark mode
   const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-    document.documentElement.classList.toggle('dark', !isDarkMode);
+    const newDarkMode = !isDarkMode;
+    setIsDarkMode(newDarkMode);
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   };
 
   // Keyboard shortcuts
@@ -111,7 +136,7 @@ export const AppToolbarProvider = ({ children }: PropsWithChildren) => {
             // Ouvrir la recherche
             addNotification({
               title: "Recherche",
-              message: "Fonctionnalité à implémenter",
+              message: "Fonctionnalité de recherche à implémenter",
               type: "info"
             });
             break;
@@ -120,7 +145,16 @@ export const AppToolbarProvider = ({ children }: PropsWithChildren) => {
             // Ouvrir l'aide
             addNotification({
               title: "Aide",
-              message: "Raccourcis clavier disponibles",
+              message: "Guide des raccourcis clavier disponible",
+              type: "info"
+            });
+            break;
+          case 'b':
+            e.preventDefault();
+            // Toggle sidebar (peut être implémenté plus tard)
+            addNotification({
+              title: "Sidebar",
+              message: "Fonction toggle sidebar disponible",
               type: "info"
             });
             break;
@@ -132,19 +166,19 @@ export const AppToolbarProvider = ({ children }: PropsWithChildren) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const contextValue: ToolbarContextType = {
+    menu,
+    setMenu,
+    setTitle,
+    title,
+    notifications,
+    addNotification,
+    markAsRead,
+    clearNotifications,
+  };
+
   return (
-    <ToolbarCtx.Provider
-      value={{
-        menu,
-        setMenu,
-        setTitle,
-        title,
-        notifications,
-        addNotification,
-        markAsRead,
-        clearNotifications,
-      }}
-    >
+    <ToolbarCtx.Provider value={contextValue}>
       {children}
     </ToolbarCtx.Provider>
   );
@@ -157,8 +191,13 @@ export const AppToolbar = () => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-    document.documentElement.classList.toggle('dark', !isDarkMode);
+    const newDarkMode = !isDarkMode;
+    setIsDarkMode(newDarkMode);
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   };
 
   const getNotificationIcon = (type: Notification["type"]) => {
@@ -172,7 +211,7 @@ export const AppToolbar = () => {
 
   const formatTime = (date: Date) => {
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const diff = now.getTime() - new Date(date).getTime();
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
@@ -210,7 +249,7 @@ export const AppToolbar = () => {
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                 <kbd className="hidden md:inline-block px-2 py-1 text-xs font-medium text-gray-500 bg-gray-100 border border-gray-200 rounded dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600">
-                  <Command className="h-3 w-3 mr-1" />K
+                  <Command className="h-3 w-3 mr-1 inline" />K
                 </kbd>
               </div>
             </div>
