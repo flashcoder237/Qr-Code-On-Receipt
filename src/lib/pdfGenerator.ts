@@ -10,6 +10,9 @@ import { ThemeSettingsPayload } from './form-schemas/theme-settings';
 // Importer directement depuis html-to-pdf.ts
 import { generateAttestationPDF } from './attestation-generator/html-to-pdf';
 
+// NOUVEAU: Importer les fonctions de chiffrement compact pour les relevés
+import { sanitizeStudentData, generateQrCodeBase64, getQRCodeSizeEstimate } from './helpers/qrcode';
+
 interface TranscriptSettingsPayload {
   establishmentType: string;
   nameFrench: string;
@@ -24,6 +27,7 @@ interface TranscriptSettingsPayload {
   themeColor: string;
   themeFont: string;
   theme?: ThemeSettingsPayload;
+  encryptionEnabled?: boolean; // NOUVEAU: Support du chiffrement compact
 }
 
 interface GeneratePDFParams {
@@ -291,6 +295,10 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
   // Récupération des paramètres de thème
   const theme = getCompleteTheme(settings);
 
+  // NOUVEAU: Vérifier si le chiffrement est activé pour les relevés
+  const encryptionEnabled = settings.encryptionEnabled !== false; // Par défaut activé
+  console.log(`🔐 Génération du relevé avec chiffrement compact: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
+
   // Calculate semester statistics first
   const uniqueUEs = new Set();
   const ueData = new Map();
@@ -346,11 +354,50 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
   const isEnoughCredits = totalCreditsValidated >= (totalSemesterCredits * 0.7);
   const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
 
-  // Generate QR code only if enabled in theme
+  // NOUVEAU: Générer le QR code avec chiffrement compact si activé
   let qrCodeDataUrl = "";
   if (theme.showQRCode) {
-    // Prepare QR code data
-    const qrData = `Établissement: ${settings.nameFrench}
+    try {
+      console.log(`🔄 Génération QR Code pour relevé (Chiffrement: ${encryptionEnabled})`);
+      
+      // Créer un objet étudiant compatible avec le système de chiffrement compact
+      const studentForQR = {
+        ETABLISSEMENT: settings.nameFrench || 'N/D',
+        NOM: student.NOM,
+        PRENOM: student.PRENOM,
+        MATRICULE: student.MATRICULE,
+        "DATE DE NAISSANCE": student["DATE DE NAISSANCE"] || 'N/D',
+        "LIEU DE NAISSANCE": student["LIEU DE NAISSANCE"] || 'N/D',
+        NIVEAU: student.NIVEAU || 'N/D',
+        SEMESTRE: student.SEMESTRE || 'N/D',
+        CYCLE: student.CYCLE || 'N/D',
+        FILIERE: student.FILIERE || 'N/D',
+        "ANNEE ACADEMIQUE": student["ANNEE ACADÉMIQUE"] || 'N/D',
+        MOYENNE: semesterAverage,
+        GRADE: grade,
+        MENTION: getMention(semesterAverage)
+      };
+
+      // Sanitiser les données
+      const sanitizedStudent = sanitizeStudentData(studentForQR);
+      
+      // Générer le QR code avec chiffrement compact
+      qrCodeDataUrl = await generateQrCodeBase64(sanitizedStudent, 'releve', encryptionEnabled);
+      
+      if (encryptionEnabled) {
+        console.log('✅ QR Code avec chiffrement compact généré pour le relevé');
+        
+        // Analyser la taille du QR code
+        const sizeAnalysis = getQRCodeSizeEstimate(sanitizedStudent, 'releve', encryptionEnabled);
+        console.log(`📊 Taille QR pour relevé: ${sizeAnalysis.estimatedQRSize} (${sizeAnalysis.totalContentLength} caractères)`);
+      } else {
+        console.log('📋 QR Code sans chiffrement généré pour le relevé');
+      }
+    } catch (qrError) {
+      console.error('❌ Erreur lors de la génération du QR code pour le relevé:', qrError);
+      
+      // Fallback vers l'ancien système si le nouveau échoue
+      const qrData = `Établissement: ${settings.nameFrench}
 Nom: ${student.NOM}
 Prénom: ${student.PRENOM}
 Matricule: ${student.MATRICULE}
@@ -362,13 +409,15 @@ Moyenne: ${semesterAverage.toFixed(2)}
 Grade: ${grade}
 Mention: ${getMention(semesterAverage)}
 Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
-    
-    // Generate QR code
-    qrCodeDataUrl = await QRCode.toDataURL(qrData, {
-      errorCorrectionLevel: 'H',
-      margin: 1,
-      width: 150
-    });
+      
+      qrCodeDataUrl = await QRCode.toDataURL(qrData, {
+        errorCorrectionLevel: 'H',
+        margin: 1,
+        width: 150
+      });
+      
+      console.log('⚠️ QR Code généré en mode fallback (ancien système)');
+    }
   }
   
   // Helper function to generate course rows
@@ -582,53 +631,53 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                     <h2 class="header-title"><strong>FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES</strong><br>
                     <strong><em>FACULTY OF MEDICINE AND PHARMACEUTICAL SCIENCES</em></strong><br>
                     <h4 class="header-title"><strong>B.P. 2701. e-mail : <em><a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a></em></strong></h4></h2></span>
-                    <h1 class="header-title"><strong>RELEVE DE NOTES</strong> / TRANSCRIPT </h1>
+                    <h1 class="header-title"><strong>RELEVE DE NOTES</strong> / TRANSCRIPT</h1>
                     <p><strong>Ref No</strong>&nbsp;&nbsp;  /${currentYear}/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR/${settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE"}</p>
                 </div>
             </div>
         
             <div class="student_block1">
                 <div>
-                    <p><span>NOM ET PRENOM:</span> <strong>${student.NOM} ${student.PRENOM}</strong></p>
+                    <p><span>NOM ET PRENOM:</span> <strong>${student.NOM.toUpperCase()} ${student.PRENOM.toUpperCase()}</strong></p>
                     <p><em>surname and name:</em></p>
                 </div>
                 <div>
-                    <p><strong>MATRICULE:</strong> <strong>${student.MATRICULE}</strong></p>
+                    <p><strong>MATRICULE:</strong> <strong>${student.MATRICULE.toUpperCase()}</strong></p>
                     <p><em>Registration N°:</em></p>
                 </div>
             </div>
             <div class="student-info">
                 <div>
-                    <p><strong>NÉ(E) LE: ${student["DATE DE NAISSANCE"] || "N/D"}</strong></p>
+                    <p><strong>NÉ(E) LE: ${student["DATE DE NAISSANCE"]|| "N/D"}</strong></p>
                     <div><em>Born on:</em></div>
                 </div>
                 <div>
-                    <p><strong>A:</strong> <strong>${student["LIEU DE NAISSANCE"] || ""}</strong></p>
+                    <p><strong>A:</strong> <strong>${student["LIEU DE NAISSANCE"].toUpperCase() || ""}</strong></p>
                     <div><em>At:</em></div>
                 </div>
                 <div></div>
                 <div>
-                    <p><strong>CYCLE:</strong> <strong>${settings.cycle || "N/D"}</strong></p>
+                    <p><strong>CYCLE:</strong> <strong>${student.CYCLE.toUpperCase() || "N/D"}</strong></p>
                     <div><em>Training cycle:</em></div>
                 </div>
                 <div>
-                    <p><strong>ANNÉE ACADÉMIQUE:</strong> <strong>${settings.academicYear|| "N/D"}</strong></p>
+                    <p><strong>ANNÉE ACADÉMIQUE:</strong> <strong>${student["ANNEE ACADÉMIQUE"] || "N/D"}</strong></p>
                     <div><em>Academic Year:</em></div>
                 </div>
                 <div>
-                    <p><strong>FILIÈRE:</strong> <strong>${settings.filiere || "N/D"}</strong></p>
+                    <p><strong>FILIÈRE:</strong> <strong>${student.FILIERE.toUpperCase() || "N/D"}</strong></p>
                     <div><em>Field of Study:</em></div>
                 </div>
                 <div>
-                    <p><strong>NIVEAU:</strong> <strong>${settings.niveau || "N/D"}</strong></p>
+                    <p><strong>NIVEAU:</strong> <strong>${student.NIVEAU || "N/D"}</strong></p>
                     <div><em>Level:</em></div>
                 </div>
                 <div>
-                    <p><strong>SEMESTRE:</strong> <strong>${settings.semesters ? (student.semesters.split(" ")[1] || "N/D") : "N/D"}</strong></p>
+                    <p><strong>SEMESTRE:</strong> <strong>${student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "N/D") : "N/D"}</strong></p>
                     <div><em>Semester:</em></div>
                 </div>
                 <div>
-                    <p><strong>OPTION:</strong> <strong>${settings.options || "N/D"}</strong></p>
+                    <p><strong>OPTION:</strong> <strong>${student.OPTION.toUpperCase() || "N/D"}</strong></p>
                     <div><em>Option:</em></div>
                 </div>
             </div>
@@ -752,9 +801,9 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                         </tbody>
                     </table>        
                 </div>
-                    <!-- QR Code placeholder -->
+                    <!-- NOUVEAU: QR Code avec indication du chiffrement -->
                     <div>
-                        ${qrCodeDataUrl ? `<img src="${qrCodeDataUrl}" alt="QR Code" class="qr-code">` : ''}
+                        ${qrCodeDataUrl ? `<img src="${qrCodeDataUrl}" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : '(Standard)'}" class="qr-code">` : ''}
                     </div>
                 </div>
                 <div class="signature">
@@ -785,13 +834,18 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
 export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<Uint8Array> {
   return new Promise(async (resolve, reject) => {
     try {
+      console.log('🔄 Début de la génération PDF de relevé avec chiffrement:', params.settings.encryptionEnabled);
+      
       // Create a temporary HTML file with the transcript content
       const html = await createTranscriptHTML(params);
       const tempDir = app.getPath('temp');
-      const htmlPath = path.join(tempDir, `transcript-${Date.now()}.html`);
+      const timestamp = Date.now();
+      const studentId = `${params.student.NOM}_${params.student.PRENOM}_${params.student.MATRICULE}`.replace(/[^a-zA-Z0-9]/g, '_');
+      const htmlPath = path.join(tempDir, `transcript-${studentId}-${timestamp}.html`);
       
       // Write HTML to temp file
       fs.writeFileSync(htmlPath, html);
+      console.log(`📄 Fichier HTML temporaire créé: ${htmlPath}`);
       
       // Create a hidden browser window
       const win = new BrowserWindow({
@@ -808,9 +862,13 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
       await win.loadFile(htmlPath);
       
       // Wait for content to load completely
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Plus de temps pour les QR codes chiffrés
+      const loadingDelay = params.settings.encryptionEnabled ? 2000 : 1000;
+      await new Promise(resolve => setTimeout(resolve, loadingDelay));
+      console.log(`⏱️ Attente de ${loadingDelay}ms pour le chargement complet du relevé`);
       
       // Generate PDF
+      console.log('🔄 Génération du PDF de relevé...');
       const pdfData = await win.webContents.printToPDF({
         printBackground: true,
         pageSize: 'A4',
@@ -829,18 +887,22 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
       // Clean up temp HTML file
       try {
         fs.unlinkSync(htmlPath);
+        console.log('🧹 Fichier HTML temporaire supprimé');
       } catch (cleanupError) {
         console.warn('Failed to clean up temporary HTML file:', cleanupError);
         // Continue execution even if cleanup fails
       }
 
-      console.log(`PDF generated successfully, size: ${pdfData.byteLength} bytes`);
+      const resultData = Buffer.from(pdfData);
+      console.log(`✅ PDF de relevé généré avec succès`);
+      console.log(`📊 Taille: ${resultData.byteLength} bytes`);
+      console.log(`🔐 Chiffrement QR: ${params.settings.encryptionEnabled ? 'Activé' : 'Désactivé'}`);
       
       // Resolve with the PDF data
-      resolve(Buffer.from(pdfData));
+      resolve(resultData);
       
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      console.error('❌ Erreur lors de la génération du PDF de relevé:', error);
       reject(error);
     }
   });
@@ -850,6 +912,7 @@ export function setupPDFGenerationHandlers() {
   // Set up IPC handler for PDF generation
   ipcMain.handle('render-transcript-html', async (_, params) => {
     try {
+      console.log('🔄 Rendu HTML de relevé avec chiffrement:', params.settings?.encryptionEnabled);
       const html = await createTranscriptHTML(params);
       return html;
     } catch (error) {
@@ -860,6 +923,7 @@ export function setupPDFGenerationHandlers() {
   
   ipcMain.handle('generate-transcript-pdf', async (_, params: GeneratePDFParams) => {
     try {
+      console.log('🔄 Génération PDF de relevé avec chiffrement:', params.settings?.encryptionEnabled);
       return await generateTranscriptPDF(params);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -869,6 +933,7 @@ export function setupPDFGenerationHandlers() {
 
  ipcMain.handle('render-attestation-html', async (_, params) => {
   try {
+    console.log('🔄 Rendu HTML d\'attestation avec chiffrement:', params.options?.encryptionEnabled);
     // Au lieu d'utiliser require, qui peut causer des problèmes,
     // importons le module de manière dynamique avec la syntaxe import()
     const attestationModule = await import('./attestation-generator/html-generator');
@@ -886,6 +951,7 @@ export function setupPDFGenerationHandlers() {
   
   ipcMain.handle('generate-attestation-pdf', async (_, params) => {
     try {
+      console.log('🔄 Génération PDF d\'attestation avec chiffrement:', params.options?.encryptionEnabled);
       return await generateAttestationPDF(params.student, params.settings, params.options);
     } catch (error) {
       console.error('Error generating attestation PDF:', error);
@@ -893,7 +959,7 @@ export function setupPDFGenerationHandlers() {
     }
   });
 
-  console.log('PDF generation handlers set up successfully');
+  console.log('✅ PDF generation handlers set up successfully with encryption support');
   return {
     generateTranscriptPDF
   };

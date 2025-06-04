@@ -1,5 +1,5 @@
 // src/components/organisms/document-history/DocumentHistoryManager.tsx
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   FileText, 
   Award, 
@@ -24,7 +25,18 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  MoreVertical
+  MoreVertical,
+  ChevronDown,
+  ChevronRight,
+  Grid3x3,
+  BarChart3,
+  TrendingUp,
+  FileX,
+  Archive,
+  FolderOpen,
+  Users,
+  GraduationCap,
+  CalendarDays
 } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -54,6 +66,31 @@ const formatDate = (date: Date) => {
   }
 };
 
+const formatDateGroup = (date: Date, groupBy: string) => {
+  const d = new Date(date);
+  switch (groupBy) {
+    case 'day':
+      return d.toLocaleDateString('fr-FR', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+      });
+    case 'week':
+      const startOfWeek = new Date(d);
+      startOfWeek.setDate(d.getDate() - d.getDay() + 1);
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      return `Semaine du ${startOfWeek.toLocaleDateString('fr-FR')} au ${endOfWeek.toLocaleDateString('fr-FR')}`;
+    case 'month':
+      return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    case 'year':
+      return d.getFullYear().toString();
+    default:
+      return d.toLocaleDateString('fr-FR');
+  }
+};
+
 export interface DocumentRecord {
   id: string;
   type: 'releve' | 'attestation';
@@ -70,8 +107,10 @@ export interface DocumentRecord {
   generatedAt: Date;
   fileName: string;
   status: 'generated' | 'downloaded' | 'printed';
-  filePath?: string; // Pour pouvoir re-télécharger si nécessaire
+  filePath?: string;
 }
+
+type GroupByType = 'none' | 'date' | 'type' | 'student' | 'academicYear' | 'status' | 'level';
 
 export const DocumentHistoryManager: React.FC = () => {
   // État pour l'historique des documents
@@ -84,17 +123,28 @@ export const DocumentHistoryManager: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<"all" | "releve" | "attestation">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "generated" | "downloaded" | "printed">("all");
-  const [sortBy, setSortBy] = useState<"date" | "name" | "type">("date");
+  const [filterAcademicYear, setFilterAcademicYear] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"date" | "name" | "type" | "average">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [groupBy, setGroupBy] = useState<GroupByType>('none');
+  const [dateGroupBy, setDateGroupBy] = useState<'day' | 'week' | 'month' | 'year'>('day');
   
   // États pour la gestion
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<DocumentRecord | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
-  // Filtrage et tri des documents
-  const filteredDocuments = React.useMemo(() => {
+  // Obtenir les années académiques uniques
+  const academicYears = useMemo(() => {
+    const years = [...new Set(documentHistory.map(doc => doc.academicYear))].sort();
+    return years;
+  }, [documentHistory]);
+
+  // Filtrage des documents
+  const filteredDocuments = useMemo(() => {
     let filtered = documentHistory.filter(doc => {
       const matchesSearch = 
         doc.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -103,8 +153,9 @@ export const DocumentHistoryManager: React.FC = () => {
       
       const matchesType = filterType === "all" || doc.type === filterType;
       const matchesStatus = filterStatus === "all" || doc.status === filterStatus;
+      const matchesYear = filterAcademicYear === "all" || doc.academicYear === filterAcademicYear;
       
-      return matchesSearch && matchesType && matchesStatus;
+      return matchesSearch && matchesType && matchesStatus && matchesYear;
     });
 
     // Tri
@@ -121,15 +172,80 @@ export const DocumentHistoryManager: React.FC = () => {
         case 'type':
           comparison = a.type.localeCompare(b.type);
           break;
+        case 'average':
+          comparison = (a.average || 0) - (b.average || 0);
+          break;
       }
       
       return sortOrder === 'asc' ? comparison : -comparison;
     });
 
     return filtered;
-  }, [documentHistory, searchTerm, filterType, filterStatus, sortBy, sortOrder]);
+  }, [documentHistory, searchTerm, filterType, filterStatus, filterAcademicYear, sortBy, sortOrder]);
 
-  // Fonction pour supprimer des documents
+  // Regroupement des documents
+  const groupedDocuments = useMemo(() => {
+    if (groupBy === 'none') {
+      return { 'Tous les documents': filteredDocuments };
+    }
+
+    const groups: Record<string, DocumentRecord[]> = {};
+
+    filteredDocuments.forEach(doc => {
+      let groupKey = '';
+      
+      switch (groupBy) {
+        case 'date':
+          groupKey = formatDateGroup(doc.generatedAt, dateGroupBy);
+          break;
+        case 'type':
+          groupKey = doc.type === 'releve' ? 'Relevés de notes' : 'Attestations de réussite';
+          break;
+        case 'student':
+          groupKey = doc.studentName;
+          break;
+        case 'academicYear':
+          groupKey = `Année ${doc.academicYear}`;
+          break;
+        case 'status':
+          groupKey = doc.status === 'generated' ? 'Générés' : 
+                    doc.status === 'downloaded' ? 'Téléchargés' : 'Imprimés';
+          break;
+        case 'level':
+          groupKey = doc.level || 'Non spécifié';
+          break;
+        default:
+          groupKey = 'Autres';
+      }
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+      groups[groupKey].push(doc);
+    });
+
+    // Trier les groupes par nom
+    const sortedGroups: Record<string, DocumentRecord[]> = {};
+    Object.keys(groups)
+      .sort((a, b) => {
+        if (groupBy === 'date') {
+          // Pour les dates, on veut un tri chronologique
+          const docsA = groups[a];
+          const docsB = groups[b];
+          if (docsA.length > 0 && docsB.length > 0) {
+            return new Date(docsB[0].generatedAt).getTime() - new Date(docsA[0].generatedAt).getTime();
+          }
+        }
+        return a.localeCompare(b);
+      })
+      .forEach(key => {
+        sortedGroups[key] = groups[key];
+      });
+
+    return sortedGroups;
+  }, [filteredDocuments, groupBy, dateGroupBy]);
+
+  // Fonctions de gestion
   const handleDeleteSelected = () => {
     setDocumentHistory(prev => 
       prev.filter(doc => !selectedRecords.includes(doc.id))
@@ -138,13 +254,11 @@ export const DocumentHistoryManager: React.FC = () => {
     setShowDeleteDialog(false);
   };
 
-  // Fonction pour vider tout l'historique
   const handleClearAll = () => {
     setDocumentHistory([]);
     setSelectedRecords([]);
   };
 
-  // Fonction pour sélectionner/désélectionner tous les documents filtrés
   const handleSelectAll = () => {
     if (selectedRecords.length === filteredDocuments.length) {
       setSelectedRecords([]);
@@ -153,28 +267,52 @@ export const DocumentHistoryManager: React.FC = () => {
     }
   };
 
-  // Fonction pour obtenir l'icône du type de document
+  const toggleGroup = (groupName: string) => {
+    const newExpanded = new Set(expandedGroups);
+    if (newExpanded.has(groupName)) {
+      newExpanded.delete(groupName);
+    } else {
+      newExpanded.add(groupName);
+    }
+    setExpandedGroups(newExpanded);
+  };
+
+  const expandAllGroups = () => {
+    setExpandedGroups(new Set(Object.keys(groupedDocuments)));
+  };
+
+  const collapseAllGroups = () => {
+    setExpandedGroups(new Set());
+  };
+
+  // Fonctions utilitaires
   const getDocumentIcon = (type: string) => {
     return type === 'releve' ? FileText : Award;
   };
 
-  // Fonction pour obtenir la couleur du badge de statut
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'generated': return 'bg-blue-100 text-blue-800';
-      case 'downloaded': return 'bg-green-100 text-green-800';
-      case 'printed': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'generated': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'downloaded': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'printed': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
     }
   };
 
-  // Fonction pour formater la date
-  const formatDateDisplay = (date: Date) => {
-    return formatDate(date);
+  const getGroupIcon = (groupByType: GroupByType) => {
+    switch (groupByType) {
+      case 'date': return CalendarDays;
+      case 'type': return FileText;
+      case 'student': return Users;
+      case 'academicYear': return GraduationCap;
+      case 'status': return CheckCircle;
+      case 'level': return BarChart3;
+      default: return FolderOpen;
+    }
   };
 
-  // Statistiques
-  const stats = React.useMemo(() => {
+  // Statistiques améliorées
+  const stats = useMemo(() => {
     const total = documentHistory.length;
     const releves = documentHistory.filter(doc => doc.type === 'releve').length;
     const attestations = documentHistory.filter(doc => doc.type === 'attestation').length;
@@ -183,59 +321,95 @@ export const DocumentHistoryManager: React.FC = () => {
       return daysDiff <= 7;
     }).length;
     
-    return { total, releves, attestations, recent };
+    const avgAverage = documentHistory
+      .filter(doc => doc.average)
+      .reduce((sum, doc) => sum + (doc.average || 0), 0) / 
+      documentHistory.filter(doc => doc.average).length || 0;
+
+    const uniqueStudents = new Set(documentHistory.map(doc => doc.studentMatricule)).size;
+    
+    return { total, releves, attestations, recent, avgAverage, uniqueStudents };
   }, [documentHistory]);
 
   return (
     <div className="space-y-6">
-      {/* En-tête avec statistiques */}
+      {/* En-tête avec statistiques améliorées */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
             Historique des Documents
           </CardTitle>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-              <div className="text-sm text-blue-600">Total</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-4">
+            <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.total}</div>
+              <div className="text-sm text-blue-600 dark:text-blue-400">Total</div>
             </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{stats.releves}</div>
-              <div className="text-sm text-green-600">Relevés</div>
+            <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.releves}</div>
+              <div className="text-sm text-green-600 dark:text-green-400">Relevés</div>
             </div>
-            <div className="text-center p-3 bg-orange-50 rounded-lg">
-              <div className="text-2xl font-bold text-orange-600">{stats.attestations}</div>
-              <div className="text-sm text-orange-600">Attestations</div>
+            <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.attestations}</div>
+              <div className="text-sm text-orange-600 dark:text-orange-400">Attestations</div>
             </div>
-            <div className="text-center p-3 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">{stats.recent}</div>
-              <div className="text-sm text-purple-600">Cette semaine</div>
+            <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.recent}</div>
+              <div className="text-sm text-purple-600 dark:text-purple-400">Cette semaine</div>
+            </div>
+            <div className="text-center p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+              <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{stats.uniqueStudents}</div>
+              <div className="text-sm text-indigo-600 dark:text-indigo-400">Étudiants</div>
+            </div>
+            <div className="text-center p-3 bg-teal-50 dark:bg-teal-900/20 rounded-lg">
+              <div className="text-2xl font-bold text-teal-600 dark:text-teal-400">
+                {stats.avgAverage > 0 ? stats.avgAverage.toFixed(1) : '—'}
+              </div>
+              <div className="text-sm text-teal-600 dark:text-teal-400">Moy. générale</div>
             </div>
           </div>
         </CardHeader>
       </Card>
 
-      {/* Filtres et actions */}
+      {/* Filtres et actions améliorés */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4 mb-4">
-            {/* Barre de recherche */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Rechercher par nom, matricule ou fichier..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="space-y-4">
+            {/* Première ligne : Recherche et vue */}
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Rechercher par nom, matricule ou fichier..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant={viewMode === 'table' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('table')}
+                >
+                  <Grid3x3 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'cards' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('cards')}
+                >
+                  <FolderOpen className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            
-            {/* Filtres */}
-            <div className="flex gap-2">
+
+            {/* Deuxième ligne : Filtres */}
+            <div className="flex flex-wrap gap-2">
               <Select value={filterType} onValueChange={(value: typeof filterType) => setFilterType(value)}>
                 <SelectTrigger className="w-[140px]">
-                  <SelectValue />
+                  <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous types</SelectItem>
@@ -246,7 +420,7 @@ export const DocumentHistoryManager: React.FC = () => {
 
               <Select value={filterStatus} onValueChange={(value: typeof filterStatus) => setFilterStatus(value)}>
                 <SelectTrigger className="w-[140px]">
-                  <SelectValue />
+                  <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous statuts</SelectItem>
@@ -256,14 +430,27 @@ export const DocumentHistoryManager: React.FC = () => {
                 </SelectContent>
               </Select>
 
+              <Select value={filterAcademicYear} onValueChange={setFilterAcademicYear}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Année" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes années</SelectItem>
+                  {academicYears.map(year => (
+                    <SelectItem key={year} value={year}>{year}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <Select value={sortBy} onValueChange={(value: typeof sortBy) => setSortBy(value)}>
                 <SelectTrigger className="w-[120px]">
-                  <SelectValue />
+                  <SelectValue placeholder="Trier par" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="date">Date</SelectItem>
                   <SelectItem value="name">Nom</SelectItem>
                   <SelectItem value="type">Type</SelectItem>
+                  <SelectItem value="average">Moyenne</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -275,62 +462,115 @@ export const DocumentHistoryManager: React.FC = () => {
                 {sortOrder === 'asc' ? '↑' : '↓'}
               </Button>
             </div>
-          </div>
 
-          {/* Actions groupées */}
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={selectedRecords.length === filteredDocuments.length && filteredDocuments.length > 0}
-                onChange={handleSelectAll}
-                className="rounded"
-              />
-              <span className="text-sm">
-                {selectedRecords.length > 0 
-                  ? `${selectedRecords.length} sélectionné(s)`
-                  : "Tout sélectionner"
-                }
-              </span>
-              
-              {selectedRecords.length > 0 && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setShowDeleteDialog(true)}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Supprimer ({selectedRecords.length})
-                </Button>
+            {/* Troisième ligne : Regroupement */}
+            <div className="flex flex-wrap gap-2 items-center">
+              <Label className="text-sm font-medium">Regrouper par :</Label>
+              <Select value={groupBy} onValueChange={(value: GroupByType) => setGroupBy(value)}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Aucun regroupement</SelectItem>
+                  <SelectItem value="date">Date</SelectItem>
+                  <SelectItem value="type">Type de document</SelectItem>
+                  <SelectItem value="student">Étudiant</SelectItem>
+                  <SelectItem value="academicYear">Année académique</SelectItem>
+                  <SelectItem value="status">Statut</SelectItem>
+                  <SelectItem value="level">Niveau</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {groupBy === 'date' && (
+                <Select value={dateGroupBy} onValueChange={(value: typeof dateGroupBy) => setDateGroupBy(value)}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="day">Par jour</SelectItem>
+                    <SelectItem value="week">Par semaine</SelectItem>
+                    <SelectItem value="month">Par mois</SelectItem>
+                    <SelectItem value="year">Par année</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+
+              {groupBy !== 'none' && (
+                <div className="flex gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={expandAllGroups}
+                  >
+                    Tout développer
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={collapseAllGroups}
+                  >
+                    Tout réduire
+                  </Button>
+                </div>
               )}
             </div>
 
-            <div className="flex gap-2">
-              <Badge variant="secondary">
-                {filteredDocuments.length} résultat(s)
-              </Badge>
-              
-              {documentHistory.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  Vider l'historique
-                </Button>
-              )}
+            {/* Actions groupées */}
+            <div className="flex justify-between items-center pt-2 border-t">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={selectedRecords.length === filteredDocuments.length && filteredDocuments.length > 0}
+                  onChange={handleSelectAll}
+                  className="rounded"
+                />
+                <span className="text-sm">
+                  {selectedRecords.length > 0 
+                    ? `${selectedRecords.length} sélectionné(s)`
+                    : "Tout sélectionner"
+                  }
+                </span>
+                
+                {selectedRecords.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer ({selectedRecords.length})
+                  </Button>
+                )}
+              </div>
+
+              <div className="flex gap-2 items-center">
+                <Badge variant="secondary">
+                  {filteredDocuments.length} résultat(s)
+                </Badge>
+                
+                {documentHistory.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Archive className="h-4 w-4 mr-2" />
+                    Vider l'historique
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Table des documents */}
+      {/* Contenu principal */}
       <Card>
-        <CardContent className="p0">
+        <CardContent className="p-0">
           {filteredDocuments.length === 0 ? (
             <div className="text-center py-12">
-              <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <FileX className="h-12 w-12 mx-auto text-gray-400 mb-4" />
               <h3 className="text-lg font-medium text-gray-700 mb-2">
                 {documentHistory.length === 0 
                   ? "Aucun document généré" 
@@ -345,117 +585,105 @@ export const DocumentHistoryManager: React.FC = () => {
               </p>
             </div>
           ) : (
-            <ScrollArea className="h-[500px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <span className="sr-only">Sélection</span>
-                    </TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Étudiant</TableHead>
-                    <TableHead>Matricule</TableHead>
-                    <TableHead>Année académique</TableHead>
-                    <TableHead>Moyenne</TableHead>
-                    <TableHead>Date de génération</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <AnimatePresence>
-                    {filteredDocuments.map((doc, index) => {
-                      const isSelected = selectedRecords.includes(doc.id);
-                      const Icon = getDocumentIcon(doc.type);
-                      
-                      return (
-                        <motion.tr
-                          key={doc.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ duration: 0.2, delay: index * 0.02 }}
-                          className={`${isSelected ? 'bg-blue-50' : ''} hover:bg-gray-50`}
-                        >
-                          <TableCell>
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedRecords([...selectedRecords, doc.id]);
-                                } else {
-                                  setSelectedRecords(selectedRecords.filter(id => id !== doc.id));
-                                }
+            <div className="p-4">
+              {Object.entries(groupedDocuments).map(([groupName, documents]) => {
+                const GroupIcon = getGroupIcon(groupBy);
+                const isExpanded = expandedGroups.has(groupName) || groupBy === 'none';
+                
+                return (
+                  <div key={groupName} className="mb-6 last:mb-0">
+                    {groupBy !== 'none' && (
+                      <Collapsible
+                        open={isExpanded}
+                        onOpenChange={() => toggleGroup(groupName)}
+                      >
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-between p-3 h-auto hover:bg-gray-50 dark:hover:bg-gray-800 mb-3"
+                          >
+                            <div className="flex items-center gap-3">
+                              <GroupIcon className="h-5 w-5" />
+                              <span className="font-medium text-left">{groupName}</span>
+                              <Badge variant="secondary">{documents.length}</Badge>
+                            </div>
+                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          {viewMode === 'table' ? (
+                            <DocumentTable
+                              documents={documents}
+                              selectedRecords={selectedRecords}
+                              setSelectedRecords={setSelectedRecords}
+                              onViewDetails={(doc) => {
+                                setSelectedRecord(doc);
+                                setShowDetailsDialog(true);
                               }}
-                              className="rounded"
+                              onDelete={(doc) => {
+                                setSelectedRecords([doc.id]);
+                                setShowDeleteDialog(true);
+                              }}
                             />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Icon className="h-4 w-4" />
-                              <span className="capitalize">{doc.type}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-medium">{doc.studentName}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{doc.studentMatricule}</Badge>
-                          </TableCell>
-                          <TableCell>{doc.academicYear}</TableCell>
-                          <TableCell>
-                            {doc.average && (
-                              <Badge variant={doc.average >= 10 ? "default" : "secondary"}>
-                                {doc.average.toFixed(2)}/20
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-sm text-gray-600">
-                            {formatDateDisplay(doc.generatedAt)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(doc.status)}>
-                              {doc.status === 'generated' && 'Généré'}
-                              {doc.status === 'downloaded' && 'Téléchargé'}
-                              {doc.status === 'printed' && 'Imprimé'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedRecord(doc);
-                                  setShowDetailsDialog(true);
-                                }}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedRecords([doc.id]);
-                                  setShowDeleteDialog(true);
-                                }}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </motion.tr>
-                      );
-                    })}
-                  </AnimatePresence>
-                </TableBody>
-              </Table>
-            </ScrollArea>
+                          ) : (
+                            <DocumentCards
+                              documents={documents}
+                              selectedRecords={selectedRecords}
+                              setSelectedRecords={setSelectedRecords}
+                              onViewDetails={(doc) => {
+                                setSelectedRecord(doc);
+                                setShowDetailsDialog(true);
+                              }}
+                              onDelete={(doc) => {
+                                setSelectedRecords([doc.id]);
+                                setShowDeleteDialog(true);
+                              }}
+                            />
+                          )}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+                    
+                    {groupBy === 'none' && (
+                      viewMode === 'table' ? (
+                        <DocumentTable
+                          documents={documents}
+                          selectedRecords={selectedRecords}
+                          setSelectedRecords={setSelectedRecords}
+                          onViewDetails={(doc) => {
+                            setSelectedRecord(doc);
+                            setShowDetailsDialog(true);
+                          }}
+                          onDelete={(doc) => {
+                            setSelectedRecords([doc.id]);
+                            setShowDeleteDialog(true);
+                          }}
+                        />
+                      ) : (
+                        <DocumentCards
+                          documents={documents}
+                          selectedRecords={selectedRecords}
+                          setSelectedRecords={setSelectedRecords}
+                          onViewDetails={(doc) => {
+                            setSelectedRecord(doc);
+                            setShowDetailsDialog(true);
+                          }}
+                          onDelete={(doc) => {
+                            setSelectedRecords([doc.id]);
+                            setShowDeleteDialog(true);
+                          }}
+                        />
+                      )
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Dialog de confirmation de suppression */}
+      {/* Dialogs de confirmation et détails */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
@@ -486,7 +714,6 @@ export const DocumentHistoryManager: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog des détails du document */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -580,17 +807,17 @@ export const DocumentHistoryManager: React.FC = () => {
               <Separator />
               <div>
                 <Label className="font-medium text-sm text-gray-600">Nom du fichier</Label>
-                <p className="mt-1 font-mono text-sm bg-gray-100 p-2 rounded">
+                <p className="mt-1 font-mono text-sm bg-gray-100 dark:bg-gray-800 p-2 rounded">
                   {selectedRecord.fileName}
                 </p>
               </div>
               <div>
                 <Label className="font-medium text-sm text-gray-600">Date de génération</Label>
-                <p className="mt-1">{formatDateDisplay(selectedRecord.generatedAt)}</p>
+                <p className="mt-1">{formatDate(selectedRecord.generatedAt)}</p>
               </div>
-              <Alert className="bg-blue-50 border-blue-200">
-                <AlertCircle className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800">
+              <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+                <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertDescription className="text-blue-800 dark:text-blue-200">
                   <strong>Note :</strong> Cet historique contient uniquement les métadonnées du document. 
                   Les fichiers PDF générés ne sont pas stockés et doivent être régénérés si nécessaire.
                 </AlertDescription>
@@ -604,6 +831,258 @@ export const DocumentHistoryManager: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+};
+
+// Composant pour l'affichage en tableau
+interface DocumentTableProps {
+  documents: DocumentRecord[];
+  selectedRecords: string[];
+  setSelectedRecords: (records: string[]) => void;
+  onViewDetails: (doc: DocumentRecord) => void;
+  onDelete: (doc: DocumentRecord) => void;
+}
+
+const DocumentTable: React.FC<DocumentTableProps> = ({
+  documents,
+  selectedRecords,
+  setSelectedRecords,
+  onViewDetails,
+  onDelete
+}) => {
+  const getDocumentIcon = (type: string) => {
+    return type === 'releve' ? FileText : Award;
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'generated': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'downloaded': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'printed': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
+    }
+  };
+
+  return (
+    <ScrollArea className="h-[400px]">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-12">
+              <span className="sr-only">Sélection</span>
+            </TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Étudiant</TableHead>
+            <TableHead>Matricule</TableHead>
+            <TableHead>Année académique</TableHead>
+            <TableHead>Moyenne</TableHead>
+            <TableHead>Date de génération</TableHead>
+            <TableHead>Statut</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <AnimatePresence>
+            {documents.map((doc, index) => {
+              const isSelected = selectedRecords.includes(doc.id);
+              const Icon = getDocumentIcon(doc.type);
+              
+              return (
+                <motion.tr
+                  key={doc.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.2, delay: index * 0.02 }}
+                  className={`${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : ''} hover:bg-gray-50 dark:hover:bg-gray-800/50`}
+                >
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedRecords([...selectedRecords, doc.id]);
+                        } else {
+                          setSelectedRecords(selectedRecords.filter(id => id !== doc.id));
+                        }
+                      }}
+                      className="rounded"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-4 w-4" />
+                      <span className="capitalize">{doc.type}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">{doc.studentName}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{doc.studentMatricule}</Badge>
+                  </TableCell>
+                  <TableCell>{doc.academicYear}</TableCell>
+                  <TableCell>
+                    {doc.average && (
+                      <Badge variant={doc.average >= 10 ? "default" : "secondary"}>
+                        {doc.average.toFixed(2)}/20
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm text-gray-600 dark:text-gray-400">
+                    {formatDate(doc.generatedAt)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getStatusColor(doc.status)}>
+                      {doc.status === 'generated' && 'Généré'}
+                      {doc.status === 'downloaded' && 'Téléchargé'}
+                      {doc.status === 'printed' && 'Imprimé'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onViewDetails(doc)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDelete(doc)}
+                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </motion.tr>
+              );
+            })}
+          </AnimatePresence>
+        </TableBody>
+      </Table>
+    </ScrollArea>
+  );
+};
+
+// Composant pour l'affichage en cartes
+interface DocumentCardsProps {
+  documents: DocumentRecord[];
+  selectedRecords: string[];
+  setSelectedRecords: (records: string[]) => void;
+  onViewDetails: (doc: DocumentRecord) => void;
+  onDelete: (doc: DocumentRecord) => void;
+}
+
+const DocumentCards: React.FC<DocumentCardsProps> = ({
+  documents,
+  selectedRecords,
+  setSelectedRecords,
+  onViewDetails,
+  onDelete
+}) => {
+  const getDocumentIcon = (type: string) => {
+    return type === 'releve' ? FileText : Award;
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'generated': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'downloaded': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'printed': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <AnimatePresence>
+        {documents.map((doc, index) => {
+          const isSelected = selectedRecords.includes(doc.id);
+          const Icon = getDocumentIcon(doc.type);
+          
+          return (
+            <motion.div
+              key={doc.id}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2, delay: index * 0.02 }}
+            >
+              <Card className={`${isSelected ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''} hover:shadow-md transition-shadow`}>
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedRecords([...selectedRecords, doc.id]);
+                          } else {
+                            setSelectedRecords(selectedRecords.filter(id => id !== doc.id));
+                          }
+                        }}
+                        className="rounded"
+                      />
+                      <Icon className="h-5 w-5" />
+                      <Badge className={getStatusColor(doc.status)}>
+                        {doc.status === 'generated' && 'Généré'}
+                        {doc.status === 'downloaded' && 'Téléchargé'}
+                        {doc.status === 'printed' && 'Imprimé'}
+                      </Badge>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onViewDetails(doc)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDelete(doc)}
+                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 pt-2">
+                  <div className="space-y-2">
+                    <div>
+                      <p className="font-medium text-sm">{doc.studentName}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        <Badge variant="outline" className="text-xs">{doc.studentMatricule}</Badge>
+                      </p>
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                      <p>Année: {doc.academicYear}</p>
+                      <p>Généré: {formatDate(doc.generatedAt)}</p>
+                    </div>
+                    {doc.average && (
+                      <div>
+                        <Badge variant={doc.average >= 10 ? "default" : "secondary"} className="text-xs">
+                          Moyenne: {doc.average.toFixed(2)}/20
+                        </Badge>
+                      </div>
+                    )}
+                    <div className="text-xs text-gray-500 dark:text-gray-500 truncate">
+                      {doc.fileName}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
     </div>
   );
 };
@@ -640,11 +1119,31 @@ export const useDocumentHistory = () => {
     setDocumentHistory([]);
   };
 
+  const getDocumentStats = () => {
+    const total = documentHistory.length;
+    const releves = documentHistory.filter(doc => doc.type === 'releve').length;
+    const attestations = documentHistory.filter(doc => doc.type === 'attestation').length;
+    const recent = documentHistory.filter(doc => {
+      const daysDiff = (Date.now() - new Date(doc.generatedAt).getTime()) / (1000 * 60 * 60 * 24);
+      return daysDiff <= 7;
+    }).length;
+    
+    const avgAverage = documentHistory
+      .filter(doc => doc.average)
+      .reduce((sum, doc) => sum + (doc.average || 0), 0) / 
+      documentHistory.filter(doc => doc.average).length || 0;
+
+    const uniqueStudents = new Set(documentHistory.map(doc => doc.studentMatricule)).size;
+    
+    return { total, releves, attestations, recent, avgAverage, uniqueStudents };
+  };
+
   return {
     documentHistory,
     addDocumentRecord,
     updateDocumentStatus,
     removeDocumentRecord,
     clearHistory,
+    getDocumentStats,
   };
 };

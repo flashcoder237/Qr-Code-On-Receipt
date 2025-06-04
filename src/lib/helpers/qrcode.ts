@@ -313,8 +313,8 @@ export function getDataDistributionInfo(
     publicFields: Object.keys(publicData).filter(key => publicData[key] !== 'N/D'),
     sensitiveFields: Object.keys(sensitiveData),
     documentType,
-    encryptionMethod: 'AES-128-ECB (Compact)',
-    keySource: 'Matricule uniquement',
+    encryptionMethod: 'AES-128-ECB',
+    keySource: 'xxxxxxxxxx',
     estimatedEncryptedSize: '50-80 caractères'
   };
 }

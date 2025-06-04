@@ -164,6 +164,7 @@ export const AttestationGenerator: React.FC = () => {
           PARCOURS: row.PARCOURS || 'N/D',
           SPECIALITE: row.SPECIALITE || 'N/D',
           OPTION: row.OPTION || 'N/D',
+          CYCLE: row.CYCLE || 'N/D',
           MOYENNE: row.MOYENNE || 0,
           GRADE: row.GRADE || calculateGrade(parseFloat(String(row.MOYENNE)) || 0),
           MENTION: row.MENTION || calculateMention(parseFloat(String(row.MOYENNE)) || 0),
@@ -520,12 +521,12 @@ export const AttestationGenerator: React.FC = () => {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-medium text-blue-900 mb-1">Sécurité des QR Codes (Compact)</h4>
+                      <h4 className="font-medium text-blue-900 mb-1">Sécurité des QR Codes</h4>
                       <p className="text-sm text-blue-700">
                         Chiffrement compact basé uniquement sur le matricule - QR codes plus petits et plus lisibles
                       </p>
                       <p className="text-xs text-blue-600 mt-1">
-                        🔑 Clé de chiffrement: Matricule uniquement • 📊 Taille: 50-80 caractères chiffrés
+                        🔑 Clé de chiffrement: xxxxxxxxxx • Taille: 50-80 caractères chiffrés
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -550,7 +551,7 @@ export const AttestationGenerator: React.FC = () => {
                   {encryptionEnabled && (
                     <div className="mt-3 text-xs text-blue-600">
                       <Shield className="h-3 w-3 inline mr-1" />
-                      QR codes compacts avec chiffrement AES-128-ECB basé sur le matricule uniquement
+                      QR codes compacts avec chiffrement AES-128-ECB basé sur le xxxxxxxxxx
                     </div>
                   )}
                 </CardContent>

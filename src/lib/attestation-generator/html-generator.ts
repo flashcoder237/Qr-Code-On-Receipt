@@ -82,6 +82,7 @@ export async function generateAttestationHTML(
   const birthPlace = sanitizedStudent["LIEU DE NAISSANCE"];
   
   // Informations académiques
+  const cycle = sanitizedStudent.CYCLE;
   const fieldOfStudy = sanitizedStudent.DOMAINE;
   const course = sanitizedStudent.PARCOURS;
   const specialization = sanitizedStudent.SPECIALITE;
@@ -198,7 +199,7 @@ export async function generateAttestationHTML(
     .header {    
       font-size: ${theme.headerFontSize}px;
       font-family: ${theme.headerFont};
-      margin-bottom: ${theme.compactMode ? '15px' : '25px'};
+  
       flex-shrink: 0;
     }
     
@@ -246,7 +247,6 @@ export async function generateAttestationHTML(
     
     .header-row2 {
       text-align: center;
-      margin-bottom: ${theme.compactMode ? '20px' : '30px'};
     }
     
     .header-row2 h1 {
@@ -278,7 +278,7 @@ export async function generateAttestationHTML(
     }
     
     .student-info {
-      margin: ${theme.compactMode ? '15px 0' : '20px 0'};
+      margin: ${theme.compactMode ? '5px 0' : '8px 0'};
     }
     
     .student-info p {
@@ -351,9 +351,9 @@ export async function generateAttestationHTML(
       ${theme.signatureLayout === 'side-by-side' ? 'width: 48%;' : 'width: 100%;'}
       ${theme.signatureLayout === 'centered' ? 'margin: 15px 0;' : ''}
       font-size: ${theme.contentFontSize}px;
-      ${theme.signatureStyle === 'boxed' ? `border: 1px solid ${theme.primaryColor}; padding: 10px; border-radius: 4px;` : ''}
-      ${theme.signatureStyle === 'underlined' ? `border-bottom: 2px solid ${theme.primaryColor}; padding-bottom: 5px;` : ''}
-      ${theme.signatureStyle === 'modern' ? `background-color: ${theme.tableHeaderBgColor}; padding: 8px; border-radius: 6px; border-left: 4px solid ${theme.accentColor};` : ''}
+      ${theme.signatureStyle === 'boxed' ? `padding: 10px; border-radius: 4px;` : ''}
+      ${theme.signatureStyle === 'underlined' ? `padding-bottom: 5px;` : ''}
+      ${theme.signatureStyle === 'modern' ? `background-color: ${theme.tableHeaderBgColor}; padding: 8px;` : ''}
     }
     
     .qr-code {
@@ -367,21 +367,6 @@ export async function generateAttestationHTML(
       width: ${currentQrCodeSize.width};
       height: ${currentQrCodeSize.height};
       border: 1px solid ${theme.tableBorderColor};
-    }
-
-    /* Indicateur de chiffrement compact */
-    .encryption-indicator {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      background: ${encryptionEnabled ? 'rgba(0, 128, 0, 0.1)' : 'rgba(128, 128, 128, 0.1)'};
-      border: 1px solid ${encryptionEnabled ? 'rgba(0, 128, 0, 0.3)' : 'rgba(128, 128, 128, 0.3)'};
-      color: ${encryptionEnabled ? '#006400' : '#666'};
-      font-size: 8px;
-      padding: 2px 6px;
-      border-radius: 3px;
-      display: ${theme.showQRCode ? 'block' : 'none'};
-      z-index: 1000;
     }
 
     /* Indicateur de performance QR */
@@ -431,7 +416,7 @@ export async function generateAttestationHTML(
       font-size: ${theme.footerFontSize}px;
       font-style: italic;
       text-align: left;
-      margin-top: ${theme.compactMode ? '20px' : '30px'};
+      margin-top: ${theme.compactMode ? '5px' : '8px'};
       ${theme.contentLayout === 'formal' ? 'text-align: justify;' : ''}
       color: ${theme.secondaryColor};
       line-height: 1.4;
@@ -494,9 +479,6 @@ export async function generateAttestationHTML(
         min-height: calc(297mm - ${theme.documentPadding * 2}px);
       }
       
-      .encryption-indicator {
-        display: ${encryptionEnabled && theme.showQRCode ? 'block' : 'none'} !important;
-      }
       
       .qr-performance-indicator {
         display: none !important;
@@ -517,11 +499,6 @@ export async function generateAttestationHTML(
 </head>
 <body>
     <div class="container">
-        <!-- Indicateur de chiffrement compact -->
-        <div class="encryption-indicator no-print">
-            ${encryptionEnabled ? '🔐 QR Compact' : '📋 QR Standard'}
-        </div>
-
         <!-- Indicateur de performance QR (dev uniquement) -->
         ${qrCodeAnalysis ? `
         <div class="qr-performance-indicator no-print">
@@ -614,10 +591,10 @@ export async function generateAttestationHTML(
             ${theme.showBilingualText ? '<em>' + (theme.primaryLanguage === 'english' ? 'Je soussignée, Professeur EBOUMBOU MOUKOKO Carole Else,' : 'I, the undersigned, Professor EBOUMBOU MOUKOKO Carole Else,') + '</em>' : ''}</p>
 
             <div id="to-hidden" style="${settings.establishmentType !== "ipes" ? 'display : none' : 'display: flex'}; justify-content: space-between; margin: 15px 0;">
-              <div style="width: 45%; text-align: center; border-top: 1px solid ${theme.tableBorderColor}; padding-top: 4px;">
+              <div style="width: 45%; text-align: center; border-top: 1px solid ${theme.tableBorderColor}; margin-top: 10px;">
                 <strong>Directeur de l'${settings.nameAbreviation}</strong>
               </div>
-              <div style="width: 45%; text-align: center; border-top: 1px solid ${theme.tableBorderColor}; padding-top: 4px;">
+              <div style="width: 45%; text-align: center; border-top: 1px solid ${theme.tableBorderColor}; margin-top: 10px;">
                 <strong>Recteur de l'Université de Douala</strong>
               </div>
             </div>
@@ -626,15 +603,15 @@ export async function generateAttestationHTML(
             ${theme.showBilingualText ? `<em>Considering the jury's decision N° 0001 dated ${juryDate} Certify that,</em>` : ''}</p>
             
             <div class="student-info">
-                <p>M./Mme/Mlle <strong>${studentFullName}</strong><br>
+                <p>M./Mme/Mlle <strong>${studentFullName.toUpperCase()}</strong><br>
                 ${theme.showBilingualText ? '<em>Mr/Mrs/Miss</em>' : ''}</p>
                 
-                <p>Né(e) le: <strong>${birthDate}</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;à&nbsp;<strong>${birthPlace}</strong><br>
-                ${theme.showBilingualText ? '<em>Born on:</em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>at:</em>' : ''}</p>
+                <p>Né(e) le: <strong>${birthDate}</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;à&nbsp;<strong>${birthPlace.toUpperCase()}</strong><br>
+                ${theme.showBilingualText ? `<em>Born on:</em>&nbsp;<span style="color:white">${birthDate}</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>at:</em>` : ''}</p>
                 
                 <p>Inscrit(e) à <strong id="to-hidden">${settings.nameFrench}</strong><strong id="to-nothidden">la Faculté de Medecine et des Sciences Pharmaceutiques</strong> sous le matricule: <strong>${matricule}</strong><br>
                 ${theme.showBilingualText ? '<em>Registered under the matricule number:</em>' : ''}</p>
-                <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : ${settings.cycle || 'N/D'} en ${settings.cycle || 'N/D'}<br>
+                <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase()}</strong> en <strong>${specialization.toUpperCase()}</strong> ${option && option !== 'N/D' ? `option <strong>${option.toUpperCase()}</strong>` : ''}<br>
                 ${theme.showBilingualText ? '<em>Having successfully fufilled the requirements qualifying for the :</em>' : ''}</p>
             </div>
             
@@ -648,10 +625,10 @@ export async function generateAttestationHTML(
                         ${option && option !== 'N/D' ? '<th>Option<br>' + (theme.showBilingualText ? '<em style="font-weight: normal">Learning option</em>' : '') + '</th>' : ''}
                     </tr>
                     <tr style="background-color:${theme.tableHeaderBgColor}">
-                        <td><strong>${fieldOfStudy}</strong></td>
-                        <td><strong>${course}</strong></td>
-                        <td><strong>${specialization}</strong></td>
-                        ${option && option !== 'N/D' ? `<td><strong>${option}</strong></td>` : ''}
+                        <td><strong>${fieldOfStudy.toUpperCase()}</strong></td>
+                        <td><strong>${course.toUpperCase()}</strong></td>
+                        <td><strong>${specialization.toUpperCase()}</strong></td>
+                        ${option && option !== 'N/D' ? `<td><strong>${option.toUpperCase()}</strong></td>` : ''}
                     </tr>
                 </table>
             </div>
@@ -672,7 +649,7 @@ export async function generateAttestationHTML(
                         <td><strong>${average}</strong></td>
                         <td><strong>${mention} ${grade}</strong></td>
                         <td><strong>${academicYear}</strong></td>
-                        <td><strong>${finality}</strong></td>
+                        <td><strong>${finality.toUpperCase()}</strong></td>
                     </tr>
                 </table>
             </div>
@@ -735,8 +712,6 @@ export async function generateAttestationHTML(
                 ` : ''}
             </div>
             `}
-            ${encryptionEnabled ? '<br><small style="color: #006400;">🔐 QR Code sécurisé avec chiffrement compact basé sur le matricule.</small>' : ''}
-            ${qrCodeAnalysis && qrCodeAnalysis.estimatedQRSize === 'Large' ? '<br><small style="color: #FF8C00;">⚠️ QR Code volumineux - Vérifiez la lisibilité.</small>' : ''}
         </div>
         
         ${theme.qrCodePosition === 'custom' && options.qrCodePosition ? `

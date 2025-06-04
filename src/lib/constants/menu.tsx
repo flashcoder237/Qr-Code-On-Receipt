@@ -7,6 +7,7 @@ import { CoursesList } from "@/components/organisms/courses-list";
 import { ReleveGenerator } from "@/components/organisms/receipts/ReleveGenerator";
 import { AcademicConfigManager } from "@/components/organisms/academic-config/AcademicConfigManager";
 import { DocumentHistoryManager } from "@/components/organisms/document-history/DocumentHistoryManager";
+import { HelpSupport } from '@/components/organisms/help-support';
 import {
   FileDownIcon,
   HelpCircleIcon,
@@ -20,12 +21,6 @@ import {
 
 const menuItems = [
   {
-    title: "Configurer les relevés",
-    url: "config",
-    icon: Settings2,
-    component: <AcademicConfigManager />,
-  },
-  {
     title: "Génerer les relevés",
     url: "receipts",
     icon: FileText,
@@ -37,11 +32,11 @@ const menuItems = [
     icon: Award,
     component: <AttestationGenerator />,
   },
-  {
-    title: "Historique des documents",
-    url: "history",
-    icon: History,
-    component: <DocumentHistoryManager />,
+    {
+    title: "Configurer les relevés",
+    url: "config",
+    icon: Settings2,
+    component: <AcademicConfigManager />,
   },
   {
     title: "Configurer les entêtes",
@@ -50,11 +45,12 @@ const menuItems = [
     component: <SettingsForm />,
   },
   {
-    title: "Liste de matières",
-    url: "courses",
-    icon: ListCheck,
-    component: <CoursesList />,
+    title: "Historique des documents",
+    url: "history",
+    icon: History,
+    component: <DocumentHistoryManager />,
   },
+  
   {
     title: "QR Codes sur PDF",
     url: "qrcode",
@@ -65,7 +61,7 @@ const menuItems = [
     title: "Aide",
     url: "help",
     icon: HelpCircleIcon,
-    component: <></>,
+    component: <HelpSupport />,
   },
 ];
 
