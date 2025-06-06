@@ -181,14 +181,14 @@ export async function generateAttestationHTML(
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: ${theme.documentPadding}px;
+    padding: ${theme.documentPadding/2}px;
   }
 
     
     .container {
       width: 100%;
       height: 100%;
-      padding : ${theme.documentPadding }px;
+      padding : ${theme.documentPadding}px;
       position: relative;
       display: flex;
       flex-direction: column;
@@ -199,13 +199,12 @@ export async function generateAttestationHTML(
     .header {    
       font-size: ${theme.headerFontSize}px;
       font-family: ${theme.headerFont};
-  
       flex-shrink: 0;
     }
     
     .header-row1 {
       text-align: center;
-      margin-bottom: ${theme.headerLayout === 'compact' ? '15px' : '20px'};
+      margin-bottom: ${theme.headerLayout === 'compact' ? '4px' : '8px'};
       display: flex;
       justify-content: space-between;
       align-items: ${theme.logoPosition === 'integrated' ? 'center' : 'flex-start'};
@@ -253,7 +252,7 @@ export async function generateAttestationHTML(
       font-weight: bold;
       font-size: ${theme.titleFontSize}px;
       color: ${theme.accentColor};
-      margin: ${theme.compactMode ? '8px 0' : '15px 0'};
+      margin: ${theme.compactMode ? '0px 0' : '4px 0'};
       font-family: ${theme.headerFont};
     }
     
@@ -261,19 +260,19 @@ export async function generateAttestationHTML(
       font-weight: bold;
       font-size: ${theme.subtitleFontSize}px;
       color: ${theme.secondaryColor};
-      margin: ${theme.compactMode ? '5px 0' : '10px 0'};
+      margin: ${theme.compactMode ? '0px 0' : '4px 0'};
       font-style: italic;
     }
     
     .header-row2 p {
       font-size: ${theme.contentFontSize + 1}px;
-      margin: ${theme.compactMode ? '8px 0' : '12px 0'};
+      margin: ${theme.compactMode ? '0px 0' : '8px 0'};
     }
 
     /* Contenu principal */
     .content {
       flex: 1;
-      margin: ${theme.compactMode ? '15px 0' : '25px 0'};
+      margin: ${theme.compactMode ? '0px 0' : '10px 0'};
       font-size: ${theme.contentFontSize}px;
     }
     
@@ -294,7 +293,7 @@ export async function generateAttestationHTML(
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: ${theme.compactMode ? '12px' : '15px'};
+      margin-bottom: ${theme.compactMode ? '0px' : '0px'};
     }
     
     th, td {
@@ -331,6 +330,8 @@ export async function generateAttestationHTML(
       border: none;
     }
     th {
+      background: none;
+      background-color: none;
       border-bottom: 2px solid ${theme.tableBorderColor};
     }
     td {
@@ -591,10 +592,10 @@ export async function generateAttestationHTML(
             ${theme.showBilingualText ? '<em>' + (theme.primaryLanguage === 'english' ? 'Je soussignée, Professeur EBOUMBOU MOUKOKO Carole Else,' : 'I, the undersigned, Professor EBOUMBOU MOUKOKO Carole Else,') + '</em>' : ''}</p>
 
             <div id="to-hidden" style="${settings.establishmentType !== "ipes" ? 'display : none' : 'display: flex'}; justify-content: space-between; margin: 15px 0;">
-              <div style="width: 45%; text-align: center; border-top: 1px solid ${theme.tableBorderColor}; margin-top: 10px;">
+              <div style="width: 45%; text-align: left; border-top: 1px solid ${theme.tableBorderColor}; margin-top: 10px;">
                 <strong>Directeur de l'${settings.nameAbreviation}</strong>
               </div>
-              <div style="width: 45%; text-align: center; border-top: 1px solid ${theme.tableBorderColor}; margin-top: 10px;">
+              <div style="width: 45%; text-align: left; border-top: 1px solid ${theme.tableBorderColor}; margin-top: 10px;">
                 <strong>Recteur de l'Université de Douala</strong>
               </div>
             </div>
@@ -602,7 +603,7 @@ export async function generateAttestationHTML(
             <p><strong>Vu le procès-verbal du jury N°0001 en date du ${juryDate} atteste que,</strong><br>
             ${theme.showBilingualText ? `<em>Considering the jury's decision N° 0001 dated ${juryDate} Certify that,</em>` : ''}</p>
             
-            <div class="student-info">
+            
                 <p>M./Mme/Mlle <strong>${studentFullName.toUpperCase()}</strong><br>
                 ${theme.showBilingualText ? '<em>Mr/Mrs/Miss</em>' : ''}</p>
                 
@@ -613,7 +614,7 @@ export async function generateAttestationHTML(
                 ${theme.showBilingualText ? '<em>Registered under the matricule number:</em>' : ''}</p>
                 <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase()}</strong> en <strong>${specialization.toUpperCase()}</strong> ${option && option !== 'N/D' ? `option <strong>${option.toUpperCase()}</strong>` : ''}<br>
                 ${theme.showBilingualText ? '<em>Having successfully fufilled the requirements qualifying for the :</em>' : ''}</p>
-            </div>
+          
             
             ${theme.showDomainTable ? `
             <div class="table-container">
@@ -657,46 +658,46 @@ export async function generateAttestationHTML(
             
             <p>En foi de quoi la présente Attestation est délivrée pour servir et valoir ce que de droit.<br>
             ${theme.showBilingualText ? '<em>In witness where of the present testimonial is given with all the privileges there to pertaining.</em>' : ''}</p>
-        </div>
-        
-        <div class="footer">
-            <div class="signature">
-                ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-left' ? `
+            <div class="footer">
+                <div class="signature-ipes">
+                    ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-left' ? `
+                    <div class="qr-code">
+                        ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : ''}" />` : 
+                          '<div class="qr-image" style="background: #eee; display: flex; align-items: center; justify-content: center; font-size: 10px;">QR Code</div>'}
+                    </div>
+                    ` : ''}
+                    
+                    <div id="to-hidden"><strong>Le Directeur de L'${settings.nameAbreviation}</strong><br>
+                    ${theme.showBilingualText ? `<em>The Director of the ${settings.nameAbreviation}</em>` : ''}</div>
+                </div>
+                
+                ${theme.qrCodePosition === 'bottom-center' ? `
                 <div class="qr-code">
                     ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : ''}" />` : 
                       '<div class="qr-image" style="background: #eee; display: flex; align-items: center; justify-content: center; font-size: 10px;">QR Code</div>'}
                 </div>
                 ` : ''}
                 
-                <div id="to-hidden"><strong>Le Directeur de L'${settings.nameAbreviation}</strong><br>
-                ${theme.showBilingualText ? `<em>The Director of the ${settings.nameAbreviation}</em>` : ''}</div>
-            </div>
-            
-            ${theme.qrCodePosition === 'bottom-center' ? `
-            <div class="qr-code">
-                ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : ''}" />` : 
-                  '<div class="qr-image" style="background: #eee; display: flex; align-items: center; justify-content: center; font-size: 10px;">QR Code</div>'}
-            </div>
-            ` : ''}
-            
-            <div class="signature">
-                <p><strong>Douala, le</strong><br>
-                ${theme.showBilingualText ? '<em>Douala, the</em>' : ''}</p>
-
-                <p id="to-hidden" style="padding-bottom: 30px; margin-top: ${theme.signatureLayout === 'stacked' ? '2px' : '10px'};">
-                <strong>Le Recteur de l'Université de Douala</strong><br>
-                ${theme.showBilingualText ? '<em>The Rector of the University of Douala</em>' : ''}</p>
-                <p id="to-nothidden" style="padding-bottom: 30px; margin-top: ${theme.signatureLayout === 'stacked' ? '2px' : '10px'};">
-                <strong>Le DOYEN</strong><br>
-                ${theme.showBilingualText ? '<em>The DEAN</em>' : ''}</p>
-                
-                ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-right' ? `
-                <div class="qr-code">
-                    ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : ''}" />` : 
-                      '<div class="qr-image" style="background: #eee; display: flex; align-items: center; justify-content: center; font-size: 10px;">QR Code</div>'}
+                <div class="signature">
+                    <p><strong>Douala, le</strong><br>
+                    ${theme.showBilingualText ? '<em>Douala, the</em>' : ''}</p>
+    
+                    <p id="to-hidden" style="padding-bottom: 30px; margin-top: ${theme.signatureLayout === 'stacked' ? '2px' : '10px'};">
+                    <strong>Le Recteur de l'Université de Douala</strong><br>
+                    ${theme.showBilingualText ? '<em>The Rector of the University of Douala</em>' : ''}</p>
+                    <p id="to-nothidden" style="padding-bottom: 30px; margin-top: ${theme.signatureLayout === 'stacked' ? '2px' : '10px'};">
+                    <strong>Le DOYEN</strong><br>
+                    ${theme.showBilingualText ? '<em>The DEAN</em>' : ''}</p>
+                    
+                    ${theme.signatureLayout === 'side-by-side' && theme.qrCodePosition === 'bottom-right' ? `
+                    <div class="qr-code">
+                        ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : ''}" />` : 
+                          '<div class="qr-image" style="background: #eee; display: flex; align-items: center; justify-content: center; font-size: 10px;">QR Code</div>'}
+                    </div>
+                    ` : ''}
                 </div>
-                ` : ''}
             </div>
+            
         </div>
         
         <div class="disclaimer">

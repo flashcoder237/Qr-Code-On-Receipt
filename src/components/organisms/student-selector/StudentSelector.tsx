@@ -1,4 +1,4 @@
-// src/components/organisms/student-selector/StudentSelector.tsx - Version mise à jour
+// src/components/organisms/student-selector/StudentSelector.tsx - Version avec validation des moyennes
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -37,8 +38,16 @@ import {
   Loader2,
   SortAsc,
   SortDesc,
-  MoreHorizontal
+  MoreHorizontal,
+  XCircle,
+  TrendingDown,
+  TrendingUp
 } from "lucide-react";
+import { 
+  validateStudentForAttestation, 
+  filterEligibleStudents, 
+  calculateAverageStatistics 
+} from "@/lib/validation/average-validation";
 
 interface Student {
   NOM: string;
@@ -65,7 +74,7 @@ interface StudentSelectorProps {
   onGenerateSelected: (students?: Student[]) => void;
   documentType: "releve" | "attestation" | "diplome";
   isLoading?: boolean;
-  additionalInfo?: string; // Nouveau prop pour informations supplémentaires
+  additionalInfo?: string;
   maxSelection?: number;
   showFilters?: boolean;
   showPreview?: boolean;
@@ -92,10 +101,29 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [filterGrade, setFilterGrade] = useState<string>("all");
   const [filterMention, setFilterMention] = useState<string>("all");
+  const [filterEligibility, setFilterEligibility] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>('nom');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [studentsPerPage] = useState(10);
+
+  // Validation des moyennes pour les attestations
+  const eligibilityData = useMemo(() => {
+    if (documentType !== 'attestation') {
+      return {
+        eligible: students,
+        ineligible: [],
+        eligibleCount: students.length,
+        ineligibleCount: 0
+      };
+    }
+    return filterEligibleStudents(students);
+  }, [students, documentType]);
+
+  const averageStats = useMemo(() => {
+    if (documentType !== 'attestation') return null;
+    return calculateAverageStatistics(students);
+  }, [students, documentType]);
 
   // Fonctions de tri
   const handleSort = (field: SortField) => {
@@ -112,7 +140,7 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
     return sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />;
   };
 
-  // Filtrage et tri des étudiants
+  // Filtrage et tri des étudiants avec validation des moyennes
   const filteredAndSortedStudents = useMemo(() => {
     let filtered = students.filter(student => {
       const searchMatch = !searchTerm || 
@@ -122,7 +150,18 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
       const gradeMatch = filterGrade === "all" || student.GRADE === filterGrade;
       const mentionMatch = filterMention === "all" || student.MENTION === filterMention;
       
-      return searchMatch && gradeMatch && mentionMatch;
+      // Filtre d'éligibilité pour les attestations
+      let eligibilityMatch = true;
+      if (documentType === 'attestation' && filterEligibility !== "all") {
+        const validation = validateStudentForAttestation(student);
+        if (filterEligibility === "eligible") {
+          eligibilityMatch = validation.isEligible;
+        } else if (filterEligibility === "ineligible") {
+          eligibilityMatch = !validation.isEligible;
+        }
+      }
+      
+      return searchMatch && gradeMatch && mentionMatch && eligibilityMatch;
     });
 
     // Tri
@@ -166,7 +205,7 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
     });
 
     return filtered;
-  }, [students, searchTerm, filterGrade, filterMention, sortField, sortOrder]);
+  }, [students, searchTerm, filterGrade, filterMention, filterEligibility, sortField, sortOrder, documentType]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedStudents.length / studentsPerPage);
@@ -182,9 +221,21 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
     [...new Set(students.map(s => s.MENTION).filter(Boolean))].sort()
   , [students]);
 
-  // Gestion de la sélection
+  // Gestion de la sélection avec validation pour les attestations
   const handleStudentSelect = (matricule: string, selected: boolean) => {
     if (selected) {
+      // Vérifier l'éligibilité pour les attestations
+      if (documentType === 'attestation') {
+        const student = students.find(s => s.MATRICULE === matricule);
+        if (student) {
+          const validation = validateStudentForAttestation(student);
+          if (!validation.isEligible) {
+            // Ne pas permettre la sélection si non éligible
+            return;
+          }
+        }
+      }
+      
       if (!maxSelection || selectedStudents.length < maxSelection) {
         onSelectionChange([...selectedStudents, matricule]);
       }
@@ -194,14 +245,24 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
   };
 
   const handleSelectAll = () => {
-    const currentPageMatricules = paginatedStudents.map(s => s.MATRICULE);
+    let studentsToSelect = paginatedStudents;
+    
+    // Pour les attestations, ne sélectionner que les étudiants éligibles
+    if (documentType === 'attestation') {
+      studentsToSelect = studentsToSelect.filter(student => {
+        const validation = validateStudentForAttestation(student);
+        return validation.isEligible;
+      });
+    }
+    
+    const currentPageMatricules = studentsToSelect.map(s => s.MATRICULE);
     const allSelected = currentPageMatricules.every(m => selectedStudents.includes(m));
     
     if (allSelected) {
       // Désélectionner tous les étudiants de la page courante
       onSelectionChange(selectedStudents.filter(m => !currentPageMatricules.includes(m)));
     } else {
-      // Sélectionner tous les étudiants de la page courante (en respectant la limite)
+      // Sélectionner tous les étudiants éligibles de la page courante
       const toAdd = currentPageMatricules.filter(m => !selectedStudents.includes(m));
       const availableSlots = maxSelection ? maxSelection - selectedStudents.length : toAdd.length;
       const newSelected = [...selectedStudents, ...toAdd.slice(0, availableSlots)];
@@ -214,8 +275,31 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
   };
 
   const handleGenerateSelected = () => {
-    const selectedStudentObjects = students.filter(s => selectedStudents.includes(s.MATRICULE));
-    onGenerateSelected(selectedStudentObjects);
+    let studentsToGenerate = students.filter(s => selectedStudents.includes(s.MATRICULE));
+    
+    // Pour les attestations, filtrer encore une fois pour s'assurer qu'aucun étudiant non éligible n'est inclus
+    if (documentType === 'attestation') {
+      studentsToGenerate = studentsToGenerate.filter(student => {
+        const validation = validateStudentForAttestation(student);
+        return validation.isEligible;
+      });
+    }
+    
+    onGenerateSelected(studentsToGenerate);
+  };
+
+  // Vérifier si un étudiant est éligible
+  const isStudentEligible = (student: Student): boolean => {
+    if (documentType !== 'attestation') return true;
+    const validation = validateStudentForAttestation(student);
+    return validation.isEligible;
+  };
+
+  // Obtenir la raison de non-éligibilité
+  const getIneligibilityReason = (student: Student): string | null => {
+    if (documentType !== 'attestation') return null;
+    const validation = validateStudentForAttestation(student);
+    return validation.isEligible ? null : validation.reason || null;
   };
 
   // Fonction pour obtenir l'icône du type de document
@@ -236,6 +320,47 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Statistiques d'éligibilité pour les attestations */}
+      {documentType === 'attestation' && averageStats && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-orange-900">
+              <TrendingUp className="h-5 w-5" />
+              Éligibilité pour les Attestations
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{averageStats.eligible}</div>
+                <div className="text-sm text-gray-600">Éligibles (≥10/20)</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">{averageStats.ineligible}</div>
+                <div className="text-sm text-gray-600">Non éligibles (&lt;10/20)</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{averageStats.percentageEligible.toFixed(1)}%</div>
+                <div className="text-sm text-gray-600">Taux d'éligibilité</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{averageStats.averageEligible.toFixed(2)}</div>
+                <div className="text-sm text-gray-600">Moyenne éligibles</div>
+              </div>
+            </div>
+            {averageStats.ineligible > 0 && (
+              <Alert className="mt-4 border-orange-300 bg-orange-50">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-orange-800">
+                  <strong>{averageStats.ineligible} étudiant(s)</strong> ne peuvent pas recevoir d'attestation car leur moyenne est inférieure à 10/20.
+                  Seuls les étudiants avec une moyenne ≥ 10/20 peuvent être sélectionnés.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* En-tête avec informations et statistiques */}
       <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
         <CardHeader>
@@ -250,6 +375,14 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
                 <span>{filteredAndSortedStudents.length} étudiant(s) disponible(s)</span>
                 <span>•</span>
                 <span className="font-medium">{selectedStudents.length} sélectionné(s)</span>
+                {documentType === 'attestation' && eligibilityData.ineligibleCount > 0 && (
+                  <>
+                    <span>•</span>
+                    <span className="text-red-600 font-medium">
+                      {eligibilityData.ineligibleCount} non éligible(s)
+                    </span>
+                  </>
+                )}
                 {additionalInfo && (
                   <>
                     <span>•</span>
@@ -289,7 +422,7 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
       {showFilters && (
         <Card>
           <CardContent className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="space-y-2">
                 <Label>Recherche</Label>
                 <div className="relative">
@@ -333,6 +466,33 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
                 </Select>
               </div>
 
+              {/* Filtre d'éligibilité pour les attestations */}
+              {documentType === 'attestation' && (
+                <div className="space-y-2">
+                  <Label>Éligibilité</Label>
+                  <Select value={filterEligibility} onValueChange={setFilterEligibility}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous</SelectItem>
+                      <SelectItem value="eligible">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          Éligibles (≥10/20)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="ineligible">
+                        <div className="flex items-center gap-2">
+                          <XCircle className="h-4 w-4 text-red-600" />
+                          Non éligibles (&lt;10/20)
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label>Actions</Label>
                 <div className="flex gap-2">
@@ -343,6 +503,7 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
                       setSearchTerm("");
                       setFilterGrade("all");
                       setFilterMention("all");
+                      setFilterEligibility("all");
                     }}
                   >
                     <Filter className="h-4 w-4 mr-1" />
@@ -368,10 +529,18 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
                   disabled={isLoading || paginatedStudents.length === 0}
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  {paginatedStudents.every(s => selectedStudents.includes(s.MATRICULE)) 
-                    ? "Désélectionner la page" 
-                    : "Sélectionner la page"
-                  }
+                  {(() => {
+                    if (documentType === 'attestation') {
+                      const eligibleOnPage = paginatedStudents.filter(s => isStudentEligible(s));
+                      const allEligibleSelected = eligibleOnPage.every(s => selectedStudents.includes(s.MATRICULE));
+                      return allEligibleSelected 
+                        ? "Désélectionner éligibles" 
+                        : `Sélectionner éligibles (${eligibleOnPage.length})`;
+                    } else {
+                      const allSelected = paginatedStudents.every(s => selectedStudents.includes(s.MATRICULE));
+                      return allSelected ? "Désélectionner la page" : "Sélectionner la page";
+                    }
+                  })()}
                 </Button>
                 
                 {selectedStudents.length > 0 && (
@@ -435,11 +604,25 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
                 <TableRow className="bg-gray-50">
                   <TableHead className="w-12">
                     <Checkbox
-                      checked={paginatedStudents.length > 0 && paginatedStudents.every(s => selectedStudents.includes(s.MATRICULE))}
+                      checked={(() => {
+                        if (documentType === 'attestation') {
+                          const eligibleOnPage = paginatedStudents.filter(s => isStudentEligible(s));
+                          return eligibleOnPage.length > 0 && eligibleOnPage.every(s => selectedStudents.includes(s.MATRICULE));
+                        } else {
+                          return paginatedStudents.length > 0 && paginatedStudents.every(s => selectedStudents.includes(s.MATRICULE));
+                        }
+                      })()}
                       onCheckedChange={handleSelectAll}
                       disabled={isLoading}
                     />
                   </TableHead>
+                  {documentType === 'attestation' && (
+                    <TableHead className="w-12">
+                      <div className="flex items-center justify-center">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" title="Éligibilité" />
+                      </div>
+                    </TableHead>
+                  )}
                   <TableHead 
                     className="cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort('nom')}
@@ -500,7 +683,9 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
                 <AnimatePresence>
                   {paginatedStudents.map((student, index) => {
                     const isSelected = selectedStudents.includes(student.MATRICULE);
-                    const canSelect = !maxSelection || selectedStudents.length < maxSelection || isSelected;
+                    const isEligible = isStudentEligible(student);
+                    const ineligibilityReason = getIneligibilityReason(student);
+                    const canSelect = isEligible && (!maxSelection || selectedStudents.length < maxSelection || isSelected);
                     
                     return (
                       <motion.tr
@@ -512,8 +697,10 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
                         className={`
                           hover:bg-gray-50 transition-colors
                           ${isSelected ? 'bg-blue-50 border-l-4 border-blue-500' : ''}
+                          ${!isEligible && documentType === 'attestation' ? 'bg-red-50 opacity-75' : ''}
                           ${!canSelect ? 'opacity-50' : ''}
                         `}
+                        title={!isEligible && documentType === 'attestation' ? ineligibilityReason || undefined : undefined}
                       >
                         <TableCell>
                           <Checkbox
@@ -524,6 +711,17 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
                             disabled={isLoading || (!canSelect && !isSelected)}
                           />
                         </TableCell>
+                        {documentType === 'attestation' && (
+                          <TableCell>
+                            <div className="flex justify-center">
+                              {isEligible ? (
+                                <CheckCircle2 className="h-4 w-4 text-green-600" title="Éligible pour attestation" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-red-600" title={ineligibilityReason || "Non éligible"} />
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
                         <TableCell className="font-medium">{student.NOM}</TableCell>
                         <TableCell>{student.PRENOM}</TableCell>
                         <TableCell>
@@ -544,11 +742,23 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
                           </>
                         )}
                         <TableCell>
-                          <Badge variant="outline" className="font-mono">
+                          <Badge 
+                            variant="outline" 
+                            className={`font-mono ${
+                              documentType === 'attestation' 
+                                ? (isEligible ? 'border-green-500 text-green-700' : 'border-red-500 text-red-700')
+                                : ''
+                            }`}
+                          >
                             {typeof student.MOYENNE === 'number' 
                               ? student.MOYENNE.toFixed(2) 
                               : student.MOYENNE || 'N/A'
                             }
+                            {documentType === 'attestation' && (
+                              <span className="ml-1">
+                                {isEligible ? '✓' : '✗'}
+                              </span>
+                            )}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -586,6 +796,11 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600">
                 Page {currentPage} sur {totalPages} ({filteredAndSortedStudents.length} étudiants)
+                {documentType === 'attestation' && eligibilityData.ineligibleCount > 0 && (
+                  <span className="text-red-600 ml-2">
+                    ({eligibilityData.ineligibleCount} non éligibles masqués)
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -619,7 +834,10 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
               Aucun étudiant trouvé
             </h3>
             <p className="text-gray-600">
-              Essayez de modifier vos critères de recherche ou de filtrage.
+              {documentType === 'attestation' && filterEligibility === 'eligible' 
+                ? "Aucun étudiant éligible trouvé avec les critères actuels."
+                : "Essayez de modifier vos critères de recherche ou de filtrage."
+              }
             </p>
           </CardContent>
         </Card>
