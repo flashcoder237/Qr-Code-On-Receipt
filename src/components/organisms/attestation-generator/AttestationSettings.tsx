@@ -17,15 +17,17 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
   // État des paramètres stockés dans localStorage
   const [settings, setSettings] = useLocalStorage("settings", {
     establishmentType: "ipes", // Valeur par défaut
-    nameFrench: "INSTITUT UNIVERSITAIRE DES BATISSEURS-SIGMEN",
-    nameEnglish: "UNIVERSITY INSTITUTE OF BUILDERS-SIGMEN",
-    nameAbreviation: "IUB-SIGMEN",
-    postalBox: "5816, Douala Cameroun",
-    postalBoxEn: "5816, Douala Cameroon",
-    email: "institutsigmen@gmail.com",
+    nameFrench: "INSTITUT UNIVERSITAIRE DES ...",
+    nameEnglish: "UNIVERSITY INSTITUTE OF ...",
+    nameAbreviation: "IUB...",
+    postalBox: "xxxx, Douala Cameroun",
+    postalBoxEn: "xxxx, Douala Cameroon",
+    email: "xxxxx@gmail.com",
     logo: "",
     universityLogo: "",
     facultyLogo: "",
+    convTextEn: "",
+    convTextFr: "",
   });
 
   // État local pour la modification
@@ -60,6 +62,7 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
       establishmentLogo: isIpes ? "Logo de l'IPES" : "Logo de l'établissement",
       establishmentName: isIpes ? "Nom de l'IPES" : "Nom de l'établissement",
       establishmentAbbr: isIpes ? "Abréviation de l'IPES" : "Abréviation de l'établissement",
+      establishmentConv: isIpes ? "Convention de l'IPES" : "Convention de l'établissement",
     };
   };
 
@@ -222,6 +225,25 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
                 id="nameAbreviation"
                 name="nameAbreviation"
                 value={formValues.nameAbreviation}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="convTextFr">{labels.establishmentConv} (Français)</Label>
+              <Input 
+                id="convTextFr"
+                name="convTextFr"
+                value={formValues.convTextFr}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="convTextEn">{labels.establishmentConv} (Anglais)</Label>
+              <Input 
+                id="convTextEn"
+                name="convTextEn"
+                value={formValues.convTextEn}
                 onChange={handleInputChange}
               />
             </div>

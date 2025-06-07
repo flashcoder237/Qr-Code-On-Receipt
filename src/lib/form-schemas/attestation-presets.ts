@@ -1,4 +1,4 @@
-// src/lib/form-schemas/attestation-presets.ts
+// src/lib/form-schemas/attestation-presets.ts - Version mise à jour avec structure classique
 import { AttestationThemeSettingsPayload } from './attestation-theme-settings';
 
 export interface AttestationThemePreset {
@@ -11,16 +11,71 @@ export interface AttestationThemePreset {
 
 export const attestationThemePresets: AttestationThemePreset[] = [
   {
-    id: 'classic-formal',
-    name: 'Classique Formel',
-    description: 'Thème traditionnel avec bordures doubles et mise en page formelle',
+    id: 'classic-original',
+    name: 'Classique Original',
+    description: 'Thème original avec Times New Roman, bordures doubles et mise en page traditionnelle',
     category: 'classic',
     theme: {
       primaryColor: "#000000",
       secondaryColor: "#333333",
       accentColor: "#000080",
       tableBorderColor: "#000000",
-      tableHeaderBgColor: "#f5f5f5",
+      tableHeaderBgColor: "#eeeeee",
+      
+      mainFont: "Times New Roman, serif",
+      headerFont: "Times New Roman, serif",
+      
+      titleFontSize: 24,
+      subtitleFontSize: 22,
+      headerFontSize: 10,
+      contentFontSize: 12,
+      footerFontSize: 8,
+      
+      headerLayout: "standard",
+      logoSize: "medium",
+      logoPosition: "integrated",
+      
+      contentLayout: "standard",
+      tableStyle: "bordered",
+      
+      borderStyle: "double",
+      borderWidth: 2,
+      tableCellPadding: 4,
+      documentPadding: 20,
+      
+      showWatermark: true,
+      watermarkOpacity: 0.0,
+      showQRCode: true,
+      qrCodeSize: "medium",
+      qrCodePosition: "bottom-left",
+      
+      signatureStyle: "standard",
+      signatureLayout: "side-by-side",
+      
+      customTitle: undefined,
+      customSubtitle: undefined,
+      customFooterText: undefined,
+      
+      showBilingualText: true,
+      primaryLanguage: "french",
+      
+      showDomainTable: true,
+      showAcademicDetails: true,
+      compactMode: true,
+    }
+  },
+  
+  {
+    id: 'classic-elegant',
+    name: 'Classique Élégant',
+    description: 'Version élégante du style classique avec Times New Roman et espacement optimisé',
+    category: 'classic',
+    theme: {
+      primaryColor: "#1a1a1a",
+      secondaryColor: "#4a4a4a",
+      accentColor: "#000080",
+      tableBorderColor: "#000000",
+      tableHeaderBgColor: "#f0f0f0",
       
       mainFont: "Times New Roman, serif",
       headerFont: "Times New Roman, serif",
@@ -66,9 +121,9 @@ export const attestationThemePresets: AttestationThemePreset[] = [
   },
   
   {
-    id: 'modern-clean',
-    name: 'Moderne Épuré',
-    description: 'Design contemporain avec couleurs sobres et mise en page aérée',
+    id: 'modern-georgia',
+    name: 'Moderne Georgia',
+    description: 'Style moderne avec police Georgia et couleurs contemporaines',
     category: 'modern',
     theme: {
       primaryColor: "#1a1a1a",
@@ -78,7 +133,7 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       tableHeaderBgColor: "#f8f9fa",
       
       mainFont: "Georgia, serif",
-      headerFont: "Arial, sans-serif",
+      headerFont: "Georgia, serif",
       
       titleFontSize: 24,
       subtitleFontSize: 22,
@@ -90,7 +145,7 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       logoSize: "medium",
       logoPosition: "integrated",
       
-      contentLayout: "formal",
+      contentLayout: "modern",
       tableStyle: "bordered",
       
       borderStyle: "solid",
@@ -121,10 +176,10 @@ export const attestationThemePresets: AttestationThemePreset[] = [
   },
   
   {
-    id: 'minimalist-elegant',
-    name: 'Minimaliste Élégant',
-    description: 'Style épuré avec bordures subtiles et espacement optimisé',
-    category: 'minimalist',
+    id: 'modern-arial',
+    name: 'Moderne Arial',
+    description: 'Design contemporain avec Arial et mise en page épurée',
+    category: 'modern',
     theme: {
       primaryColor: "#2c2c2c",
       secondaryColor: "#555555",
@@ -132,8 +187,63 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       tableBorderColor: "#888888",
       tableHeaderBgColor: "#f5f5f5",
       
-      mainFont: "Times New Roman, serif",
+      mainFont: "Arial, sans-serif",
       headerFont: "Arial, sans-serif",
+      
+      titleFontSize: 22,
+      subtitleFontSize: 20,
+      headerFontSize: 9,
+      contentFontSize: 11,
+      footerFontSize: 8,
+      
+      headerLayout: "standard",
+      logoSize: "medium",
+      logoPosition: "integrated",
+      
+      contentLayout: "modern",
+      tableStyle: "modern",
+      
+      borderStyle: "solid",
+      borderWidth: 1,
+      tableCellPadding: 5,
+      documentPadding: 20,
+      
+      showWatermark: true,
+      watermarkOpacity: 0.10,
+      showQRCode: true,
+      qrCodeSize: "medium",
+      qrCodePosition: "bottom-right",
+      
+      signatureStyle: "modern",
+      signatureLayout: "side-by-side",
+      
+      customTitle: undefined,
+      customSubtitle: undefined,
+      customFooterText: undefined,
+      
+      showBilingualText: true,
+      primaryLanguage: "french",
+      
+      showDomainTable: true,
+      showAcademicDetails: true,
+      compactMode: true,
+    }
+  },
+  
+  {
+    id: 'minimalist-times',
+    name: 'Minimaliste Times',
+    description: 'Style épuré avec Times New Roman et bordures subtiles',
+    category: 'minimalist',
+    theme: {
+      primaryColor: "#2c2c2c",
+      secondaryColor: "#555555",
+      accentColor: "#34495e",
+      tableBorderColor: "#888888",
+      tableHeaderBgColor: "#f9f9f9",
+      
+      mainFont: "Times New Roman, serif",
+      headerFont: "Times New Roman, serif",
       
       titleFontSize: 22,
       subtitleFontSize: 20,
@@ -145,8 +255,8 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       logoSize: "small",
       logoPosition: "integrated",
       
-      contentLayout: "formal",
-      tableStyle: "bordered",
+      contentLayout: "standard",
+      tableStyle: "simple",
       
       borderStyle: "solid",
       borderWidth: 1,
@@ -154,7 +264,7 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       documentPadding: 18,
       
       showWatermark: true,
-      watermarkOpacity: 0.10,
+      watermarkOpacity: 0.08,
       showQRCode: true,
       qrCodeSize: "small",
       qrCodePosition: "bottom-left",
@@ -176,9 +286,64 @@ export const attestationThemePresets: AttestationThemePreset[] = [
   },
   
   {
+    id: 'minimalist-calibri',
+    name: 'Minimaliste Calibri',
+    description: 'Design épuré avec Calibri et espacement optimisé',
+    category: 'minimalist',
+    theme: {
+      primaryColor: "#1a1a1a",
+      secondaryColor: "#4a4a4a",
+      accentColor: "#2c3e50",
+      tableBorderColor: "#cccccc",
+      tableHeaderBgColor: "#f8f8f8",
+      
+      mainFont: "Calibri, sans-serif",
+      headerFont: "Calibri, sans-serif",
+      
+      titleFontSize: 20,
+      subtitleFontSize: 18,
+      headerFontSize: 8,
+      contentFontSize: 9,
+      footerFontSize: 7,
+      
+      headerLayout: "compact",
+      logoSize: "small",
+      logoPosition: "integrated",
+      
+      contentLayout: "standard",
+      tableStyle: "simple",
+      
+      borderStyle: "solid",
+      borderWidth: 1,
+      tableCellPadding: 3,
+      documentPadding: 15,
+      
+      showWatermark: true,
+      watermarkOpacity: 0.08,
+      showQRCode: true,
+      qrCodeSize: "small",
+      qrCodePosition: "bottom-right",
+      
+      signatureStyle: "standard",
+      signatureLayout: "side-by-side",
+      
+      customTitle: undefined,
+      customSubtitle: undefined,
+      customFooterText: undefined,
+      
+      showBilingualText: true,
+      primaryLanguage: "french",
+      
+      showDomainTable: true,
+      showAcademicDetails: true,
+      compactMode: true,
+    }
+  },
+  
+  {
     id: 'formal-institutional',
     name: 'Institutionnel Formel',
-    description: 'Style officiel avec mise en page traditionnelle et couleurs sobres',
+    description: 'Style officiel avec Georgia et couleurs institutionnelles',
     category: 'formal',
     theme: {
       primaryColor: "#1a1a1a",
@@ -231,83 +396,28 @@ export const attestationThemePresets: AttestationThemePreset[] = [
   },
   
   {
-    id: 'compact-efficient',
-    name: 'Compact & Efficace',
-    description: 'Optimisé pour économiser l\'espace tout en restant lisible',
-    category: 'minimalist',
+    id: 'formal-traditional',
+    name: 'Traditionnel Formel',
+    description: 'Style traditionnel avec Times New Roman et mise en page formelle',
+    category: 'formal',
     theme: {
-      primaryColor: "#1a1a1a",
-      secondaryColor: "#4a4a4a",
-      accentColor: "#2c3e50",
-      tableBorderColor: "#666666",
-      tableHeaderBgColor: "#f8f9fa",
-      
-      mainFont: "Georgia, serif",
-      headerFont: "Arial, sans-serif",
-      
-      titleFontSize: 20,
-      subtitleFontSize: 18,
-      headerFontSize: 8,
-      contentFontSize: 9,
-      footerFontSize: 7,
-      
-      headerLayout: "compact",
-      logoSize: "small",
-      logoPosition: "integrated",
-      
-      contentLayout: "formal",
-      tableStyle: "bordered",
-      
-      borderStyle: "solid",
-      borderWidth: 1,
-      tableCellPadding: 3,
-      documentPadding: 15,
-      
-      showWatermark: true,
-      watermarkOpacity: 0.08,
-      showQRCode: true,
-      qrCodeSize: "small",
-      qrCodePosition: "bottom-right",
-      
-      signatureStyle: "standard",
-      signatureLayout: "side-by-side",
-      
-      customTitle: undefined,
-      customSubtitle: undefined,
-      customFooterText: undefined,
-      
-      showBilingualText: true,
-      primaryLanguage: "french",
-      
-      showDomainTable: true,
-      showAcademicDetails: true,
-      compactMode: true,
-    }
-  },
-  
-  {
-    id: 'premium-luxury',
-    name: 'Premium Luxueux',
-    description: 'Design haut de gamme avec mise en page sophistiquée et sobre',
-    category: 'modern',
-    theme: {
-      primaryColor: "#1a1a1a",
-      secondaryColor: "#2c2c2c",
-      accentColor: "#8b4513",
-      tableBorderColor: "#4a4a4a",
+      primaryColor: "#000000",
+      secondaryColor: "#333333",
+      accentColor: "#000080",
+      tableBorderColor: "#000000",
       tableHeaderBgColor: "#f5f5f5",
       
       mainFont: "Times New Roman, serif",
-      headerFont: "Georgia, serif",
+      headerFont: "Times New Roman, serif",
       
-      titleFontSize: 26,
-      subtitleFontSize: 24,
+      titleFontSize: 25,
+      subtitleFontSize: 23,
       headerFontSize: 10,
       contentFontSize: 12,
       footerFontSize: 8,
       
-      headerLayout: "standard",
-      logoSize: "medium",
+      headerLayout: "extended",
+      logoSize: "large",
       logoPosition: "integrated",
       
       contentLayout: "formal",
@@ -316,13 +426,13 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       borderStyle: "double",
       borderWidth: 2,
       tableCellPadding: 6,
-      documentPadding: 22,
+      documentPadding: 25,
       
       showWatermark: true,
-      watermarkOpacity: 0.12,
+      watermarkOpacity: 0.15,
       showQRCode: true,
-      qrCodeSize: "medium",
-      qrCodePosition: "bottom-right",
+      qrCodeSize: "large",
+      qrCodePosition: "bottom-left",
       
       signatureStyle: "underlined",
       signatureLayout: "side-by-side",
@@ -336,7 +446,7 @@ export const attestationThemePresets: AttestationThemePreset[] = [
       
       showDomainTable: true,
       showAcademicDetails: true,
-      compactMode: true,
+      compactMode: false,
     }
   }
 ];
