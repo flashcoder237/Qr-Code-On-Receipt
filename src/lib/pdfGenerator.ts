@@ -38,6 +38,18 @@ interface GeneratePDFParams {
   settings: TranscriptSettingsPayload;
 }
 
+interface GenerateAttestationParams {
+  student: any;
+  settings: any;
+  options: {
+    demoMode?: boolean;
+    qrCodePosition?: { x: number; y: number };
+    theme?: any;
+    qrCodeImage?: string;
+    encryptionEnabled?: boolean;
+  };
+}
+
 // Génère les styles CSS basés sur les paramètres du thème
 function generateThemeStyles(params: GeneratePDFParams): string {
   const theme = getCompleteTheme(params.settings);
@@ -1096,10 +1108,14 @@ export function setupPDFGenerationHandlers() {
   }
 });
   
-  ipcMain.handle('generate-attestation-pdf', async (_, params) => {
+  ipcMain.handle('generate-attestation-pdf', async (_, params: GenerateAttestationParams) => {
     try {
       console.log('🔄 Génération PDF d\'attestation avec chiffrement:', params.options?.encryptionEnabled);
       console.log('🎭 Génération PDF attestation mode démo:', params.options?.demoMode);
+      const options = {
+      ...params.options,
+      demoMode: params.options?.demoMode || false
+    };
       return await generateAttestationPDF(params.student, params.settings, params.options);
     } catch (error) {
       console.error('Error generating attestation PDF:', error);

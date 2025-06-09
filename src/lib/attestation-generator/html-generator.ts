@@ -171,7 +171,10 @@ export async function generateAttestationHTML(
       * {
         box-sizing: border-box;
       }
-      
+      html {
+        width: 210mm;
+        height: 297mm;
+      }
       body {
         margin: ${theme.documentPadding}px;
         padding: 0;
@@ -773,13 +776,13 @@ export async function generateAttestationHTML(
         </div>
         
         <div class="disclaimer">
-            ${isDemoMode ? `
-            <div style="color: red; font-weight: bold; margin-bottom: 10px; width: 100%;">
-              ⚠️ DOCUMENT GÉNÉRÉ EN MODE DÉMO - NON OFFICIEL ⚠️
-            </div>
-            ` : ''}
             ${theme.customFooterText ? `<div>${theme.customFooterText}</div>` : `
             <div>
+            ${isDemoMode ? `
+            <span style="color: red; font-weight: bold;">
+              ⚠️ DOCUMENT GÉNÉRÉ EN MODE DÉMO - NON OFFICIEL ⚠️
+            </span><br>
+            ` : ''}
                 Cette Attestation ne tient pas lieu de Diplôme et n'est délivrée qu'en un seul exemplaire et d'une validité de (6) mois à partir de la date de signature. Le Diplôme lui sera délivré ultérieurement
             </div>
             ${theme.showBilingualText ? `

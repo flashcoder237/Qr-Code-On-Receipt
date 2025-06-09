@@ -84,7 +84,7 @@ export const defaultAttestationTheme: AttestationThemeSettingsPayload = {
   // Couleurs
   primaryColor: "#000000",
   secondaryColor: "#333333", 
-  accentColor: "#0066cc",
+  accentColor: "#000",
   tableBorderColor: "#000000",
   tableHeaderBgColor: "#f0f0f0",
   
@@ -106,7 +106,7 @@ export const defaultAttestationTheme: AttestationThemeSettingsPayload = {
   
   // Contenu
   contentLayout: "standard",
-  tableStyle: "bordered",
+  tableStyle: "simple",
   
   // Bordures
   borderStyle: "solid",

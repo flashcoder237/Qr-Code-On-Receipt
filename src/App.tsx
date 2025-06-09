@@ -38,10 +38,9 @@ export const useAppContext = () => {
 
 // Composant principal de l'application avec gestion du mode démo
 const AppContent: React.FC = () => {
-  const [currentPath, setCurrentPath] = useLocalStorage<string>("current_path", "receipts");
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-
+  
   // Gestion des licences et mode démo
   const {
     isLicensed,
@@ -53,7 +52,8 @@ const AppContent: React.FC = () => {
     activateLicense,
     enterDemoMode
   } = useLicense();
-
+  
+  const [currentPath, setCurrentPath] = useLocalStorage<string>("current_path", (isDemoMode ? "settings" : "receipts"));
   // Initialisation de l'application
   useEffect(() => {
     const initializeApp = async () => {

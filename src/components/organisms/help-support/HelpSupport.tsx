@@ -263,14 +263,14 @@ export const HelpSupport: React.FC = () => {
                   <Mail className="h-4 w-4 text-gray-600" />
                   <div>
                     <p className="font-medium">Email</p>
-                    <p className="text-sm text-gray-600">support@exemple.com</p>
+                    <p className="text-sm text-gray-600">cedrictefoye@gmail.com</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone className="h-4 w-4 text-gray-600" />
                   <div>
                     <p className="font-medium">Téléphone</p>
-                    <p className="text-sm text-gray-600">+237 XXX XXX XXX</p>
+                    <p className="text-sm text-gray-600">+237 652 761 931</p>
                   </div>
                 </div>
                 <Button className="w-full">

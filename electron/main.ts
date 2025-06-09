@@ -135,21 +135,15 @@ function setupPreviewHandlers() {
       const enhancedHtml = htmlContent.replace('</head>', `
         <style>
           html, body {
-            height: 100%;
-            width: 100%;
-            margin: 0;
-            padding: 0;
             overflow-y: auto !important;
             overflow-x: auto !important;
           }
           body {
-            min-height: 100%;
             box-sizing: border-box;
             padding: 10px;
           }
           @media print {
             body {
-              height: auto;
               overflow: visible !important;
             }
           }
@@ -279,31 +273,27 @@ function setupPreviewHandlers() {
           label: 'Affichage',
           submenu: [
             {
-              label: 'Zoom avant',
-              accelerator: 'CmdOrCtrl+Plus',
-              click: () => { 
-                const currentZoom = previewWindow.webContents.getZoomFactor();
-                previewWindow.webContents.setZoomFactor(Math.min(currentZoom + 0.1, 3.0));
-              }
-            },
-            {
-              label: 'Zoom arrière',
-              accelerator: 'CmdOrCtrl+-',
-              click: () => { 
-                const currentZoom = previewWindow.webContents.getZoomFactor();
-                previewWindow.webContents.setZoomFactor(Math.max(currentZoom - 0.1, 0.25));
-              }
-            },
-            {
-              label: 'Réinitialiser le zoom',
+              label: 'Adapter au format A4',
               accelerator: 'CmdOrCtrl+0',
+              click: () => { 
+                previewWindow.webContents.executeJavaScript('adaptA4Scale()');
+              }
+            },
+            {
+              label: 'Zoom 50%',
+              click: () => { previewWindow.webContents.setZoomFactor(0.5); }
+            },
+            {
+              label: 'Zoom 75%',
+              click: () => { previewWindow.webContents.setZoomFactor(0.75); }
+            },
+            {
+              label: 'Zoom 100%',
               click: () => { previewWindow.webContents.setZoomFactor(1.0); }
             },
-            { type: 'separator' },
             {
-              label: 'Actualiser',
-              accelerator: 'F5',
-              click: () => { previewWindow.webContents.reload(); }
+              label: 'Zoom 125%',
+              click: () => { previewWindow.webContents.setZoomFactor(1.25); }
             }
           ]
         }

@@ -30,6 +30,7 @@ interface GenerationOptions {
     y: number;
   };
   theme?: AttestationThemeSettingsPayload;
+  demoMode?: boolean;
   encryptionEnabled?: boolean; // Support du chiffrement
   outputPath?: string; // Chemin de sortie optionnel
   keepTempFile?: boolean; // Garder le fichier temporaire pour débogage
@@ -148,7 +149,7 @@ export async function generateAttestationPDFDetailed(
         qrCodeImage: qrCodeBase64,
         qrCodePosition: safeQrPosition,
         theme: options.theme,
-        demoMode : options.isDemoMode,
+        demoMode: options.demoMode,
         encryptionEnabled: encryptionEnabled
       });
       console.log('✅ HTML généré pour PDF');
