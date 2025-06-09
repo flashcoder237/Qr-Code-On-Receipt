@@ -359,7 +359,6 @@ export async function generateAttestationHTML(
 
       /* Section nominations - STRUCTURE CLASSIQUE MAINTENUE */
       .nomination-list {
-        padding-left: 7px;
         display: flex;
         width: 100%;
         gap: 30%;
@@ -370,6 +369,7 @@ export async function generateAttestationHTML(
         border-top: 1px solid ${theme.tableBorderColor};
         width: 30%;
         padding-top: 4px;
+        margin-top: 15px;
       }
 
       /* Pied de page et signatures - STRUCTURE CLASSIQUE MAINTENUE */
@@ -414,9 +414,9 @@ export async function generateAttestationHTML(
 
       /* QR Code - POSITION PERSONNALISABLE */
       .qr-code {
-        ${theme.qrCodePosition === 'bottom-center' ? 'text-align: center; margin: 20px 0;' : ''}
-        ${theme.qrCodePosition === 'bottom-left' ? 'float: left; margin: 0 20px 20px 0;' : ''}
-        ${theme.qrCodePosition === 'bottom-right' ? 'float: right; margin: 0 0 20px 20px;' : ''}
+        ${theme.qrCodePosition === 'bottom-center' ? 'text-align: center;' : ''}
+        ${theme.qrCodePosition === 'bottom-left' ? 'float: left;' : ''}
+        ${theme.qrCodePosition === 'bottom-right' ? 'float: right;' : ''}
         ${!theme.showQRCode ? 'display: none;' : ''}
       }
       
@@ -560,20 +560,20 @@ export async function generateAttestationHTML(
               <h1>${theme.customTitle || `ATTESTATION DE REUSSITE ${getCycleTranslateFr(cycle)}`}</h1>
               ${theme.showBilingualText ? `<h2>${theme.customSubtitle || `ATTESTATION OF COMPLETION ${getCycleTranslateEn(cycle)}`}</h2>` : ''}
               
-              <p><strong>Ref N°............./${currentYear-1}/UDo/FMSP/VDRC/${settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE"}</strong></p>
+              <p style="margin-top: 6px"><strong>Ref N°............./${currentYear-1}/UDo/FMSP/VDRC/${settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE"}</strong></p>
             </div>
         </div>
         
         <div class="content">
             <div class="list-nomination-header">
-              <p style="font-size: ${theme.contentFontSize}px;" id="to-hidden">${settings.convTextFr}<br>
+              <p style="font-size: ${theme.contentFontSize-1}px;" id="to-hidden">${settings.convTextFr}<br>
               <em>${theme.showBilingualText ? settings.convTextFr : ''}</em></p>
               
               <p id="to-hidden"><strong>Nous soussignés,</strong><br>
-              ${theme.showBilingualText ? '<em>We, the undersigned,</em>' : ''}</p><br>
+              ${theme.showBilingualText ? '<em>We, the undersigned,</em>' : ''}</p>
 
                <p id="to-nothidden"><strong>Je soussignée, Professeur EBOUMBOU MOUKOKO Carole Else,</strong><br>
-              ${theme.showBilingualText ? '<em>I, the undersigned, Professor EBOUMBOU MOUKOKO Carole Else,</em>' : ''}</p><br>
+              ${theme.showBilingualText ? '<em>I, the undersigned, Professor EBOUMBOU MOUKOKO Carole Else,</em>' : ''}</p>
               
               <div class="nomination-list" id="to-hidden">
                 <div class="nomination-list-item">
@@ -597,7 +597,7 @@ export async function generateAttestationHTML(
                 ${theme.showBilingualText ? '<em>Born on: <strong style="opacity:0">' + birthDate + '</strong></em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>at:</em>' : ''}</p>
                 
                 <p id="to-hidden">Inscrit(e) à <strong>${settings.nameFrench}</strong> sous le matricule: <strong>${matricule}</strong><br>
-                ${theme.showBilingualText ? '<em>Registered under the matricule number:</em>' : ''}</p>
+                ${theme.showBilingualText ? `<em>Registered <strong>${settings.nameFrench}</strong> under the matricule number:</em>` : ''}</p>
 
                 <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase()}</strong> en <strong>${specialization.toUpperCase()}</strong> ${option && option !== 'N/D' ? `option <strong>${option.toUpperCase()}</strong>` : ''}<br>
                 ${theme.showBilingualText ? '<em>Having successfully fufilled the requirements qualifying for the :</em>' : ''}</p>
