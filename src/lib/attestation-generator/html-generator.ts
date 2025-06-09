@@ -1,4 +1,4 @@
-// src/lib/attestation-generator/html-generator.ts - Version mise à jour avec structure classique maintenue
+// src/lib/attestation-generator/html-generator.ts - Version corrigée sans localStorage
 import { StudentExcelRecord, sanitizeStudentData, generateQrCodeBase64 } from '../helpers/qrcode';
 import { formatDate, calculateGrade, calculateMention } from './utils';
 import { AttestationThemeSettingsPayload, defaultAttestationTheme } from '../form-schemas/attestation-theme-settings';
@@ -28,10 +28,11 @@ interface GenerationOptions {
   };
   theme?: AttestationThemeSettingsPayload;
   encryptionEnabled?: boolean;
+  demoMode?: boolean; // NOUVEAU: Passer explicitement le mode démo
 }
 
 /**
- * Génère le HTML pour l'attestation de réussite avec support du chiffrement compact
+ * Génère le HTML pour l'attestation de réussite avec support du chiffrement compact et mode démo
  * Structure classique maintenue, seuls les éléments visuels sont personnalisables
  */
 export async function generateAttestationHTML(
@@ -55,7 +56,12 @@ export async function generateAttestationHTML(
   
   // Par défaut, le chiffrement compact est activé sauf indication contraire
   const encryptionEnabled = options.encryptionEnabled !== false;
+  
+  // CORRECTION: Récupérer le mode démo depuis les options au lieu de localStorage
+  const isDemoMode = options.demoMode === true;
+  
   console.log(`🔐 Chiffrement compact: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
+  console.log(`🎭 Mode démo: ${isDemoMode ? 'Activé' : 'Désactivé'}`);
 
   // Utiliser le thème fourni ou celui des paramètres ou le thème par défaut
   const theme = options.theme || settings.theme || defaultAttestationTheme;
@@ -122,7 +128,7 @@ export async function generateAttestationHTML(
   
   if (!qrCodeImage && theme.showQRCode) {
     try {
-      console.log(`🔄 Génération QR Code intégré (Chiffrement compact: ${encryptionEnabled})`);
+      console.log(`🔄 Génération QR Code intégré (Chiffrement compact: ${encryptionEnabled}, Mode démo: ${isDemoMode})`);
       
       qrCodeImage = await generateQrCodeBase64(sanitizedStudent, 'attestation', encryptionEnabled);
       qrCodeAnalysis = getQRCodeSizeEstimate(sanitizedStudent, 'attestation', encryptionEnabled);
@@ -139,7 +145,7 @@ export async function generateAttestationHTML(
     }
   }
 
-  // Génère les styles CSS basés sur le thème - STRUCTURE CLASSIQUE MAINTENUE
+  // Génère les styles CSS basés sur le thème - STRUCTURE CLASSIQUE MAINTENUE AVEC SUPPORT DÉMO
   const generateThemeStyles = (): string => {
     const logoSizeMap = {
       small: { width: '60px', height: '60px' },
@@ -176,6 +182,7 @@ export async function generateAttestationHTML(
         color: ${theme.primaryColor};
         background-color: white;
         ${theme.compactMode ? 'line-height: 1.2;' : 'line-height: 1.4;'}
+        position: relative;
       }
       
       .container {
@@ -184,15 +191,71 @@ export async function generateAttestationHTML(
         padding: ${theme.documentPadding}px;
         box-sizing: border-box;
         position: relative;
-         ${theme.borderStyle !== 'none' ? `border: ${theme.borderWidth}px ${theme.borderStyle} ${theme.tableBorderColor};` : ''}
+        ${theme.borderStyle !== 'none' ? `border: ${theme.borderWidth}px ${theme.borderStyle} ${theme.tableBorderColor};` : ''}
       }
 
-      /* Styles pour les paragraphes */
-      p {
-        margin: ${theme.compactMode ? '5px' : '8px'};
+      /* Filigrane DÉMO - NOUVEAU */
+      .demo-watermark {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1000;
+        pointer-events: none;
+        display: ${isDemoMode ? 'block' : 'none'};
+        background: repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 100px,
+          rgba(255, 0, 0, 0.1) 100px,
+          rgba(255, 0, 0, 0.1) 120px
+        );
+      }
+      
+      .demo-watermark::before {
+        content: "DÉMO";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-45deg);
+        font-size: 120px;
+        font-weight: bold;
+        color: rgba(255, 0, 0, 0.15);
+        font-family: Arial, sans-serif;
+        letter-spacing: 20px;
+      }
+      
+      .demo-watermark::after {
+        content: "MODE DÉMO - FONCTIONNALITÉS LIMITÉES";
+        position: absolute;
+        bottom: 20%;
+        left: 50%;
+        transform: translate(-50%, 0) rotate(-45deg);
+        font-size: 24px;
+        font-weight: bold;
+        color: rgba(255, 0, 0, 0.2);
+        font-family: Arial, sans-serif;
+        white-space: nowrap;
       }
 
-      /* Filigrane - POSITION CLASSIQUE MAINTENUE */
+      /* Bannière démo en haut */
+      .demo-banner {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: rgba(255, 0, 0, 0.8);
+        color: white;
+        text-align: center;
+        padding: 5px;
+        font-size: 12px;
+        font-weight: bold;
+        z-index: 1001;
+        display: ${isDemoMode ? 'block' : 'none'};
+      }
+
+      /* Filigrane IPES - modifié pour être sous le filigrane démo */
       .watermark {
         position: absolute;
         top: 25%;
@@ -203,7 +266,7 @@ export async function generateAttestationHTML(
         display: ${theme.showWatermark ? 'flex' : 'none'};
         justify-content: center;
         align-items: center;
-        opacity: ${theme.watermarkOpacity};
+        opacity: ${isDemoMode ? theme.watermarkOpacity * 0.3 : theme.watermarkOpacity};
         pointer-events: none;
       }
       
@@ -418,6 +481,7 @@ export async function generateAttestationHTML(
         ${theme.qrCodePosition === 'bottom-left' ? 'float: left;' : ''}
         ${theme.qrCodePosition === 'bottom-right' ? 'float: right;' : ''}
         ${!theme.showQRCode ? 'display: none;' : ''}
+        position: relative;
       }
       
       .qr-image {
@@ -425,6 +489,21 @@ export async function generateAttestationHTML(
         height: ${currentQrCodeSize.height};
         background-color: #eee;
         display: block;
+      }
+
+      /* Badge démo sur QR code */
+      .qr-demo-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: red;
+        color: white;
+        font-size: 8px;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-weight: bold;
+        display: ${isDemoMode ? 'block' : 'none'};
+        z-index: 1002;
       }
 
       /* Disclaimer - STRUCTURE CLASSIQUE MAINTENUE */
@@ -482,11 +561,19 @@ export async function generateAttestationHTML(
         .no-print {
           display: none;
         }
+        
+        /* S'assurer que le filigrane démo s'imprime */
+        .demo-watermark,
+        .demo-banner,
+        .qr-demo-badge {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
       }
     `;
   };
 
-  // Création du contenu HTML - STRUCTURE CLASSIQUE MAINTENUE
+  // Création du contenu HTML - STRUCTURE CLASSIQUE MAINTENUE AVEC SUPPORT DÉMO
   const html = `
 <!DOCTYPE html>
 <html lang="${theme.primaryLanguage === 'english' ? 'en' : 'fr'}">
@@ -498,7 +585,17 @@ export async function generateAttestationHTML(
 </head>
 <body>
     <div class="container">
-        <!-- Filigrane IPES -->
+        ${isDemoMode ? `
+        <!-- Bannière mode démo -->
+        <div class="demo-banner">
+          ⚠️ MODE DÉMO - DOCUMENT NON OFFICIEL ⚠️
+        </div>
+        
+        <!-- Filigrane mode démo -->
+        <div class="demo-watermark"></div>
+        ` : ''}
+        
+        <!-- Filigrane IPES existant -->
         <div class="watermark">
             <img src="${settings.establishmentType === "ipes" ? schoolLogo : facultyLogo}" alt="Watermark">
         </div>
@@ -651,8 +748,10 @@ export async function generateAttestationHTML(
         <div class="footer">
             <div class="signature" style="display: flex; flex-direction: column; align-items: center;">
                 <div class="qr-code">
-                    ${qrCodeImage ? `<img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : ''}" />` : 
-                      '<div class="qr-image"></div>'}
+                    ${qrCodeImage ? `
+                      <img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : ''}" />
+                      ${isDemoMode ? '<div class="qr-demo-badge">DÉMO</div>' : ''}
+                    ` : '<div class="qr-image"></div>'}
                 </div>
                 <div class="sign-ipes" id="to-hidden">
                   <p><strong>Le Directeur de L'${settings.nameAbreviation}</strong><br>
@@ -674,6 +773,11 @@ export async function generateAttestationHTML(
         </div>
         
         <div class="disclaimer">
+            ${isDemoMode ? `
+            <div style="color: red; font-weight: bold; margin-bottom: 10px; width: 100%;">
+              ⚠️ DOCUMENT GÉNÉRÉ EN MODE DÉMO - NON OFFICIEL ⚠️
+            </div>
+            ` : ''}
             ${theme.customFooterText ? `<div>${theme.customFooterText}</div>` : `
             <div>
                 Cette Attestation ne tient pas lieu de Diplôme et n'est délivrée qu'en un seul exemplaire et d'une validité de (6) mois à partir de la date de signature. Le Diplôme lui sera délivré ultérieurement
@@ -693,13 +797,10 @@ export async function generateAttestationHTML(
   console.log(`✅ HTML généré avec succès pour ${studentFullName}`);
   console.log(`🔐 Chiffrement compact: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
   console.log(`📋 QR Code inclus: ${qrCodeImage ? 'Oui' : 'Non'}`);
+  console.log(`🎭 Mode démo: ${isDemoMode ? 'Activé (filigrane ajouté)' : 'Désactivé'}`);
   
   if (qrCodeAnalysis) {
     console.log(`📊 Performance QR: ${qrCodeAnalysis.estimatedQRSize} (${qrCodeAnalysis.totalContentLength} caractères)`);
-  }
-  
-  if (encryptionEnabled) {
-    console.log(`🔑 Clé de chiffrement basée sur: ${matricule}`);
   }
   
   return html;

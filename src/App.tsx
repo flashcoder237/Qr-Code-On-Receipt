@@ -1,4 +1,4 @@
-// src/App.tsx - Version avec gestion des licences restaurée
+// src/App.tsx - Version avec gestion du mode démo
 import { useState, useEffect } from "react";
 import { useLocalStorage } from "usehooks-ts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,8 +8,9 @@ import { AppToolbar, AppToolbarProvider, AppToolbarTitle, AppToolbarMenu } from 
 import { PageLayout } from "@/components/layouts/PageLayout";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { menuItems } from "@/lib/constants/menu";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, AlertTriangle } from "lucide-react";
 import { useLicense } from "@/hooks/use-license";
 import { LicenseForm } from "@/components/organisms/license-form/LicenseForm";
 import { Spinner } from "@/components/ui/LoadingSpinner";
@@ -22,6 +23,7 @@ interface AppContextType {
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
   refreshData: () => void;
+  isDemoMode: boolean;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -34,20 +36,22 @@ export const useAppContext = () => {
   return context;
 };
 
-// Composant principal de l'application avec gestion des licences
+// Composant principal de l'application avec gestion du mode démo
 const AppContent: React.FC = () => {
   const [currentPath, setCurrentPath] = useLocalStorage<string>("current_path", "receipts");
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Gestion des licences
+  // Gestion des licences et mode démo
   const {
     isLicensed,
+    isDemoMode,
     isLoading: licenseLoading,
     error: licenseError,
     licenseKey,
     setLicenseKey,
-    activateLicense
+    activateLicense,
+    enterDemoMode
   } = useLicense();
 
   // Initialisation de l'application
@@ -66,11 +70,11 @@ const AppContent: React.FC = () => {
       }
     };
 
-    // N'initialiser l'app que si la licence est validée
-    if (isLicensed && !isInitialized) {
+    // N'initialiser l'app que si la licence est validée OU en mode démo
+    if ((isLicensed || isDemoMode) && !isInitialized) {
       initializeApp();
     }
-  }, [isLicensed, isInitialized]);
+  }, [isLicensed, isDemoMode, isInitialized]);
 
   const refreshData = () => {
     setIsLoading(true);
@@ -80,8 +84,19 @@ const AppContent: React.FC = () => {
     }, 1000);
   };
 
+  // Filtrer les éléments de menu selon le mode
+  const getFilteredMenuItems = () => {
+    if (isDemoMode) {
+      // En mode démo, désactiver l'item "QR Codes sur PDF"
+      return menuItems.filter(item => item.url !== "qrcode");
+    }
+    return menuItems;
+  };
+
+  const filteredMenuItems = getFilteredMenuItems();
+
   // Trouve le composant et le titre pour la route actuelle
-  const currentMenuItem = menuItems.find(item => item.url === currentPath);
+  const currentMenuItem = filteredMenuItems.find(item => item.url === currentPath);
   const currentComponent = currentMenuItem?.component || <div>Page non trouvée</div>;
   const currentTitle = currentMenuItem?.title || "Page inconnue";
 
@@ -102,14 +117,15 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Affichage du formulaire de licence si non licencié
-  if (!isLicensed) {
+  // Affichage du formulaire de licence si non licencié ET pas en mode démo
+  if (!isLicensed && !isDemoMode) {
     return (
       <div className="w-screen h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <LicenseForm
           licenseKey={licenseKey}
           onLicenseKeyChange={setLicenseKey}
           onActivate={activateLicense}
+          onEnterDemo={enterDemoMode}
           error={licenseError}
           isLoading={licenseLoading}
         />
@@ -135,6 +151,14 @@ const AppContent: React.FC = () => {
           <p className="text-gray-600">
             Initialisation en cours, veuillez patienter.
           </p>
+          {isDemoMode && (
+            <div className="mt-4">
+              <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Mode Démo
+              </Badge>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -142,78 +166,92 @@ const AppContent: React.FC = () => {
 
   // Interface principale de l'application
   return (
-    <AppContext.Provider value={{ isLoading, setIsLoading, refreshData }}>
+    <AppContext.Provider value={{ isLoading, setIsLoading, refreshData, isDemoMode }}>
       <NotificationProvider>
-      <AppToolbarProvider>
-        <SidebarProvider defaultOpen>
-          <div className="flex w-screen h-screen bg-background overflow-auto">
-            <AppSidebar />
-            
-            <SidebarInset className="flex-1 flex flex-col">
-              <AppToolbar />
-              
-              <main className="flex-1 overflow-auto">
-                {/* Titre et menu de la page courante */}
-                <AppToolbarTitle>
-                  <div className="flex items-center gap-2">
-                    {currentMenuItem?.icon && (
-                      <currentMenuItem.icon className="h-5 w-5" />
-                    )}
-                    {currentTitle}
-                    {isLoading && (
-                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                    )}
-                  </div>
-                </AppToolbarTitle>
-                
-                <AppToolbarMenu>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={refreshData}
-                    disabled={isLoading}
-                    className="gap-2"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                    Actualiser
-                  </Button>
-                </AppToolbarMenu>
-
-                {/* Contenu principal avec animation */}
-                <div className="relative flex-1 h-full">
-                  <AnimatePresence mode="wait">
-                    <PageLayout key={currentPath} locationKey={currentPath}>
-                      <div className="h-full overflow-auto p-4">
-                        {currentComponent}
-                      </div>
-                    </PageLayout>
-                  </AnimatePresence>
-                  
-                  {/* Overlay de chargement */}
-                  <AnimatePresence>
-                    {isLoading && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-50"
-                      >
-                        <div className="flex items-center gap-3 bg-white rounded-lg shadow-lg p-4">
-                          <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                          <span className="text-sm font-medium text-gray-700">
-                            Chargement en cours...
-                          </span>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+        <AppToolbarProvider>
+          <SidebarProvider defaultOpen>
+            <div className="flex w-screen h-screen bg-background overflow-auto">
+              {/* Bannière mode démo */}
+              {isDemoMode && (
+                <div className="fixed top-0 left-0 right-0 z-50 bg-orange-500 text-white text-center py-1 text-sm font-medium">
+                  <AlertTriangle className="inline h-4 w-4 mr-1" />
+                  MODE DÉMO - Fonctionnalités limitées - Les documents auront un filigrane "DÉMO"
                 </div>
-              </main>
-            </SidebarInset>
-          </div>
-        </SidebarProvider>
-      </AppToolbarProvider>
-    </NotificationProvider>
+              )}
+              
+              <AppSidebar />
+              
+              <SidebarInset className="flex-1 flex flex-col" style={{ marginTop: isDemoMode ? '32px' : '0' }}>
+                <AppToolbar />
+                
+                <main className="flex-1 overflow-auto">
+                  {/* Titre et menu de la page courante */}
+                  <AppToolbarTitle>
+                    <div className="flex items-center gap-2">
+                      {currentMenuItem?.icon && (
+                        <currentMenuItem.icon className="h-5 w-5" />
+                      )}
+                      {currentTitle}
+                      {isDemoMode && (
+                        <Badge variant="secondary" className="bg-orange-100 text-orange-800 ml-2">
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          DÉMO
+                        </Badge>
+                      )}
+                      {isLoading && (
+                        <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                      )}
+                    </div>
+                  </AppToolbarTitle>
+                  
+                  <AppToolbarMenu>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={refreshData}
+                      disabled={isLoading}
+                      className="gap-2"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                      Actualiser
+                    </Button>
+                  </AppToolbarMenu>
+
+                  {/* Contenu principal avec animation */}
+                  <div className="relative flex-1 h-full">
+                    <AnimatePresence mode="wait">
+                      <PageLayout key={currentPath} locationKey={currentPath}>
+                        <div className="h-full overflow-auto p-4">
+                          {currentComponent}
+                        </div>
+                      </PageLayout>
+                    </AnimatePresence>
+                    
+                    {/* Overlay de chargement */}
+                    <AnimatePresence>
+                      {isLoading && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-50"
+                        >
+                          <div className="flex items-center gap-3 bg-white rounded-lg shadow-lg p-4">
+                            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                            <span className="text-sm font-medium text-gray-700">
+                              Chargement en cours...
+                            </span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </main>
+              </SidebarInset>
+            </div>
+          </SidebarProvider>
+        </AppToolbarProvider>
+      </NotificationProvider>
     </AppContext.Provider>
   );
 };

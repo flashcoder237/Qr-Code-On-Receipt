@@ -148,6 +148,7 @@ export async function generateAttestationPDFDetailed(
         qrCodeImage: qrCodeBase64,
         qrCodePosition: safeQrPosition,
         theme: options.theme,
+        demoMode : options.isDemoMode,
         encryptionEnabled: encryptionEnabled
       });
       console.log('✅ HTML généré pour PDF');

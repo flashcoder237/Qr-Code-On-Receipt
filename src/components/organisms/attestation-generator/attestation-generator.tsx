@@ -42,6 +42,8 @@ export const AttestationGenerator: React.FC = () => {
   // Hooks pour notifications et historique
   const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotifications();
   const { addDocumentRecord } = useDocumentHistory();
+
+  const isDemoMode = localStorage.getItem('demo_mode') === 'true';
   
   // Position pour le QR code
   const [position, setPosition] = useLocalStorage("attestation-qrcode-position", {
@@ -356,6 +358,7 @@ export const AttestationGenerator: React.FC = () => {
               theme: attestationTheme,
             },
             options: {
+              demoMode: isDemoMode,
               qrCodePosition: safePosition,
               theme: attestationTheme,
               qrCodeImage: qrCodeBase64,
@@ -502,6 +505,7 @@ export const AttestationGenerator: React.FC = () => {
         { 
           qrCodePosition: safePosition,
           theme: attestationTheme,
+          demoMode: isDemoMode,
           encryptionEnabled: encryptionEnabled
         }
       );

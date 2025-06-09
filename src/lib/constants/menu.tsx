@@ -1,4 +1,4 @@
-// src/lib/constants/menu.tsx - Mise à jour avec l'historique des documents
+// src/lib/constants/menu.tsx - Mise à jour avec gestion du mode démo
 
 import { QrCodeOnPdf } from "@/components/organisms/qrcode-on-pdf";
 import { AttestationGenerator } from "@/components/organisms/attestation-generator";
@@ -19,7 +19,15 @@ import {
   History,
 } from "lucide-react";
 
-const menuItems = [
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: React.ElementType;
+  component: React.ReactElement;
+  demoRestricted?: boolean; // Nouveau: indicateur pour les éléments restreints en mode démo
+}
+
+const menuItems: MenuItem[] = [
   {
     title: "Génerer les relevés",
     url: "receipts",
@@ -32,7 +40,7 @@ const menuItems = [
     icon: Award,
     component: <AttestationGenerator />,
   },
-    {
+  {
     title: "Configurer les relevés",
     url: "config",
     icon: Settings2,
@@ -50,12 +58,12 @@ const menuItems = [
     icon: History,
     component: <DocumentHistoryManager />,
   },
-  
   {
     title: "QR Codes sur PDF",
     url: "qrcode",
     icon: File,
     component: <QrCodeOnPdf />,
+    demoRestricted: true, // Cette fonctionnalité est restreinte en mode démo
   },
   {
     title: "Aide",
@@ -65,4 +73,17 @@ const menuItems = [
   },
 ];
 
+/**
+ * Filtre les éléments de menu selon le mode de fonctionnement
+ * @param isDemoMode - Indique si l'application est en mode démo
+ * @returns Liste des éléments de menu autorisés
+ */
+export const getFilteredMenuItems = (isDemoMode: boolean = false): MenuItem[] => {
+  if (isDemoMode) {
+    return menuItems.filter(item => !item.demoRestricted);
+  }
+  return menuItems;
+};
+
 export { menuItems };
+export type { MenuItem };

@@ -1,3 +1,5 @@
+// src/lib/pdfGenerator.ts - Version corrigée sans localStorage dans le main process
+
 import { StudentRecord } from "../types/student";
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
@@ -27,7 +29,8 @@ interface TranscriptSettingsPayload {
   themeColor: string;
   themeFont: string;
   theme?: ThemeSettingsPayload;
-  encryptionEnabled?: boolean; // NOUVEAU: Support du chiffrement compact
+  encryptionEnabled?: boolean;
+  demoMode?: boolean; // NOUVEAU: Passer explicitement le mode démo
 }
 
 interface GeneratePDFParams {
@@ -39,7 +42,9 @@ interface GeneratePDFParams {
 function generateThemeStyles(params: GeneratePDFParams): string {
   const theme = getCompleteTheme(params.settings);
   
-  // Générer des styles CSS basés sur les paramètres du thème
+  // CORRECTION: Récupérer le mode démo depuis les paramètres au lieu de localStorage
+  const isDemoMode = params.settings.demoMode === true;
+  
   return `
     @page {
       size: A4;
@@ -55,14 +60,147 @@ function generateThemeStyles(params: GeneratePDFParams): string {
       border: ${theme.borderWidth}px ${theme.borderStyle} ${theme.primaryColor};
       color: ${theme.primaryColor};
       position: relative;
-      overflow: hidden; /* Empêche le débordement */
+      overflow: hidden;
     }
+    
+    /* Filigrane DÉMO - NOUVEAU */
+    .demo-watermark {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1000;
+      pointer-events: none;
+      display: ${isDemoMode ? 'block' : 'none'};
+      background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 80px,
+        rgba(255, 0, 0, 0.08) 80px,
+        rgba(255, 0, 0, 0.08) 100px
+      );
+    }
+    
+    .demo-watermark::before {
+      content: "DÉMO";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-45deg);
+      font-size: 100px;
+      font-weight: bold;
+      color: rgba(255, 0, 0, 0.12);
+      font-family: Arial, sans-serif;
+      letter-spacing: 15px;
+    }
+    
+    .demo-watermark::after {
+      content: "MODE DÉMO - DOCUMENT NON OFFICIEL";
+      position: absolute;
+      bottom: 25%;
+      left: 50%;
+      transform: translate(-50%, 0) rotate(-45deg);
+      font-size: 18px;
+      font-weight: bold;
+      color: rgba(255, 0, 0, 0.15);
+      font-family: Arial, sans-serif;
+      white-space: nowrap;
+    }
+
+    /* Bannière démo en haut */
+    .demo-banner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255, 0, 0, 0.8);
+      color: white;
+      text-align: center;
+      padding: 3px;
+      font-size: 10px;
+      font-weight: bold;
+      z-index: 1001;
+      display: ${isDemoMode ? 'block' : 'none'};
+    }
+
+    /* Badge démo sur le QR code */
+    .qr-demo-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background: red;
+      color: white;
+      font-size: 8px;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-weight: bold;
+      display: ${isDemoMode ? 'block' : 'none'};
+    }
+    
+    /* ... tous les autres styles existants ... */
     
     .header {    
       line-height: normal;
       font-size: ${theme.headerFontSize}px;
       font-family: ${theme.headerFont};
     }
+    
+    .watermark {
+      position: absolute;
+      top: 25%;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      display: ${theme.showWatermark ? 'flex' : 'none'};
+      justify-content: center;
+      align-items: center;
+      opacity: ${isDemoMode ? theme.watermarkOpacity * 0.5 : theme.watermarkOpacity};
+      pointer-events: none;
+    }
+    
+    .watermark img {
+      width: 600px;
+      height: auto;
+    }
+    
+    .qr-code {
+      width: 100px;
+      height: 100px;
+      display: ${theme.showQRCode ? 'block' : 'none'};
+      position: relative;
+    }
+    
+    /* Style spécial pour le texte en mode démo */
+    ${isDemoMode ? `
+    .student-info p, .table td, .table th {
+      position: relative;
+    }
+    
+    .student-info p::after, .table td::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50" font-size="20" fill="rgba(255,0,0,0.1)" transform="rotate(-45 50 50)">DÉMO</text></svg>');
+      pointer-events: none;
+    }
+    ` : ''}
+    
+    /* Impression avec filigrane démo */
+    @media print {
+      .demo-watermark,
+      .demo-banner,
+      .qr-demo-badge {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+    
+    /* ... reste des styles CSS existants ... */
     .header-row1{
       text-align: center;
       margin-bottom: 20px;
@@ -218,23 +356,6 @@ function generateThemeStyles(params: GeneratePDFParams): string {
     body > .container{
       position: relative;
     }
-    .watermark {
-      position: absolute;
-      top: 25%;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: -1;
-      display: ${theme.showWatermark ? 'flex' : 'none'};
-      justify-content: center;
-      align-items: center;
-      opacity: ${theme.watermarkOpacity};
-      pointer-events: none;
-    }
-    .watermark img {
-      width: 600px;
-      height: auto;
-    }
     .footer-note {
       position: absolute;
       width: 100%;
@@ -244,11 +365,6 @@ function generateThemeStyles(params: GeneratePDFParams): string {
       margin-top: 20px;
       padding-top: 10px;
       font-style: italic;
-    }
-    .qr-code {
-      width: 100px;
-      height: 100px;
-      display: ${theme.showQRCode ? 'block' : 'none'};
     }
     
     /* Styles supplémentaires pour les en-têtes */
@@ -295,9 +411,12 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
   // Récupération des paramètres de thème
   const theme = getCompleteTheme(settings);
 
-  // NOUVEAU: Vérifier si le chiffrement est activé pour les relevés
-  const encryptionEnabled = settings.encryptionEnabled !== false; // Par défaut activé
+  // CORRECTION: Récupérer le mode démo depuis les paramètres au lieu de localStorage
+  const encryptionEnabled = settings.encryptionEnabled !== false;
+  const isDemoMode = settings.demoMode === true;
+  
   console.log(`🔐 Génération du relevé avec chiffrement compact: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
+  console.log(`🎭 Mode démo: ${isDemoMode ? 'Activé' : 'Désactivé'}`);
 
   // Calculate semester statistics first
   const uniqueUEs = new Set();
@@ -358,7 +477,7 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
   let qrCodeDataUrl = "";
   if (theme.showQRCode) {
     try {
-      console.log(`🔄 Génération QR Code pour relevé (Chiffrement: ${encryptionEnabled})`);
+      console.log(`🔄 Génération QR Code pour relevé (Chiffrement: ${encryptionEnabled}, Mode démo: ${isDemoMode})`);
       
       // Créer un objet étudiant compatible avec le système de chiffrement compact
       const studentForQR = {
@@ -558,6 +677,16 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
     </head>
     <body>
         <div class="container">
+            ${isDemoMode ? `
+            <!-- Bannière mode démo -->
+            <div class="demo-banner">
+              ⚠️ MODE DÉMO - RELEVÉ NON OFFICIEL - FONCTIONNALITÉS LIMITÉES ⚠️
+            </div>
+            
+            <!-- Filigrane mode démo -->
+            <div class="demo-watermark"></div>
+            ` : ''}
+            
             <!-- IPES Logo Watermark -->
             <div class="watermark">
                 <img src="${settings.establishmentType === "ipes" ? settings.logo : facultyLogoBase64}" alt="Watermark">
@@ -720,9 +849,10 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                     </tbody>
                 </table>
             </div>
-        
+            
             <div class="grade-sign">
                 <div class="grade-scale">
+                    <!-- ... tableau des grades existant ... -->
                     <div>
                     <table style="table-layout: auto;">
                             <tbody style="font-size: 6px;">
@@ -801,11 +931,16 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                         </tbody>
                     </table>        
                 </div>
-                    <!-- NOUVEAU: QR Code avec indication du chiffrement -->
-                    <div>
-                        ${qrCodeDataUrl ? `<img src="${qrCodeDataUrl}" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : '(Standard)'}" class="qr-code">` : ''}
+                    
+                    <!-- QR Code avec badge démo si nécessaire -->
+                    <div style="position: relative;">
+                        ${qrCodeDataUrl ? `
+                          <img src="${qrCodeDataUrl}" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : '(Standard)'}" class="qr-code">
+                          ${isDemoMode ? '<div class="qr-demo-badge">DÉMO</div>' : ''}
+                        ` : ''}
                     </div>
                 </div>
+                
                 <div class="signature">
                     <div><strong>Douala, le</strong> 
                     <br/><i>Douala, the</i></div><br/>
@@ -818,10 +953,17 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
             <div id="to-hidden" class="signature-ipes"><strong>Le Directeur de L'${settings.nameFrench.length >= 30 ? settings.nameAbreviation : settings.nameFrench}</strong>
             <br/><i>The Director of ${settings.nameFrench.length >= 30 ? settings.nameAbreviation : settings.nameEnglish}</i></div>
             </div>
-            <!-- Footer note -->
+            
+            <!-- Footer note avec mention démo si nécessaire -->
             <div class="footer-note">
+                ${isDemoMode ? `
+                <div style="color: red; font-weight: bold; margin-bottom: 5px;">
+                  ⚠️ DOCUMENT GÉNÉRÉ EN MODE DÉMO - NON OFFICIEL ⚠️
+                </div>
+                ` : ''}
                 Il n'est délivré qu'un seul exemplaire de relevé de note, le titulaire peut en faire des copies certifiées conformes.<br>
                 This transcript is delivered only once, the owner can do many certified copies as necessary
+            </div>
         </div>
     </body>
     </html>
@@ -835,6 +977,7 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
   return new Promise(async (resolve, reject) => {
     try {
       console.log('🔄 Début de la génération PDF de relevé avec chiffrement:', params.settings.encryptionEnabled);
+      console.log('🎭 Mode démo PDF:', params.settings.demoMode);
       
       // Create a temporary HTML file with the transcript content
       const html = await createTranscriptHTML(params);
@@ -862,8 +1005,8 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
       await win.loadFile(htmlPath);
       
       // Wait for content to load completely
-      // Plus de temps pour les QR codes chiffrés
-      const loadingDelay = params.settings.encryptionEnabled ? 2000 : 1000;
+      // Plus de temps pour les QR codes chiffrés et le mode démo
+      const loadingDelay = params.settings.encryptionEnabled || params.settings.demoMode ? 2000 : 1000;
       await new Promise(resolve => setTimeout(resolve, loadingDelay));
       console.log(`⏱️ Attente de ${loadingDelay}ms pour le chargement complet du relevé`);
       
@@ -897,6 +1040,7 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
       console.log(`✅ PDF de relevé généré avec succès`);
       console.log(`📊 Taille: ${resultData.byteLength} bytes`);
       console.log(`🔐 Chiffrement QR: ${params.settings.encryptionEnabled ? 'Activé' : 'Désactivé'}`);
+      console.log(`🎭 Mode démo: ${params.settings.demoMode ? 'Activé (filigrane)' : 'Désactivé'}`);
       
       // Resolve with the PDF data
       resolve(resultData);
@@ -913,6 +1057,7 @@ export function setupPDFGenerationHandlers() {
   ipcMain.handle('render-transcript-html', async (_, params) => {
     try {
       console.log('🔄 Rendu HTML de relevé avec chiffrement:', params.settings?.encryptionEnabled);
+      console.log('🎭 Rendu HTML mode démo:', params.settings?.demoMode);
       const html = await createTranscriptHTML(params);
       return html;
     } catch (error) {
@@ -924,6 +1069,7 @@ export function setupPDFGenerationHandlers() {
   ipcMain.handle('generate-transcript-pdf', async (_, params: GeneratePDFParams) => {
     try {
       console.log('🔄 Génération PDF de relevé avec chiffrement:', params.settings?.encryptionEnabled);
+      console.log('🎭 Génération PDF mode démo:', params.settings?.demoMode);
       return await generateTranscriptPDF(params);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -934,6 +1080,7 @@ export function setupPDFGenerationHandlers() {
  ipcMain.handle('render-attestation-html', async (_, params) => {
   try {
     console.log('🔄 Rendu HTML d\'attestation avec chiffrement:', params.options?.encryptionEnabled);
+    console.log('🎭 Rendu HTML attestation mode démo:', params.options?.demoMode);
     // Au lieu d'utiliser require, qui peut causer des problèmes,
     // importons le module de manière dynamique avec la syntaxe import()
     const attestationModule = await import('./attestation-generator/html-generator');
@@ -952,6 +1099,7 @@ export function setupPDFGenerationHandlers() {
   ipcMain.handle('generate-attestation-pdf', async (_, params) => {
     try {
       console.log('🔄 Génération PDF d\'attestation avec chiffrement:', params.options?.encryptionEnabled);
+      console.log('🎭 Génération PDF attestation mode démo:', params.options?.demoMode);
       return await generateAttestationPDF(params.student, params.settings, params.options);
     } catch (error) {
       console.error('Error generating attestation PDF:', error);
@@ -959,7 +1107,7 @@ export function setupPDFGenerationHandlers() {
     }
   });
 
-  console.log('✅ PDF generation handlers set up successfully with encryption support');
+  console.log('✅ PDF generation handlers set up successfully with encryption and demo mode support');
   return {
     generateTranscriptPDF
   };

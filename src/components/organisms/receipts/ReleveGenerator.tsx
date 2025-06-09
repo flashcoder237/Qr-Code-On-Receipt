@@ -68,6 +68,8 @@ export const ReleveGenerator: React.FC = () => {
   const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotifications();
   const { addDocumentRecord } = useDocumentHistory();
 
+  const isDemoMode = localStorage.getItem('demo_mode') === 'true';
+
   // Load settings from localStorage
   const [settings] = useLocalStorage<TranscriptSettings>("settings", {
     nameFrench: "",
@@ -543,6 +545,7 @@ export const ReleveGenerator: React.FC = () => {
           student: preparedStudent, 
           settings: {
             ...settings,
+            demoMode: isDemoMode,
             encryptionEnabled: encryptionEnabled // Ajouter l'option de chiffrement
           }
         };
@@ -632,6 +635,7 @@ export const ReleveGenerator: React.FC = () => {
             student: prepared, 
             settings: {
               ...settings,
+              demoMode: isDemoMode,
               encryptionEnabled: encryptionEnabled
             }
           });

@@ -26,6 +26,7 @@ import {
   Sun, 
   User,
   Search,
+  AlertTriangle,
   Command
 } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
@@ -187,7 +188,8 @@ export const AppToolbarProvider = ({ children }: PropsWithChildren) => {
 export const AppToolbar = () => {
   const { menu, title, notifications, markAsRead, clearNotifications } = useAppToolbar();
   const [isDarkMode, setIsDarkMode] = useLocalStorage("dark-mode", false);
-  
+  const isDemoMode = localStorage.getItem('demo_mode') === 'true';
+
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const toggleDarkMode = () => {
@@ -232,6 +234,13 @@ export const AppToolbar = () => {
               <h1 className="scroll-m-20 text-xl font-semibold tracking-tight">
                 {title}
               </h1>
+              {/* Badge mode démo */}
+              {isDemoMode && (
+                <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-orange-300">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  MODE DÉMO
+                </Badge>
+              )}
             </div>
           </div>
 
@@ -255,12 +264,12 @@ export const AppToolbar = () => {
             </div>
           </div>
 
-          {/* Droite - Actions et notifications */}
+          {/* Droite - Actions et notifications avec limitations démo */}
           <div className="flex items-center gap-2">
             {/* Menu personnalisé */}
             {menu}
 
-            {/* Notifications */}
+            {/* Notifications avec limitation démo */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="relative">
@@ -273,11 +282,16 @@ export const AppToolbar = () => {
                       {unreadCount > 9 ? "9+" : unreadCount}
                     </Badge>
                   )}
+                  {isDemoMode && (
+                    <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-orange-500 rounded-full" />
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80">
                 <div className="flex items-center justify-between p-2">
-                  <h3 className="font-semibold">Notifications</h3>
+                  <h3 className="font-semibold">
+                    Notifications {isDemoMode && <span className="text-xs text-orange-600">(Démo)</span>}
+                  </h3>
                   {notifications.length > 0 && (
                     <Button
                       variant="ghost"
@@ -289,6 +303,17 @@ export const AppToolbar = () => {
                     </Button>
                   )}
                 </div>
+                
+                {isDemoMode && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <div className="p-2 bg-orange-50 border border-orange-200 mx-2 rounded text-xs text-orange-800">
+                      <AlertTriangle className="h-3 w-3 inline mr-1" />
+                      Notifications limitées en mode démo
+                    </div>
+                  </>
+                )}
+                
                 <DropdownMenuSeparator />
                 
                 {notifications.length === 0 ? (
@@ -387,24 +412,38 @@ export const AppToolbar = () => {
       {/* Barre de raccourcis clavier */}
       <div className="hidden lg:flex items-center justify-center py-1 px-4 bg-gray-50 border-t border-gray-200 dark:bg-gray-900 dark:border-gray-800">
         <div className="flex items-center gap-6 text-xs text-gray-600 dark:text-gray-400">
-          <div className="flex items-center gap-1">
-            <kbd className="px-2 py-1 bg-gray-200 rounded dark:bg-gray-700">Ctrl</kbd>
-            <span>+</span>
-            <kbd className="px-2 py-1 bg-gray-200 rounded dark:bg-gray-700">K</kbd>
-            <span className="ml-1">Rechercher</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <kbd className="px-2 py-1 bg-gray-200 rounded dark:bg-gray-700">Ctrl</kbd>
-            <span>+</span>
-            <kbd className="px-2 py-1 bg-gray-200 rounded dark:bg-gray-700">B</kbd>
-            <span className="ml-1">Toggle sidebar</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <kbd className="px-2 py-1 bg-gray-200 rounded dark:bg-gray-700">Ctrl</kbd>
-            <span>+</span>
-            <kbd className="px-2 py-1 bg-gray-200 rounded dark:bg-gray-700">/</kbd>
-            <span className="ml-1">Aide</span>
-          </div>
+          {isDemoMode ? (
+            <>
+              <div className="flex items-center gap-2 text-orange-600">
+                <AlertTriangle className="h-3 w-3" />
+                <span className="font-medium">MODE DÉMO ACTIF</span>
+              </div>
+              <span>Fonctionnalités limitées</span>
+              <span>Documents avec filigrane</span>
+              <span>QR Codes sur PDF désactivés</span>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-1">
+                <kbd className="px-2 py-1 bg-gray-200 rounded dark:bg-gray-700">Ctrl</kbd>
+                <span>+</span>
+                <kbd className="px-2 py-1 bg-gray-200 rounded dark:bg-gray-700">K</kbd>
+                <span className="ml-1">Rechercher</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <kbd className="px-2 py-1 bg-gray-200 rounded dark:bg-gray-700">Ctrl</kbd>
+                <span>+</span>
+                <kbd className="px-2 py-1 bg-gray-200 rounded dark:bg-gray-700">B</kbd>
+                <span className="ml-1">Toggle sidebar</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <kbd className="px-2 py-1 bg-gray-200 rounded dark:bg-gray-700">Ctrl</kbd>
+                <span>+</span>
+                <kbd className="px-2 py-1 bg-gray-200 rounded dark:bg-gray-700">/</kbd>
+                <span className="ml-1">Aide</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </>
