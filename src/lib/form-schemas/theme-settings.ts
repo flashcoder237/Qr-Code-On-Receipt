@@ -71,7 +71,7 @@ export const defaultTheme: ThemeSettingsPayload = {
   mainFont: "Times New Roman, serif", // Police principale
   headerFont: "Times New Roman, serif", // Police pour les en-têtes
   
-  titleFontSize: 14, // Taille de police pour les titres principaux
+  titleFontSize: 18, // Taille de police pour les titres principaux
   headerFontSize: 10, // Taille de police pour les en-têtes
   contentFontSize: 10, // Taille de police pour le contenu
   footerFontSize: 8, // Taille de police pour le pied de page
@@ -89,5 +89,5 @@ export const defaultTheme: ThemeSettingsPayload = {
   showWatermark: true, // Afficher le filigrane
   showQRCode: true, // Afficher le code QR
   showGradeScale: true, // Afficher l'échelle de notation
-  highlightValidatedUE: true, // Mettre en évidence les UE validées
+  highlightValidatedUE: false, // Mettre en évidence les UE validées
 };

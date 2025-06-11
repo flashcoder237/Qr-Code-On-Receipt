@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from '../../ui/alert';
 import { Badge } from '../../ui/badge';
 import { Card, CardContent } from '../../ui/card';
 import { validateLicenseFormat } from '../../../lib/licence/license-validator';
-import { Key, AlertTriangle, CheckCircle, Info, Copy, HelpCircle } from 'lucide-react';
+import { Key, AlertTriangle, CheckCircle, Info, Copy, HelpCircle, Mail } from 'lucide-react';
 
 interface LicenseFormProps {
   licenseKey: string;
@@ -50,6 +50,16 @@ export const LicenseForm: React.FC<LicenseFormProps> = ({
       setTimeout(() => setShowExample(false), 2000);
     } catch (error) {
       console.error('Erreur lors de la copie:', error);
+    }
+  };
+
+  // Copier l'email de support
+  const copyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText('cedrictefoye@gmail.com');
+      // Optionnel: afficher une confirmation
+    } catch (error) {
+      console.error('Erreur lors de la copie de l\'email:', error);
     }
   };
 
@@ -194,8 +204,27 @@ export const LicenseForm: React.FC<LicenseFormProps> = ({
         </Alert>
       )}
 
+      {/* Support contact */}
+      <div className="mt-4 p-2 bg-blue-50 border border-blue-200 rounded-md">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Mail className="h-3 w-3 text-blue-600" />
+            <span className="text-xs text-blue-800 font-medium">Besoin d'aide ?</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={copyEmail}
+            className="text-xs text-blue-600 hover:bg-blue-100 px-2 py-1"
+          >
+            <Copy className="h-3 w-3 mr-1" />
+            cedrictefoye@gmail.com
+          </Button>
+        </div>
+      </div>
+
       {/* Info importante en footer compact */}
-      <div className="mt-4 p-2 bg-gray-50 rounded-md">
+      <div className="mt-2 p-2 bg-gray-50 rounded-md">
         <p className="text-xs text-gray-600 text-center">
           <Key className="h-3 w-3 inline mr-1" />
           Licence valide uniquement pour {new Date().getFullYear()}

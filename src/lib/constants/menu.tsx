@@ -8,6 +8,7 @@ import { ReleveGenerator } from "@/components/organisms/receipts/ReleveGenerator
 import { AcademicConfigManager } from "@/components/organisms/academic-config/AcademicConfigManager";
 import { DocumentHistoryManager } from "@/components/organisms/document-history/DocumentHistoryManager";
 import { HelpSupport } from '@/components/organisms/help-support';
+import {SettingsPage} from '@/components/pages/SettingsPage';
 import {
   FileDownIcon,
   HelpCircleIcon,
@@ -17,6 +18,7 @@ import {
   File,
   FileText,
   History,
+  Settings,
 } from "lucide-react";
 
 interface MenuItem {
@@ -70,6 +72,13 @@ const menuItems: MenuItem[] = [
     url: "help",
     icon: HelpCircleIcon,
     component: <HelpSupport />,
+  },
+  {
+    title: "Paramètres",
+    url: "licenseSettings",
+    icon: Settings,
+    component: <SettingsPage />,
+    description: "Configuration de l'application"
   },
 ];
 

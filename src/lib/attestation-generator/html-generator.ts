@@ -248,7 +248,7 @@ export async function generateAttestationHTML(
         top: 0;
         left: 0;
         right: 0;
-        background: rgba(255, 0, 0, 0.8);
+        background: rgba(255, 0, 0, 0.4);
         color: white;
         text-align: center;
         padding: 5px;
@@ -667,7 +667,7 @@ export async function generateAttestationHTML(
         <div class="content">
             <div class="list-nomination-header">
               <p style="font-size: ${theme.contentFontSize-1}px;" id="to-hidden">${settings.convTextFr}<br>
-              <em>${theme.showBilingualText ? settings.convTextFr : ''}</em></p>
+              <em>${theme.showBilingualText ? settings.convTextEn : ''}</em></p>
               
               <p id="to-hidden"><strong>Nous soussignés,</strong><br>
               ${theme.showBilingualText ? '<em>We, the undersigned,</em>' : ''}</p>

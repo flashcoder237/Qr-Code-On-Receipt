@@ -115,27 +115,6 @@ export const ATTESTATION_REQUIRED_COLUMNS: ColumnRequirement[] = [
     displayName: 'Spécialité',
     required: true,
     alternatives: ['specialite', 'specialty', 'specialization', 'major', 'spécialité', 'option']
-  }
-];
-
-export const ATTESTATION_OPTIONAL_COLUMNS: ColumnRequirement[] = [
-  {
-    key: 'OPTION',
-    displayName: 'Option',
-    required: false,
-    alternatives: ['option', 'minor', 'track', 'voie']
-  },
-  {
-    key: 'GRADE',
-    displayName: 'Grade',
-    required: false,
-    alternatives: ['grade', 'letter_grade', 'note lettre']
-  },
-  {
-    key: 'MENTION',
-    displayName: 'Mention',
-    required: false,
-    alternatives: ['mention', 'distinction', 'honor', 'appreciation']
   },
   {
     key: 'FINALITE',
@@ -166,6 +145,33 @@ export const ATTESTATION_OPTIONAL_COLUMNS: ColumnRequirement[] = [
     displayName: 'Année académique',
     required: false,
     alternatives: ['annee_academique', 'academic_year', 'year', 'academic year', 'année académique', 'session']
+  },
+  {
+    key: 'CYCLE',
+    displayName: 'Cycle',
+    required: false,
+    alternatives: ['cycle']
+  },
+];
+
+export const ATTESTATION_OPTIONAL_COLUMNS: ColumnRequirement[] = [
+  {
+    key: 'OPTION',
+    displayName: 'Option',
+    required: false,
+    alternatives: ['option', 'minor', 'track', 'voie']
+  },
+  {
+    key: 'GRADE',
+    displayName: 'Grade',
+    required: false,
+    alternatives: ['grade', 'letter_grade', 'note lettre']
+  },
+  {
+    key: 'MENTION',
+    displayName: 'Mention',
+    required: false,
+    alternatives: ['mention', 'distinction', 'honor', 'appreciation']
   },
   {
     key: 'SEXE',

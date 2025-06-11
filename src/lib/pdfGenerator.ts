@@ -126,7 +126,7 @@ function generateThemeStyles(params: GeneratePDFParams): string {
       top: 0;
       left: 0;
       right: 0;
-      background: rgba(255, 0, 0, 0.8);
+      background: rgba(148, 5, 5, 0.8);
       color: white;
       text-align: center;
       padding: 3px;
@@ -150,7 +150,6 @@ function generateThemeStyles(params: GeneratePDFParams): string {
       display: ${isDemoMode ? 'block' : 'none'};
     }
     
-    /* ... tous les autres styles existants ... */
     
     .header {    
       line-height: normal;
@@ -779,7 +778,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
         
             <div class="student_block1">
                 <div>
-                    <p><span>NOM ET PRENOM:</span> <strong>${student.NOM.toUpperCase()} ${student.PRENOM.toUpperCase()}</strong></p>
+                    <p><strong><span>NOM ET PRENOM:</span>${student.NOM.toUpperCase()} ${student.PRENOM.toUpperCase()}</strong></p>
                     <p><em>surname and name:</em></p>
                 </div>
                 <div>

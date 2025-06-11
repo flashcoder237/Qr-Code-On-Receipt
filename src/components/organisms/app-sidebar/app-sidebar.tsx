@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { getFilteredMenuItems } from "@/lib/constants/menu";
 import { useLocalStorage } from "usehooks-ts";
 import { useMemo } from "react";
+import { Button } from "@/components/ui/button";
 import { 
   GraduationCap, 
   Activity,
@@ -26,6 +27,7 @@ import {
   AlertCircle,
   AlertTriangle,
   Shield,
+  Key,
   Lock
 } from "lucide-react";
 
@@ -306,23 +308,38 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
-        <div className="p-3">
-          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-            <Activity className="h-3 w-3" />
-            <span>
-              {isDemoMode 
-                ? "Mode démo - Fonctionnalités limitées"
-                : statistics.recentActivity 
-                  ? "Système configuré" 
-                  : "Configuration requise"
-              }
-            </span>
-          </div>
-          <div className="mt-2 text-xs text-gray-400 dark:text-gray-500">
-            Version 1.0.0 {isDemoMode && "- DÉMO"}
-          </div>
-        </div>
-      </SidebarFooter>
+  <div className="p-3">
+    {/* Bouton pour quitter le mode démo si en mode démo */}
+    {isDemoMode && (
+      <div className="mb-3">
+        <Button
+          onClick={() => setPath("licenseSettings")}
+          variant="outline"
+          size="sm"
+          className="w-full text-xs border-orange-300 text-orange-600 hover:bg-orange-50"
+        >
+          <Key className="h-3 w-3 mr-1" />
+          Activer une licence
+        </Button>
+      </div>
+    )}
+    
+    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+      <Activity className="h-3 w-3" />
+      <span>
+        {isDemoMode 
+          ? "Mode démo - Fonctionnalités limitées"
+          : statistics.recentActivity 
+            ? "Système configuré" 
+            : "Configuration requise"
+        }
+      </span>
+    </div>
+    <div className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+      Version 1.0.0 {isDemoMode && "- DÉMO"}
+    </div>
+  </div>
+</SidebarFooter>
     </Sidebar>
   );
 }
