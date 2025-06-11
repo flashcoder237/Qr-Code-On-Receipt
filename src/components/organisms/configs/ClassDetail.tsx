@@ -13,6 +13,7 @@ import {
   Trash2,
   ChevronDown,
   ChevronRight,
+  Calendar,
 } from "lucide-react";
 import { ClassConfig, Semester, UE, EC } from "./types";
 
@@ -81,12 +82,12 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
     }
   }, [config]);
 
-  // Update handler with automatic semester management
+  // Update handler with improved semester management
   const handleUpdate = useCallback((field: string, value: string) => {
     setLocalState(prev => ({ ...prev, [field]: value }));
     
-    // If updating niveau, automatically update semester numbers
-    if (field === 'niveau') {
+    // Si on modifie le niveau ET qu'il n'y a pas encore de semestres, créer automatiquement
+    if (field === 'niveau' && config && config.semesters.length === 0) {
       const niveauNumber = parseInt(value) || 0;
       if (niveauNumber > 0) {
         const semester1Id = `semester-${(niveauNumber * 2) - 1}`;
@@ -113,9 +114,10 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
         onUpdate({ [field]: value });
       }
     } else {
+      // Pour tous les autres cas, ne pas toucher aux semestres existants
       onUpdate({ [field]: value });
     }
-  }, [onUpdate]);
+  }, [onUpdate, config]);
 
   const toggleUE = useCallback((ueId: string) => {
     setExpandedUEs((prev) => {
@@ -202,16 +204,25 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
 
             {/* Niveau */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Niveau</label>
+              <label className="text-sm font-medium">
+                Niveau
+                {config.semesters.length > 0 && (
+                  <span className="text-xs text-orange-600 ml-1">
+                    (modifiable uniquement si aucun semestre)
+                  </span>
+                )}
+              </label>
               {isEditing ? (
                 <Input
-                  type="number"
+                  type="text"
                   min="1"
-                  max="5"
+                  max="7"
                   value={localState.niveau}
                   onChange={(e) => handleUpdate('niveau', e.target.value)}
                   placeholder="Ex: 1"
                   onClick={(e) => e.stopPropagation()}
+                  disabled={config.semesters.length > 0}
+                  className={config.semesters.length > 0 ? "bg-gray-100" : ""}
                 />
               ) : (
                 <p className="text-sm text-gray-500">{config.niveau}</p>
@@ -270,189 +281,250 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
       </CardHeader>
 
       <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-4 w-full flex-wrap">
-            {config.semesters.map((semester, index) => (
-              <TabsTrigger key={semester.id} value={index.toString()}>
-                {semester.name}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          <ScrollArea className="h-[calc(100vh-20rem)]">
-            {config.semesters.map((semester, semesterIndex) => (
-              <TabsContent
-                key={semester.id}
-                value={semesterIndex.toString()}
-                className="space-y-4 mt-0"
+        {/* Section de gestion des semestres */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Semestres ({config.semesters.length})
+            </h3>
+            {isEditing && (
+              <Button
+                onClick={onAddSemester}
+                variant="outline"
+                size="sm"
               >
-                <AnimatePresence initial={false}>
-                  {semester.ues.map((ue) => (
-                    <motion.div
-                      key={ue.id}
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <Card>
-                        <CardHeader
-                          className="cursor-pointer hover:bg-gray-50 transition-colors"
-                          onClick={() => toggleUE(ue.id)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              {expandedUEs.has(ue.id) ? (
-                                <ChevronDown className="h-4 w-4" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4" />
-                              )}
-                              {isEditing ? (
-                                <div className="flex flex-col space-y-2 w-64">
-                                  <Input
-                                    value={ue.name}
-                                    onChange={(e) =>
-                                      onUpdateUE(semester.id, ue.id, {
-                                        name: e.target.value,
-                                      })
-                                    }
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="mb-1"
-                                    placeholder="Nom de l'UE"
-                                  />
-                                  <Input 
-                                    value={ue.code || `UE${ue.id.slice(0,4)}`}
-                                    onChange={(e) =>
-                                      onUpdateUE(semester.id, ue.id, {
-                                        code: e.target.value,
-                                      })
-                                    }
-                                    onClick={(e) => e.stopPropagation()}
-                                    placeholder="Code UE"
-                                  />
-                                </div>
-                              ) : (
-                                <div>
-                                  <div className="font-medium">{ue.name}</div>
-                                  <div className="text-xs text-gray-500">Code: {ue.code || `UE${ue.id.slice(0,4)}`}</div>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              {isEditing && (
-                                <Input
-                                  type="number"
-                                  value={ue.credits}
-                                  onChange={(e) =>
-                                    onUpdateUE(semester.id, ue.id, {
-                                      credits: Number(e.target.value),
-                                    })
-                                  }
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="w-20"
-                                />
-                              )}
-                              <span className="text-sm text-gray-500">
-                                {ue.credits} crédits
-                              </span>
-                              {isEditing && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDeleteUE(semester.id, ue.id);
-                                  }}
-                                  className="text-red-500 hover:text-red-600"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </CardHeader>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Ajouter un semestre
+              </Button>
+            )}
+          </div>
 
-                        <AnimatePresence>
-                          {expandedUEs.has(ue.id) && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.2 }}
-                            >
-                              <CardContent className="pt-4">
-                                <div className="space-y-2">
-                                  {ue.ecs.map((ec) => (
-                                    <motion.div
-                                      key={ec.id}
-                                      initial={{ opacity: 0 }}
-                                      animate={{ opacity: 1 }}
-                                      exit={{ opacity: 0 }}
-                                      className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
-                                    >
-                                      {isEditing ? (
-                                        <Input
-                                          value={ec.name}
-                                          onChange={(e) =>
-                                            onUpdateEC(semester.id, ue.id, ec.id, {
-                                              name: e.target.value,
-                                            })
-                                          }
-                                          className="w-full"
-                                        />
-                                      ) : (
-                                        <span>{ec.name}</span>
-                                      )}
-                                      <div className="flex items-center space-x-2">
-                                        {isEditing && (
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                              onDeleteEC(semester.id, ue.id, ec.id)
+          {config.semesters.length === 0 && (
+            <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+              <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <p className="text-gray-500 mb-4">Aucun semestre configuré</p>
+              {isEditing && (
+                <Button onClick={onAddSemester} variant="outline">
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Créer le premier semestre
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {config.semesters.length > 0 && (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="flex items-center justify-between mb-4">
+              <TabsList className="flex-wrap">
+                {config.semesters.map((semester, index) => (
+                  <TabsTrigger key={semester.id} value={index.toString()}>
+                    <div className="flex items-center gap-2">
+                      {isEditing ? (
+                        <Input
+                          value={semester.name}
+                          onChange={(e) => onUpdateSemester(semester.id, { name: e.target.value })}
+                          className="h-6 text-xs min-w-0 w-24"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <span>{semester.name}</span>
+                      )}
+                      {isEditing && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteSemester(semester.id);
+                          }}
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-600"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+
+            <ScrollArea className="h-[calc(100vh-20rem)]">
+              {config.semesters.map((semester, semesterIndex) => (
+                <TabsContent
+                  key={semester.id}
+                  value={semesterIndex.toString()}
+                  className="space-y-4 mt-0"
+                >
+                  <AnimatePresence initial={false}>
+                    {semester.ues.map((ue) => (
+                      <motion.div
+                        key={ue.id}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Card>
+                          <CardHeader
+                            className="cursor-pointer hover:bg-gray-50 transition-colors"
+                            onClick={() => toggleUE(ue.id)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                {expandedUEs.has(ue.id) ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                                {isEditing ? (
+                                  <div className="flex flex-col space-y-2 w-64">
+                                    <Input
+                                      value={ue.name}
+                                      onChange={(e) =>
+                                        onUpdateUE(semester.id, ue.id, {
+                                          name: e.target.value,
+                                        })
+                                      }
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="mb-1"
+                                      placeholder="Nom de l'UE"
+                                    />
+                                    <Input 
+                                      value={ue.code || `UE${ue.id.slice(0,4)}`}
+                                      onChange={(e) =>
+                                        onUpdateUE(semester.id, ue.id, {
+                                          code: e.target.value,
+                                        })
+                                      }
+                                      onClick={(e) => e.stopPropagation()}
+                                      placeholder="Code UE"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <div className="font-medium">{ue.name}</div>
+                                    <div className="text-xs text-gray-500">Code: {ue.code || `UE${ue.id.slice(0,4)}`}</div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                {isEditing && (
+                                  <Input
+                                    type="number"
+                                    value={ue.credits}
+                                    onChange={(e) =>
+                                      onUpdateUE(semester.id, ue.id, {
+                                        credits: Number(e.target.value),
+                                      })
+                                    }
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-20"
+                                  />
+                                )}
+                                <span className="text-sm text-gray-500">
+                                  {ue.credits} crédits
+                                </span>
+                                {isEditing && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDeleteUE(semester.id, ue.id);
+                                    }}
+                                    className="text-red-500 hover:text-red-600"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </CardHeader>
+
+                          <AnimatePresence>
+                            {expandedUEs.has(ue.id) && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <CardContent className="pt-4">
+                                  <div className="space-y-2">
+                                    {ue.ecs.map((ec) => (
+                                      <motion.div
+                                        key={ec.id}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                                      >
+                                        {isEditing ? (
+                                          <Input
+                                            value={ec.name}
+                                            onChange={(e) =>
+                                              onUpdateEC(semester.id, ue.id, ec.id, {
+                                                name: e.target.value,
+                                              })
                                             }
-                                            className="text-red-500 hover:text-red-600"
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
+                                            className="w-full"
+                                          />
+                                        ) : (
+                                          <span>{ec.name}</span>
                                         )}
-                                      </div>
-                                    </motion.div>
-                                  ))}
-                                  {isEditing && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => onAddEC(semester.id, ue.id)}
-                                      className="w-full mt-2"
-                                    >
-                                      <PlusCircle className="h-4 w-4 mr-2" />
-                                      Ajouter un EC
-                                    </Button>
-                                  )}
-                                </div>
-                              </CardContent>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-                {isEditing && (
-                  <Button
-                    variant="outline"
-                    onClick={() => onAddUE(semester.id)}
-                    className="w-full mt-4"
-                  >
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Ajouter une UE
-                  </Button>
-                )}
-              </TabsContent>
-            ))}
-          </ScrollArea>
-        </Tabs>
+                                        <div className="flex items-center space-x-2">
+                                          {isEditing && (
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() =>
+                                                onDeleteEC(semester.id, ue.id, ec.id)
+                                              }
+                                              className="text-red-500 hover:text-red-600"
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </motion.div>
+                                    ))}
+                                    {isEditing && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => onAddEC(semester.id, ue.id)}
+                                        className="w-full mt-2"
+                                      >
+                                        <PlusCircle className="h-4 w-4 mr-2" />
+                                        Ajouter un EC
+                                      </Button>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                  {isEditing && (
+                    <Button
+                      variant="outline"
+                      onClick={() => onAddUE(semester.id)}
+                      className="w-full mt-4"
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Ajouter une UE
+                    </Button>
+                  )}
+                </TabsContent>
+              ))}
+            </ScrollArea>
+          </Tabs>
+        )}
       </CardContent>
     </Card>
   );

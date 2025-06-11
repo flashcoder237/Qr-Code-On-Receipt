@@ -57,7 +57,6 @@ function sanitizeExcelRow(row: any, documentType: 'releve' | 'attestation'): any
   fieldsToSanitize.forEach(field => {
     if (sanitized[field] === undefined || 
         sanitized[field] === null || 
-        sanitized[field] === '' || 
         (typeof sanitized[field] === 'string' && sanitized[field].trim() === '')) {
       
       // Valeurs par défaut spécifiques
