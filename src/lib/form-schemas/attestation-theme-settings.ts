@@ -1,5 +1,6 @@
-// src/lib/form-schemas/attestation-theme-settings.ts
+// src/lib/form-schemas/attestation-theme-settings.ts - Version mise à jour
 import * as z from "zod";
+import { AdvancedAttestationConfigSchema, defaultAdvancedAttestationConfig } from "./advanced-typography";
 
 export const AttestationThemeSettingsSchema = z.object({
   // Couleurs générales
@@ -9,7 +10,7 @@ export const AttestationThemeSettingsSchema = z.object({
   tableBorderColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "La couleur doit être au format hexadécimal"),
   tableHeaderBgColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "La couleur doit être au format hexadécimal"),
   
-  // Typographie
+  // Typographie de base
   mainFont: z.enum([
     "Times New Roman, serif",
     "Arial, sans-serif",
@@ -29,7 +30,7 @@ export const AttestationThemeSettingsSchema = z.object({
     "Cambria, serif",
   ]),
   
-  // Tailles de police
+  // Tailles de police de base
   titleFontSize: z.number().min(16).max(32),
   subtitleFontSize: z.number().min(14).max(28),
   headerFontSize: z.number().min(8).max(16),
@@ -45,7 +46,7 @@ export const AttestationThemeSettingsSchema = z.object({
   contentLayout: z.enum(["standard", "modern", "formal"]),
   tableStyle: z.enum(["simple", "bordered", "striped", "modern"]),
   
-  // Bordures et espacement
+  // Bordures et espacement de base
   borderStyle: z.enum(["solid", "dashed", "dotted", "double", "none"]),
   borderWidth: z.number().min(0).max(5),
   tableCellPadding: z.number().min(2).max(15),
@@ -75,6 +76,9 @@ export const AttestationThemeSettingsSchema = z.object({
   showDomainTable: z.boolean(),
   showAcademicDetails: z.boolean(),
   compactMode: z.boolean(),
+  
+  // NOUVEAU: Configuration typographique avancée
+  advancedConfig: AdvancedAttestationConfigSchema.optional(),
 });
 
 export type AttestationThemeSettingsPayload = z.infer<typeof AttestationThemeSettingsSchema>;
@@ -138,4 +142,15 @@ export const defaultAttestationTheme: AttestationThemeSettingsPayload = {
   showDomainTable: true,
   showAcademicDetails: true,
   compactMode: true,
+  
+  // Configuration avancée par défaut
+  advancedConfig: defaultAdvancedAttestationConfig,
 };
+
+// NOUVEAU: Fonction pour obtenir la configuration avancée des attestations
+export function getAdvancedAttestationConfig(theme: AttestationThemeSettingsPayload) {
+  return theme.advancedConfig || defaultAdvancedAttestationConfig;
+}
+
+// Export pour compatibilité
+export { defaultAdvancedAttestationConfig, AdvancedAttestationConfigSchema } from "./advanced-typography";

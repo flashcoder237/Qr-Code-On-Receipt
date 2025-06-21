@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Save, Undo, Eye, Palette, Type, Layout, Settings, FileText, Wand2 } from "lucide-react";
-import { AttestationThemeSettingsPayload, defaultAttestationTheme } from "@/lib/form-schemas/attestation-theme-settings";
+import { AttestationThemeSettingsPayload, defaultAttestationTheme, getAdvancedAttestationConfig } from "@/lib/form-schemas/attestation-theme-settings";
 import { AttestationThemePreview } from "./AttestationThemePreview";
 import { ThemePresetSelector } from "./ThemePresetSelector";
+import { AdvancedAttestationThemeEditor } from "@//components/organisms/theme-editor/AdvancedAttestationThemeEditor"; // NOUVEAU
 import { motion, AnimatePresence } from "framer-motion";
 
 interface AttestationThemeEditorProps {
@@ -59,6 +60,11 @@ export const AttestationThemeEditor: React.FC<AttestationThemeEditorProps> = ({
     onThemeChange(newTheme);
     setIsModified(true);
     setShowPresetSelector(false);
+  };
+
+  // NOUVEAU: Gestionnaire pour la configuration avancée
+  const handleAdvancedConfigUpdate = (advancedConfig: any) => {
+    updateTheme('advancedConfig', advancedConfig);
   };
 
   const ColorPicker = ({ label, value, onChange }) => (
@@ -153,7 +159,7 @@ export const AttestationThemeEditor: React.FC<AttestationThemeEditorProps> = ({
           </AnimatePresence>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-5 mb-6">
+            <TabsList className="grid grid-cols-6 mb-6">
               <TabsTrigger value="colors" className="flex items-center gap-2">
                 <Palette className="h-4 w-4" />
                 Couleurs
@@ -173,6 +179,11 @@ export const AttestationThemeEditor: React.FC<AttestationThemeEditorProps> = ({
               <TabsTrigger value="options" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
                 Options
+              </TabsTrigger>
+              {/* NOUVEAU: Onglet de configuration avancée */}
+              <TabsTrigger value="advanced" className="flex items-center gap-2">
+                <Wand2 className="h-4 w-4" />
+                Avancé
               </TabsTrigger>
             </TabsList>
 
@@ -637,6 +648,16 @@ export const AttestationThemeEditor: React.FC<AttestationThemeEditorProps> = ({
                       </div>
                     </div>
                   </div>
+                </TabsContent>
+
+                {/* NOUVEAU: Onglet de configuration typographique avancée */}
+                <TabsContent value="advanced" className="space-y-4">
+                  <AdvancedAttestationThemeEditor
+                    config={getAdvancedAttestationConfig(theme)}
+                    onChange={handleAdvancedConfigUpdate}
+                    onSave={handleSave}
+                    onPreview={handlePreview}
+                  />
                 </TabsContent>
               </motion.div>
             </AnimatePresence>

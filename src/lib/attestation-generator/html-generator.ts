@@ -1,8 +1,10 @@
-// src/lib/attestation-generator/html-generator.ts - Version corrigée sans localStorage
+// src/lib/attestation-generator/html-generator.ts - Version avec support typographie avancée
+
 import { StudentExcelRecord, sanitizeStudentData, generateQrCodeBase64 } from '../helpers/qrcode';
-import { formatDate, calculateGrade, calculateMention } from './utils';
-import { AttestationThemeSettingsPayload, defaultAttestationTheme } from '../form-schemas/attestation-theme-settings';
+import { formatDate, calculateGrade, calculateMention } from '@/utils';
+import { AttestationThemeSettingsPayload, defaultAttestationTheme, getAdvancedAttestationConfig } from '../form-schemas/attestation-theme-settings';
 import { getQRCodeSizeEstimate } from '../helpers/qrcode';
+import { generateAdvancedAttestationCSS, combineStyles } from '@/utils/advanced-css-generator'; // NOUVEAU
 
 interface SchoolSettings {
   establishmentType: string;
@@ -28,12 +30,11 @@ interface GenerationOptions {
   };
   theme?: AttestationThemeSettingsPayload;
   encryptionEnabled?: boolean;
-  demoMode?: boolean; // NOUVEAU: Passer explicitement le mode démo
+  demoMode?: boolean;
 }
 
 /**
- * Génère le HTML pour l'attestation de réussite avec support du chiffrement compact et mode démo
- * Structure classique maintenue, seuls les éléments visuels sont personnalisables
+ * Génère le HTML pour l'attestation de réussite avec support de la typographie avancée
  */
 export async function generateAttestationHTML(
   student: StudentExcelRecord,
@@ -56,8 +57,6 @@ export async function generateAttestationHTML(
   
   // Par défaut, le chiffrement compact est activé sauf indication contraire
   const encryptionEnabled = options.encryptionEnabled !== false;
-  
-  // CORRECTION: Récupérer le mode démo depuis les options au lieu de localStorage
   const isDemoMode = options.demoMode === true;
   
   console.log(`🔐 Chiffrement compact: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
@@ -65,6 +64,10 @@ export async function generateAttestationHTML(
 
   // Utiliser le thème fourni ou celui des paramètres ou le thème par défaut
   const theme = options.theme || settings.theme || defaultAttestationTheme;
+
+   // NOUVEAU: Obtenir la configuration avancée
+  const advancedConfig = getAdvancedAttestationConfig(theme);
+  console.log(`📝 Configuration avancée activée: ${advancedConfig.enableAdvancedTypography ? 'Oui' : 'Non'}`);
   
   // Récupérer les logos au format base64
   const schoolLogo = settings.logo || '';
@@ -145,7 +148,7 @@ export async function generateAttestationHTML(
     }
   }
 
-  // Génère les styles CSS basés sur le thème - STRUCTURE CLASSIQUE MAINTENUE AVEC SUPPORT DÉMO
+  // NOUVEAU: Génère les styles CSS basés sur le thème avec support avancé
   const generateThemeStyles = (): string => {
     const logoSizeMap = {
       small: { width: '60px', height: '60px' },
@@ -162,7 +165,8 @@ export async function generateAttestationHTML(
     const currentLogoSize = logoSizeMap[theme.logoSize];
     const currentQrCodeSize = qrCodeSizeMap[theme.qrCodeSize];
 
-    return `
+    // CSS de base
+    const baseCSS = `
       @page {
         size: A4 portrait;
         margin: 0;
@@ -197,7 +201,7 @@ export async function generateAttestationHTML(
         ${theme.borderStyle !== 'none' ? `border: ${theme.borderWidth}px ${theme.borderStyle} ${theme.tableBorderColor};` : ''}
       }
 
-      /* Filigrane DÉMO - NOUVEAU */
+      /* Filigrane DÉMO */
       .demo-watermark {
         position: absolute;
         top: 0;
@@ -356,7 +360,7 @@ export async function generateAttestationHTML(
         margin: ${theme.compactMode ? '2px 0' : '5px 0'};
       }
 
-      /* Contenu principal - STRUCTURE CLASSIQUE MAINTENUE */
+      /* Contenu principal */
       .content {
         margin: ${theme.compactMode ? '5px 0' : '10px 0'};
       }
@@ -369,7 +373,7 @@ export async function generateAttestationHTML(
         margin: ${theme.compactMode ? '5px 0' : '8px 0'};
       }
 
-      /* Tableaux - STYLES PERSONNALISABLES */
+      /* Tableaux */
       .table-container {
         width: 100%;
         margin: ${theme.compactMode ? '2px 0' : '5px 0'};
@@ -423,7 +427,7 @@ export async function generateAttestationHTML(
         border-bottom: 1px solid ${theme.tableBorderColor}40;
       }` : ''}
 
-      /* Section nominations - STRUCTURE CLASSIQUE MAINTENUE */
+      /* Section nominations */
       .nomination-list {
         display: flex;
         width: 100%;
@@ -438,7 +442,7 @@ export async function generateAttestationHTML(
         margin-top: 15px;
       }
 
-      /* Pied de page et signatures - STRUCTURE CLASSIQUE MAINTENUE */
+      /* Pied de page et signatures */
       .footer {
         margin-top: ${theme.compactMode ? '8px' : '15px'};
         ${theme.signatureLayout === 'side-by-side' ? 'display: flex; justify-content: space-between;' : ''}
@@ -467,18 +471,19 @@ export async function generateAttestationHTML(
           border-radius: 4px;
         ` : ''}
       }
-        .sign-ipes {
+      
+      .sign-ipes {
         width: 100%;
         text-align: center;
-        paddind-bottom: 100px;
+        padding-bottom: 100px;
       }
       
       .recteur-sign {
         margin-top: ${theme.signatureLayout === 'stacked' ? '20px' : '65px'};
-        paddind-bottom: 100px;
+        padding-bottom: 100px;
       }
 
-      /* QR Code - POSITION PERSONNALISABLE */
+      /* QR Code */
       .qr-code {
         ${theme.qrCodePosition === 'bottom-center' ? 'text-align: center;' : ''}
         ${theme.qrCodePosition === 'bottom-left' ? 'float: left;' : ''}
@@ -509,7 +514,7 @@ export async function generateAttestationHTML(
         z-index: 1002;
       }
 
-      /* Disclaimer - STRUCTURE CLASSIQUE MAINTENUE */
+      /* Disclaimer */
       .disclaimer {
         font-size: ${theme.footerFontSize}px;
         font-style: italic;
@@ -529,7 +534,7 @@ export async function generateAttestationHTML(
         padding-right: 10px;
       }
 
-      /* Texte bilingue - PERSONNALISABLE */
+      /* Texte bilingue */
       em {
         font-style: italic;
         color: ${theme.secondaryColor};
@@ -574,6 +579,12 @@ export async function generateAttestationHTML(
         }
       }
     `;
+
+    // NOUVEAU: Générer le CSS avancé si activé
+    const advancedCSS = generateAdvancedAttestationCSS(advancedConfig);
+    
+    // Combiner les styles
+    return combineStyles(baseCSS, advancedCSS);
   };
 
   // Création du contenu HTML - STRUCTURE CLASSIQUE MAINTENUE AVEC SUPPORT DÉMO
@@ -657,8 +668,8 @@ export async function generateAttestationHTML(
             </div>
             
             <div class="header-row2">
-              <h1>${theme.customTitle || `ATTESTATION DE REUSSITE ${getCycleTranslateFr(cycle)}`}</h1>
-              ${theme.showBilingualText ? `<h2>${theme.customSubtitle || `ATTESTATION OF COMPLETION ${getCycleTranslateEn(cycle)}`}</h2>` : ''}
+              <h1 class="main-title">${theme.customTitle || `ATTESTATION DE REUSSITE ${getCycleTranslateFr(cycle)}`}</h1>
+              ${theme.showBilingualText ? `<h2 class="subtitle">${theme.customSubtitle || `ATTESTATION OF COMPLETION ${getCycleTranslateEn(cycle)}`}</h2>` : ''}
               
               <p style="margin-top: 6px"><strong>Ref N°............./${currentYear-1}/UDo/FMSP/VDRC/${settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE"}</strong></p>
             </div>
@@ -706,7 +717,7 @@ export async function generateAttestationHTML(
             
             ${theme.showDomainTable ? `
             <div class="table-container">
-                <table>
+                <table class="academic-table">
                     <tr>
                         <th>Domaine<br>${theme.showBilingualText ? '<em style="font-weight: normal">Domain of the study</em>' : ''}</th>
                         <th>Parcours<br>${theme.showBilingualText ? '<em style="font-weight: normal">Course</em>' : ''}</th>
@@ -725,7 +736,7 @@ export async function generateAttestationHTML(
             
             ${theme.showAcademicDetails ? `
             <div class="table-container">
-                <table>
+                <table class="academic-table">
                     <tr>
                         <th>Total de credits<br>${theme.showBilingualText ? '<em style="font-weight: normal">Credits earned</em>' : ''}</th>
                         <th>Moyenne<br>${theme.showBilingualText ? '<em style="font-weight: normal">Average</em>' : ''}</th>
@@ -749,7 +760,7 @@ export async function generateAttestationHTML(
         </div>
         
         <div class="footer">
-            <div class="signature" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="signature signature-area" style="display: flex; flex-direction: column; align-items: center;">
                 <div class="qr-code">
                     ${qrCodeImage ? `
                       <img src="${qrCodeImage}" class="qr-image" alt="QR Code ${encryptionEnabled ? '(Chiffrement Compact)' : ''}" />
@@ -762,7 +773,7 @@ export async function generateAttestationHTML(
                 </div>
             </div>
             
-            <div class="signature">
+            <div class="signature signature-area">
               <p><strong>Douala, le</strong><br>
               ${theme.showBilingualText ? '<em>Douala, the</em>' : ''}</p>
           
@@ -801,6 +812,7 @@ export async function generateAttestationHTML(
   console.log(`🔐 Chiffrement compact: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
   console.log(`📋 QR Code inclus: ${qrCodeImage ? 'Oui' : 'Non'}`);
   console.log(`🎭 Mode démo: ${isDemoMode ? 'Activé (filigrane ajouté)' : 'Désactivé'}`);
+  console.log(`📝 Configuration avancée: ${advancedConfig.enableAdvancedTypography ? 'Activée' : 'Désactivée'}`);
   
   if (qrCodeAnalysis) {
     console.log(`📊 Performance QR: ${qrCodeAnalysis.estimatedQRSize} (${qrCodeAnalysis.totalContentLength} caractères)`);

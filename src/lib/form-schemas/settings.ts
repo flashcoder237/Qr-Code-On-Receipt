@@ -1,9 +1,10 @@
-// src/lib/form-schemas/settings.ts - Version mise à jour avec type d'établissement
+// src/lib/form-schemas/settings.ts - Version mise à jour avec configuration avancée
 import * as z from "zod";
 import { ThemeSettingsSchema, defaultTheme } from "./theme-settings";
+import { AdvancedTranscriptConfigSchema, defaultAdvancedTranscriptConfig } from "./advanced-typography";
 
 export const TranscriptsettingsSchema = z.object({
-  // Nouveau champ pour le type d'établissement
+  // Type d'établissement
   establishmentType: z.enum(["ipes", "faculty"], {
     errorMap: () => ({ message: "Le type d'établissement doit être 'ipes' ou 'faculty'" })
   }),
@@ -18,7 +19,7 @@ export const TranscriptsettingsSchema = z.object({
   universityLogo: z.string().optional(),
   facultyLogo: z.string().optional(),
   
-  // Maintenir la compatibilité avec l'ancien schéma
+  // Paramètres de base (pour rétrocompatibilité)
   themeColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "La couleur doit être au format hexadécimal (ex: #000000)"),
   themeFont: z.enum([
     "Times New Roman, serif",
@@ -29,13 +30,16 @@ export const TranscriptsettingsSchema = z.object({
     errorMap: () => ({ message: "Police de caractères invalide" })
   }),
   
-  // Nouveau système de thème complet
+  // Système de thème standard
   theme: ThemeSettingsSchema.optional(),
+  
+  // NOUVEAU: Configuration avancée pour les relevés
+  advancedTranscriptConfig: AdvancedTranscriptConfigSchema.optional(),
 });
 
 export type TranscriptSettingsPayload = z.infer<typeof TranscriptsettingsSchema>;
 
-// Fonction pour obtenir le thème complet en prenant en compte la rétrocompatibilité
+// Fonction pour obtenir le thème complet avec support de la configuration avancée
 export function getCompleteTheme(settings: TranscriptSettingsPayload): typeof defaultTheme {
   if (settings.theme) {
     return settings.theme;
@@ -48,4 +52,9 @@ export function getCompleteTheme(settings: TranscriptSettingsPayload): typeof de
     mainFont: settings.themeFont as typeof defaultTheme.mainFont || defaultTheme.mainFont,
     headerFont: settings.themeFont as typeof defaultTheme.headerFont || defaultTheme.headerFont,
   };
+}
+
+// NOUVEAU: Fonction pour obtenir la configuration avancée des relevés
+export function getAdvancedTranscriptConfig(settings: TranscriptSettingsPayload) {
+  return settings.advancedTranscriptConfig || defaultAdvancedTranscriptConfig;
 }

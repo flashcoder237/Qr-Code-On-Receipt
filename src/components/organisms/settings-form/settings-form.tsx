@@ -1,3 +1,4 @@
+// src/components/organisms/settings-form/settings-form.tsx - Version mise à jour
 import {
   Card,
   CardContent,
@@ -18,13 +19,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Edit, Save, X, Eye, Building, GraduationCap } from "lucide-react";
+import { Edit, Save, X, Eye, Building, GraduationCap, Type } from "lucide-react";
 import {
   TranscriptSettingsPayload,
   TranscriptsettingsSchema,
   getCompleteTheme,
+  getAdvancedTranscriptConfig, // NOUVEAU
 } from "@/lib/form-schemas/settings";
 import { defaultTheme } from "@/lib/form-schemas/theme-settings";
+import { defaultAdvancedTranscriptConfig } from "@/lib/form-schemas/advanced-typography"; // NOUVEAU
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
@@ -33,17 +36,18 @@ import { useLocalStorage } from "usehooks-ts";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeEditor } from "../theme-editor";
+import { AdvancedTranscriptThemeEditor } from "../theme-editor/AdvancedTranscriptThemeEditor"; // NOUVEAU
 
 const SettingForm: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
-  const [activeTab, setActiveTab] = useState<"general" | "appearance">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "appearance" | "advanced">("general"); // NOUVEAU: tab advanced
   const [showPreview, setShowPreview] = useState(false);
   
   // État pour stocker les données dans localStorage
   const [storedFormData, setStoredFormData] =
     useLocalStorage<TranscriptSettingsPayload>("settings", {
-      establishmentType: "ipes", // Valeur par défaut
+      establishmentType: "ipes",
       nameFrench: "",
       nameEnglish: "",
       nameAbreviation: "",
@@ -56,6 +60,7 @@ const SettingForm: React.FC = () => {
       themeColor: "#000000",
       themeFont: "Times New Roman, serif",
       theme: defaultTheme,
+      advancedTranscriptConfig: defaultAdvancedTranscriptConfig, // NOUVEAU
     });
 
   const form = useForm<TranscriptSettingsPayload>({
@@ -155,6 +160,25 @@ const SettingForm: React.FC = () => {
     saveChanges();
   };
 
+  // NOUVEAU: Gestionnaire pour mettre à jour la configuration avancée
+  const handleAdvancedConfigUpdate = (advancedConfig: any) => {
+    form.setValue("advancedTranscriptConfig", advancedConfig);
+    setStoredFormData({
+      ...storedFormData,
+      advancedTranscriptConfig: advancedConfig
+    });
+    setSaveStatus("success");
+    setTimeout(() => setSaveStatus("idle"), 3000);
+  };
+
+  // NOUVEAU: Fonction pour sauvegarder la configuration avancée
+  const handleAdvancedConfigSave = () => {
+    const currentData = form.getValues();
+    setStoredFormData(currentData);
+    setSaveStatus("success");
+    setTimeout(() => setSaveStatus("idle"), 3000);
+  };
+
   // Fonction pour obtenir les libellés conditionnels
   const getEstablishmentLabels = () => {
     const isIpes = watchEstablishmentType === "ipes";
@@ -179,13 +203,17 @@ const SettingForm: React.FC = () => {
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              <Tabs value={activeTab} onValueChange={(value: "general" | "appearance") => setActiveTab(value)}>
+              <Tabs value={activeTab} onValueChange={(value: "general" | "appearance" | "advanced") => setActiveTab(value)}>
                 <TabsList>
                   <TabsTrigger value="general">Informations</TabsTrigger>
                   <TabsTrigger value="appearance">Apparence</TabsTrigger>
+                  <TabsTrigger value="advanced" className="flex items-center gap-1">
+                    <Type className="h-3 w-3" />
+                    Typographie
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
-              {!isEditing ? (
+              {!isEditing && activeTab !== "advanced" ? (
                 <Button variant="outline" onClick={() => setIsEditing(true)}>
                   <Edit className="mr-2 h-4 w-4" />
                   Modifier
@@ -294,149 +322,132 @@ const SettingForm: React.FC = () => {
                           )}
                         />
                       </div>
-                      {
-                        (watchEstablishmentType === "ipes") &&
+                      
+                      {/* Champs conditionnels selon le type d'établissement */}
+                      {watchEstablishmentType === "ipes" && (
                         <div>
-                           <FormField
-                        control={form.control}
-                        name="nameFrench"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{labels.establishmentName} (Français)</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                disabled={!isEditing}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="nameEnglish"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{labels.establishmentName} (Anglais)</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                disabled={!isEditing}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="nameAbreviation"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{labels.establishmentAbbr}</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                disabled={!isEditing}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="postalBox"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Boîte Postale (Français)</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                disabled={!isEditing}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="postalBoxEn"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Boîte Postale (Anglais)</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                disabled={!isEditing}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Adresse E-mail</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                type="email"
-                                disabled={!isEditing}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                        </div> 
-                      }
-                     
+                          <FormField
+                            control={form.control}
+                            name="nameFrench"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>{labels.establishmentName} (Français)</FormLabel>
+                                <FormControl>
+                                  <Input {...field} disabled={!isEditing} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="nameEnglish"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>{labels.establishmentName} (Anglais)</FormLabel>
+                                <FormControl>
+                                  <Input {...field} disabled={!isEditing} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="nameAbreviation"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>{labels.establishmentAbbr}</FormLabel>
+                                <FormControl>
+                                  <Input {...field} disabled={!isEditing} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="postalBox"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Boîte postale (Français)</FormLabel>
+                                <FormControl>
+                                  <Input {...field} disabled={!isEditing} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="postalBoxEn"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Boîte postale (Anglais)</FormLabel>
+                                <FormControl>
+                                  <Input {...field} disabled={!isEditing} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="email"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Adresse e-mail</FormLabel>
+                                <FormControl>
+                                  <Input {...field} type="email" disabled={!isEditing} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      )}
                     </div>
+                    
+                    {/* Section des logos */}
                     <div className="space-y-4">
-    
-                      {watchEstablishmentType === "ipes" && 
-                      <FormField
-                        control={form.control}
-                        name="logo"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{labels.establishmentLogo}</FormLabel>
-                            <FormControl>
-                              <div
-                                {...(isEditing ? logoDropzone.getRootProps() : {})}
-                                className={`border-2 ${isEditing ? 'border-dashed cursor-pointer' : 'border-solid'} rounded-md p-4 text-center flex flex-col justify-center ${
-                                  isEditing && logoDropzone.isDragActive ? "border-primary bg-primary/10" : isEditing ? "border-gray-300" : "border-gray-200"
-                                }`}
-                              >
-                                {isEditing && <input {...logoDropzone.getInputProps()} />}
-                                {field.value ? (
-                                  <img
-                                    src={field.value}
-                                    alt="Logo"
-                                    className="mx-auto max-h-32 w-full object-contain"
-                                  />
-                                ) : isEditing && logoDropzone.isDragActive ? (
-                                  <p>Déposez le fichier ici ...</p>
-                                ) : isEditing ? (
-                                  <p>
-                                    Faites glisser et déposez un logo ici, ou cliquez pour
-                                    sélectionner un fichier
-                                  </p>
-                                ) : (
-                                  <p className="text-gray-500">Aucun logo défini</p>
-                                )}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />}
+                      {watchEstablishmentType === "ipes" && (
+                        <FormField
+                          control={form.control}
+                          name="logo"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{labels.establishmentLogo}</FormLabel>
+                              <FormControl>
+                                <div
+                                  {...(isEditing ? logoDropzone.getRootProps() : {})}
+                                  className={`border-2 ${isEditing ? 'border-dashed cursor-pointer' : 'border-solid'} rounded-md p-4 text-center flex flex-col justify-center ${
+                                    isEditing && logoDropzone.isDragActive ? "border-primary bg-primary/10" : isEditing ? "border-gray-300" : "border-gray-200"
+                                  }`}
+                                >
+                                  {isEditing && <input {...logoDropzone.getInputProps()} />}
+                                  {field.value ? (
+                                    <img
+                                      src={field.value}
+                                      alt="Logo"
+                                      className="mx-auto max-h-32 w-full object-contain"
+                                    />
+                                  ) : isEditing && logoDropzone.isDragActive ? (
+                                    <p>Déposez le fichier ici ...</p>
+                                  ) : isEditing ? (
+                                    <p>
+                                      Faites glisser et déposez un logo ici, ou cliquez pour
+                                      sélectionner un fichier
+                                    </p>
+                                  ) : (
+                                    <p className="text-gray-500">Aucun logo défini</p>
+                                  )}
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
                       
                       {/* Logo de l'université - toujours affiché */}
                       <FormField
@@ -520,6 +531,16 @@ const SettingForm: React.FC = () => {
                   <ThemeEditor 
                     settings={form.getValues()} 
                     onSave={handleThemeUpdate}
+                    onPreview={previewTranscript}
+                  />
+                </TabsContent>
+
+                {/* NOUVEAU: Onglet de configuration typographique avancée */}
+                <TabsContent value="advanced" className="mt-0">
+                  <AdvancedTranscriptThemeEditor
+                    config={getAdvancedTranscriptConfig(form.getValues())}
+                    onChange={handleAdvancedConfigUpdate}
+                    onSave={handleAdvancedConfigSave}
                     onPreview={previewTranscript}
                   />
                 </TabsContent>
