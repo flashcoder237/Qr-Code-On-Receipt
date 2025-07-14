@@ -14,7 +14,7 @@ import { Save, Undo, Eye, Palette, Type, Layout, Settings, FileText, Wand2 } fro
 import { AttestationThemeSettingsPayload, defaultAttestationTheme, getAdvancedAttestationConfig } from "@/lib/form-schemas/attestation-theme-settings";
 import { AttestationThemePreview } from "./AttestationThemePreview";
 import { ThemePresetSelector } from "./ThemePresetSelector";
-import { AdvancedAttestationThemeEditor } from "@//components/organisms/theme-editor/AdvancedAttestationThemeEditor"; // NOUVEAU
+import { AdvancedAttestationThemeEditor } from "./AdvancedAttestationThemeEditor"; // NOUVEAU
 import { motion, AnimatePresence } from "framer-motion";
 
 interface AttestationThemeEditorProps {
@@ -664,12 +664,59 @@ export const AttestationThemeEditor: React.FC<AttestationThemeEditorProps> = ({
           </Tabs>
         </CardContent>
 
-        <CardFooter className="flex justify-between">
-          <div>
+        <CardFooter className="flex justify-between items-center">
+          <div className="flex gap-2">
             <Button variant="outline" onClick={resetToDefaults}>
               <Undo className="mr-2 h-4 w-4" />
               Réinitialiser
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                // Export current theme as JSON file
+                const dataStr = JSON.stringify(theme, null, 2);
+                const blob = new Blob([dataStr], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = "attestation-theme-config.json";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+              }}
+            >
+              Exporter la configuration
+            </Button>
+            <label
+              htmlFor="import-theme-config"
+              className="btn btn-outline cursor-pointer"
+              style={{ display: "inline-flex", alignItems: "center" }}
+            >
+              Importer la configuration
+            </label>
+            <input
+              type="file"
+              id="import-theme-config"
+              accept=".json,application/json"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                  try {
+                    const json = JSON.parse(event.target?.result as string);
+                    onThemeChange(json);
+                    setIsModified(true);
+                  } catch (error) {
+                    alert("Fichier JSON invalide ou erreur de lecture");
+                  }
+                };
+                reader.readAsText(file);
+                e.target.value = "";
+              }}
+            />
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handlePreview}>

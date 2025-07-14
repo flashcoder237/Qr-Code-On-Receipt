@@ -1,13 +1,12 @@
-// src/lib/pdfGenerator.ts - Version corrigée sans localStorage dans le main process
-
 import { StudentRecord } from "../types/student";
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ipcMain } from 'electron';
 import QRCode from 'qrcode';
-import { getCompleteTheme } from './form-schemas/settings';
+import { getCompleteTheme, getAdvancedTranscriptConfig } from './form-schemas/settings';
 import { ThemeSettingsPayload } from './form-schemas/theme-settings';
+import { generateAdvancedTranscriptCSS } from '../utils/advanced-css-generator';
 
 // Importer directement depuis html-to-pdf.ts
 import { generateAttestationPDF } from './attestation-generator/html-to-pdf';
@@ -53,11 +52,12 @@ interface GenerateAttestationParams {
 // Génère les styles CSS basés sur les paramètres du thème
 function generateThemeStyles(params: GeneratePDFParams): string {
   const theme = getCompleteTheme(params.settings);
+  const advancedConfig = getAdvancedTranscriptConfig(params.settings);
   
   // CORRECTION: Récupérer le mode démo depuis les paramètres au lieu de localStorage
   const isDemoMode = params.settings.demoMode === true;
-  
-  return `
+
+  const baseCSS = `
     @page {
       size: A4;
       margin: 0;
@@ -271,7 +271,7 @@ function generateThemeStyles(params: GeneratePDFParams): string {
     
     .grade-scale {
       display: ${theme.showGradeScale ? 'flex' : 'none'};
-      font-size: ${theme.footerFontSize}px;
+      font-size: ${theme.footerFontSize}px !important;
       float: left;
       margin-left: 20px;
       width: 50%;
@@ -365,6 +365,8 @@ function generateThemeStyles(params: GeneratePDFParams): string {
       border: 0.5px solid ${theme.tableBorderColor};
     }
     body > .container{
+      width: 100%;
+      height: 100%;
       position: relative;
     }
     .footer-note {
@@ -392,6 +394,13 @@ function generateThemeStyles(params: GeneratePDFParams): string {
       color: #cc0000;
     }
   `;
+
+  const advancedCSS = generateAdvancedTranscriptCSS(advancedConfig);
+
+  return `${baseCSS}
+
+/* Configuration typographique avancée */
+${advancedCSS}`;
 }
 
 // Create HTML template for the transcript based on the provided model

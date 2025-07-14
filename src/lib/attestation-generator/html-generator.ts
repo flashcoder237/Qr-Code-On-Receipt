@@ -1,10 +1,10 @@
 // src/lib/attestation-generator/html-generator.ts - Version avec support typographie avancée
 
 import { StudentExcelRecord, sanitizeStudentData, generateQrCodeBase64 } from '../helpers/qrcode';
-import { formatDate, calculateGrade, calculateMention } from '@/utils';
+import { formatDate, calculateGrade, calculateMention } from './utils';
 import { AttestationThemeSettingsPayload, defaultAttestationTheme, getAdvancedAttestationConfig } from '../form-schemas/attestation-theme-settings';
 import { getQRCodeSizeEstimate } from '../helpers/qrcode';
-import { generateAdvancedAttestationCSS, combineStyles } from '@/utils/advanced-css-generator'; // NOUVEAU
+import { generateAdvancedAttestationCSS, combineStyles } from '../../utils/advanced-css-generator'; // NOUVEAU
 
 interface SchoolSettings {
   establishmentType: string;
@@ -314,6 +314,7 @@ export async function generateAttestationHTML(
         width: 100%;
         height: 100%;
         align-items: center;
+        margin: 3px;
         align-content: center;
       }
       

@@ -112,103 +112,117 @@ export type AdvancedBorderConfig = z.infer<typeof AdvancedBorderConfigSchema>;
 export type AdvancedTranscriptConfig = z.infer<typeof AdvancedTranscriptConfigSchema>;
 export type AdvancedAttestationConfig = z.infer<typeof AdvancedAttestationConfigSchema>;
 
-// Configurations par défaut pour les relevés
+// Configurations par défaut pour les relevés - CORRIGÉES
+// NOTE: These are static defaults. To have dynamic defaults based on current theme,
+// consider using functions to generate these configs dynamically.
 export const defaultAdvancedTranscriptConfig: AdvancedTranscriptConfig = {
   enableAdvancedTypography: false,
   
+  // Header Title (basé sur .header-row2 h1)
   headerTitle: {
     fontFamily: "Times New Roman, serif",
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "100",
     fontStyle: "normal",
-    color: "#000000",
+    color: "#0066cc",
     lineHeight: 1.2,
   },
   
+  // Header Subtitle
   headerSubtitle: {
     fontFamily: "Times New Roman, serif",
-    fontSize: 14,
-    fontWeight: "normal",
+    fontSize: 16,
+    fontWeight: "bold",
     fontStyle: "italic",
-    color: "#333333",
+    color: "#0066cc",
     lineHeight: 1.2,
   },
   
+  // Header Info
   headerInfo: {
     fontFamily: "Times New Roman, serif",
     fontSize: 10,
     fontWeight: "normal",
     fontStyle: "normal",
     color: "#000000",
-    lineHeight: 1.1,
+    lineHeight: 1.0,
   },
   
+  // Student Info
   studentInfo: {
     fontFamily: "Times New Roman, serif",
     fontSize: 10,
     fontWeight: "normal",
     fontStyle: "normal",
     color: "#000000",
-    lineHeight: 1.3,
+    lineHeight: 0,
   },
   
+  // Table Header
   tableHeader: {
     fontFamily: "Times New Roman, serif",
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: "bold",
     fontStyle: "normal",
     color: "#000000",
     lineHeight: 1.1,
   },
   
+  // Table Content
   tableContent: {
     fontFamily: "Times New Roman, serif",
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: "normal",
     fontStyle: "normal",
     color: "#000000",
     lineHeight: 1.1,
   },
   
+  // Footer
   footer: {
     fontFamily: "Times New Roman, serif",
     fontSize: 8,
     fontWeight: "normal",
     fontStyle: "italic",
-    color: "#333333",
+    color: "#000000",
     lineHeight: 1.2,
   },
   
+  // Signature
   signature: {
     fontFamily: "Times New Roman, serif",
-    fontSize: 11,
-    fontWeight: "bold",
+    fontSize: 12,
+    fontWeight: "normal",
     fontStyle: "normal",
     color: "#000000",
     lineHeight: 1.2,
   },
   
+  // Document Border
   documentBorder: {
     style: "solid",
-    width: 1,
+    width: 2,
     color: "#000000",
   },
   
+  // Table Border
   tableBorder: {
     style: "solid",
-    width: 1,
+    width: 2,
     color: "#000000",
   },
   
+  // Table Header Border
   tableHeaderBorder: {
     style: "solid",
-    width: 1,
+    width: 2,
     color: "#000000",
   },
   
+  // Table Cell Border
   tableCellBorder: {
     style: "solid",
-    width: 1,
+    width: 2,
     color: "#000000",
   },
 };

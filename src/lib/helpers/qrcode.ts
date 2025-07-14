@@ -168,7 +168,7 @@ Année d'obtention: ${student["ANNEE D'OBTENTION"]}`;
 
   // Informations communes
   const commonContent = `
-Moyenne: ${student.MOYENNE}
+Moyenne: ${student.MOYENNE.toFixed(2)}
 Grade: ${student.GRADE}
 Mention: ${student.MENTION}
 Année académique: ${student["ANNEE ACADEMIQUE"]}`;

@@ -32,6 +32,8 @@ export const AdvancedFontEditor: React.FC<AdvancedFontEditorProps> = ({
   isOpen = false,
   onOpenChange
 }) => {
+  const [advancedOpen, setAdvancedOpen] = React.useState(false);
+  
   const updateFont = (field: keyof AdvancedFontConfig, newValue: any) => {
     onChange({
       ...value,
@@ -202,10 +204,10 @@ export const AdvancedFontEditor: React.FC<AdvancedFontEditorProps> = ({
         </div>
 
         {/* Options avancées */}
-        <Collapsible>
+        <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
           <CollapsibleTrigger asChild>
             <Button variant="ghost" size="sm" className="w-full justify-start">
-              <ChevronRight className="h-4 w-4 mr-2" />
+              {advancedOpen ? <ChevronDown className="h-4 w-4 mr-2" /> : <ChevronRight className="h-4 w-4 mr-2" />}
               Options avancées
             </Button>
           </CollapsibleTrigger>

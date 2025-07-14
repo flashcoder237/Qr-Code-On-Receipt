@@ -41,14 +41,32 @@ export const AdvancedTranscriptThemeEditor: React.FC<AdvancedTranscriptThemeEdit
     setIsModified(true);
   };
 
-  const resetToDefaults = () => {
+  const resetToDefaults = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     onChange(defaultAdvancedTranscriptConfig);
     setIsModified(true);
   };
 
-  const handleSave = () => {
+  const handleSave = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     onSave();
     setIsModified(false);
+  };
+
+  const handlePreview = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (onPreview) {
+      onPreview();
+    }
   };
 
   const toggleFontSection = (section: string) => {
@@ -63,6 +81,28 @@ export const AdvancedTranscriptThemeEditor: React.FC<AdvancedTranscriptThemeEdit
       ...prev,
       [section]: !prev[section]
     }));
+  };
+
+  const handleToggleAllFontSections = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const allOpen = fontSections.every(s => openFontSections[s.key]);
+    const newState = fontSections.reduce((acc, section) => ({
+      ...acc,
+      [section.key]: !allOpen
+    }), {});
+    setOpenFontSections(newState);
+  };
+
+  const handleToggleAllBorderSections = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const allOpen = borderSections.every(s => openBorderSections[s.key]);
+    const newState = borderSections.reduce((acc, section) => ({
+      ...acc,
+      [section.key]: !allOpen
+    }), {});
+    setOpenBorderSections(newState);
   };
 
   const fontSections = [
@@ -170,16 +210,10 @@ export const AdvancedTranscriptThemeEditor: React.FC<AdvancedTranscriptThemeEdit
 
             <div className="flex gap-2 pt-4">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  const allOpen = fontSections.every(s => openFontSections[s.key]);
-                  const newState = fontSections.reduce((acc, section) => ({
-                    ...acc,
-                    [section.key]: !allOpen
-                  }), {});
-                  setOpenFontSections(newState);
-                }}
+                onClick={handleToggleAllFontSections}
               >
                 {fontSections.every(s => openFontSections[s.key]) ? 'Fermer tout' : 'Ouvrir tout'}
               </Button>
@@ -203,16 +237,10 @@ export const AdvancedTranscriptThemeEditor: React.FC<AdvancedTranscriptThemeEdit
 
             <div className="flex gap-2 pt-4">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  const allOpen = borderSections.every(s => openBorderSections[s.key]);
-                  const newState = borderSections.reduce((acc, section) => ({
-                    ...acc,
-                    [section.key]: !allOpen
-                  }), {});
-                  setOpenBorderSections(newState);
-                }}
+                onClick={handleToggleAllBorderSections}
               >
                 {borderSections.every(s => openBorderSections[s.key]) ? 'Fermer tout' : 'Ouvrir tout'}
               </Button>
@@ -227,16 +255,25 @@ export const AdvancedTranscriptThemeEditor: React.FC<AdvancedTranscriptThemeEdit
                   value={config.customCSS || ""}
                   onChange={(e) => updateConfig('customCSS', e.target.value)}
                   placeholder="/* CSS personnalisé pour les relevés */
-.custom-header {
-  background: linear-gradient(45deg, #f0f0f0, #ffffff);
-}
+                    .custom-header {
+                      background: linear-gradient(45deg, #f0f0f0, #ffffff);
+                    }
 
-.highlight-grades {
-  font-weight: bold;
-  color: #2563eb;
-}"
+                    .highlight-grades {
+                      font-weight: bold;
+                      color: #2563eb;
+                    }"
                   className="font-mono text-sm"
                   rows={10}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    // Empêcher la soumission du formulaire sur Entrée
+                    if (e.key === 'Enter') {
+                      e.stopPropagation();
+                    }
+                  }}
+                  onFocus={(e) => e.stopPropagation()}
+                  onBlur={(e) => e.stopPropagation()}
                 />
                 <p className="text-xs text-gray-500">
                   Ajoutez du CSS personnalisé pour des modifications avancées du style
@@ -258,19 +295,19 @@ export const AdvancedTranscriptThemeEditor: React.FC<AdvancedTranscriptThemeEdit
 
       <CardFooter className="flex justify-between">
         <div>
-          <Button variant="outline" onClick={resetToDefaults}>
+          <Button type="button" variant="outline" onClick={resetToDefaults}>
             <Undo className="mr-2 h-4 w-4" />
             Réinitialiser
           </Button>
         </div>
         <div className="flex gap-2">
           {onPreview && (
-            <Button variant="outline" onClick={onPreview}>
+            <Button type="button" variant="outline" onClick={handlePreview}>
               <Eye className="mr-2 h-4 w-4" />
               Aperçu
             </Button>
           )}
-          <Button onClick={handleSave} disabled={!isModified}>
+          <Button type="button" onClick={handleSave} disabled={!isModified}>
             <Save className="mr-2 h-4 w-4" />
             Enregistrer
           </Button>

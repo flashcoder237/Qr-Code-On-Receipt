@@ -147,9 +147,129 @@ export const defaultAttestationTheme: AttestationThemeSettingsPayload = {
   advancedConfig: defaultAdvancedAttestationConfig,
 };
 
+import { AdvancedAttestationConfig, defaultAdvancedAttestationConfig } from "./advanced-typography";
+
+// NOUVEAU: Fonction pour convertir un thème d'attestation en configuration avancée
+export function convertAttestationThemeToAdvancedConfig(theme: AttestationThemeSettingsPayload): AdvancedAttestationConfig {
+  const baseFont = theme.mainFont || defaultAdvancedAttestationConfig.mainTitle.fontFamily;
+  const baseFontSize = theme.contentFontSize || 12;
+  const baseLineHeight = 1.2;
+
+  return {
+    enableAdvancedTypography: true,
+    mainTitle: {
+      fontFamily: theme.headerFont || baseFont,
+      fontSize: theme.titleFontSize || 24,
+      fontWeight: "bold",
+      fontStyle: "normal",
+      color: theme.primaryColor || "#000080",
+      lineHeight: baseLineHeight,
+      textTransform: "uppercase",
+    },
+    subtitle: {
+      fontFamily: baseFont,
+      fontSize: theme.subtitleFontSize || 22,
+      fontWeight: "bold",
+      fontStyle: "italic",
+      color: theme.secondaryColor || "#333333",
+      lineHeight: baseLineHeight,
+    },
+    headerInfo: {
+      fontFamily: baseFont,
+      fontSize: theme.headerFontSize || 10,
+      fontWeight: "normal",
+      fontStyle: "normal",
+      color: theme.secondaryColor || "#505050",
+      lineHeight: baseLineHeight,
+    },
+    studentInfo: {
+      fontFamily: baseFont,
+      fontSize: baseFontSize,
+      fontWeight: "normal",
+      fontStyle: "normal",
+      color: theme.primaryColor || "#000000",
+      lineHeight: baseLineHeight,
+    },
+    tableHeader: {
+      fontFamily: baseFont,
+      fontSize: theme.headerFontSize || 11,
+      fontWeight: "bold",
+      fontStyle: "normal",
+      color: theme.primaryColor || "#000000",
+      lineHeight: baseLineHeight,
+    },
+    tableContent: {
+      fontFamily: baseFont,
+      fontSize: baseFontSize,
+      fontWeight: "normal",
+      fontStyle: "normal",
+      color: theme.primaryColor || "#000000",
+      lineHeight: baseLineHeight,
+    },
+    footer: {
+      fontFamily: baseFont,
+      fontSize: theme.footerFontSize || 12,
+      fontWeight: "normal",
+      fontStyle: "normal",
+      color: theme.secondaryColor || "#505050",
+      lineHeight: baseLineHeight,
+    },
+    signature: {
+      fontFamily: baseFont,
+      fontSize: theme.footerFontSize || 12,
+      fontWeight: "bold",
+      fontStyle: "normal",
+      color: theme.primaryColor || "#000000",
+      lineHeight: baseLineHeight,
+    },
+    disclaimer: {
+      fontFamily: baseFont,
+      fontSize: theme.footerFontSize || 8,
+      fontWeight: "normal",
+      fontStyle: "italic",
+      color: theme.secondaryColor || "#333333",
+      lineHeight: baseLineHeight,
+    },
+    documentBorder: {
+      style: theme.borderStyle || "solid",
+      width: theme.borderWidth || 1,
+      color: theme.tableBorderColor || "#000000",
+      radius: 0,
+    },
+    tableBorder: {
+      style: theme.borderStyle || "solid",
+      width: theme.borderWidth || 1,
+      color: theme.tableBorderColor || "#000000",
+      radius: 0,
+    },
+    tableHeaderBorder: {
+      style: theme.borderStyle || "solid",
+      width: theme.borderWidth || 1,
+      color: theme.tableBorderColor || "#000000",
+      radius: 0,
+    },
+    tableCellBorder: {
+      style: theme.borderStyle || "solid",
+      width: theme.borderWidth || 1,
+      color: theme.tableBorderColor || "#000000",
+      radius: 0,
+    },
+    signatureBorder: {
+      style: theme.borderStyle || "solid",
+      width: theme.borderWidth || 1,
+      color: theme.tableBorderColor || "#000000",
+      radius: 0,
+    },
+    customCSS: "",
+  };
+}
+
 // NOUVEAU: Fonction pour obtenir la configuration avancée des attestations
 export function getAdvancedAttestationConfig(theme: AttestationThemeSettingsPayload) {
-  return theme.advancedConfig || defaultAdvancedAttestationConfig;
+  if (theme.advancedConfig) {
+    return theme.advancedConfig;
+  }
+  return convertAttestationThemeToAdvancedConfig(theme);
 }
 
 // Export pour compatibilité
