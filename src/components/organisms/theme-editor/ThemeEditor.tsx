@@ -65,6 +65,7 @@ const ThemeEditor: React.FC<ThemeEditorProps> = ({ settings, onSave, onPreview }
     { value: "Helvetica, sans-serif", label: "Helvetica" },
     { value: "Georgia, serif", label: "Georgia" },
     { value: "Verdana, sans-serif", label: "Verdana" },
+    { value: "Domine, sans-serif", label: "Domine" },
     { value: "Calibri, sans-serif", label: "Calibri" },
     { value: "Cambria, serif", label: "Cambria" },
   ];

@@ -16,6 +16,7 @@ export const ThemeSettingsSchema = z.object({
     "Georgia, serif",
     "Verdana, sans-serif",
     "Calibri, sans-serif",
+    "Domine, sans-serif",
     "Cambria, serif",
   ], {
     errorMap: () => ({ message: "Police de caractères invalide" })
@@ -26,6 +27,7 @@ export const ThemeSettingsSchema = z.object({
     "Helvetica, sans-serif",
     "Georgia, serif",
     "Verdana, sans-serif", 
+    "Domine, sans-serif",
     "Calibri, sans-serif",
     "Cambria, serif",
   ], {

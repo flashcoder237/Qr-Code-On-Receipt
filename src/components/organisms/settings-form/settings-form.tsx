@@ -1,4 +1,4 @@
-// src/components/organisms/settings-form/settings-form.tsx - Version adaptée avec design moderne
+// src/components/organisms/settings-form/settings-form.tsx - Version corrigée sans conflit Git
 import {
   Card,
   CardContent,
@@ -77,31 +77,7 @@ const SettingForm: React.FC = () => {
     resolver: zodResolver(TranscriptsettingsSchema),
     defaultValues: storedFormData,
   });
-<<<<<<< SEARCH
 
-  // Fonction pour réinitialiser le formulaire
-  const resetForm = () => {
-    if (!isEditing) return;
-    
-    const defaultSettings = {
-      establishmentType: "ipes",
-      nameFrench: "",
-      nameEnglish: "",
-      nameAbreviation: "",
-      postalBox: "",
-      postalBoxEn: "",
-      email: "",
-      logo: "",
-      universityLogo: "",
-      facultyLogo: "",
-      themeColor: "#000000",
-      themeFont: "Times New Roman, serif",
-      theme: defaultTheme,
-      advancedTranscriptConfig: defaultAdvancedTranscriptConfig,
-    };
-    form.reset(defaultSettings);
-  };
-=======
   // Fonction pour réinitialiser le formulaire
   const resetForm = () => {
     if (!isEditing) return;
@@ -128,50 +104,6 @@ const SettingForm: React.FC = () => {
     };
     form.reset(defaultSettings);
   };
-
-  // Ensure advancedTranscriptConfig matches default on first load to avoid lineHeight mismatch
-  // Removed to prevent overriding existing advanced config on load
-  // React.useEffect(() => {
-  //   if (!storedFormData) return;
-
-  //   const storedConfig = storedFormData.advancedTranscriptConfig;
-  //   const defaultConfig = defaultAdvancedTranscriptConfig;
-
-  //   // Simple deep comparison for lineHeight values in storedConfig vs defaultConfig
-  //   const configsDiffer = () => {
-  //     if (!storedConfig) return true;
-
-  //     const keysToCheck = [
-  //       "headerTitle",
-  //       "headerSubtitle",
-  //       "headerInfo",
-  //       "studentInfo",
-  //       "tableHeader",
-  //       "tableContent",
-  //       "footer",
-  //       "signature",
-  //     ];
-
-  //     for (const key of keysToCheck) {
-  //       if (
-  //         !storedConfig[key] ||
-  //         storedConfig[key].lineHeight !== defaultConfig[key].lineHeight
-  //       ) {
-  //         return true;
-  //       }
-  //     }
-  //     return false;
-  //   };
-
-  //   if (configsDiffer()) {
-  //     const newStoredFormData = {
-  //       ...storedFormData,
-  //       advancedTranscriptConfig: defaultAdvancedTranscriptConfig,
-  //     };
-  //     setStoredFormData(newStoredFormData);
-  //     form.reset(newStoredFormData);
-  //   }
-  // }, [storedFormData, setStoredFormData, form]);
 
   const MAX_FILE_SIZE = 1000 * 1024;
 
@@ -344,29 +276,6 @@ const SettingForm: React.FC = () => {
     setSaveStatus("idle");
   };
 
-  // Fonction pour réinitialiser le formulaire
-  const resetForm = () => {
-    if (!isEditing) return;
-    
-    const defaultSettings = {
-      establishmentType: "ipes",
-      nameFrench: "",
-      nameEnglish: "",
-      nameAbreviation: "",
-      postalBox: "",
-      postalBoxEn: "",
-      email: "",
-      logo: "",
-      universityLogo: "",
-      facultyLogo: "",
-      themeColor: "#000000",
-      themeFont: "Times New Roman, serif",
-      theme: defaultTheme,
-      advancedTranscriptConfig: defaultAdvancedTranscriptConfig,
-    };
-    form.reset(defaultSettings);
-  };
-
   // Fonction pour prévisualiser le relevé avec le thème actuel
   const previewTranscript = () => {
     setShowPreview(true);
@@ -393,36 +302,7 @@ const SettingForm: React.FC = () => {
     setTimeout(() => setSaveStatus("idle"), 3000);
   };
 
-  // NOUVEAU: Gestionnaire pour activer la configuration avancée
-  const handleEnableAdvancedTypographyChange = (enabled: boolean) => {
-    if (enabled) {
-      // If enabling advanced config for the first time, initialize from current theme
-      if (!storedFormData.advancedTranscriptConfig) {
-        const theme = getCompleteTheme(storedFormData);
-        const advancedConfig = convertThemeToAdvancedConfig(theme);
-        form.setValue("advancedTranscriptConfig", advancedConfig);
-        setStoredFormData({
-          ...storedFormData,
-          advancedTranscriptConfig: advancedConfig,
-          // Also set enableAdvancedTypography flag in advanced config
-          advancedTranscriptConfig: { ...advancedConfig, enableAdvancedTypography: true }
-        });
-      }
-    } else {
-      // If disabling, optionally keep or clear advanced config
-      // Here we keep it for possible reactivation
-    }
-    // Update the enableAdvancedTypography flag in advanced config
-    const currentAdvancedConfig = storedFormData.advancedTranscriptConfig || defaultAdvancedTranscriptConfig;
-    const updatedConfig = { ...currentAdvancedConfig, enableAdvancedTypography: enabled };
-    form.setValue("advancedTranscriptConfig", updatedConfig);
-    setStoredFormData({
-      ...storedFormData,
-      advancedTranscriptConfig: updatedConfig
-    });
-  };
-
-  // Fonction pour sauvegarder la configuration avancée
+  // Gestionnaire pour sauvegarder la configuration avancée
   const handleAdvancedConfigSave = () => {
     const currentData = form.getValues();
     setStoredFormData(currentData);
@@ -976,13 +856,11 @@ const SettingForm: React.FC = () => {
                 {/* Onglet de configuration typographique avancée */}
                 <TabsContent value="advanced" className="mt-0">
                   <AdvancedTranscriptThemeEditor
-          config={getAdvancedTranscriptConfig(form.getValues())}
-          onChange={handleAdvancedConfigUpdate}
-          onSave={handleAdvancedConfigSave}
-          onPreview={previewTranscript}
-          // NOUVEAU: Passer le gestionnaire pour activer la config avancée
-          onEnableChange={handleEnableAdvancedTypographyChange}
-        />
+                    config={getAdvancedTranscriptConfig(form.getValues())}
+                    onChange={handleAdvancedConfigUpdate}
+                    onSave={handleAdvancedConfigSave}
+                    onPreview={previewTranscript}
+                  />
                 </TabsContent>
               </Tabs>
             </form>

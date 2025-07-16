@@ -8,6 +8,7 @@ export const AVAILABLE_FONTS = [
   "Helvetica, sans-serif",
   "Georgia, serif",
   "Verdana, sans-serif",
+  "Domine, sans-serif",
   "Calibri, sans-serif",
   "Cambria, serif",
   "Garamond, serif",
