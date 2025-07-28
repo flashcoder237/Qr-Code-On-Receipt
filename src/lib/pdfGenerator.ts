@@ -856,8 +856,8 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                             <td class="summary-label">TOTAL CREDIT</td>
                             <td colspan="2" class="summary-label">MOYENNE SEMESTRIELLE / 20</td>
                             <td class="summary-label">MGP</td>
-                            <td colspan="${student.DISPLAY_SESSIONS ? '2' : '1'}" class="summary-label">GRADE</td>
-                            <td colspan="${student.DISPLAY_SESSIONS ? '2' : '1'}" class="summary-label">DECISION DU JURY</td>
+                            <td class="summary-label">GRADE</td>
+                            <td colspan="${student.DISPLAY_SESSIONS ? '3' : '2'}" class="summary-label">DECISION DU JURY</td>
                         </tr>
                         <tr class="table-footer-values">
                             <td class="summary-value"><strong>${student.NIVEAU || "1"}</strong></td>
@@ -865,8 +865,8 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                             <td class="summary-value"><strong>${totalCreditsValidated}</strong></td>
                             <td colspan="2" class="summary-value"><strong>${semesterAverage.toFixed(2)}</strong></td>
                             <td class="summary-value"><strong>${mgp.toFixed(1)}</strong></td>
-                            <td colspan="${student.DISPLAY_SESSIONS ? '2' : '1'}" class="summary-value"><strong>${grade}</strong></td>
-                            <td colspan="${student.DISPLAY_SESSIONS ? '2' : '1'}" class="summary-value ${decision === "SEMESTRE VALIDE" ? "validated" : "not-validated"}"><strong>${decision}</strong></td>
+                            <td class="summary-value"><strong>${grade}</strong></td>
+                            <td colspan="${student.DISPLAY_SESSIONS ? '3' : '2'}" class="summary-value ${decision === "SEMESTRE VALIDE" ? "validated" : "not-validated"}"><strong>${decision}</strong></td>
                         </tr>
                     </tbody>
                 </table>
