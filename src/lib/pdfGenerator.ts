@@ -644,7 +644,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
           <td class="table-code"><strong>${ueCode}</strong></td>
           <td colspan="3" class="table-ue"><strong>${ueTitle}</strong></td>
           <td colspan="2" class="table-ec">${elements[0].name}</td>
-          <td class="table-session">${elements[0].session || 'N/A'}</td>
+          ${student.DISPLAY_SESSIONS ? `<td class="table-session">${elements[0].session || 'N/A'}</td>` : ''}
           <td class="table-note">${elements[0].note.toFixed(2)}</td>
           <td class="table-average"><strong>${average.toFixed(2)}</strong></td>
           <td class="table-credit">${creditValue}</td>
@@ -657,7 +657,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
           <td rowspan="${elements.length}" class="table-code"><strong>${ueCode}</strong></td>
           <td colspan="3" rowspan="${elements.length}" class="table-ue"><strong>${ueTitle}</strong></td>
           <td colspan="2" class="table-ec">${elements[0].name}</td>
-          <td class="table-session">${elements[0].session || 'N/A'}</td>
+          ${student.DISPLAY_SESSIONS ? `<td class="table-session">${elements[0].session || 'N/A'}</td>` : ''}
           <td class="table-note">${elements[0].note.toFixed(2)}</td>
           <td rowspan="${elements.length}" class="table-average"><strong>${average.toFixed(2)}</strong></td>
           <td rowspan="${elements.length}" class="table-credit">${creditValue}</td>
@@ -669,7 +669,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
         html += `
           <tr class="${cssClass}">
             <td colspan="2" class="table-ec">${elements[i].name}</td>
-            <td class="table-session">${elements[i].session || 'N/A'}</td>
+            ${student.DISPLAY_SESSIONS ? `<td class="table-session">${elements[i].session || 'N/A'}</td>` : ''}
             <td class="table-note">${elements[i].note.toFixed(2)}</td>
           </tr>
         `;
@@ -839,7 +839,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                             <th class="table-code">CODE</th>
                             <th colspan="3" class="table-ue">UNITE D'ENSEIGNEMENT</th>
                             <th colspan="2" class="table-ec">ELEMENT CONSTITUTIF</th>
-                            <th class="table-session">SESSION</th>
+                            ${student.DISPLAY_SESSIONS ? '<th class="table-session">SESSION</th>' : ''}
                             <th class="table-note">NOTE/20</th>
                             <th class="table-average">MOYENNE</th>
                             <th class="table-credit">CREDIT</th>
@@ -848,16 +848,16 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                     <tbody>
                         ${generateCourseRows()}
                         <tr class="table-summary">
-                            <td colspan="11">&nbsp;</td>
+                            <td colspan="${student.DISPLAY_SESSIONS ? '10' : '9'}">&nbsp;</td>
                         </tr>
                         <tr class="table-footer">
                             <td class="summary-label">RELEVE NIVEAU</td>
                             <td class="summary-label">SEMESTRE</td>
-                            <td class="summary-label">TOTAL CREDIT / 30</td>
+                            <td class="summary-label">TOTAL CREDIT</td>
                             <td colspan="2" class="summary-label">MOYENNE SEMESTRIELLE / 20</td>
                             <td class="summary-label">MGP</td>
-                            <td colspan="2" class="summary-label">GRADE</td>
-                            <td colspan="3" class="summary-label">DECISION DU JURY</td>
+                            <td colspan="${student.DISPLAY_SESSIONS ? '2' : '1'}" class="summary-label">GRADE</td>
+                            <td colspan="${student.DISPLAY_SESSIONS ? '2' : '1'}" class="summary-label">DECISION DU JURY</td>
                         </tr>
                         <tr class="table-footer-values">
                             <td class="summary-value"><strong>${student.NIVEAU || "1"}</strong></td>
@@ -865,8 +865,8 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                             <td class="summary-value"><strong>${totalCreditsValidated}</strong></td>
                             <td colspan="2" class="summary-value"><strong>${semesterAverage.toFixed(2)}</strong></td>
                             <td class="summary-value"><strong>${mgp.toFixed(1)}</strong></td>
-                            <td colspan="2" class="summary-value"><strong>${grade}</strong></td>
-                            <td colspan="3" class="summary-value ${decision === "SEMESTRE VALIDE" ? "validated" : "not-validated"}"><strong>${decision}</strong></td>
+                            <td colspan="${student.DISPLAY_SESSIONS ? '2' : '1'}" class="summary-value"><strong>${grade}</strong></td>
+                            <td colspan="${student.DISPLAY_SESSIONS ? '2' : '1'}" class="summary-value ${decision === "SEMESTRE VALIDE" ? "validated" : "not-validated"}"><strong>${decision}</strong></td>
                         </tr>
                     </tbody>
                 </table>

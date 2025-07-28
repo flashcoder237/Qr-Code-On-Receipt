@@ -424,7 +424,7 @@ export const ReleveGenerator: React.FC = () => {
     return null;
   }, []);
 
-  // Prepare student data for PDF generation - VERSION CORRIGÉE AVEC SESSIONS
+  // Prepare student data for PDF generation - VERSION AVEC NOUVEAUX PARAMETRES
   const prepareStudentData = useCallback((rawStudent: any): StudentRecord => {
     if (!currentConfig || !currentSemester) return null;
   
@@ -437,62 +437,132 @@ export const ReleveGenerator: React.FC = () => {
     const courses: any[] = [];
     const ueMap = new Map();
     
-    // Première étape : construire les cours et regrouper par UE
-    currentSemester.ues.forEach((ue: any) => {
-      if (!ue || !ue.ecs) {
-        console.warn("UE incomplète ignorée:", ue);
-        return;
-      }
-
-      const ueGrades: number[] = [];
-      
-      ue.ecs.forEach((ec: any) => {
-        if (!ec || !ec.id) {
-          console.warn("EC incomplet ignoré:", ec);
+    // Fonction pour traiter un semestre (utile pour les semestres fusionnés)
+    const processSemester = (semester: any) => {
+      semester.ues.forEach((ue: any) => {
+        if (!ue || !ue.ecs) {
+          console.warn("UE incomplète ignorée:", ue);
           return;
         }
 
-        const columnName = columnMapping[ec.id];
-        const sessionColumnName = sessionMapping[ec.id]; // NOUVEAU: Récupérer la colonne de session
+        const ecData: any[] = [];
         
-        if (columnName && rawStudent[columnName] !== undefined && rawStudent[columnName] !== null && rawStudent[columnName] !== '') {
-          const gradeValue = rawStudent[columnName];
-          const grade = parseFloat(gradeValue);
-          
-          if (isNaN(grade)) {
-            console.warn(`Note invalide pour ${ec.name}: ${gradeValue}`);
+        ue.ecs.forEach((ec: any) => {
+          if (!ec || !ec.id) {
+            console.warn("EC incomplet ignoré:", ec);
             return;
           }
+
+          const columnName = columnMapping[ec.id];
+          const sessionColumnName = sessionMapping[ec.id];
           
-          // NOUVEAU: Extraire les informations de session
-          const sessionInfo = extractSessionFromColumn(rawStudent, sessionColumnName);
-          
-          courses.push({
-            CODE: ue.code || `UE ${ue.name}`,
-            INTITULE: ue.name,
-            EC_TITRE: ec.name,
-            NOTE: grade,
-            UE_CREDIT: ue.credits || 0,
-            UE_ID: ue.id,
-            UE_AVERAGE: 0, // Sera calculé plus tard
-            SESSION: sessionInfo ? `${sessionInfo.type} ${sessionInfo.year}` : 'N/A' // NOUVEAU: Ajouter la session
+          if (columnName && rawStudent[columnName] !== undefined && rawStudent[columnName] !== null && rawStudent[columnName] !== '') {
+            const gradeValue = rawStudent[columnName];
+            let grade = parseFloat(gradeValue);
+            
+            if (isNaN(grade)) {
+              console.warn(`Note invalide pour ${ec.name}: ${gradeValue}`);
+              return;
+            }
+
+            // NOUVEAU: Appliquer la conversion de base de notation
+            const noteBase = ec.noteBase || 20;
+            const displayBase = ec.displayBase || 20;
+            
+            // Convertir la note vers la base d'affichage
+            const displayGrade = (grade * displayBase) / noteBase;
+            
+            // NOUVEAU: Extraire les informations de session
+            const sessionInfo = extractSessionFromColumn(rawStudent, sessionColumnName);
+            
+            // NOUVEAU: Formater la session selon la configuration
+            let sessionDisplay = 'N/A';
+            if (sessionInfo && currentConfig.displaySessions !== false) {
+              const format = currentConfig.sessionDisplayFormat || 'short';
+              if (format === 'full') {
+                // Format complet: "Normale 2024", "Rattrapage 2024"
+                const sessionType = sessionInfo.type === 'N/' ? 'Normale' : 'Rattrapage';
+                sessionDisplay = `${sessionType} ${sessionInfo.year}`;
+              } else {
+                // Format court: "N/2024", "Ratt/2024"
+                sessionDisplay = `${sessionInfo.type}${sessionInfo.year}`;
+              }
+            } else if (currentConfig.displaySessions === false) {
+              sessionDisplay = ''; // Masquer complètement si désactivé
+            }
+            
+            courses.push({
+              CODE: ue.code || `UE ${ue.name}`,
+              INTITULE: ue.name,
+              EC_TITRE: ec.name,
+              NOTE: displayGrade, // Note convertie pour l'affichage
+              NOTE_ORIGINAL: grade, // Note originale pour les calculs
+              NOTE_BASE: noteBase,
+              DISPLAY_BASE: displayBase,
+              WEIGHT: ec.weight || 1, // NOUVEAU: Poids de l'EC
+              UE_CREDIT: ue.credits || 0,
+              UE_ID: ue.id,
+              UE_AVERAGE: 0, // Sera calculé plus tard
+              UE_DISPLAY_BASE: ue.displayBase || 20, // NOUVEAU: Base d'affichage de l'UE
+              SESSION: sessionDisplay, // NOUVEAU: Session formatée selon la configuration
+              SHOW_SESSION: currentConfig.displaySessions !== false // NOUVEAU: Indicateur pour le template
+            });
+            
+            // Stocker les données pour le calcul de moyenne pondérée
+            ecData.push({
+              grade: grade, // Note originale pour les calculs
+              weight: ec.weight || 1,
+              noteBase: noteBase,
+              displayBase: displayBase
+            });
+          }
+        });
+        
+        // NOUVEAU: Calculer la moyenne pondérée de l'UE
+        if (ecData.length > 0) {
+          let totalWeightedPoints = 0;
+          let totalWeights = 0;
+
+          ecData.forEach(ec => {
+            // Normaliser la note vers la base 20 pour le calcul
+            const normalizedGrade = (ec.grade * 20) / ec.noteBase;
+            totalWeightedPoints += normalizedGrade * ec.weight;
+            totalWeights += ec.weight;
           });
+
+          const ueAverage = totalWeights > 0 ? totalWeightedPoints / totalWeights : 0;
           
-          ueGrades.push(grade);
+          // Convertir la moyenne vers la base d'affichage de l'UE
+          const ueDisplayBase = ue.displayBase || 20;
+          const displayAverage = (ueAverage * ueDisplayBase) / 20;
+
+          ueMap.set(ue.id, {
+            average: displayAverage, // Moyenne pour affichage
+            averageOriginal: ueAverage, // Moyenne normalisée pour calculs
+            credits: ue.credits || 0,
+            code: ue.code || `UE ${ue.name}`,
+            name: ue.name,
+            displayBase: ueDisplayBase
+          });
         }
       });
-      
-      // Calculer la moyenne de l'UE si elle a des notes
-      if (ueGrades.length > 0) {
-        const ueAverage = ueGrades.reduce((sum, grade) => sum + grade, 0) / ueGrades.length;
-        ueMap.set(ue.id, {
-          average: ueAverage,
-          credits: ue.credits || 0,
-          code: ue.code || `UE ${ue.name}`,
-          name: ue.name
-        });
-      }
-    });
+    };
+
+    // Vérifier s'il y a un semestre fusionné actif
+    const activeMergedSemester = currentConfig.mergedSemesters?.find(ms => ms.isActive);
+    
+    if (activeMergedSemester) {
+      // Traiter tous les semestres fusionnés
+      activeMergedSemester.semesterIds.forEach(semesterId => {
+        const semester = currentConfig.semesters.find(s => s.id === semesterId);
+        if (semester) {
+          processSemester(semester);
+        }
+      });
+    } else {
+      // Traiter seulement le semestre sélectionné
+      processSemester(currentSemester);
+    }
     
     // Deuxième étape : assigner les moyennes UE aux cours
     courses.forEach(course => {
@@ -505,9 +575,21 @@ export const ReleveGenerator: React.FC = () => {
       }
     });
 
-    // Calculer le total des crédits
-    const totalCredits = 30;
+    // NOUVEAU: Calculer le total des crédits requis
+    let totalCreditsRequired = 30; // Défaut
+    
+    if (activeMergedSemester) {
+      totalCreditsRequired = activeMergedSemester.creditsRequired;
+    } else {
+      totalCreditsRequired = currentSemester.creditsRequired || 30;
+    }
 
+    // NOUVEAU: Gérer le nom du semestre pour les semestres fusionnés
+    let semesterName = currentSemester.name || "";
+    if (activeMergedSemester) {
+      semesterName = activeMergedSemester.name;
+    }
+    
     const studentRecord: StudentRecord = {
       NOM: rawStudent.NOM || "",
       PRENOM: rawStudent.PRENOM || "",
@@ -518,18 +600,23 @@ export const ReleveGenerator: React.FC = () => {
       "ANNEE ACADÉMIQUE": currentConfig.academicYear || "",
       FILIERE: currentConfig.filiere || "",
       NIVEAU: currentConfig.niveau || "",
-      SEMESTRE: currentSemester.name || "",
+      SEMESTRE: semesterName,
       OPTION: currentConfig.option || "",
       COURSES: courses,
-      TOTAL_CREDITS: 30
+      TOTAL_CREDITS: totalCreditsRequired, // NOUVEAU: Utiliser les crédits configurés
+      // NOUVEAU: Paramètres d'affichage des sessions
+      DISPLAY_SESSIONS: currentConfig.displaySessions !== false,
+      SESSION_FORMAT: currentConfig.sessionDisplayFormat || 'short'
     };
 
     console.log("Données étudiant préparées:", {
       nom: studentRecord.NOM,
       prenom: studentRecord.PRENOM,
       coursCount: courses.length,
-      totalCredits: 30,
-      ueCount: ueMap.size
+      totalCredits: totalCreditsRequired,
+      ueCount: ueMap.size,
+      mergedSemester: activeMergedSemester?.name || null,
+      semesterName: semesterName
     });
 
     return studentRecord;
@@ -949,6 +1036,7 @@ export const ReleveGenerator: React.FC = () => {
                   {selectedConfigId && availableSemesters.length > 0 && (
                     <SemesterSelector
                       semesters={availableSemesters}
+                      mergedSemesters={currentConfig?.mergedSemesters || []}
                       selectedSemesterId={selectedSemesterId}
                       isLoading={processingState.isLoading}
                       onSemesterChange={handleSemesterChange}

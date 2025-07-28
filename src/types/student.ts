@@ -12,6 +12,8 @@ export interface StudentRecord {
     OPTION?: string;
     COURSES?: CourseRecord[];
     TOTAL_CREDITS?: number; // NOUVEAU: Ajouté pour plus de clarté
+    DISPLAY_SESSIONS?: boolean; // NOUVEAU: Afficher les sessions sur les relevés
+    SESSION_FORMAT?: 'short' | 'full'; // NOUVEAU: Format d'affichage des sessions
   }
   
   export interface CourseRecord {

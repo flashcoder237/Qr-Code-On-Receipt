@@ -14,8 +14,10 @@ import {
   ChevronDown,
   ChevronRight,
   Calendar,
+  Settings,
 } from "lucide-react";
 import { ClassConfig, Semester, UE, EC } from "./types";
+import { ECConfigEditor } from "./ECConfigEditor";
 
 interface ClassDetailProps {
   config: ClassConfig | undefined;
@@ -59,6 +61,7 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
 }) => {
   const [expandedUEs, setExpandedUEs] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<string>("0");
+  const [mainTab, setMainTab] = useState<string>("semesters");
   const [localState, setLocalState] = useState({
     name: "",
     academicYear: "",
@@ -281,38 +284,52 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
       </CardHeader>
 
       <CardContent>
-        {/* Section de gestion des semestres */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Semestres ({config.semesters.length})
-            </h3>
-            {isEditing && (
-              <Button
-                onClick={onAddSemester}
-                variant="outline"
-                size="sm"
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Ajouter un semestre
-              </Button>
-            )}
-          </div>
+        {/* Onglets principaux */}
+        <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="semesters" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Semestres & Structure
+            </TabsTrigger>
+            <TabsTrigger value="advanced" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Configuration Avancée
+            </TabsTrigger>
+          </TabsList>
 
-          {config.semesters.length === 0 && (
-            <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-              <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <p className="text-gray-500 mb-4">Aucun semestre configuré</p>
-              {isEditing && (
-                <Button onClick={onAddSemester} variant="outline">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Créer le premier semestre
-                </Button>
+          <TabsContent value="semesters" className="space-y-6 mt-6">
+            {/* Section de gestion des semestres */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Semestres ({config.semesters.length})
+                </h3>
+                {isEditing && (
+                  <Button
+                    onClick={onAddSemester}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Ajouter un semestre
+                  </Button>
+                )}
+              </div>
+
+              {config.semesters.length === 0 && (
+                <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                  <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <p className="text-gray-500 mb-4">Aucun semestre configuré</p>
+                  {isEditing && (
+                    <Button onClick={onAddSemester} variant="outline">
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Créer le premier semestre
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
 
         {config.semesters.length > 0 && (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -525,6 +542,20 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
             </ScrollArea>
           </Tabs>
         )}
+          </TabsContent>
+
+          <TabsContent value="advanced" className="space-y-6 mt-6">
+            <ECConfigEditor 
+              config={config} 
+              onConfigUpdate={(updatedConfig) => {
+                // Mise à jour de la configuration complète
+                Object.keys(updatedConfig).forEach(key => {
+                  onUpdate({ [key]: (updatedConfig as any)[key] });
+                });
+              }}
+            />
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
