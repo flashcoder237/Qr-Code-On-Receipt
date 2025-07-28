@@ -368,6 +368,54 @@ export const AcademicConfigManager: React.FC = () => {
     setActiveTab("configuration");
   };
 
+  const duplicateConfig = (configId: string) => {
+    const originalConfig = configs.find(cfg => cfg.id === configId);
+    if (!originalConfig) return;
+
+    // Générer un nom unique pour la copie
+    let duplicateName = `${originalConfig.name} - Copie`;
+    let counter = 1;
+    
+    while (configs.some(cfg => cfg.name === duplicateName && cfg.academicYear === originalConfig.academicYear)) {
+      duplicateName = `${originalConfig.name} - Copie ${counter}`;
+      counter++;
+    }
+
+    // Créer une copie profonde de la configuration
+    const duplicatedConfig: ClassConfig = {
+      ...originalConfig,
+      id: Date.now().toString(),
+      name: duplicateName,
+      // Copier en profondeur les semestres et leurs UEs/ECs
+      semesters: originalConfig.semesters.map(semester => ({
+        ...semester,
+        id: `${Date.now()}-sem-${Math.random().toString(36).substr(2, 9)}`,
+        ues: semester.ues.map(ue => ({
+          ...ue,
+          id: `${Date.now()}-ue-${Math.random().toString(36).substr(2, 9)}`,
+          ecs: ue.ecs.map(ec => ({
+            ...ec,
+            id: `${Date.now()}-ec-${Math.random().toString(36).substr(2, 9)}`
+          }))
+        }))
+      })),
+      // Copier les semestres fusionnés s'ils existent
+      mergedSemesters: originalConfig.mergedSemesters?.map(merged => ({
+        ...merged,
+        id: `merged-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        isActive: false // Désactiver par défaut pour éviter les conflits
+      }))
+    };
+
+    setConfigs([...configs, duplicatedConfig]);
+    setSelectedConfigId(duplicatedConfig.id);
+    setIsEditing(true);
+    setError(null);
+    setActiveTab("configuration");
+    setSuccess(`Configuration "${duplicateName}" créée avec succès`);
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
   const handleImportConfigs = (importedConfigs: ClassConfig[]) => {
     const duplicates: string[] = [];
     importedConfigs.forEach(imported => {
@@ -680,6 +728,7 @@ export const AcademicConfigManager: React.FC = () => {
                     selectedConfigId={selectedConfigId}
                     onSelect={handleSelectConfig}
                     onDelete={deleteConfig}
+                    onDuplicate={duplicateConfig}
                   />
                 </div>
 

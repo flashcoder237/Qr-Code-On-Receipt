@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "../../ui/card";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
-import { BookOpen, GraduationCap, Trash2, MoreVertical, Calendar, Users, Layers } from "lucide-react";
+import { BookOpen, GraduationCap, Trash2, MoreVertical, Calendar, Users, Layers, Copy } from "lucide-react";
 import { ScrollArea } from "../../ui/scroll-area";
 import { ClassConfig } from "./types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +19,7 @@ interface ClassListProps {
   selectedConfigId: string | null;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
 }
 
 export const ClassList: React.FC<ClassListProps> = ({
@@ -26,6 +27,7 @@ export const ClassList: React.FC<ClassListProps> = ({
   selectedConfigId,
   onSelect,
   onDelete,
+  onDuplicate,
 }) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -135,6 +137,16 @@ export const ClassList: React.FC<ClassListProps> = ({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDuplicate(config.id);
+                                }}
+                                className="text-blue-600 focus:text-blue-600"
+                              >
+                                <Copy className="h-4 w-4 mr-2" />
+                                Dupliquer
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
