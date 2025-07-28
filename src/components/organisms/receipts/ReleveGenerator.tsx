@@ -1,4 +1,4 @@
-// src/components/organisms/receipts/ReleveGenerator.tsx - Version mise à jour avec chiffrement compact
+// src/components/organisms/receipts/ReleveGenerator.tsx - Version mise à jour avec gestion des sessions
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useHotkeys } from "react-hotkeys-hook";
-import { Eye, Download, AlertCircle, CheckCircle, Users, RefreshCw, AlertTriangle, Shield, ShieldCheck, Info } from "lucide-react";
+import { Eye, Download, AlertCircle, CheckCircle, Users, RefreshCw, AlertTriangle, Shield, ShieldCheck, Info, Clock } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { useNotifications } from "@/components/ui/notification-system";
 import { useDocumentHistory } from "@/components/organisms/document-history/DocumentHistoryManager";
@@ -60,6 +60,9 @@ export const ReleveGenerator: React.FC = () => {
   const [configsLoaded, setConfigsLoaded] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [forceShowMapping, setForceShowMapping] = useState(false);
+
+  // NOUVEAU: État pour le mapping des sessions
+  const [sessionMapping, setSessionMapping] = useState<{ [ecId: string]: string }>({});
 
   // NOUVEAU: Option pour activer/désactiver le chiffrement compact pour les relevés
   const [encryptionEnabled, setEncryptionEnabled] = useLocalStorage("releve-encryption-enabled", true);
@@ -126,6 +129,14 @@ export const ReleveGenerator: React.FC = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [notifyError]);
 
+  // NOUVEAU: Fonction pour gérer les changements de mapping des sessions
+  const handleSessionMappingChange = useCallback((ecId: string, sessionCol: string) => {
+    setSessionMapping(prev => ({
+      ...prev,
+      [ecId]: sessionCol
+    }));
+  }, []);
+
   // Custom hooks
   const {
     selectedConfigId,
@@ -151,6 +162,7 @@ export const ReleveGenerator: React.FC = () => {
       }
       setPreviewStudent(null);
       setSelectedStudentMatricules([]);
+      setSessionMapping({}); // NOUVEAU: Réinitialiser le mapping des sessions
       if (previewContentUrl) {
         URL.revokeObjectURL(previewContentUrl);
         setPreviewContentUrl(null);
@@ -169,6 +181,7 @@ export const ReleveGenerator: React.FC = () => {
       }
       setPreviewStudent(null);
       setSelectedStudentMatricules([]);
+      setSessionMapping({}); // NOUVEAU: Réinitialiser le mapping des sessions
       if (previewContentUrl) {
         URL.revokeObjectURL(previewContentUrl);
         setPreviewContentUrl(null);
@@ -281,6 +294,9 @@ export const ReleveGenerator: React.FC = () => {
       });
     }
 
+    // NOUVEAU: Réinitialiser le mapping des sessions
+    setSessionMapping({});
+
     setError(null);
     setForceShowMapping(false);
   }, [handleDataLoaded, handleMappingChange]);
@@ -376,9 +392,10 @@ export const ReleveGenerator: React.FC = () => {
   }, [forceShowMapping, validationResult]);
 
   // Fonction pour charger un mapping complet
-  const handleLoadMapping = useCallback((mapping: Record<string, string>) => {
+  const handleLoadMapping = useCallback((mapping: Record<string, string>, sessionMappingData: Record<string, string>) => {
     try {
       setColumnMapping(mapping);
+      setSessionMapping(sessionMappingData || {}); // NOUVEAU: Charger le mapping des sessions
       notifySuccess("Correspondance", "Correspondance chargée avec succès");
     } catch (error) {
       console.error("Erreur lors du chargement du mapping:", error);
@@ -387,7 +404,27 @@ export const ReleveGenerator: React.FC = () => {
     }
   }, [setColumnMapping, notifySuccess, notifyError]);
 
-  // Prepare student data for PDF generation - VERSION CORRIGÉE
+  // NOUVEAU: Fonction pour extraire la session depuis une colonne de session
+  const extractSessionFromColumn = useCallback((student: any, sessionColumn: string) => {
+    if (!sessionColumn || sessionColumn === "null") return null;
+    
+    const sessionValue = student[sessionColumn];
+    if (!sessionValue) return null;
+    
+    // Format attendu: N/année ou R/année
+    const sessionMatch = sessionValue.toString().match(/^(N|R)\/(.+)$/);
+    if (sessionMatch) {
+      const [, type, year] = sessionMatch;
+      return {
+        type: type === 'N' ? 'N/' : 'Ratt/',
+        year: year
+      };
+    }
+    
+    return null;
+  }, []);
+
+  // Prepare student data for PDF generation - VERSION CORRIGÉE AVEC SESSIONS
   const prepareStudentData = useCallback((rawStudent: any): StudentRecord => {
     if (!currentConfig || !currentSemester) return null;
   
@@ -416,6 +453,8 @@ export const ReleveGenerator: React.FC = () => {
         }
 
         const columnName = columnMapping[ec.id];
+        const sessionColumnName = sessionMapping[ec.id]; // NOUVEAU: Récupérer la colonne de session
+        
         if (columnName && rawStudent[columnName] !== undefined && rawStudent[columnName] !== null && rawStudent[columnName] !== '') {
           const gradeValue = rawStudent[columnName];
           const grade = parseFloat(gradeValue);
@@ -425,13 +464,18 @@ export const ReleveGenerator: React.FC = () => {
             return;
           }
           
+          // NOUVEAU: Extraire les informations de session
+          const sessionInfo = extractSessionFromColumn(rawStudent, sessionColumnName);
+          
           courses.push({
             CODE: ue.code || `UE ${ue.name}`,
             INTITULE: ue.name,
             EC_TITRE: ec.name,
             NOTE: grade,
             UE_CREDIT: ue.credits || 0,
-            UE_ID: ue.id
+            UE_ID: ue.id,
+            UE_AVERAGE: 0, // Sera calculé plus tard
+            SESSION: sessionInfo ? `${sessionInfo.type} ${sessionInfo.year}` : 'N/A' // NOUVEAU: Ajouter la session
           });
           
           ueGrades.push(grade);
@@ -489,7 +533,7 @@ export const ReleveGenerator: React.FC = () => {
     });
 
     return studentRecord;
-  }, [currentConfig, currentSemester, columnMapping]);
+  }, [currentConfig, currentSemester, columnMapping, sessionMapping, extractSessionFromColumn]);
 
   const handlePreviewReleve = useCallback(async (student?: any) => {
     if (!currentConfig || !currentSemester) {
@@ -761,8 +805,21 @@ export const ReleveGenerator: React.FC = () => {
     setValidationResult(null);
     setError(null);
     setForceShowMapping(false);
+    setSessionMapping({}); // NOUVEAU: Réinitialiser le mapping des sessions
     clearData();
   }, [clearData]);
+
+  // NOUVEAU: Statistiques des sessions
+  const sessionStats = useMemo(() => {
+    const sessionColumns = excelColumns.filter(col => col.startsWith('S/'));
+    const mappedSessions = Object.values(sessionMapping).filter(v => v && v !== "null").length;
+    
+    return {
+      totalSessionColumns: sessionColumns.length,
+      mappedSessions,
+      availableSessions: sessionColumns.length
+    };
+  }, [excelColumns, sessionMapping]);
 
   return (
     <div className="container mx-auto">
@@ -773,6 +830,13 @@ export const ReleveGenerator: React.FC = () => {
             Correspondance
             {validationResult && !validationResult.isValid && (
               <AlertTriangle className="ml-2 h-4 w-4 text-red-500" />
+            )}
+            {/* NOUVEAU: Indicateur de sessions */}
+            {sessionStats.totalSessionColumns > 0 && (
+              <Badge variant="secondary" className="ml-2 text-xs">
+                <Clock className="h-3 w-3 mr-1" />
+                {sessionStats.mappedSessions}/{sessionStats.totalSessionColumns}
+              </Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="selection" disabled={!mappingComplete || excelData.length === 0}>
@@ -809,6 +873,13 @@ export const ReleveGenerator: React.FC = () => {
                         <Badge variant="secondary">
                           <Shield className="h-3 w-3 mr-1" />
                           Sans chiffrement
+                        </Badge>
+                      )}
+                      {/* NOUVEAU: Badge pour les sessions */}
+                      {sessionStats.totalSessionColumns > 0 && (
+                        <Badge variant="outline" className="bg-blue-50 border-blue-200">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {sessionStats.totalSessionColumns} session(s)
                         </Badge>
                       )}
                       {validationResult && !validationResult.isValid && (
@@ -947,6 +1018,13 @@ export const ReleveGenerator: React.FC = () => {
                               {encryptionEnabled ? '🔐 QR Compact' : '📋 QR Standard'}
                             </span>
                             <span>Type: Relevé de notes</span>
+                            {/* NOUVEAU: Affichage des sessions */}
+                            {sessionStats.totalSessionColumns > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {sessionStats.totalSessionColumns} session(s)
+                              </span>
+                            )}
                           </div>
                         </div>
                         
@@ -969,6 +1047,13 @@ export const ReleveGenerator: React.FC = () => {
                           Configurer la correspondance
                           {validationResult && !validationResult.isValid && (
                             <AlertTriangle className="ml-2 h-4 w-4 text-orange-500" />
+                          )}
+                          {/* NOUVEAU: Indicateur de sessions dans le bouton */}
+                          {sessionStats.totalSessionColumns > 0 && (
+                            <Badge variant="secondary" className="ml-2 text-xs">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {sessionStats.mappedSessions}/{sessionStats.totalSessionColumns}
+                            </Badge>
                           )}
                         </Button>
                         
@@ -1020,6 +1105,13 @@ export const ReleveGenerator: React.FC = () => {
                     {validationResult && !validationResult.isValid && (
                       <AlertTriangle className="h-5 w-5 text-orange-500" />
                     )}
+                    {/* NOUVEAU: Indicateur de sessions dans le titre */}
+                    {sessionStats.totalSessionColumns > 0 && (
+                      <Badge variant="outline" className="bg-blue-50 border-blue-200">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {sessionStats.totalSessionColumns} session(s) détectée(s)
+                      </Badge>
+                    )}
                   </CardTitle>
                   {validationResult && !validationResult.isValid && (
                     <div className="text-sm text-orange-600">
@@ -1033,8 +1125,10 @@ export const ReleveGenerator: React.FC = () => {
                     selectedSemesterId={selectedSemesterId}
                     excelColumns={excelColumns}
                     columnMapping={columnMapping}
+                    sessionMapping={sessionMapping}
                     getAvailableECs={getAvailableECs}
                     onMappingChange={handleMappingChange}
+                    onSessionMappingChange={handleSessionMappingChange}
                     onLoadMapping={handleLoadMapping}
                   />
                 </CardContent>
@@ -1050,7 +1144,7 @@ export const ReleveGenerator: React.FC = () => {
                 onGenerateSelected={handleGenerateSelected}
                 documentType="releve"
                 isLoading={processingState.isLoading}
-                additionalInfo={encryptionEnabled ? "Chiffrement compact activé" : "Sans chiffrement"}
+                additionalInfo={`${encryptionEnabled ? "Chiffrement compact activé" : "Sans chiffrement"}${sessionStats.totalSessionColumns > 0 ? ` • ${sessionStats.totalSessionColumns} session(s)` : ''}`}
               />
             </TabsContent>
 
@@ -1128,10 +1222,41 @@ export const ReleveGenerator: React.FC = () => {
                     console.log('- Longueur contenu:', sizeAnalysis.totalContentLength, 'caractères');
                     console.log('- Configuration:', selectedConfigId);
                     console.log('- Semestre:', selectedSemesterId);
+                    console.log('- Sessions détectées:', sessionStats.totalSessionColumns);
+                    console.log('- Sessions mappées:', sessionStats.mappedSessions);
                   }
                 }}
               >
                 Analyse de taille
+              </Button>
+              {/* NOUVEAU: Bouton de test pour les sessions */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  console.log('🧪 Test du système de sessions:');
+                  console.log('- Colonnes de session détectées:', excelColumns.filter(col => col.startsWith('S/')));
+                  console.log('- Mapping des sessions:', sessionMapping);
+                  console.log('- Statistiques:', sessionStats);
+                  
+                  // Tester l'extraction de session sur le premier étudiant
+                  if (excelData.length > 0) {
+                    const testStudent = excelData[0];
+                    console.log('- Test extraction session pour:', testStudent.NOM, testStudent.PRENOM);
+                    
+                    Object.entries(sessionMapping).forEach(([ecId, sessionCol]) => {
+                      if (sessionCol && sessionCol !== "null") {
+                        const sessionValue = testStudent[sessionCol];
+                        console.log(`  EC ${ecId} -> ${sessionCol} = ${sessionValue}`);
+                        
+                        const sessionInfo = extractSessionFromColumn(testStudent, sessionCol);
+                        console.log(`  Session extraite:`, sessionInfo);
+                      }
+                    });
+                  }
+                }}
+              >
+                Test sessions
               </Button>
             </div>
             
@@ -1145,6 +1270,9 @@ export const ReleveGenerator: React.FC = () => {
                   <p>• QR codes plus petits et plus lisibles pour les relevés</p>
                   <p>• Déchiffrement possible avec juste le matricule</p>
                   <p>• Compatible avec l'application mobile de vérification</p>
+                  {sessionStats.totalSessionColumns > 0 && (
+                    <p>• Sessions détectées: {sessionStats.totalSessionColumns} (mappées: {sessionStats.mappedSessions})</p>
+                  )}
                 </div>
               </div>
             )}
@@ -1176,6 +1304,13 @@ export const ReleveGenerator: React.FC = () => {
                         {encryptionEnabled && (
                           <span className="text-green-700">
                             🔐 <span className="font-medium">Compact</span>
+                          </span>
+                        )}
+                        {/* NOUVEAU: Indicateur de sessions */}
+                        {sessionStats.totalSessionColumns > 0 && (
+                          <span className="text-blue-700 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span className="font-medium">{sessionStats.totalSessionColumns} session(s)</span>
                           </span>
                         )}
                       </div>

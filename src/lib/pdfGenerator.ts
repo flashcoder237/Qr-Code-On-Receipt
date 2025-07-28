@@ -587,7 +587,6 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
           const isUEValidated = ueAverage >= 10 && !hasFailingEC;
           
           // Apply credits only if UE is validated
-          // CORRECTION ICI: Assurez-vous que ueCredit est un nombre
           const creditValue = typeof ueCredit === 'number' ? ueCredit : 
                              (typeof ueCredit === 'string' ? parseFloat(ueCredit) : 0);
           
@@ -599,7 +598,6 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
         
         currentUECode = ueCode;
         // Récupérer le crédit associé à l'UE
-        // CORRECTION ICI: Convertir explicitement en nombre
         ueCredit = typeof course.UE_CREDIT === 'number' ? course.UE_CREDIT : 
                   (typeof course.UE_CREDIT === 'string' ? parseFloat(course.UE_CREDIT) : 0);
       }
@@ -609,7 +607,8 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
         title: ueTitle,
         name: course.EC_TITRE || '',
         note: course.NOTE || 0,
-        ueAverage: course.UE_AVERAGE || 0 // Utiliser la moyenne UE pré-calculée
+        ueAverage: course.UE_AVERAGE || 0,
+        session: course.SESSION || 'N/A' // NOUVEAU: Ajouter la session
       });
     });
     
@@ -623,7 +622,6 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
       // Determine if UE is validated (average >= 10 AND no EC with note <= 6)
       const isUEValidated = ueAverage >= 10 && !hasFailingEC;
       
-      // CORRECTION ICI: Assurez-vous que ueCredit est un nombre
       const creditValue = typeof ueCredit === 'number' ? ueCredit : 
                          (typeof ueCredit === 'string' ? parseFloat(ueCredit) : 0);
       
@@ -645,8 +643,9 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
         <tr class="${cssClass}">
           <td class="table-code"><strong>${ueCode}</strong></td>
           <td colspan="3" class="table-ue"><strong>${ueTitle}</strong></td>
-          <td colspan="3" class="table-ec">${elements[0].name}</td>
-          <td colspan="2" class="table-note">${elements[0].note.toFixed(2)}</td>
+          <td colspan="2" class="table-ec">${elements[0].name}</td>
+          <td class="table-session">${elements[0].session || 'N/A'}</td>
+          <td class="table-note">${elements[0].note.toFixed(2)}</td>
           <td class="table-average"><strong>${average.toFixed(2)}</strong></td>
           <td class="table-credit">${creditValue}</td>
         </tr>
@@ -657,8 +656,9 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
         <tr class="${cssClass}">
           <td rowspan="${elements.length}" class="table-code"><strong>${ueCode}</strong></td>
           <td colspan="3" rowspan="${elements.length}" class="table-ue"><strong>${ueTitle}</strong></td>
-          <td colspan="3" class="table-ec">${elements[0].name}</td>
-          <td colspan="2" class="table-note">${elements[0].note.toFixed(2)}</td>
+          <td colspan="2" class="table-ec">${elements[0].name}</td>
+          <td class="table-session">${elements[0].session || 'N/A'}</td>
+          <td class="table-note">${elements[0].note.toFixed(2)}</td>
           <td rowspan="${elements.length}" class="table-average"><strong>${average.toFixed(2)}</strong></td>
           <td rowspan="${elements.length}" class="table-credit">${creditValue}</td>
         </tr>
@@ -668,8 +668,9 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
       for (let i = 1; i < elements.length; i++) {
         html += `
           <tr class="${cssClass}">
-            <td colspan="3" class="table-ec">${elements[i].name}</td>
-            <td colspan="2" class="table-note">${elements[i].note.toFixed(2)}</td>
+            <td colspan="2" class="table-ec">${elements[i].name}</td>
+            <td class="table-session">${elements[i].session || 'N/A'}</td>
+            <td class="table-note">${elements[i].note.toFixed(2)}</td>
           </tr>
         `;
       }
@@ -837,8 +838,9 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                         <tr class="table-head">
                             <th class="table-code">CODE</th>
                             <th colspan="3" class="table-ue">UNITE D'ENSEIGNEMENT</th>
-                            <th colspan="3" class="table-ec">ELEMENT CONSTITUTIF</th>
-                            <th colspan="2" class="table-note">NOTE/20</th>
+                            <th colspan="2" class="table-ec">ELEMENT CONSTITUTIF</th>
+                            <th class="table-session">SESSION</th>
+                            <th class="table-note">NOTE/20</th>
                             <th class="table-average">MOYENNE</th>
                             <th class="table-credit">CREDIT</th>
                         </tr>

@@ -1,4 +1,4 @@
-// Fixed useConfiguration.ts
+// Fixed useConfiguration.ts with session mapping support
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
@@ -34,6 +34,7 @@ interface ConfigurationCache {
   lastConfigId?: string;
   lastSemesterId?: string;
   lastMapping?: Record<string, string>;
+  lastSessionMapping?: Record<string, string>; // NOUVEAU: Cache pour le mapping des sessions
 }
 
 /**
@@ -48,6 +49,7 @@ interface UseConfigurationOptions {
 
 /**
  * FIXED: Removed cyclical dependencies where state updates were triggering each other
+ * NOUVEAU: Added session mapping support
  */
 export const useConfiguration = (options: UseConfigurationOptions = {}) => {
   // États
@@ -55,6 +57,7 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
   const [selectedSemesterId, setSelectedSemesterId] = useState<string | null>(null);
   const [availableSemesters, setAvailableSemesters] = useState<Array<{ id: string; name: string }>>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [sessionMapping, setSessionMapping] = useState<Record<string, string>>({}); // NOUVEAU: État pour le mapping des sessions
   const [configs, setConfigs] = useState<AcademicConfig[]>([]);
   
   // Référence pour éviter les boucles infinies
@@ -101,7 +104,7 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
       const cached = localStorage.getItem(CACHE_STORAGE_KEY);
       if (!cached) return;
 
-      const { lastConfigId, lastSemesterId, lastMapping } = JSON.parse(cached) as ConfigurationCache;
+      const { lastConfigId, lastSemesterId, lastMapping, lastSessionMapping } = JSON.parse(cached) as ConfigurationCache;
 
       if (lastConfigId) {
         setSelectedConfigId(lastConfigId);
@@ -119,6 +122,11 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
 
       if (lastMapping) {
         setColumnMapping(lastMapping);
+      }
+
+      // NOUVEAU: Charger le mapping des sessions depuis le cache
+      if (lastSessionMapping) {
+        setSessionMapping(lastSessionMapping);
       }
       
       hasLoadedCache.current = true;
@@ -175,7 +183,13 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
    */
   const handleConfigChange = useCallback((configId: string) => {
     setSelectedConfigId(configId);
-    updateCache({ lastConfigId: configId });
+    updateCache({ 
+      lastConfigId: configId,
+      lastSessionMapping: {} // NOUVEAU: Réinitialiser le mapping des sessions lors du changement de config
+    });
+    
+    // Réinitialiser le mapping des sessions localement
+    setSessionMapping({});
     
     // Don't automatically reset selected semester here - let the effect handle it
     
@@ -190,10 +204,18 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
   const handleSemesterChange = useCallback((semesterId: string) => {
     if (!semesterId || semesterId === "null") {
       setSelectedSemesterId(null);
-      updateCache({ lastSemesterId: null });
+      updateCache({ 
+        lastSemesterId: null,
+        lastSessionMapping: {} // NOUVEAU: Réinitialiser le mapping des sessions
+      });
+      setSessionMapping({});
     } else {
       setSelectedSemesterId(semesterId);
-      updateCache({ lastSemesterId: semesterId });
+      updateCache({ 
+        lastSemesterId: semesterId,
+        lastSessionMapping: {} // NOUVEAU: Réinitialiser le mapping des sessions lors du changement de semestre
+      });
+      setSessionMapping({});
       if (options.onSemesterChange) {
         options.onSemesterChange(semesterId);
       }
@@ -212,6 +234,17 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
   }, [updateCache]);
 
   /**
+   * NOUVEAU: Gère la mise à jour du mapping des sessions
+   */
+  const handleSessionMappingChange = useCallback((ecId: string, sessionColumn: string) => {
+    setSessionMapping(prev => {
+      const newSessionMapping = { ...prev, [ecId]: sessionColumn };
+      updateCache({ lastSessionMapping: newSessionMapping });
+      return newSessionMapping;
+    });
+  }, [updateCache]);
+
+  /**
    * Met à jour la liste des semestres disponibles
    * FIXED: Added dependency on selectedSemesterId to prevent infinite loops
    */
@@ -226,6 +259,7 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
     setSelectedConfigId(null);
     setSelectedSemesterId(null);
     setColumnMapping({});
+    setSessionMapping({}); // NOUVEAU: Réinitialiser le mapping des sessions
     try {
       localStorage.removeItem(CACHE_STORAGE_KEY);
     } catch (error) {
@@ -233,17 +267,28 @@ export const useConfiguration = (options: UseConfigurationOptions = {}) => {
     }
   }, []);
 
+  /**
+   * NOUVEAU: Fonction pour définir directement le mapping des sessions
+   */
+  const setSessionMappingDirect = useCallback((newSessionMapping: Record<string, string>) => {
+    setSessionMapping(newSessionMapping);
+    updateCache({ lastSessionMapping: newSessionMapping });
+  }, [updateCache]);
+
   return {
     configs,
     selectedConfigId,
     selectedSemesterId,
     availableSemesters,
     columnMapping,
+    sessionMapping, // NOUVEAU: Exposer le mapping des sessions
     handleConfigChange,
     handleSemesterChange,
     handleMappingChange,
+    handleSessionMappingChange, // NOUVEAU: Exposer le handler pour les sessions
     updateAvailableSemesters,
     resetConfiguration,
-    setColumnMapping // Needed for direct mapping updates
+    setColumnMapping, // Needed for direct mapping updates
+    setSessionMapping: setSessionMappingDirect // NOUVEAU: Exposer le setter direct pour les sessions
   };
 };

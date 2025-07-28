@@ -1,4 +1,4 @@
-// src/lib/validators/excel-columns.ts - Version corrigée
+// src/lib/validators/excel-columns.ts - Version corrigée avec support des sessions
 export interface ColumnRequirement {
   key: string;
   displayName: string;
@@ -14,6 +14,17 @@ export interface ValidationResult {
   availableColumns: string[];
   suggestions: { [key: string]: string[] }; // Suggestions de correspondance
   mappedColumns: { [key: string]: string }; // Colonnes trouvées automatiquement
+  sessionColumns: string[]; // NOUVEAU: Colonnes de session détectées
+  sessionStats: SessionValidationStats; // NOUVEAU: Statistiques des sessions
+}
+
+// NOUVEAU: Interface pour les statistiques de validation des sessions
+export interface SessionValidationStats {
+  totalDetected: number;
+  validFormat: number;
+  invalidFormat: number;
+  exampleColumns: string[];
+  formatErrors: string[];
 }
 
 // Colonnes requises pour les relevés
@@ -188,6 +199,40 @@ export const ATTESTATION_OPTIONAL_COLUMNS: ColumnRequirement[] = [
 ];
 
 /**
+ * NOUVEAU: Fonction pour détecter et valider les colonnes de session
+ */
+function detectSessionColumns(columns: string[]): SessionValidationStats {
+  const sessionColumns = columns.filter(col => col.startsWith('S/'));
+  const validFormat: string[] = [];
+  const invalidFormat: string[] = [];
+  const formatErrors: string[] = [];
+
+  sessionColumns.forEach(col => {
+    // Vérifier le format S/[nom_ec]
+    if (col.length > 2 && col.includes('/')) {
+      const ecName = col.substring(2);
+      if (ecName.trim().length > 0) {
+        validFormat.push(col);
+      } else {
+        invalidFormat.push(col);
+        formatErrors.push(`${col}: nom d'EC manquant après "S/"`);
+      }
+    } else {
+      invalidFormat.push(col);
+      formatErrors.push(`${col}: format invalide (attendu: S/[nom_ec])`);
+    }
+  });
+
+  return {
+    totalDetected: sessionColumns.length,
+    validFormat: validFormat.length,
+    invalidFormat: invalidFormat.length,
+    exampleColumns: sessionColumns.slice(0, 5), // Premiers 5 exemples
+    formatErrors
+  };
+}
+
+/**
  * Normalise un nom de colonne pour la comparaison
  */
 function normalizeColumnName(name: string): string {
@@ -241,7 +286,10 @@ function findSuggestions(requirement: ColumnRequirement, availableColumns: strin
   const suggestions: { column: string; score: number }[] = [];
   const alternatives = [requirement.key, ...(requirement.alternatives || [])];
 
-  availableColumns.forEach(column => {
+  // Exclure les colonnes de session des suggestions pour les colonnes standard
+  const filteredColumns = availableColumns.filter(col => !col.startsWith('S/'));
+
+  filteredColumns.forEach(column => {
     const normalizedColumn = normalizeColumnName(column);
     
     // Recherche exacte (insensible à la casse et aux caractères spéciaux)
@@ -295,7 +343,10 @@ function findSuggestions(requirement: ColumnRequirement, availableColumns: strin
 function findExactMatch(requirement: ColumnRequirement, availableColumns: string[]): string | null {
   const alternatives = [requirement.key, ...(requirement.alternatives || [])];
   
-  for (const column of availableColumns) {
+  // Exclure les colonnes de session des correspondances automatiques pour les colonnes standard
+  const filteredColumns = availableColumns.filter(col => !col.startsWith('S/'));
+  
+  for (const column of filteredColumns) {
     const normalizedColumn = normalizeColumnName(column);
     for (const alt of alternatives) {
       const normalizedAlt = normalizeColumnName(alt);
@@ -310,6 +361,7 @@ function findExactMatch(requirement: ColumnRequirement, availableColumns: string
 
 /**
  * Valide les colonnes Excel pour un type de document donné
+ * MISE À JOUR: Inclut maintenant la validation des sessions
  */
 export function validateExcelColumns(
   availableColumns: string[],
@@ -326,7 +378,12 @@ export function validateExcelColumns(
   const suggestions: { [key: string]: string[] } = {};
   const mappedColumns: { [key: string]: string } = {};
 
+  // NOUVEAU: Détecter et valider les colonnes de session
+  const sessionColumns = availableColumns.filter(col => col.startsWith('S/'));
+  const sessionStats = detectSessionColumns(availableColumns);
+
   console.log(`📝 Colonnes requises pour ${documentType}:`, requiredColumns.map(r => r.key));
+  console.log(`🕐 Colonnes de session détectées: ${sessionStats.totalDetected} (${sessionStats.validFormat} valides, ${sessionStats.invalidFormat} invalides)`);
 
   // Vérifier les colonnes requises
   requiredColumns.forEach(requirement => {
@@ -364,6 +421,13 @@ export function validateExcelColumns(
   console.log(`   - Colonnes requises manquantes: ${missingRequired.length}`);
   console.log(`   - Colonnes optionnelles manquantes: ${missingOptional.length}`);
   console.log(`   - Correspondances automatiques:`, mappedColumns);
+  console.log(`   - Sessions détectées: ${sessionStats.totalDetected} (${sessionStats.validFormat} valides)`);
+
+  // NOUVEAU: Afficher les erreurs de format pour les sessions
+  if (sessionStats.formatErrors.length > 0) {
+    console.log(`⚠️ Erreurs de format pour les sessions:`);
+    sessionStats.formatErrors.forEach(error => console.log(`   - ${error}`));
+  }
 
   return {
     isValid,
@@ -371,12 +435,15 @@ export function validateExcelColumns(
     missingOptional,
     availableColumns,
     suggestions,
-    mappedColumns
+    mappedColumns,
+    sessionColumns, // NOUVEAU: Inclure les colonnes de session
+    sessionStats // NOUVEAU: Inclure les statistiques de session
   };
 }
 
 /**
  * Génère un mapping automatique des colonnes Excel
+ * MISE À JOUR: Exclut les colonnes de session du mapping automatique standard
  */
 export function generateColumnMapping(
   availableColumns: string[],
@@ -405,7 +472,33 @@ export function generateColumnMapping(
 }
 
 /**
+ * NOUVEAU: Génère un mapping automatique des sessions
+ */
+export function generateSessionMapping(
+  availableColumns: string[],
+  columnMapping: { [key: string]: string }
+): { [ecId: string]: string } {
+  const sessionColumns = availableColumns.filter(col => col.startsWith('S/'));
+  const sessionMapping: { [ecId: string]: string } = {};
+
+  // Pour chaque colonne de session, essayer de la mapper avec un EC
+  sessionColumns.forEach(sessionCol => {
+    const ecName = sessionCol.substring(2); // Enlever "S/"
+    
+    // Chercher dans le mapping des colonnes une correspondance
+    Object.entries(columnMapping).forEach(([ecId, columnName]) => {
+      if (columnName === ecName) {
+        sessionMapping[ecId] = sessionCol;
+      }
+    });
+  });
+
+  return sessionMapping;
+}
+
+/**
  * Formate un message d'erreur pour les colonnes manquantes
+ * MISE À JOUR: Inclut maintenant les informations sur les sessions
  */
 export function formatValidationErrorMessage(validation: ValidationResult): string {
   let message = '';
@@ -444,18 +537,59 @@ export function formatValidationErrorMessage(validation: ValidationResult): stri
     message += '\n';
   }
 
+  // NOUVEAU: Informations sur les sessions
+  if (validation.sessionStats.totalDetected > 0) {
+    message += '\n🕐 SESSIONS DÉTECTÉES :\n\n';
+    message += `• Total: ${validation.sessionStats.totalDetected} colonne(s)\n`;
+    message += `• Format valide: ${validation.sessionStats.validFormat}\n`;
+    message += `• Format invalide: ${validation.sessionStats.invalidFormat}\n`;
+    
+    if (validation.sessionStats.exampleColumns.length > 0) {
+      message += `• Exemples: ${validation.sessionStats.exampleColumns.join(', ')}\n`;
+    }
+    
+    if (validation.sessionStats.formatErrors.length > 0) {
+      message += '\n⚠️ ERREURS DE FORMAT POUR LES SESSIONS :\n';
+      validation.sessionStats.formatErrors.forEach(error => {
+        message += `• ${error}\n`;
+      });
+    }
+    
+    message += '\n💡 FORMAT ATTENDU POUR LES SESSIONS :\n';
+    message += '• S/[nom_de_l_EC] - où [nom_de_l_EC] correspond exactement au nom de colonne de la note\n';
+    message += '• Exemple: si vous avez une colonne "Mathématiques", la session serait "S/Mathématiques"\n';
+    message += '• Valeurs attendues dans les cellules: N/2023-2024 (normale) ou R/2023-2024 (rattrapage)\n';
+  }
+
   message += '\n📋 COLONNES DISPONIBLES DANS VOTRE FICHIER :\n';
-  message += validation.availableColumns.map(col => `"${col}"`).join(', ');
+  const regularColumns = validation.availableColumns.filter(col => !col.startsWith('S/'));
+  const sessionColumns = validation.availableColumns.filter(col => col.startsWith('S/'));
+  
+  if (regularColumns.length > 0) {
+    message += 'Colonnes standard: ' + regularColumns.map(col => `"${col}"`).join(', ') + '\n';
+  }
+  
+  if (sessionColumns.length > 0) {
+    message += 'Colonnes de session: ' + sessionColumns.map(col => `"${col}"`).join(', ');
+  }
 
   return message;
 }
 
 /**
  * Analyse spécifique du fichier template pour déboguer
+ * MISE À JOUR: Inclut maintenant l'analyse des sessions
  */
 export function analyzeTemplateFile(columns: string[]): void {
   console.log('\n🔍 ANALYSE DU FICHIER TEMPLATE :');
   console.log('Colonnes détectées:', columns);
+  
+  // Séparer les colonnes standard et de session
+  const regularColumns = columns.filter(col => !col.startsWith('S/'));
+  const sessionColumns = columns.filter(col => col.startsWith('S/'));
+  
+  console.log('Colonnes standard:', regularColumns);
+  console.log('Colonnes de session:', sessionColumns);
   
   // Test spécifique pour chaque colonne du template
   const templateMapping = {
@@ -470,9 +604,23 @@ export function analyzeTemplateFile(columns: string[]): void {
   
   console.log('\n🎯 Correspondances attendues pour le template:');
   Object.entries(templateMapping).forEach(([template, expected]) => {
-    const found = columns.includes(template);
+    const found = regularColumns.includes(template);
     console.log(`${found ? '✅' : '❌'} "${template}" -> ${expected}`);
   });
+  
+  // NOUVEAU: Analyse des sessions
+  if (sessionColumns.length > 0) {
+    console.log('\n🕐 Analyse des sessions:');
+    const sessionStats = detectSessionColumns(columns);
+    console.log(`Total détecté: ${sessionStats.totalDetected}`);
+    console.log(`Format valide: ${sessionStats.validFormat}`);
+    console.log(`Format invalide: ${sessionStats.invalidFormat}`);
+    
+    if (sessionStats.formatErrors.length > 0) {
+      console.log('Erreurs de format:');
+      sessionStats.formatErrors.forEach(error => console.log(`  - ${error}`));
+    }
+  }
   
   // Test de validation
   const validation = validateExcelColumns(columns, 'releve');
@@ -480,4 +628,87 @@ export function analyzeTemplateFile(columns: string[]): void {
   console.log('- Valide:', validation.isValid);
   console.log('- Colonnes requises manquantes:', validation.missingRequired.map(r => r.key));
   console.log('- Correspondances trouvées:', validation.mappedColumns);
+  console.log('- Sessions détectées:', validation.sessionStats.totalDetected);
+}
+
+/**
+ * NOUVEAU: Fonction utilitaire pour valider le format d'une valeur de session
+ */
+export function validateSessionValue(value: string): {
+  isValid: boolean;
+  type?: 'normal' | 'rattrapage';
+  year?: string;
+  error?: string;
+} {
+  if (!value || typeof value !== 'string') {
+    return { isValid: false, error: 'Valeur manquante ou invalide' };
+  }
+
+  const trimmedValue = value.trim();
+  const match = trimmedValue.match(/^(N|R)\/(.+)$/);
+  
+  if (!match) {
+    return { 
+      isValid: false, 
+      error: 'Format invalide. Attendu: N/année ou R/année' 
+    };
+  }
+
+  const [, typeChar, year] = match;
+  
+  return {
+    isValid: true,
+    type: typeChar === 'N' ? 'normal' : 'rattrapage',
+    year: year
+  };
+}
+
+/**
+ * NOUVEAU: Fonction pour analyser les valeurs des sessions dans un dataset
+ */
+export function analyzeSessionData(
+  data: any[],
+  sessionColumns: string[]
+): {
+  totalSessions: number;
+  validValues: number;
+  invalidValues: number;
+  sessionTypes: { normal: number; rattrapage: number };
+  years: string[];
+  errors: string[];
+} {
+  let totalSessions = 0;
+  let validValues = 0;
+  let invalidValues = 0;
+  const sessionTypes = { normal: 0, rattrapage: 0 };
+  const years = new Set<string>();
+  const errors: string[] = [];
+
+  data.forEach((row, rowIndex) => {
+    sessionColumns.forEach(sessionCol => {
+      const value = row[sessionCol];
+      if (value !== undefined && value !== null && value !== '') {
+        totalSessions++;
+        
+        const validation = validateSessionValue(value);
+        if (validation.isValid && validation.type && validation.year) {
+          validValues++;
+          sessionTypes[validation.type]++;
+          years.add(validation.year);
+        } else {
+          invalidValues++;
+          errors.push(`Ligne ${rowIndex + 1}, colonne "${sessionCol}": ${validation.error}`);
+        }
+      }
+    });
+  });
+
+  return {
+    totalSessions,
+    validValues,
+    invalidValues,
+    sessionTypes,
+    years: Array.from(years).sort(),
+    errors
+  };
 }
