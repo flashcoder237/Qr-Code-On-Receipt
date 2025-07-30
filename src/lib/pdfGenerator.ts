@@ -25,6 +25,7 @@ interface TranscriptSettingsPayload {
   logo: string;
   universityLogo: string;
   facultyLogo: string;
+  watermarkLogo?: string; // NOUVEAU: Logo personnalisé pour le fond des relevés
   themeColor: string;
   themeFont: string;
   theme?: ThemeSettingsPayload;
@@ -439,17 +440,25 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
   const isDemoMode = settings.demoMode === true;
   
   // NOUVEAU: Déterminer si c'est un semestre composite/fusionné
-  // On considère qu'un semestre est composite si son nom contient plusieurs semestres ou "ANNUEL"
-  const activeMergedSemester = student.SEMESTRE && (
+  // Un semestre composite peut être :
+  // 1. Défini par la configuration de classe avec isActive: true
+  // 2. Détecté par le nom du semestre (ex: "3-4", "annuel", etc.)
+  const activeMergedSemester = config?.mergedSemesters?.find(ms => ms.isActive);
+  
+  const isCompositeFromName = student.SEMESTRE && (
     student.SEMESTRE.toLowerCase().includes('annuel') ||
     student.SEMESTRE.toLowerCase().includes('composite') ||
     student.SEMESTRE.toLowerCase().includes('fusionné') ||
-    student.SEMESTRE.toLowerCase().includes('semestres')
+    student.SEMESTRE.toLowerCase().includes('semestres') ||
+    /\d+-\d+/.test(student.SEMESTRE) // Détecte les formats comme "3-4", "1-2", etc.
   );
+  
+  // Le semestre est composite s'il y a un semestre fusionné actif OU si le nom l'indique
+  const isCompositeSemester = activeMergedSemester || isCompositeFromName;
   
   console.log(`🔐 Génération du relevé avec chiffrement compact: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
   console.log(`🎭 Mode démo: ${isDemoMode ? 'Activé' : 'Désactivé'}`);
-  console.log(`📚 Semestre composite détecté: ${activeMergedSemester ? 'Oui' : 'Non'} (${student.SEMESTRE})`);
+  console.log(`📚 Semestre composite détecté: ${isCompositeSemester ? 'Oui' : 'Non'} (${student.SEMESTRE})`);
 
   // Calculate semester statistics first
   const uniqueUEs = new Set();
@@ -721,9 +730,9 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
             <div class="demo-watermark"></div>
             ` : ''}
             
-            <!-- IPES Logo Watermark -->
+            <!-- Logo de fond personnalisé ou par défaut -->
             <div class="watermark">
-                <img src="${settings.establishmentType === "ipes" ? settings.logo : facultyLogoBase64}" alt="Watermark">
+                <img src="${settings.watermarkLogo || (settings.establishmentType === "ipes" ? settings.logo : facultyLogoBase64)}" alt="Watermark">
             </div>
             
             <div class="header">
@@ -831,7 +840,8 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                     <p><strong>FILIÈRE:</strong> <strong>${student.FILIERE.toUpperCase() || "N/D"}</strong></p>
                     <div><em>Field of Study:</em></div>
                 </div>
-                <div>
+                
+                <div style="${(config?.hideSemesterColumn === true) ? 'display:none' : ''}">
                     <p><strong>NIVEAU:</strong> <strong>${student.NIVEAU || "N/D"}</strong></p>
                     <div><em>Level:</em></div>
                 </div>
@@ -865,12 +875,12 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                         </tr>
                         <tr class="table-footer">
                             <td class="summary-label">RELEVE NIVEAU</td>
-                            ${(config?.hideSemesterColumn !== true) ? '<td class="summary-label">' + (activeMergedSemester ? 'SEMESTRES' : 'SEMESTRE') + '</td>' : ''}
-                            <td class="summary-label">${activeMergedSemester ? 'TOTAL CREDIT ANNUEL' : 'TOTAL CREDIT'}</td>
-                            <td colspan="2" class="summary-label">${activeMergedSemester ? 'MOYENNE ANNUELLE / 20' : 'MOYENNE SEMESTRIELLE / 20'}</td>
+                            ${(config?.hideSemesterColumn !== true) ? '<td class="summary-label">' + (isCompositeSemester ? 'SEMESTRES' : 'SEMESTRE') + '</td>' : ''}
+                            <td class="summary-label">${isCompositeSemester ? 'TOTAL CREDIT ANNUEL' : 'TOTAL CREDIT'}</td>
+                            <td colspan="2" class="summary-label">${isCompositeSemester ? 'MOYENNE ANNUELLE / 20' : 'MOYENNE SEMESTRIELLE / 20'}</td>
                             <td class="summary-label">MGP</td>
                             <td class="summary-label">GRADE</td>
-                            <td colspan="${student.DISPLAY_SESSIONS ? '3' : '2'}" class="summary-label">DECISION DU JURY</td>
+                            <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-label">DECISION DU JURY</td>
                         </tr>
                         <tr class="table-footer-values">
                             <td class="summary-value"><strong>${student.NIVEAU || "1"}</strong></td>
@@ -879,7 +889,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                             <td colspan="2" class="summary-value"><strong>${semesterAverage.toFixed(2)}</strong></td>
                             <td class="summary-value"><strong>${mgp.toFixed(1)}</strong></td>
                             <td class="summary-value"><strong>${grade}</strong></td>
-                            <td colspan="${student.DISPLAY_SESSIONS ? '3' : '2'}" class="summary-value ${(activeMergedSemester ? totalCreditsValidated >= (totalSemesterCredits * 0.7) : decision === "SEMESTRE VALIDE") ? "validated" : "not-validated"}"><strong>${activeMergedSemester ? (totalCreditsValidated >= (totalSemesterCredits * 0.7) ? "SEMESTRES VALIDES" : "SEMESTRES NON VALIDES") : decision}</strong></td>
+                            <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-value ${(isCompositeSemester ? totalCreditsValidated >= (totalSemesterCredits * 0.7) : decision === "SEMESTRE VALIDE") ? "validated" : "not-validated"}"><strong>${isCompositeSemester ? (totalCreditsValidated >= (totalSemesterCredits * 0.7) ? "SEMESTRES VALIDES" : "SEMESTRES NON VALIDES") : decision}</strong></td>
                         </tr>
                     </tbody>
                 </table>

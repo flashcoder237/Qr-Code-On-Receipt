@@ -64,6 +64,7 @@ const SettingForm: React.FC = () => {
       logo: "",
       universityLogo: "",
       facultyLogo: "",
+      watermarkLogo: "", // NOUVEAU: Logo de fond
       themeColor: "#000000",
       themeFont: "Times New Roman, serif",
       theme: defaultTheme,
@@ -94,6 +95,7 @@ const SettingForm: React.FC = () => {
       logo: "",
       universityLogo: "",
       facultyLogo: "",
+      watermarkLogo: "", // NOUVEAU: Logo de fond
       themeColor: "#000000",
       themeFont: "Times New Roman, serif",
       theme: defaultTheme,
@@ -241,6 +243,7 @@ const SettingForm: React.FC = () => {
   const logoDropzone = createImageDropzone("logo");
   const universityLogoDropzone = createImageDropzone("universityLogo");
   const facultyLogoDropzone = createImageDropzone("facultyLogo");
+  const watermarkLogoDropzone = createImageDropzone("watermarkLogo"); // NOUVEAU: Logo de fond
 
   // Fonction pour enregistrer les modifications
   const saveChanges = () => {
@@ -837,6 +840,50 @@ const SettingForm: React.FC = () => {
                                   </p>
                                 ) : (
                                   <p className="text-gray-500">Aucun logo défini</p>
+                                )}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {/* NOUVEAU: Logo de fond personnalisé */}
+                      <FormField
+                        control={form.control}
+                        name="watermarkLogo"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Logo de fond des relevés (Watermark)</FormLabel>
+                            <FormControl>
+                              <div
+                                {...(isEditing ? watermarkLogoDropzone.getRootProps() : {})}
+                                className={`border-2 ${isEditing ? 'border-dashed cursor-pointer' : 'border-solid'} rounded-md p-4 text-center flex flex-col justify-center ${
+                                  isEditing && watermarkLogoDropzone.isDragActive ? "border-primary bg-primary/10" : isEditing ? "border-gray-300" : "border-gray-200"
+                                }`}
+                              >
+                                {isEditing && <input {...watermarkLogoDropzone.getInputProps()} />}
+                                {field.value ? (
+                                  <div className="flex flex-col items-center">
+                                    <img
+                                      src={field.value}
+                                      alt="Logo de fond"
+                                      className="mx-auto max-h-32 w-full object-contain mb-2"
+                                    />
+                                    <p className={`text-sm ${!isEditing ? "text-gray-400" : "text-gray-500"}`}>
+                                      {isEditing ? "Cliquez ou glissez-déposez pour changer" : "Mode lecture seule"}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col items-center">
+                                    <UploadIcon className={`h-10 w-10 mb-2 ${!isEditing ? "text-gray-400" : "text-gray-500"}`} />
+                                    <p className={`text-sm ${!isEditing ? "text-gray-400" : "text-gray-500"}`}>
+                                      {isEditing ? "Cliquez ou glissez-déposez pour ajouter un logo de fond" : "Mode lecture seule"}
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      Si vide, utilise le logo par défaut de l'établissement
+                                    </p>
+                                  </div>
                                 )}
                               </div>
                             </FormControl>

@@ -18,6 +18,7 @@ export const TranscriptsettingsSchema = z.object({
   logo: z.string().optional(),
   universityLogo: z.string().optional(),
   facultyLogo: z.string().optional(),
+  watermarkLogo: z.string().optional(), // NOUVEAU: Logo personnalisé pour le fond des relevés
   
   // Paramètres de base (pour rétrocompatibilité)
   themeColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "La couleur doit être au format hexadécimal (ex: #000000)"),
