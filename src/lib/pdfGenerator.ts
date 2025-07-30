@@ -35,6 +35,7 @@ interface TranscriptSettingsPayload {
 interface GeneratePDFParams {
   student: StudentRecord;
   settings: TranscriptSettingsPayload;
+  config?: any; // NOUVEAU: Configuration de classe pour les options d'affichage
 }
 
 interface GenerateAttestationParams {
@@ -69,7 +70,7 @@ function generateThemeStyles(params: GeneratePDFParams): string {
       box-sizing: border-box;
       background-color: white;
       margin: 5mm;
-      border: ${theme.borderWidth}px ${theme.borderStyle} ${theme.primaryColor};
+      border: ${theme.borderWidth+2}px double ${theme.primaryColor};
       color: ${theme.primaryColor};
       position: relative;
       overflow: hidden;
@@ -215,6 +216,7 @@ function generateThemeStyles(params: GeneratePDFParams): string {
     .header-row1{
       text-align: center;
       margin-bottom: 20px;
+      margin-top: 8px;
       display: flex;
       justify-content: space-between;
     }
@@ -315,6 +317,7 @@ function generateThemeStyles(params: GeneratePDFParams): string {
                theme.headerLayout === 'compact' ? '30%' : '40%'};
     }
     .header-logo-content{
+      margin-top: 4px;
       align-content: center;
       display: flex;
       align-items: center;
@@ -404,7 +407,7 @@ ${advancedCSS}`;
 }
 
 // Create HTML template for the transcript based on the provided model
-async function createTranscriptHTML({ student, settings }: GeneratePDFParams): Promise<string> {
+async function createTranscriptHTML({ student, settings, config }: GeneratePDFParams): Promise<string> {
   // Helper function to ensure values are always numbers
   function ensureNumber(value) {
     if (value === null || value === undefined) return 0;
@@ -435,8 +438,18 @@ async function createTranscriptHTML({ student, settings }: GeneratePDFParams): P
   const encryptionEnabled = settings.encryptionEnabled !== false;
   const isDemoMode = settings.demoMode === true;
   
+  // NOUVEAU: Déterminer si c'est un semestre composite/fusionné
+  // On considère qu'un semestre est composite si son nom contient plusieurs semestres ou "ANNUEL"
+  const activeMergedSemester = student.SEMESTRE && (
+    student.SEMESTRE.toLowerCase().includes('annuel') ||
+    student.SEMESTRE.toLowerCase().includes('composite') ||
+    student.SEMESTRE.toLowerCase().includes('fusionné') ||
+    student.SEMESTRE.toLowerCase().includes('semestres')
+  );
+  
   console.log(`🔐 Génération du relevé avec chiffrement compact: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
   console.log(`🎭 Mode démo: ${isDemoMode ? 'Activé' : 'Désactivé'}`);
+  console.log(`📚 Semestre composite détecté: ${activeMergedSemester ? 'Oui' : 'Non'} (${student.SEMESTRE})`);
 
   // Calculate semester statistics first
   const uniqueUEs = new Set();
@@ -840,7 +853,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                             <th colspan="3" class="table-ue">UNITE D'ENSEIGNEMENT</th>
                             <th colspan="2" class="table-ec">ELEMENT CONSTITUTIF</th>
                             ${student.DISPLAY_SESSIONS ? '<th class="table-session">SESSION</th>' : ''}
-                            <th class="table-note">NOTE/20</th>
+                            <th class="table-note">NOTE</th>
                             <th class="table-average">MOYENNE</th>
                             <th class="table-credit">CREDIT</th>
                         </tr>
@@ -848,25 +861,25 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                     <tbody>
                         ${generateCourseRows()}
                         <tr class="table-summary">
-                            <td colspan="${student.DISPLAY_SESSIONS ? '10' : '9'}">&nbsp;</td>
+                            <td colspan="${(student.DISPLAY_SESSIONS ? 10 : 9) - (config?.hideSemesterColumn ? 1 : 0)}">&nbsp;</td>
                         </tr>
                         <tr class="table-footer">
                             <td class="summary-label">RELEVE NIVEAU</td>
-                            <td class="summary-label">SEMESTRE</td>
-                            <td class="summary-label">TOTAL CREDIT</td>
-                            <td colspan="2" class="summary-label">MOYENNE SEMESTRIELLE / 20</td>
+                            ${(config?.hideSemesterColumn !== true) ? '<td class="summary-label">' + (activeMergedSemester ? 'SEMESTRES' : 'SEMESTRE') + '</td>' : ''}
+                            <td class="summary-label">${activeMergedSemester ? 'TOTAL CREDIT ANNUEL' : 'TOTAL CREDIT'}</td>
+                            <td colspan="2" class="summary-label">${activeMergedSemester ? 'MOYENNE ANNUELLE / 20' : 'MOYENNE SEMESTRIELLE / 20'}</td>
                             <td class="summary-label">MGP</td>
                             <td class="summary-label">GRADE</td>
                             <td colspan="${student.DISPLAY_SESSIONS ? '3' : '2'}" class="summary-label">DECISION DU JURY</td>
                         </tr>
                         <tr class="table-footer-values">
                             <td class="summary-value"><strong>${student.NIVEAU || "1"}</strong></td>
-                            <td class="summary-value"><strong>${student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "1") : "1"}</strong></td>
+                            ${(config?.hideSemesterColumn !== true) ? '<td class="summary-value"><strong>' + (student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "1") : "1") + '</strong></td>' : ''}
                             <td class="summary-value"><strong>${totalCreditsValidated}</strong></td>
                             <td colspan="2" class="summary-value"><strong>${semesterAverage.toFixed(2)}</strong></td>
                             <td class="summary-value"><strong>${mgp.toFixed(1)}</strong></td>
                             <td class="summary-value"><strong>${grade}</strong></td>
-                            <td colspan="${student.DISPLAY_SESSIONS ? '3' : '2'}" class="summary-value ${decision === "SEMESTRE VALIDE" ? "validated" : "not-validated"}"><strong>${decision}</strong></td>
+                            <td colspan="${student.DISPLAY_SESSIONS ? '3' : '2'}" class="summary-value ${(activeMergedSemester ? totalCreditsValidated >= (totalSemesterCredits * 0.7) : decision === "SEMESTRE VALIDE") ? "validated" : "not-validated"}"><strong>${activeMergedSemester ? (totalCreditsValidated >= (totalSemesterCredits * 0.7) ? "SEMESTRES VALIDES" : "SEMESTRES NON VALIDES") : decision}</strong></td>
                         </tr>
                     </tbody>
                 </table>
@@ -967,8 +980,8 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                     <div><strong>Douala, le</strong> 
                     <br/><i>Douala, the</i></div><br/>
 
-                    <div><strong>Le Doyen FMSP</strong>
-                    <br/><i>The Dean FMSP</i></div>
+                    <div><strong>LE CHEF D'ÉTABLISSEMENT</strong>
+                    <br/><i>The Dean of the Faculty</i></div>
                 </div>
             </div>
 

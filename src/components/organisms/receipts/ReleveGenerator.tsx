@@ -678,7 +678,8 @@ export const ReleveGenerator: React.FC = () => {
             ...settings,
             demoMode: isDemoMode,
             encryptionEnabled: encryptionEnabled // Ajouter l'option de chiffrement
-          }
+          },
+          config: currentConfig // NOUVEAU: Passer la configuration de classe pour les options d'affichage
         };
         
         const htmlContent = await window.transcriptRenderer.renderHTML(renderParams);
@@ -768,7 +769,8 @@ export const ReleveGenerator: React.FC = () => {
               ...settings,
               demoMode: isDemoMode,
               encryptionEnabled: encryptionEnabled
-            }
+            },
+            config: currentConfig // NOUVEAU: Passer la configuration de classe pour les options d'affichage
           });
         } catch (prepError) {
           console.error(`Erreur de préparation pour l'étudiant ${student.MATRICULE}:`, prepError);

@@ -305,6 +305,15 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
     setTimeout(() => setSuccess(null), 3000);
   };
 
+  // NOUVEAU: Fonction pour gérer le masquage de la colonne semestre
+  const toggleSemesterColumnDisplay = (hide: boolean) => {
+    const updatedConfig = { ...config };
+    updatedConfig.hideSemesterColumn = hide;
+    onConfigUpdate(updatedConfig);
+    setSuccess(`Colonne semestre ${hide ? 'masquée' : 'affichée'}`);
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
   // Fonction pour changer le format d'affichage des sessions
   const setSessionDisplayFormat = (format: 'short' | 'full') => {
     const updatedConfig = { ...config };
@@ -410,6 +419,24 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
                 id="session-display-switch"
                 checked={config.displaySessions !== false} // Par défaut true
                 onCheckedChange={toggleSessionDisplay}
+              />
+            </div>
+            
+            {/* NOUVEAU: Switch pour masquer la colonne semestre */}
+            <div className="flex items-center justify-between p-4 bg-white rounded-lg border">
+              <div className="space-y-1">
+                <Label htmlFor="semester-column-switch" className="text-sm font-medium">
+                  Masquer la colonne semestre dans les décisions
+                </Label>
+                <p className="text-xs text-gray-500">
+                  Cache la colonne "SEMESTRE" dans le tableau des décisions du relevé.
+                  Les libellés s'adaptent automatiquement pour les semestres composites.
+                </p>
+              </div>
+              <Switch
+                id="semester-column-switch"
+                checked={config.hideSemesterColumn === true} // Par défaut false
+                onCheckedChange={toggleSemesterColumnDisplay}
               />
             </div>
 

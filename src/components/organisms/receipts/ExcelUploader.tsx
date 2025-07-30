@@ -1,11 +1,13 @@
 // src/components/organisms/receipts/components/FileUploader.tsx - Version corrigée
 import React, { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, AlertTriangle, CheckCircle, X, RefreshCw } from 'lucide-react';
+import { Upload, AlertTriangle, CheckCircle, X, RefreshCw, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   validateExcelColumns, 
   formatValidationErrorMessage, 
@@ -136,19 +138,23 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     mapping: { [key: string]: string };
   } | null>(null);
   const [showValidationDetails, setShowValidationDetails] = useState(false);
+  
+  // Nouveaux états pour la gestion des feuilles Excel
+  const [availableSheets, setAvailableSheets] = useState<string[]>([]);
+  const [selectedSheet, setSelectedSheet] = useState<string>('');
+  const [pendingWorkbook, setPendingWorkbook] = useState<XLSX.WorkBook | null>(null);
+  const [showSheetSelector, setShowSheetSelector] = useState(false);
 
-  const processFile = async (file: File) => {
+  // Fonction pour traiter une feuille spécifique
+  const processSheet = (workbook: XLSX.WorkBook, sheetName: string) => {
     try {
-      console.log('📁 Traitement du fichier:', file.name);
+      console.log('📄 Traitement de la feuille:', sheetName);
       
-      const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
 
       if (jsonData.length === 0) {
-        throw new Error("Le fichier ne contient aucune donnée");
+        throw new Error("La feuille sélectionnée ne contient aucune donnée");
       }
 
       const columns = Object.keys(jsonData[0]);
@@ -200,18 +206,72 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           columns, 
           mapping: automaticMapping 
         });
-        setShowValidationDetails(true);
         
-        const errorMessage = formatValidationErrorMessage(validation);
-        onError(`Colonnes manquantes dans le fichier Excel:\n\n${errorMessage}`);
+        if (!allowPartialImport) {
+          onError(formatValidationErrorMessage(validation));
+        }
       }
+      
+      // Réinitialiser la sélection de feuille
+      setShowSheetSelector(false);
+      setPendingWorkbook(null);
+      setAvailableSheets([]);
+      setSelectedSheet('');
+      
+    } catch (error) {
+      console.error('❌ Erreur lors du traitement de la feuille:', error);
+      onError(`Erreur lors du traitement de la feuille: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const processFile = async (file: File) => {
+    try {
+      console.log('📁 Traitement du fichier:', file.name);
+      
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      
+      // Vérifier s'il y a plusieurs feuilles
+      if (workbook.SheetNames.length > 1) {
+        console.log('📋 Plusieurs feuilles détectées:', workbook.SheetNames);
+        setAvailableSheets(workbook.SheetNames);
+        setPendingWorkbook(workbook);
+        setSelectedSheet(workbook.SheetNames[0]); // Sélectionner la première par défaut
+        setShowSheetSelector(true);
+        return;
+      }
+      
+      // Une seule feuille, traiter directement
+      const sheetName = workbook.SheetNames[0];
+      processSheet(workbook, sheetName);
+      
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Erreur lors du chargement du fichier";
       console.error('❌ Erreur de traitement:', errorMessage);
       onError(errorMessage);
       setValidationResult(null);
       setPendingData(null);
+      // Réinitialiser les états de sélection de feuille
+      setShowSheetSelector(false);
+      setPendingWorkbook(null);
+      setAvailableSheets([]);
+      setSelectedSheet('');
     }
+  };
+
+  // Fonction pour traiter la feuille sélectionnée
+  const handleSheetSelection = () => {
+    if (pendingWorkbook && selectedSheet) {
+      processSheet(pendingWorkbook, selectedSheet);
+    }
+  };
+
+  // Fonction pour annuler la sélection de feuille
+  const cancelSheetSelection = () => {
+    setShowSheetSelector(false);
+    setPendingWorkbook(null);
+    setAvailableSheets([]);
+    setSelectedSheet('');
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -314,6 +374,65 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Interface de sélection de feuille */}
+      {showSheetSelector && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+              Sélection de la feuille Excel
+            </CardTitle>
+            <p className="text-sm text-blue-700">
+              Votre fichier contient {availableSheets.length} feuilles. Sélectionnez celle que vous souhaitez utiliser :
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Feuille à traiter :
+              </label>
+              <Select value={selectedSheet} onValueChange={setSelectedSheet}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Choisissez une feuille..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSheets.map((sheetName, index) => (
+                    <SelectItem key={sheetName} value={sheetName}>
+                      <div className="flex items-center gap-2">
+                        <FileSpreadsheet className="h-4 w-4 text-gray-500" />
+                        <span>{sheetName}</span>
+                        {index === 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            Par défaut
+                          </Badge>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex gap-2 justify-end">
+              <Button 
+                variant="outline" 
+                onClick={cancelSheetSelection}
+                className="text-gray-600"
+              >
+                Annuler
+              </Button>
+              <Button 
+                onClick={handleSheetSelection}
+                disabled={!selectedSheet}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Traiter la feuille sélectionnée
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Résultats de validation */}
       {validationResult && (

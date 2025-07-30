@@ -46,4 +46,5 @@ export interface ClassConfig {
   mergedSemesters?: MergedSemesterConfig[]; // Configurations de semestres fusionnés
   displaySessions?: boolean; // Afficher les sessions sur les relevés (défaut: true)
   sessionDisplayFormat?: 'short' | 'full'; // Format d'affichage des sessions (défaut: 'short')
+  hideSemesterColumn?: boolean; // Masquer la colonne semestre dans les décisions (défaut: false)
 }
