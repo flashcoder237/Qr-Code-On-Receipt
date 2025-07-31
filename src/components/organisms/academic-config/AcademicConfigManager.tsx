@@ -58,8 +58,8 @@ export const AcademicConfigManager: React.FC = () => {
   // Filtrage des configurations
   const filteredConfigs = useMemo(() => {
     return configs.filter(config => {
-      const matchesSearch = config.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           config.academicYear.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const matchesSearch = (config.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (config.academicYear || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (config.filiere || "").toLowerCase().includes(searchTerm.toLowerCase());
       
       if (filterBy === "all") return matchesSearch;

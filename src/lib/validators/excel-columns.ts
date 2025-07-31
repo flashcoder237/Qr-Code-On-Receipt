@@ -236,7 +236,7 @@ function detectSessionColumns(columns: string[]): SessionValidationStats {
  * Normalise un nom de colonne pour la comparaison
  */
 function normalizeColumnName(name: string): string {
-  return name.toLowerCase()
+  return (name || '').toLowerCase()
     .trim()
     .replace(/[àáâãäå]/g, 'a')
     .replace(/[èéêë]/g, 'e')

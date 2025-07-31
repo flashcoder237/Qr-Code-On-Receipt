@@ -147,9 +147,9 @@ export const DocumentHistoryManager: React.FC = () => {
   const filteredDocuments = useMemo(() => {
     const filtered = documentHistory.filter(doc => {
       const matchesSearch = 
-        doc.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        doc.studentMatricule.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        doc.fileName.toLowerCase().includes(searchTerm.toLowerCase());
+        (doc.studentName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (doc.studentMatricule || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (doc.fileName || '').toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesType = filterType === "all" || doc.type === filterType;
       const matchesStatus = filterStatus === "all" || doc.status === filterStatus;

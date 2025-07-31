@@ -144,7 +144,7 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
   const filteredAndSortedStudents = useMemo(() => {
     const filtered = students.filter(student => {
       const searchMatch = !searchTerm || 
-        `${student.NOM} ${student.PRENOM} ${student.MATRICULE}`.toLowerCase()
+        `${student.NOM || ''} ${student.PRENOM || ''} ${student.MATRICULE || ''}`.toLowerCase()
           .includes(searchTerm.toLowerCase());
       
       const gradeMatch = filterGrade === "all" || student.GRADE === filterGrade;
@@ -171,24 +171,24 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
 
       switch (sortField) {
         case 'nom':
-          aValue = a.NOM || '';
-          bValue = b.NOM || '';
+          aValue = (a.NOM || '').toString();
+          bValue = (b.NOM || '').toString();
           break;
         case 'prenom':
-          aValue = a.PRENOM || '';
-          bValue = b.PRENOM || '';
+          aValue = (a.PRENOM || '').toString();
+          bValue = (b.PRENOM || '').toString();
           break;
         case 'matricule':
-          aValue = a.MATRICULE || '';
-          bValue = b.MATRICULE || '';
+          aValue = (a.MATRICULE || '').toString();
+          bValue = (b.MATRICULE || '').toString();
           break;
         case 'moyenne':
           aValue = typeof a.MOYENNE === 'number' ? a.MOYENNE : parseFloat(String(a.MOYENNE)) || 0;
           bValue = typeof b.MOYENNE === 'number' ? b.MOYENNE : parseFloat(String(b.MOYENNE)) || 0;
           break;
         case 'niveau':
-          aValue = a.NIVEAU || '';
-          bValue = b.NIVEAU || '';
+          aValue = (a.NIVEAU || '').toString();
+          bValue = (b.NIVEAU || '').toString();
           break;
       }
 

@@ -6,7 +6,7 @@ import { ipcMain } from 'electron';
 import QRCode from 'qrcode';
 import { getCompleteTheme, getAdvancedTranscriptConfig } from './form-schemas/settings';
 import { ThemeSettingsPayload } from './form-schemas/theme-settings';
-import { generateAdvancedTranscriptCSS } from '../utils/advanced-css-generator';
+import { generateAdvancedTranscriptCSS, combineStyles } from '../utils/advanced-css-generator';
 
 // Importer directement depuis html-to-pdf.ts
 import { generateAttestationPDF } from './attestation-generator/html-to-pdf';
@@ -402,10 +402,7 @@ function generateThemeStyles(params: GeneratePDFParams): string {
 
   const advancedCSS = generateAdvancedTranscriptCSS(advancedConfig);
 
-  return `${baseCSS}
-
-/* Configuration typographique avancée */
-${advancedCSS}`;
+  return combineStyles(baseCSS, advancedCSS);
 }
 
 // Create HTML template for the transcript based on the provided model
@@ -447,11 +444,11 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
   const activeMergedSemester = config?.mergedSemesters?.find(ms => ms.isActive);
   
   const isCompositeFromName = student.SEMESTRE && (
-    student.SEMESTRE.toLowerCase().includes('annuel') ||
-    student.SEMESTRE.toLowerCase().includes('composite') ||
-    student.SEMESTRE.toLowerCase().includes('fusionné') ||
-    student.SEMESTRE.toLowerCase().includes('semestres') ||
-    /\d+-\d+/.test(student.SEMESTRE) // Détecte les formats comme "3-4", "1-2", etc.
+    (student.SEMESTRE || '').toLowerCase().includes('annuel') ||
+    (student.SEMESTRE || '').toLowerCase().includes('composite') ||
+    (student.SEMESTRE || '').toLowerCase().includes('fusionné') ||
+    (student.SEMESTRE || '').toLowerCase().includes('semestres') ||
+    /\d+-\d+/.test(student.SEMESTRE || '') // Détecte les formats comme "3-4", "1-2", etc.
   );
   
   // Le semestre est composite s'il y a un semestre fusionné actif OU si le nom l'indique

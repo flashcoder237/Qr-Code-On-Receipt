@@ -1056,7 +1056,7 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
       const priorityNames = ['config', 'modèle', 'template', 'données'];
       
       for (const ws of workbook.worksheets) {
-        const wsNameLower = ws.name.toLowerCase();
+        const wsNameLower = (ws.name || '').toLowerCase();
         if (priorityNames.some(name => wsNameLower.includes(name)) && 
             !wsNameLower.includes('instruction') && 
             !wsNameLower.includes('guide') &&
@@ -1081,7 +1081,7 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
         row.eachCell((cell) => {
           const cellValue = cell.value?.toString() || '';
           if (possibleHeaders.some(header => 
-            cellValue.toLowerCase().includes(header.toLowerCase()))) {
+            (cellValue || '').toLowerCase().includes((header || '').toLowerCase()))) {
             foundHeaders++;
           }
         });
@@ -1134,7 +1134,7 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
             };
 
             const cleanHeader = header.replace(/\n.*/, '').trim(); // Garder seulement la première ligne de l'en-tête
-            const key = keyMap[cleanHeader] || cleanHeader.toLowerCase().replace(/\s+/g, '');
+            const key = keyMap[cleanHeader] || (cleanHeader || '').toLowerCase().replace(/\s+/g, '');
             
             let processedValue = cellValue.toString().trim();
             

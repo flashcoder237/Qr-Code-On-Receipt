@@ -16,8 +16,8 @@ export const calculateUECredits = (ue: UE) => {
 
 export const isConfigDuplicate = (configs: ClassConfig[], name: string, academicYear: string, currentId?: string) => {
   return configs.some(cfg => 
-    cfg.name.trim().toLowerCase() === name.trim().toLowerCase() && 
-    cfg.academicYear.trim() === academicYear.trim() && 
+    (cfg.name || '').trim().toLowerCase() === (name || '').trim().toLowerCase() && 
+    (cfg.academicYear || '').trim() === (academicYear || '').trim() && 
     (!currentId || cfg.id !== currentId)
   );
 };

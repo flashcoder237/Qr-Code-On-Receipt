@@ -3,26 +3,47 @@ import { AdvancedFontConfig, AdvancedBorderConfig, AdvancedTranscriptConfig, Adv
 
 /**
  * Génère le CSS pour une configuration de police avancée
+ * Utilise des propriétés CSS qui complètent plutôt que remplacent
  */
 export function generateFontCSS(fontConfig: AdvancedFontConfig, selector: string): string {
-  const styles = [
-    `font-family: ${fontConfig.fontFamily}`,
-    `font-size: ${fontConfig.fontSize}px`,
-    `font-weight: ${fontConfig.fontWeight}`,
-    `font-style: ${fontConfig.fontStyle}`,
-    `color: ${fontConfig.color}`,
-  ];
-
-  if (fontConfig.lineHeight) {
-    styles.push(`line-height: ${fontConfig.lineHeight}`);
+  const styles: string[] = [];
+  
+  // Seulement ajouter les propriétés qui diffèrent des valeurs par défaut du navigateur
+  if (fontConfig.fontFamily && fontConfig.fontFamily !== 'inherit') {
+    styles.push(`font-family: ${fontConfig.fontFamily} !important`);
+  }
+  
+  if (fontConfig.fontSize && fontConfig.fontSize > 0) {
+    styles.push(`font-size: ${fontConfig.fontSize}px !important`);
+  }
+  
+  if (fontConfig.fontWeight && fontConfig.fontWeight !== 'normal') {
+    styles.push(`font-weight: ${fontConfig.fontWeight} !important`);
+  }
+  
+  if (fontConfig.fontStyle && fontConfig.fontStyle !== 'normal') {
+    styles.push(`font-style: ${fontConfig.fontStyle} !important`);
+  }
+  
+  if (fontConfig.color && fontConfig.color !== '#000000') {
+    styles.push(`color: ${fontConfig.color} !important`);
   }
 
-  if (fontConfig.letterSpacing) {
-    styles.push(`letter-spacing: ${fontConfig.letterSpacing}px`);
+  if (fontConfig.lineHeight && fontConfig.lineHeight !== '1') {
+    styles.push(`line-height: ${fontConfig.lineHeight} !important`);
+  }
+
+  if (fontConfig.letterSpacing && fontConfig.letterSpacing !== 0) {
+    styles.push(`letter-spacing: ${fontConfig.letterSpacing}px !important`);
   }
 
   if (fontConfig.textTransform && fontConfig.textTransform !== 'none') {
-    styles.push(`text-transform: ${fontConfig.textTransform}`);
+    styles.push(`text-transform: ${fontConfig.textTransform} !important`);
+  }
+
+  // Si aucun style personnalisé, ne pas générer de règle CSS
+  if (styles.length === 0) {
+    return '';
   }
 
   return `${selector} {
@@ -32,20 +53,25 @@ export function generateFontCSS(fontConfig: AdvancedFontConfig, selector: string
 
 /**
  * Génère le CSS pour une configuration de bordure avancée
+ * Améliore ou modifie les bordures existantes sans casser la mise en page
  */
 export function generateBorderCSS(borderConfig: AdvancedBorderConfig, selector: string): string {
+  const styles: string[] = [];
+
   if (borderConfig.style === 'none') {
-    return `${selector} {
-      border: none;
-    }`;
+    styles.push('border: none !important');
+  } else if (borderConfig.style && borderConfig.width && borderConfig.color) {
+    // Améliorer les bordures existantes
+    styles.push(`border: ${borderConfig.width}px ${borderConfig.style} ${borderConfig.color} !important`);
   }
 
-  const styles = [
-    `border: ${borderConfig.width}px ${borderConfig.style} ${borderConfig.color}`,
-  ];
+  if (borderConfig.radius && borderConfig.radius > 0) {
+    styles.push(`border-radius: ${borderConfig.radius}px !important`);
+  }
 
-  if (borderConfig.radius) {
-    styles.push(`border-radius: ${borderConfig.radius}px`);
+  // Si aucun style de bordure personnalisé, ne pas générer de règle
+  if (styles.length === 0) {
+    return '';
   }
 
   return `${selector} {
@@ -63,32 +89,47 @@ export function generateAdvancedTranscriptCSS(config: AdvancedTranscriptConfig):
 
   const cssRules: string[] = [];
 
-  // Polices
-  cssRules.push(generateFontCSS(config.headerTitle, '.header-title, .header-row2 h1'));
-  cssRules.push(generateFontCSS(config.headerSubtitle, '.header-subtitle, .header-row2 h2'));
-  cssRules.push(generateFontCSS(config.headerInfo, '.header-content, .header-content p'));
-  cssRules.push(generateFontCSS(config.studentInfo, '.student-info, .student-info p, .student_block1'));
-  cssRules.push(generateFontCSS(config.tableHeader, 'th, .table-head th'));
-  cssRules.push(generateFontCSS(config.tableContent, 'td, .table tbody td'));
-  cssRules.push(generateFontCSS(config.footer, '.footer-note'));
-  cssRules.push(generateFontCSS(config.signature, '.signature, .signature-ipes'));
+  // Ajout d'un commentaire d'en-tête
+  cssRules.push('/* Styles typographiques avancés pour relevés de notes */');
 
-  // Bordures
-  cssRules.push(generateBorderCSS(config.documentBorder, 'body, .container'));
-  cssRules.push(generateBorderCSS(config.tableBorder, 'table'));
-  cssRules.push(generateBorderCSS(config.tableHeaderBorder, 'th'));
-  cssRules.push(generateBorderCSS(config.tableCellBorder, 'td'));
-  
+  // Polices - seulement ajouter si la configuration est différente des valeurs par défaut
+  const fontRules = [
+    generateFontCSS(config.headerTitle, '.header-title, .header-row2 h1'),
+    generateFontCSS(config.headerSubtitle, '.header-subtitle, .header-row2 h2'),
+    generateFontCSS(config.headerInfo, '.header-content, .header-content p'),
+    generateFontCSS(config.studentInfo, '.student-info, .student-info p, .student_block1'),
+    generateFontCSS(config.tableHeader, 'th, .table-head th'),
+    generateFontCSS(config.tableContent, 'td, .table tbody td'),
+    generateFontCSS(config.footer, '.footer-note'),
+    generateFontCSS(config.signature, '.signature, .signature-ipes')
+  ].filter(rule => rule.trim() !== '');
+
+  cssRules.push(...fontRules);
+
+  // Bordures - seulement ajouter si configurées
+  const borderRules = [
+    generateBorderCSS(config.documentBorder, 'body, .container'),
+    generateBorderCSS(config.tableBorder, 'table'),
+    generateBorderCSS(config.tableHeaderBorder, 'th'),
+    generateBorderCSS(config.tableCellBorder, 'td')
+  ].filter(rule => rule.trim() !== '');
+
   if (config.signatureBorder) {
-    cssRules.push(generateBorderCSS(config.signatureBorder, '.signature, .signature-ipes'));
+    const sigBorderRule = generateBorderCSS(config.signatureBorder, '.signature, .signature-ipes');
+    if (sigBorderRule.trim() !== '') {
+      borderRules.push(sigBorderRule);
+    }
   }
 
+  cssRules.push(...borderRules);
+
   // CSS personnalisé
-  if (config.customCSS) {
+  if (config.customCSS && config.customCSS.trim() !== '') {
+    cssRules.push('/* CSS personnalisé */');
     cssRules.push(config.customCSS);
   }
 
-  return cssRules.filter(rule => rule.trim()).join('\n\n');
+  return cssRules.filter(rule => rule.trim() !== '').join('\n\n');
 }
 
 /**
@@ -101,47 +142,87 @@ export function generateAdvancedAttestationCSS(config: AdvancedAttestationConfig
 
   const cssRules: string[] = [];
 
-  // Polices
-  cssRules.push(generateFontCSS(config.mainTitle, '.header-row2 h1, .main-title'));
-  cssRules.push(generateFontCSS(config.subtitle, '.header-row2 h2, .subtitle'));
-  cssRules.push(generateFontCSS(config.headerInfo, '.header-content, .header-content p'));
-  cssRules.push(generateFontCSS(config.studentInfo, '.student-info, .student-info p'));
-  cssRules.push(generateFontCSS(config.tableHeader, 'th, .academic-table th'));
-  cssRules.push(generateFontCSS(config.tableContent, 'td, .academic-table td'));
-  cssRules.push(generateFontCSS(config.footer, '.content p, .list-nomination-header p'));
-  cssRules.push(generateFontCSS(config.signature, '.signature, .nomination-list-item'));
-  cssRules.push(generateFontCSS(config.disclaimer, '.disclaimer'));
+  // Ajout d'un commentaire d'en-tête
+  cssRules.push('/* Styles typographiques avancés pour attestations */');
 
-  // Bordures
-  cssRules.push(generateBorderCSS(config.documentBorder, 'body, .container'));
-  cssRules.push(generateBorderCSS(config.tableBorder, 'table, .table-container table'));
-  cssRules.push(generateBorderCSS(config.tableHeaderBorder, 'th'));
-  cssRules.push(generateBorderCSS(config.tableCellBorder, 'td'));
-  
+  // Polices - seulement ajouter si la configuration est différente des valeurs par défaut
+  const fontRules = [
+    generateFontCSS(config.mainTitle, '.header-row2 h1, .main-title'),
+    generateFontCSS(config.subtitle, '.header-row2 h2, .subtitle'),
+    generateFontCSS(config.headerInfo, '.header-content, .header-content p'),
+    generateFontCSS(config.studentInfo, '.student-info, .student-info p'),
+    generateFontCSS(config.tableHeader, 'th, .academic-table th'),
+    generateFontCSS(config.tableContent, 'td, .academic-table td'),
+    generateFontCSS(config.footer, '.content p, .list-nomination-header p'),
+    generateFontCSS(config.signature, '.signature, .nomination-list-item'),
+    generateFontCSS(config.disclaimer, '.disclaimer')
+  ].filter(rule => rule.trim() !== '');
+
+  cssRules.push(...fontRules);
+
+  // Bordures - seulement ajouter si configurées
+  const borderRules = [
+    generateBorderCSS(config.documentBorder, 'body, .container'),
+    generateBorderCSS(config.tableBorder, 'table, .table-container table'),
+    generateBorderCSS(config.tableHeaderBorder, 'th'),
+    generateBorderCSS(config.tableCellBorder, 'td')
+  ].filter(rule => rule.trim() !== '');
+
   if (config.signatureBorder) {
-    cssRules.push(generateBorderCSS(config.signatureBorder, '.signature, .nomination-list-item'));
+    const sigBorderRule = generateBorderCSS(config.signatureBorder, '.signature, .nomination-list-item');
+    if (sigBorderRule.trim() !== '') {
+      borderRules.push(sigBorderRule);
+    }
   }
 
+  cssRules.push(...borderRules);
+
   // CSS personnalisé
-  if (config.customCSS) {
+  if (config.customCSS && config.customCSS.trim() !== '') {
+    cssRules.push('/* CSS personnalisé */');
     cssRules.push(config.customCSS);
   }
 
-  return cssRules.filter(rule => rule.trim()).join('\n\n');
+  return cssRules.filter(rule => rule.trim() !== '').join('\n\n');
 }
 
 /**
  * Combine les styles de base avec les styles avancés
+ * Les styles avancés complètent et améliorent les styles de base sans les détruire
  */
 export function combineStyles(baseCSS: string, advancedCSS: string): string {
-  if (!advancedCSS) {
+  if (!advancedCSS || advancedCSS.trim() === '') {
+    console.log('🎨 Styles avancés: Aucun style avancé défini, utilisation des styles de base uniquement');
     return baseCSS;
   }
 
+  console.log('🎨 Styles avancés: Combinaison des styles de base avec les styles avancés');
+  console.log(`📏 Longueur CSS de base: ${baseCSS.length} caractères`);
+  console.log(`📏 Longueur CSS avancé: ${advancedCSS.length} caractères`);
+
   return `${baseCSS}
 
-/* Configuration typographique avancée */
-${advancedCSS}`;
+/* Configuration typographique avancée - Améliore le style existant */
+${advancedCSS}
+
+/* Assure la compatibilité entre styles de base et avancés */
+.header-content, .header-content p {
+  /* Préserve l'alignement et l'espacement de base */
+  margin: inherit !important;
+  padding: inherit !important; 
+}
+
+.student-info, .student-info p {
+  /* Préserve la structure de base */
+  display: inherit !important;
+  margin: inherit !important;
+}
+
+table, th, td {
+  /* Préserve la structure de table de base */
+  border-collapse: inherit !important;
+  border-spacing: inherit !important;
+}`;
 }
 
 /**
