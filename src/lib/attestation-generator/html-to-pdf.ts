@@ -18,6 +18,7 @@ interface SchoolSettings {
   logo?: string;
   universityLogo?: string;
   facultyLogo?: string;
+  watermarkLogo?: string; // Logo personnalisé pour le fond des attestations
   themeColor?: string;
   themeFont?: string;
   theme?: AttestationThemeSettingsPayload;

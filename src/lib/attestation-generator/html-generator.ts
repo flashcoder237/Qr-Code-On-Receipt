@@ -18,6 +18,7 @@ interface SchoolSettings {
   logo?: string;
   universityLogo?: string;
   facultyLogo?: string;
+  watermarkLogo?: string; // Logo personnalisé pour le fond des attestations
   themeColor?: string;
   themeFont?: string;
   theme?: AttestationThemeSettingsPayload;
@@ -36,6 +37,11 @@ interface GenerationOptions {
 
 /**
  * Génère le HTML pour l'attestation de réussite avec support de la typographie avancée
+ * 
+ * @feature Logo de fond personnalisé
+ * - Utilisez settings.watermarkLogo pour définir un logo de fond personnalisé
+ * - Si non défini, utilise le logo par défaut selon le type d'établissement
+ * - Le logo apparaît en filigrane derrière le contenu de l'attestation
  */
 export async function generateAttestationHTML(
   student: StudentExcelRecord,
@@ -631,9 +637,9 @@ export async function generateAttestationHTML(
         <div class="demo-watermark"></div>
         ` : ''}
         
-        <!-- Filigrane IPES existant -->
+        <!-- Logo de fond personnalisé ou par défaut -->
         <div class="watermark">
-            <img src="${settings.establishmentType === "ipes" ? schoolLogo : facultyLogo}" alt="Watermark">
+            <img src="${settings.watermarkLogo || (settings.establishmentType === "ipes" ? schoolLogo : facultyLogo)}" alt="Watermark">
         </div>
      
         <div class="header">
@@ -838,6 +844,7 @@ export async function generateAttestationHTML(
   console.log(`🔐 Chiffrement compact: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
   console.log(`📋 QR Code inclus: ${qrCodeImage ? 'Oui' : 'Non'}`);
   console.log(`🎭 Mode démo: ${isDemoMode ? 'Activé (filigrane ajouté)' : 'Désactivé'}`);
+  console.log(`🖼️ Logo de fond personnalisé: ${settings.watermarkLogo ? 'Défini' : 'Utilise logo par défaut'}`);
   console.log(`📝 Configuration avancée: ${advancedConfig.enableAdvancedTypography ? 'Activée' : 'Désactivée'}`);
   
   if (qrCodeAnalysis) {
