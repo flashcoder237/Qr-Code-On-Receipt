@@ -12,7 +12,8 @@ import { generateAdvancedTranscriptCSS } from '../utils/advanced-css-generator';
 import { generateAttestationPDF } from './attestation-generator/html-to-pdf';
 
 // NOUVEAU: Importer les fonctions de chiffrement compact pour les relevés
-import { sanitizeStudentData, generateQrCodeBase64, getQRCodeSizeEstimate } from './helpers/qrcode';
+import { sanitizeStudentData, generateQrCodeBase64 } from './helpers/qrcode-selective';
+import { getQRCodeSizeEstimate } from './helpers/qrcode';
 
 interface TranscriptSettingsPayload {
   establishmentType: string;
@@ -521,6 +522,9 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
     try {
       console.log(`🔄 Génération QR Code pour relevé (Chiffrement: ${encryptionEnabled}, Mode démo: ${isDemoMode})`);
       
+      const displaySessions = student.DISPLAY_SESSIONS !== false;
+      console.log(`📊 Sessions dans QR code: ${displaySessions ? 'Affichées' : 'Masquées'}`);
+      
       // Créer un objet étudiant compatible avec le système de chiffrement compact
       const studentForQR = {
         ETABLISSEMENT: settings.nameFrench || 'N/D',
@@ -543,7 +547,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
       const sanitizedStudent = sanitizeStudentData(studentForQR);
       
       // Générer le QR code avec chiffrement compact
-      qrCodeDataUrl = await generateQrCodeBase64(sanitizedStudent, 'releve', encryptionEnabled);
+      qrCodeDataUrl = await generateQrCodeBase64(sanitizedStudent, 'releve', encryptionEnabled, displaySessions);
       
       if (encryptionEnabled) {
         console.log('✅ QR Code avec chiffrement compact généré pour le relevé');

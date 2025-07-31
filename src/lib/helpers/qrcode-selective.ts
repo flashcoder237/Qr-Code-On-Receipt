@@ -71,7 +71,8 @@ export function sanitizeStudentData(student: StudentExcelRecord): StudentExcelRe
 export function getQrCodePayloadWithSelectiveEncryption(
   student: StudentExcelRecord, 
   documentType: 'releve' | 'attestation' | 'diplome',
-  encryptionEnabled: boolean = true
+  encryptionEnabled: boolean = true,
+  displaySessions: boolean = true
 ): string {
   try {
     console.log(`🔄 Génération contenu QR sélectif pour ${student.MATRICULE} (Chiffrement: ${encryptionEnabled})`);
@@ -87,7 +88,7 @@ export function getQrCodePayloadWithSelectiveEncryption(
     if (!encryptionEnabled) {
       // Mode sans chiffrement - affichage traditionnel
       console.log('📋 QR Code sans chiffrement généré');
-      return generateTraditionalQRContent(sanitizedStudent, documentType);
+      return generateTraditionalQRContent(sanitizedStudent, documentType, displaySessions);
     }
 
     // Mode avec chiffrement sélectif
@@ -95,7 +96,7 @@ export function getQrCodePayloadWithSelectiveEncryption(
       console.log('🔐 Début du processus de chiffrement sélectif...');
       
       // Créer les données publiques et sensibles
-      const { publicData, sensitiveData } = createSelectiveDataFromStudent(sanitizedStudent, documentType);
+      const { publicData, sensitiveData } = createSelectiveDataFromStudent(sanitizedStudent, documentType, displaySessions);
       console.log('📋 Données séparées en publiques et sensibles');
       console.log('📢 Données publiques:', Object.keys(publicData));
       console.log('🔒 Données sensibles:', Object.keys(sensitiveData));
@@ -105,13 +106,13 @@ export function getQrCodePayloadWithSelectiveEncryption(
       console.log('🔒 Structure QR avec chiffrement sélectif créée');
       
       // Formater pour affichage
-      const formattedContent = formatSelectiveQRCodeForDisplay(qrData);
+      const formattedContent = formatSelectiveQRCodeForDisplay(qrData, displaySessions);
       
       console.log('✅ QR Code avec chiffrement sélectif généré');
       return formattedContent;
     } catch (encryptionError) {
       console.error('❌ Erreur de chiffrement sélectif, utilisation du mode traditionnel:', encryptionError);
-      return generateTraditionalQRContent(sanitizedStudent, documentType) + '\n\n⚠️ Erreur de chiffrement - Données en mode traditionnel';
+      return generateTraditionalQRContent(sanitizedStudent, documentType, displaySessions) + '\n\n⚠️ Erreur de chiffrement - Données en mode traditionnel';
     }
   } catch (error) {
     console.error('❌ Erreur lors de la génération du contenu QR sélectif:', error);
@@ -124,7 +125,8 @@ export function getQrCodePayloadWithSelectiveEncryption(
  */
 function generateTraditionalQRContent(
   student: StudentExcelRecord,
-  documentType: 'releve' | 'attestation' | 'diplome'
+  documentType: 'releve' | 'attestation' | 'diplome',
+  displaySessions: boolean = true
 ): string {
   // Contenu visible standard
   const visibleContent = `Établissement: ${student.ETABLISSEMENT}
@@ -139,8 +141,8 @@ Lieu de naissance: ${student["LIEU DE NAISSANCE"]}`;
   switch (documentType) {
     case 'releve':
       specificContent = `
-Niveau: ${student.NIVEAU}
-Semestre: ${student.SEMESTRE}
+Niveau: ${student.NIVEAU}${displaySessions ? `
+Semestre: ${student.SEMESTRE}` : ''}
 Filière: ${student.FILIERE}
 Cycle: ${student.CYCLE}`;
       break;
@@ -175,12 +177,13 @@ Année académique: ${student["ANNEE ACADEMIQUE"]}`;
 export async function generateQrCodeBase64WithSelectiveEncryption(
   student: StudentExcelRecord, 
   documentType: 'releve' | 'attestation' | 'diplome',
-  encryptionEnabled: boolean = true
+  encryptionEnabled: boolean = true,
+  displaySessions: boolean = true
 ): Promise<string> {
   try {
     console.log(`🔄 Génération QR Code base64 sélectif pour ${student.MATRICULE}`);
     
-    const qrContent = getQrCodePayloadWithSelectiveEncryption(student, documentType, encryptionEnabled);
+    const qrContent = getQrCodePayloadWithSelectiveEncryption(student, documentType, encryptionEnabled, displaySessions);
     console.log('📋 Contenu QR sélectif généré, longueur:', qrContent.length);
     
     const qrCodeDataUrl = await QRCode.toDataURL(qrContent, {
@@ -207,12 +210,13 @@ export async function generateQrCodeBase64WithSelectiveEncryption(
 export async function generateQrCodeWithSelectiveEncryption(
   student: StudentExcelRecord, 
   documentType: 'releve' | 'attestation' | 'diplome',
-  encryptionEnabled: boolean = true
+  encryptionEnabled: boolean = true,
+  displaySessions: boolean = true
 ): Promise<ArrayBuffer> {
   try {
     console.log(`🔄 Génération QR Code ArrayBuffer sélectif pour ${student.MATRICULE}`);
     
-    const qrContent = getQrCodePayloadWithSelectiveEncryption(student, documentType, encryptionEnabled);
+    const qrContent = getQrCodePayloadWithSelectiveEncryption(student, documentType, encryptionEnabled, displaySessions);
     
     const qrCodeBuffer = await QRCode.toBuffer(qrContent, {
       errorCorrectionLevel: 'H',
@@ -245,12 +249,12 @@ export const getQrCodePayloadWithEncryption = getQrCodePayloadWithSelectiveEncry
 /**
  * Fonction de test pour le chiffrement sélectif
  */
-export function testSelectiveQRGeneration(student: StudentExcelRecord, documentType: 'releve' | 'attestation' | 'diplome'): boolean {
+export function testSelectiveQRGeneration(student: StudentExcelRecord, documentType: 'releve' | 'attestation' | 'diplome', displaySessions: boolean = true): boolean {
   try {
     console.log('🧪 Test de génération QR avec chiffrement sélectif...');
     
     const sanitizedStudent = sanitizeStudentData(student);
-    const { publicData, sensitiveData } = createSelectiveDataFromStudent(sanitizedStudent, documentType);
+    const { publicData, sensitiveData } = createSelectiveDataFromStudent(sanitizedStudent, documentType, displaySessions);
     
     return testSelectiveEncryption(publicData, sensitiveData);
   } catch (error) {
@@ -483,7 +487,7 @@ export function createSelectiveQRCodeData(
 /**
  * Convertit la structure QR en format lisible pour affichage
  */
-export function formatSelectiveQRCodeForDisplay(qrData: QRCodeData): string {
+export function formatSelectiveQRCodeForDisplay(qrData: QRCodeData, displaySessions: boolean = true): string {
   const publicSection = `INFORMATIONS PUBLIQUES:
 Établissement: ${qrData.public.etablissement}
 Nom: ${qrData.public.nom}
@@ -495,8 +499,8 @@ Spécialité: ${qrData.public.specialite}
 Année académique: ${qrData.public.anneeAcademique}` : '';
 
   const additionalSection = qrData.public.niveau ? `
-Niveau: ${qrData.public.niveau}
-Semestre: ${qrData.public.semestre}
+Niveau: ${qrData.public.niveau}${displaySessions ? `
+Semestre: ${qrData.public.semestre}` : ''}
 Filière: ${qrData.public.filiere}` : '';
 
   const gradeSection = qrData.public.grade ? `
@@ -563,7 +567,8 @@ export function validateSelectiveQRCode(
  */
 export function createSelectiveDataFromStudent(
   student: any,
-  documentType: 'releve' | 'attestation' | 'diplome'
+  documentType: 'releve' | 'attestation' | 'diplome',
+  displaySessions: boolean = true
 ): { publicData: PublicData; sensitiveData: SensitiveData } {
   // Données publiques (non chiffrées)
   const publicData: PublicData = {
@@ -578,7 +583,10 @@ export function createSelectiveDataFromStudent(
   switch (documentType) {
     case 'releve':
       publicData.niveau = student.NIVEAU || student.niveau || 'N/D';
-      publicData.semestre = student.SEMESTRE || student.semestre || 'N/D';
+      // Ne inclure le semestre que si displaySessions est true
+      if (displaySessions) {
+        publicData.semestre = student.SEMESTRE || student.semestre || 'N/D';
+      }
       publicData.cycle = student.CYCLE || student.cycle || 'N/D';
       publicData.filiere = student.FILIERE || student.filiere || 'N/D';
       publicData.anneeAcademique = student["ANNEE ACADEMIQUE"] || student.anneeAcademique || 'N/D';
