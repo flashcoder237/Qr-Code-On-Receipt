@@ -2,6 +2,7 @@
 
 import { StudentExcelRecord, sanitizeStudentData, generateQrCodeBase64 } from '../helpers/qrcode';
 import { formatDate, calculateGrade, calculateMention } from './utils';
+import { calculateMGP } from '../helpers/grades';
 import { AttestationThemeSettingsPayload, defaultAttestationTheme, getAdvancedAttestationConfig } from '../form-schemas/attestation-theme-settings';
 import { getQRCodeSizeEstimate } from '../helpers/qrcode';
 import { generateAdvancedAttestationCSS, combineStyles } from '../../utils/advanced-css-generator'; // NOUVEAU
@@ -93,14 +94,31 @@ export async function generateAttestationHTML(
   const option = sanitizedStudent.OPTION;
   
   const credits = sanitizedStudent["TOTAL CREDIT"];
-  const average = typeof sanitizedStudent.MOYENNE === 'number' ? 
-    sanitizedStudent.MOYENNE.toFixed(2) : String(sanitizedStudent.MOYENNE);
-  const grade = sanitizedStudent.GRADE;
-  const mention = sanitizedStudent.MENTION;
+  
+  // Récupérer la moyenne numérique
+  const numericAverage = typeof sanitizedStudent.MOYENNE === 'number' ? 
+    sanitizedStudent.MOYENNE : parseFloat(String(sanitizedStudent.MOYENNE)) || 0;
+  
+  // Calculer automatiquement les valeurs à partir de la moyenne
+  const average = numericAverage.toFixed(2);
+  const grade = calculateGrade(numericAverage);
+  const mention = calculateMention(numericAverage);
+  const mgp = calculateMGP(grade);
+  
   const finality = sanitizedStudent["FINALITE"];
+  
+  console.log(`📊 Calculs automatiques pour ${studentFullName}:`);
+  console.log(`   Moyenne: ${average}`);
+  console.log(`   Grade: ${grade}`);
+  console.log(`   Mention: ${mention}`);
+  console.log(`   MGP: ${mgp}`);
 
   const getCycleTranslateEn = (cycle : string) => {
     switch (cycle.toUpperCase()) {
+      case "DOCTORAT":
+        return "OF STATE DOCTORATE";
+      case "DOCTORAT PHARMACIE":
+        return "OF STATE DOCTORATE";
       case "MASTER":
         return "OF MASTER'S DEGREE";
       case "LICENCE":
@@ -114,6 +132,8 @@ export async function generateAttestationHTML(
 
   const getCycleTranslateFr = (cycle : string) => {
     switch (cycle.toUpperCase()) {
+      case "DOCTORAT":
+        return "DE DOCTORAT D'ETAT";
       case "MASTER":
         return "DE MASTER";
       case "LICENCE":
@@ -672,7 +692,7 @@ export async function generateAttestationHTML(
               <h1 class="main-title">${theme.customTitle || `ATTESTATION DE REUSSITE ${getCycleTranslateFr(cycle)}`}</h1>
               ${theme.showBilingualText ? `<h2 class="subtitle">${theme.customSubtitle || `ATTESTATION OF COMPLETION ${getCycleTranslateEn(cycle)}`}</h2>` : ''}
               
-              <p style="margin-top: 6px"><strong>Ref N°............./${currentYear-1}/UDo/FMSP/VDRC/${settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE"}</strong></p>
+              <p style="margin-top: 6px"><strong>Ref N°............./${currentYear}/UDo/FMSP/VDRC/${settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE"}</strong></p>
             </div>
         </div>
         
@@ -741,14 +761,18 @@ export async function generateAttestationHTML(
                     <tr>
                         <th>Total de credits<br>${theme.showBilingualText ? '<em style="font-weight: normal">Credits earned</em>' : ''}</th>
                         <th>Moyenne<br>${theme.showBilingualText ? '<em style="font-weight: normal">Average</em>' : ''}</th>
-                        <th>Mention<br>${theme.showBilingualText ? '<em style="font-weight: normal">Grade</em>' : ''}</th>
+                        <th>Grade<br>${theme.showBilingualText ? '<em style="font-weight: normal">Grade</em>' : ''}</th>
+                        <th>MGP<br>${theme.showBilingualText ? '<em style="font-weight: normal">GPA</em>' : ''}</th>
+                        <th>Mention<br>${theme.showBilingualText ? '<em style="font-weight: normal">Honor</em>' : ''}</th>
                         <th>Année académique<br>${theme.showBilingualText ? '<em style="font-weight: normal">Academic year</em>' : ''}</th>
                         <th>Finalité/Voie<br>${theme.showBilingualText ? '<em style="font-weight: normal">Finality/Vocation</em>' : ''}</th>
                     </tr>
                     <tr style="border-top: 1px solid ${theme.tableBorderColor}; background-color:${theme.tableHeaderBgColor}">
                         <td><strong>${credits}</strong></td>
                         <td><strong>${average}</strong></td>
-                        <td><strong>${mention} ${grade}</strong></td>
+                        <td><strong>${grade}</strong></td>
+                        <td><strong>${mgp.toFixed(2)}</strong></td>
+                        <td><strong>${mention}</strong></td>
                         <td><strong>${academicYear}</strong></td>
                         <td><strong>${finality}</strong></td>
                     </tr>

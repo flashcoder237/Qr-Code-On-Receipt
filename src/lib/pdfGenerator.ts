@@ -530,7 +530,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
         "DATE DE NAISSANCE": student["DATE DE NAISSANCE"] || 'N/D',
         "LIEU DE NAISSANCE": student["LIEU DE NAISSANCE"] || 'N/D',
         NIVEAU: student.NIVEAU || 'N/D',
-        SEMESTRE: student.SEMESTRE || 'N/D',
+        ...(config?.hideSemesterColumn !== true && { SEMESTRE: student.SEMESTRE || ' ' }), // Inclure SEMESTRE seulement si pas masqué
         CYCLE: student.CYCLE || 'N/D',
         FILIERE: student.FILIERE || 'N/D',
         "ANNEE ACADEMIQUE": student["ANNEE ACADÉMIQUE"] || 'N/D',
@@ -558,18 +558,29 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
       console.error('❌ Erreur lors de la génération du QR code pour le relevé:', qrError);
       
       // Fallback vers l'ancien système si le nouveau échoue
-      const qrData = `Établissement: ${settings.nameFrench}
-Nom: ${student.NOM}
-Prénom: ${student.PRENOM}
-Matricule: ${student.MATRICULE}
-Date de naissance: ${student["DATE DE NAISSANCE"]}
-Lieu de naissance: ${student["LIEU DE NAISSANCE"]}
-Niveau: ${student.NIVEAU}
-Semestre: ${student.SEMESTRE.split(" ")[1]}
-Moyenne: ${semesterAverage.toFixed(2)}
-Grade: ${grade}
-Mention: ${getMention(semesterAverage)}
-Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
+      const qrDataParts = [
+        `Établissement: ${settings.nameFrench}`,
+        `Nom: ${student.NOM}`,
+        `Prénom: ${student.PRENOM}`,
+        `Matricule: ${student.MATRICULE}`,
+        `Date de naissance: ${student["DATE DE NAISSANCE"]}`,
+        `Lieu de naissance: ${student["LIEU DE NAISSANCE"]}`,
+        `Niveau: ${student.NIVEAU}`
+      ];
+      
+      // Inclure le semestre seulement si la colonne n'est pas masquée
+      if (config?.hideSemesterColumn !== true) {
+        qrDataParts.push(`Semestre: ${student.SEMESTRE ? student.SEMESTRE.split(" ")[1] || 'N/D' : 'N/D'}`);
+      }
+      
+      qrDataParts.push(
+        `Moyenne: ${semesterAverage.toFixed(2)}`,
+        `Grade: ${grade}`,
+        `Mention: ${getMention(semesterAverage)}`,
+        `Année académique: ${student["ANNEE ACADÉMIQUE"]}`
+      );
+      
+      const qrData = qrDataParts.join('\n');
       
       qrCodeDataUrl = await QRCode.toDataURL(qrData, {
         errorCorrectionLevel: 'H',
@@ -810,7 +821,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
         
             <div class="student_block1">
                 <div>
-                    <p><strong><span>NOM ET PRENOM:</span>${student.NOM.toUpperCase()} ${student.PRENOM.toUpperCase()}</strong></p>
+                    <p><strong><strong>NOM ET PRENOM: </strong>${student.NOM.toUpperCase()} ${student.PRENOM.toUpperCase()}</strong></p>
                     <p><em>surname and name:</em></p>
                 </div>
                 <div>
@@ -841,11 +852,11 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                     <div><em>Field of Study:</em></div>
                 </div>
                 
-                <div style="${(config?.hideSemesterColumn === true) ? 'display:none' : ''}">
+                <div>
                     <p><strong>NIVEAU:</strong> <strong>${student.NIVEAU || "N/D"}</strong></p>
                     <div><em>Level:</em></div>
                 </div>
-                <div>
+                <div style="${(config?.hideSemesterColumn === true) ? 'display:none' : ''}">
                     <p><strong>SEMESTRE:</strong> <strong>${student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "N/D") : "N/D"}</strong></p>
                     <div><em>Semester:</em></div>
                 </div>
@@ -871,7 +882,7 @@ Année académique: ${student["ANNEE ACADÉMIQUE"]}`;
                     <tbody>
                         ${generateCourseRows()}
                         <tr class="table-summary">
-                            <td colspan="${(student.DISPLAY_SESSIONS ? 10 : 9) - (config?.hideSemesterColumn ? 1 : 0)}">&nbsp;</td>
+                            <td colspan="${student.DISPLAY_SESSIONS ? 10 : 9}">&nbsp;</td>
                         </tr>
                         <tr class="table-footer">
                             <td class="summary-label">RELEVE NIVEAU</td>
