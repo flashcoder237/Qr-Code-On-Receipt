@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useHotkeys } from "react-hotkeys-hook";
-import { Eye, Download, AlertCircle, CheckCircle, Users, RefreshCw, AlertTriangle, Shield, ShieldCheck, Info, Clock } from "lucide-react";
+import { Eye, Download, AlertCircle, CheckCircle, Users, RefreshCw, AlertTriangle, Shield, ShieldCheck, Info, Clock, Archive, FileText, Files, Settings } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { useNotifications } from "@/components/ui/notification-system";
 import { useDocumentHistory } from "@/components/organisms/document-history/DocumentHistoryManager";
@@ -66,6 +66,11 @@ export const ReleveGenerator: React.FC = () => {
 
   // NOUVEAU: Option pour activer/désactiver le chiffrement compact pour les relevés
   const [encryptionEnabled, setEncryptionEnabled] = useLocalStorage("releve-encryption-enabled", true);
+  
+  // Nouvelles options d'export
+  const [exportFormat, setExportFormat] = useLocalStorage<'zip' | 'individual' | 'single'>('releve-export-format', 'zip');
+  const [useCompression, setUseCompression] = useLocalStorage('releve-use-compression', true);
+  const [nameFormat, setNameFormat] = useLocalStorage<'default' | 'detailed'>('releve-name-format', 'detailed');
 
   // Hooks pour notifications et historique
   const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotifications();
@@ -203,6 +208,8 @@ export const ReleveGenerator: React.FC = () => {
     state: processingState,
     processBatch,
     generateZipFile,
+    downloadFiles,
+    downloadSinglePDF,
     cancel: cancelProcessing,
     resetState: resetProcessing,
   } = useProcessing();
@@ -458,7 +465,7 @@ export const ReleveGenerator: React.FC = () => {
           
           if (columnName && rawStudent[columnName] !== undefined && rawStudent[columnName] !== null && rawStudent[columnName] !== '') {
             const gradeValue = rawStudent[columnName];
-            let grade = parseFloat(gradeValue);
+            const grade = parseFloat(gradeValue);
             
             if (isNaN(grade)) {
               console.warn(`Note invalide pour ${ec.name}: ${gradeValue}`);
@@ -784,16 +791,48 @@ export const ReleveGenerator: React.FC = () => {
         (data) => window.ipcRenderer.invoke('generate-transcript-pdf', data)
       );
 
-      const zipBlob = await generateZipFile(results, encryptionEnabled ? 'releve_compact' : 'releve');
-      const url = URL.createObjectURL(zipBlob);
+      const prefix = encryptionEnabled ? 'releve_compact' : 'releve';
       
-      const link = document.createElement("a");
-      link.href = url;
-      const fileName = `releves_${new Date().toISOString().split('T')[0]}${encryptionEnabled ? '_compact' : ''}.zip`;
-      link.download = fileName;
-      link.click();
+      // Gestion des différents formats d'export
+      try {
+        switch (exportFormat) {
+          case 'individual':
+            await downloadFiles(results, prefix, nameFormat);
+            notifySuccess("Export terminé", `${results.size} fichiers téléchargés individuellement`);
+            break;
+            
+          case 'single':
+            await downloadSinglePDF(results, prefix, nameFormat);
+            notifySuccess("Export terminé", "PDF combiné téléchargé avec succès");
+            break;
+            
+          case 'zip':
+          default:
+            const zipBlob = await generateZipFile(results, prefix, {
+              useCompression,
+              nameFormat
+            });
+            const url = URL.createObjectURL(zipBlob);
+            
+            const link = document.createElement("a");
+            link.href = url;
+            const timestamp = new Date().toISOString().split('T')[0];
+            const compressionSuffix = useCompression ? '' : '_nocompress';
+            const encryptionSuffix = encryptionEnabled ? '_compact' : '';
+            const fileName = `releves_${timestamp}${encryptionSuffix}${compressionSuffix}.zip`;
+            link.download = fileName;
+            link.click();
+            
+            URL.revokeObjectURL(url);
+            notifySuccess("Export terminé", `Archive ZIP ${useCompression ? 'compressée' : 'non compressée'} téléchargée`);
+            break;
+        }
+      } catch (downloadError) {
+        console.error('Erreur lors du téléchargement:', downloadError);
+        notifyError("Erreur d'export", "Impossible de télécharger les fichiers");
+        throw downloadError;
+      }
       
-      URL.revokeObjectURL(url);
       setError(null);
       
       // Ajouter les documents à l'historique - VERSION CORRIGÉE
@@ -1025,6 +1064,125 @@ export const ReleveGenerator: React.FC = () => {
                           QR codes compacts avec chiffrement AES-128-ECB basé sur le matricule
                         </div>
                       )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Options d'Export - Version compacte */}
+                  <Card className="border-orange-200 bg-orange-50">
+                    <CardContent className="p-3">
+                      <div className="space-y-3">
+                        {/* En-tête avec icône */}
+                        <div className="flex items-center gap-2">
+                          <Settings className="h-4 w-4 text-orange-600" />
+                          <h4 className="font-medium text-orange-900 text-sm">Options d'Export</h4>
+                        </div>
+
+                        {/* Format d'export + Nommage en une ligne */}
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-1">
+                            <Label className="text-xs font-medium text-orange-800 min-w-0">Format:</Label>
+                            <div className="flex gap-1">
+                              <Button
+                                variant={exportFormat === 'zip' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setExportFormat('zip')}
+                                className="h-7 px-2 text-xs"
+                                title="Archive ZIP"
+                              >
+                                <Archive className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant={exportFormat === 'individual' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setExportFormat('individual')}
+                                className="h-7 px-2 text-xs"
+                                title="Fichiers séparés"
+                              >
+                                <Files className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant={exportFormat === 'single' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setExportFormat('single')}
+                                className="h-7 px-2 text-xs"
+                                title="PDF unique"
+                              >
+                                <FileText className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <Label className="text-xs font-medium text-orange-800 min-w-0">Noms:</Label>
+                            <div className="flex gap-1">
+                              <Button
+                                variant={nameFormat === 'default' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setNameFormat('default')}
+                                className="h-7 px-2 text-xs"
+                                title="Standard: NOM_PRENOM_MATRICULE"
+                              >
+                                Standard
+                              </Button>
+                              <Button
+                                variant={nameFormat === 'detailed' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setNameFormat('detailed')}
+                                className="h-7 px-2 text-xs"
+                                title="Détaillé: NOM_PRENOM_MATRICULE_NIVEAU_SEMESTRE_FILIERE"
+                              >
+                                Détaillé
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Compression ZIP (uniquement si ZIP sélectionné) */}
+                        {exportFormat === 'zip' && (
+                          <div className="flex items-center justify-between bg-orange-100 px-2 py-1 rounded text-xs">
+                            <Label htmlFor="compression-toggle" className="text-orange-900 font-medium flex items-center gap-1">
+                              <Archive className="h-3 w-3" />
+                              Compression ZIP
+                            </Label>
+                            <Switch
+                              id="compression-toggle"
+                              checked={useCompression}
+                              onCheckedChange={setUseCompression}
+                              className="scale-75"
+                            />
+                          </div>
+                        )}
+
+                        {/* Aperçu compact avec badges */}
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-orange-700 font-medium">Aperçu:</span>
+                          <div className="flex items-center gap-1">
+                            {exportFormat === 'zip' && (
+                              <>
+                                <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                                  <Archive className="h-2.5 w-2.5 mr-1" />
+                                  ZIP {useCompression ? '' : '(non compressé)'}
+                                </Badge>
+                              </>
+                            )}
+                            {exportFormat === 'individual' && (
+                              <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                                <Files className="h-2.5 w-2.5 mr-1" />
+                                Fichiers séparés
+                              </Badge>
+                            )}
+                            {exportFormat === 'single' && (
+                              <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                                <FileText className="h-2.5 w-2.5 mr-1" />
+                                PDF combiné
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="h-5 px-1.5 text-xs">
+                              {nameFormat === 'detailed' ? 'Noms détaillés' : 'Noms standards'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
 

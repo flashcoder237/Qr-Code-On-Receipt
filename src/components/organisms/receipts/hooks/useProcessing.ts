@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import JSZip from 'jszip';
+import { PDFDocument } from 'pdf-lib';
 
 interface ProcessingState {
   isLoading: boolean;
@@ -31,6 +32,63 @@ export const useProcessing = (options: UseProcessingOptions = {}) => {
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Fonction utilitaire pour générer des noms de fichiers significatifs
+  const generateFileName = (item: any, prefix: string, nameFormat: 'default' | 'detailed'): string => {
+    try {
+      const student = item.student || item;
+      const matricule = student.MATRICULE || 'UNKNOWN';
+      const nom = student.NOM || 'Unknown';
+      const prenom = student.PRENOM || 'Unknown';
+      const semestre = student.SEMESTRE || 'S1';
+      const niveau = student.NIVEAU || 'L1';
+      const filiere = student.FILIERE || 'UNKNOWN';
+      
+      // Nettoyer les noms pour éviter les caractères problématiques
+      const cleanNom = nom.replace(/[^a-zA-Z0-9\-_]/g, '').toUpperCase();
+      const cleanPrenom = prenom.replace(/[^a-zA-Z0-9\-_]/g, '').toUpperCase();
+      const cleanFiliere = filiere.replace(/[^a-zA-Z0-9\-_]/g, '').toUpperCase();
+      
+      if (nameFormat === 'detailed') {
+        return `${prefix}_${cleanNom}_${cleanPrenom}_${matricule}_${niveau}_${semestre}_${cleanFiliere}.pdf`;
+      } else {
+        return `${prefix}_${cleanNom}_${cleanPrenom}_${matricule}.pdf`;
+      }
+    } catch (error) {
+      console.warn('Erreur lors de la génération du nom de fichier:', error);
+      return `${prefix}_${Date.now()}.pdf`;
+    }
+  };
+
+  // Fonction pour combiner tous les PDFs en un seul
+  const combinePDFsIntoSingle = async (
+    files: Map<string, Uint8Array>,
+    prefix: string,
+    nameFormat: 'default' | 'detailed'
+  ): Promise<Blob> => {
+    try {
+      const combinedPdf = await PDFDocument.create();
+      
+      for (const [key, pdfBytes] of files) {
+        try {
+          const pdfDoc = await PDFDocument.load(pdfBytes);
+          const pages = await combinedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+          pages.forEach((page) => combinedPdf.addPage(page));
+        } catch (error) {
+          console.error('Erreur lors de l\'ajout d\'un PDF:', error);
+        }
+      }
+      
+      const combinedBytes = await combinedPdf.save();
+      const timestamp = new Date().toISOString().split('T')[0];
+      const fileName = `${prefix}_combined_${timestamp}.pdf`;
+      
+      return new Blob([combinedBytes], { type: 'application/pdf' });
+    } catch (error) {
+      console.error('Erreur lors de la combinaison des PDFs:', error);
+      throw new Error('Impossible de combiner les PDFs');
+    }
+  };
 
   const resetState = () => {
     setState({
@@ -115,14 +173,30 @@ export const useProcessing = (options: UseProcessingOptions = {}) => {
 
   const generateZipFile = async (
     files: Map<string, Uint8Array>,
-    prefix = 'document'
+    prefix = 'document',
+    options: {
+      useCompression?: boolean;
+      generateSinglePDF?: boolean;
+      nameFormat?: 'default' | 'detailed';
+    } = {}
   ): Promise<Blob> => {
+    const {
+      useCompression = true,
+      generateSinglePDF = false,
+      nameFormat = 'default'
+    } = options;
+
+    if (generateSinglePDF) {
+      // Pour un seul PDF, on combine tous les PDF en un seul
+      return combinePDFsIntoSingle(files, prefix, nameFormat);
+    }
+
     const zip = new JSZip();
     
     files.forEach((content, key) => {
       try {
         const item = JSON.parse(key);
-        const fileName = `${prefix}_${item.MATRICULE || item.id || Date.now()}.pdf`;
+        const fileName = generateFileName(item, prefix, nameFormat);
         zip.file(fileName, content);
       } catch {
         const fileName = `${prefix}_${Date.now()}.pdf`;
@@ -132,8 +206,8 @@ export const useProcessing = (options: UseProcessingOptions = {}) => {
 
     return zip.generateAsync({
       type: 'blob',
-      compression: 'DEFLATE',
-      compressionOptions: { level: 6 }
+      compression: useCompression ? 'DEFLATE' : 'STORE',
+      compressionOptions: useCompression ? { level: 6 } : { level: 0 }
     });
   };
 
@@ -144,10 +218,62 @@ export const useProcessing = (options: UseProcessingOptions = {}) => {
     }
   };
 
+  // Fonction pour télécharger plusieurs fichiers séparément (sans ZIP)
+  const downloadFiles = async (
+    files: Map<string, Uint8Array>,
+    prefix = 'document',
+    nameFormat: 'default' | 'detailed' = 'default'
+  ): Promise<void> => {
+    files.forEach((content, key) => {
+      try {
+        const item = JSON.parse(key);
+        const fileName = generateFileName(item, prefix, nameFormat);
+        const blob = new Blob([content], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        link.click();
+        
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Erreur lors du téléchargement du fichier:', error);
+      }
+    });
+  };
+
+  // Fonction pour télécharger un PDF unique combiné
+  const downloadSinglePDF = async (
+    files: Map<string, Uint8Array>,
+    prefix = 'document',
+    nameFormat: 'default' | 'detailed' = 'default'
+  ): Promise<void> => {
+    try {
+      const combinedBlob = await combinePDFsIntoSingle(files, prefix, nameFormat);
+      const url = URL.createObjectURL(combinedBlob);
+      
+      const timestamp = new Date().toISOString().split('T')[0];
+      const fileName = `${prefix}_combined_${timestamp}.pdf`;
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur lors du téléchargement du PDF combiné:', error);
+      throw error;
+    }
+  };
+
   return {
     state,
     processBatch,
     generateZipFile,
+    downloadFiles,
+    downloadSinglePDF,
     cancel,
     resetState
   };

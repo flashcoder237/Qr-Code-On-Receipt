@@ -25,6 +25,8 @@ import { testCompactEncryption, createCompactDataFromStudent, getCompactEncrypti
 import { validateExcelColumns, ValidationResult } from "@/lib/validators/excel-columns";
 import { validateStudentForAttestation, filterEligibleStudents, validateSelectedStudents, calculateAverageStatistics } from "@/lib/validation/average-validation";
 import { Label } from "@/components/ui/label";
+import { Download, Archive, FileText as FileTextIcon, PackageOpen, Zap } from "lucide-react";
+import { useProcessing } from "../receipts/hooks/useProcessing";
 
 export const AttestationGenerator: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"generator" | "settings" | "theme" | "presets" | "selection">("generator");
@@ -34,6 +36,17 @@ export const AttestationGenerator: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [selectedStudentMatricules, setSelectedStudentMatricules] = useState<string[]>([]);
+  
+  // Options d'export
+  const [exportFormat, setExportFormat] = useLocalStorage("attestation-export-format", "zip");
+  const [useCompression, setUseCompression] = useLocalStorage("attestation-use-compression", true);
+  
+  // Hook pour le traitement des fichiers
+  const {
+    downloadFiles,
+    downloadSinglePDF,
+    generateZipFile
+  } = useProcessing();
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   
   // Option pour activer/désactiver le chiffrement compact
@@ -238,6 +251,30 @@ export const AttestationGenerator: React.FC = () => {
     }
   };
 
+
+  // Fonction pour préparer les données d'un étudiant pour l'IPC
+  const prepareAttestationData = (student: StudentExcelRecord) => {
+    const sanitizedStudent = sanitizeStudentData(student);
+    
+    const safePosition = position && typeof position.x === 'number' && typeof position.y === 'number' 
+      ? position 
+      : { x: 470, y: 220 };
+
+    return {
+      student: sanitizedStudent,
+      settings: {
+        ...schoolSettings,
+        theme: attestationTheme,
+      },
+      options: {
+        demoMode: isDemoMode,
+        qrCodePosition: safePosition,
+        theme: attestationTheme,
+        encryptionEnabled: encryptionEnabled
+      }
+    };
+  };
+
   const generateAttestations = async (studentsToGenerate?: StudentExcelRecord[]) => {
     const dataToProcess = studentsToGenerate || 
       (selectedStudentMatricules.length > 0 
@@ -294,14 +331,6 @@ export const AttestationGenerator: React.FC = () => {
       setError(null);
       setProcessingProgress(0);
       
-      const safePosition = position && typeof position.x === 'number' && typeof position.y === 'number' 
-        ? position 
-        : { x: 470, y: 220 };
-      
-      const zip = new JSZip();
-      let processedCount = 0;
-      let successCount = 0;
-
       // Analyser la taille totale estimée
       if (encryptionEnabled && eligibleStudents.length > 0) {
         const sampleAnalysis = getQRCodeSizeEstimate(eligibleStudents[0], 'attestation', true);
@@ -314,111 +343,99 @@ export const AttestationGenerator: React.FC = () => {
           );
         }
       }
-
+      
+      // Préparer les données pour tous les étudiants
+      const preparedData = new Map();
       for (const student of eligibleStudents) {
         try {
-          console.log(`🔄 Génération pour ${student.MATRICULE} (${student.NOM} ${student.PRENOM})`);
+          const attestationData = prepareAttestationData(student);
+          const fileName = `${student.MATRICULE}_Attestation${encryptionEnabled ? '_Compact' : ''}.pdf`;
+          preparedData.set(fileName, attestationData);
+        } catch (prepError) {
+          console.error(`Erreur de préparation pour l'étudiant ${student.MATRICULE}:`, prepError);
+          notifyError("Erreur de préparation", `Impossible de préparer les données pour ${student.NOM} ${student.PRENOM}`);
+          throw prepError;
+        }
+      }
+      
+      // Utiliser le système de traitement par batch exactement comme les relevés
+      const results = new Map();
+      let processedCount = 0;
+      
+      for (const [fileName, data] of preparedData.entries()) {
+        try {
+          const pdfBytes = await window.ipcRenderer.invoke('generate-attestation-pdf', data);
+          results.set(fileName, pdfBytes);
           
-          // Sanitiser les données de l'étudiant
-          const sanitizedStudent = sanitizeStudentData(student);
-          console.log('🧹 Données étudiant sanitisées');
-          
-          // Vérifier encore une fois l'éligibilité avant génération
-          const finalValidation = validateStudentForAttestation(sanitizedStudent);
-          if (!finalValidation.isEligible) {
-            console.warn(`⚠️ Étudiant ${sanitizedStudent.MATRICULE} non éligible, ignoré`);
-            continue;
-          }
-          
-          // Générer le QR code compact avec ou sans chiffrement selon la configuration
-          let qrCodeBase64 = '';
-          try {
-            console.log(`🔄 Génération QR compact pour ${sanitizedStudent.MATRICULE} (Chiffrement: ${encryptionEnabled})`);
-            qrCodeBase64 = await generateQrCodeBase64(sanitizedStudent, 'attestation', encryptionEnabled);
-            
-            if (encryptionEnabled) {
-              console.log('🔐 QR Code compact généré avec chiffrement (clé: matricule)');
-              
-              // Analyser la taille pour cet étudiant spécifique
-              const studentSizeAnalysis = getQRCodeSizeEstimate(sanitizedStudent, 'attestation', true);
-              console.log(`📊 Taille QR pour ${sanitizedStudent.MATRICULE}:`, studentSizeAnalysis.totalContentLength, 'caractères');
-            } else {
-              console.log('📋 QR Code généré sans chiffrement');
-            }
-          } catch (qrError) {
-            console.error("Erreur lors de la génération du QR code:", qrError);
-            notifyWarning("QR Code", `Erreur QR pour ${sanitizedStudent.NOM} ${sanitizedStudent.PRENOM}`);
-            // Continuer sans QR code
-          }
-
-          const params = {
-            student: sanitizedStudent,
-            settings: {
-              ...schoolSettings,
-              theme: attestationTheme,
-            },
-            options: {
-              demoMode: isDemoMode,
-              qrCodePosition: safePosition,
-              theme: attestationTheme,
-              qrCodeImage: qrCodeBase64,
-              encryptionEnabled: encryptionEnabled
-            }
-          };
-          
-          console.log('📄 Génération du PDF...');
-          const pdfBytes = await window.ipcRenderer.invoke('generate-attestation-pdf', params);
-          
-          const fileName = `${sanitizedStudent.MATRICULE}_Attestation${encryptionEnabled ? '_Compact' : ''}.pdf`;
-          zip.file(fileName, pdfBytes);
-          
-          // Ajouter à l'historique avec information sur le chiffrement
+          // Ajouter à l'historique
+          const student = data.student;
           addDocumentRecord({
             type: 'attestation',
-            studentName: `${sanitizedStudent.NOM} ${sanitizedStudent.PRENOM}`,
-            studentMatricule: sanitizedStudent.MATRICULE,
-            academicYear: sanitizedStudent["ANNEE ACADEMIQUE"],
-            parcours: sanitizedStudent.PARCOURS,
-            speciality: sanitizedStudent.SPECIALITE,
-            average: typeof sanitizedStudent.MOYENNE === 'number' ? sanitizedStudent.MOYENNE : parseFloat(String(sanitizedStudent.MOYENNE)) || undefined,
-            grade: sanitizedStudent.GRADE,
-            mention: sanitizedStudent.MENTION,
+            studentName: `${student.NOM} ${student.PRENOM}`,
+            studentMatricule: student.MATRICULE,
+            academicYear: student["ANNEE ACADEMIQUE"],
+            parcours: student.PARCOURS,
+            speciality: student.SPECIALITE,
+            average: typeof student.MOYENNE === 'number' ? student.MOYENNE : parseFloat(String(student.MOYENNE)) || undefined,
+            grade: student.GRADE,
+            mention: student.MENTION,
             fileName: fileName,
             status: 'generated',
             additionalInfo: encryptionEnabled ? 'Chiffrement compact activé' : 'Sans chiffrement'
           });
           
-          successCount++;
-          console.log(`✅ PDF généré avec succès pour ${sanitizedStudent.MATRICULE}`);
-          
         } catch (err) {
-          console.error(`Erreur lors de la génération de l'attestation pour ${student.MATRICULE}`, err);
-          notifyError("Erreur", `Échec de génération pour ${student.NOM} ${student.PRENOM}`);
+          console.error(`Erreur lors de la génération de l'attestation pour ${fileName}`, err);
+          notifyError("Erreur", `Échec de génération pour ${fileName}`);
         }
         
         processedCount++;
-        setProcessingProgress((processedCount / eligibleStudents.length) * 100);
+        setProcessingProgress((processedCount / preparedData.size) * 100);
       }
 
-      if (successCount > 0) {
-        const zipContent = await zip.generateAsync({ type: "blob" });
-        const url = window.URL.createObjectURL(zipContent);
-        const link = document.createElement("a");
-        link.href = url;
-        const timestamp = new Date().toISOString().split('T')[0];
-        const zipName = `attestations_${timestamp}${encryptionEnabled ? '_compact' : ''}.zip`;
-        link.download = zipName;
-        link.click();
-        window.URL.revokeObjectURL(url);
-
-        const successMessage = `${successCount} attestation(s) générée(s) avec succès ${encryptionMessage}`;
-        notifySuccess("Génération terminée", successMessage);
+      const prefix = encryptionEnabled ? 'attestation_compact' : 'attestation';
+      
+      // Gestion des différents formats d'export - EXACTEMENT comme les relevés
+      try {
+        switch (exportFormat) {
+          case 'individual':
+            await downloadFiles(results, prefix, 'descriptive');
+            notifySuccess("Export terminé", `${results.size} fichiers téléchargés individuellement`);
+            break;
+            
+          case 'single':
+            await downloadSinglePDF(results, prefix, 'descriptive');
+            notifySuccess("Export terminé", "PDF combiné téléchargé avec succès");
+            break;
+            
+          case 'zip':
+          default:
+            const zipBlob = await generateZipFile(results, prefix, {
+              useCompression,
+              nameFormat: 'descriptive'
+            });
+            const url = URL.createObjectURL(zipBlob);
+            
+            const link = document.createElement("a");
+            link.href = url;
+            const timestamp = new Date().toISOString().split('T')[0];
+            const compressionSuffix = useCompression ? '' : '_nocompress';
+            const encryptionSuffix = encryptionEnabled ? '_compact' : '';
+            const fileName = `attestations_${timestamp}${encryptionSuffix}${compressionSuffix}.zip`;
+            link.download = fileName;
+            link.click();
+            
+            URL.revokeObjectURL(url);
+            notifySuccess("Export terminé", `Archive ZIP ${useCompression ? 'compressée' : 'non compressée'} téléchargée`);
+            break;
+        }
+      } catch (downloadError) {
+        console.error('Erreur lors du téléchargement:', downloadError);
+        notifyError("Erreur d'export", "Impossible de télécharger les fichiers");
+        throw downloadError;
       }
       
-      if (successCount < eligibleStudents.length) {
-        const errorCount = eligibleStudents.length - successCount;
-        notifyWarning("Génération incomplète", `${errorCount} attestation(s) ont échoué`);
-      }
+      setError(null);
       
     } catch (err) {
       console.error("Erreur lors de la génération des attestations", err);
@@ -779,6 +796,51 @@ export const AttestationGenerator: React.FC = () => {
                 </Card>
               )}
 
+              {/* Options d'export */}
+              {excelData.length > 0 && (
+                <Card className="bg-gray-50 border-gray-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-gray-900 mb-0">Options d'Export</h4>
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2">
+                          <Archive className="h-4 w-4 text-gray-600" />
+                          <Label htmlFor="export-format" className="text-sm font-medium">Format:</Label>
+                          <select
+                            id="export-format"
+                            value={exportFormat}
+                            onChange={(e) => setExportFormat(e.target.value)}
+                            className="text-sm border rounded px-2 py-1"
+                          >
+                            <option value="zip">ZIP</option>
+                            <option value="individual">Fichiers individuels</option>
+                            <option value="single">PDF unique</option>
+                          </select>
+                        </div>
+                        
+                        {exportFormat === 'zip' && (
+                          <div className="flex items-center space-x-2">
+                            <PackageOpen className="h-4 w-4 text-gray-600" />
+                            <Label className="text-sm">Compression:</Label>
+                            <input
+                              type="checkbox"
+                              checked={useCompression}
+                              onChange={(e) => setUseCompression(e.target.checked)}
+                              className="rounded"
+                            />
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Zap className="h-4 w-4 mr-1" />
+                          {exportFormat === 'single' ? "PDF unique" : exportFormat === 'individual' ? "Séparés" : useCompression ? "Compressé" : "Non compressé"}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <div className="flex justify-end">
                 <Button 
                   onClick={() => generateAttestations()} 
@@ -792,7 +854,7 @@ export const AttestationGenerator: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <FileDown className="mr-2 h-4 w-4" />
+                      <Download className="mr-2 h-4 w-4" />
                       {encryptionEnabled && <ShieldCheck className="mr-1 h-3 w-3" />}
                       {selectedStudentMatricules.length > 0 
                         ? `Générer (${selectedStudentMatricules.length})` 
@@ -807,16 +869,61 @@ export const AttestationGenerator: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="selection">
-          <StudentSelector
-            students={eligibilityData.eligible} // Ne montrer que les étudiants éligibles
-            selectedStudents={selectedStudentMatricules}
-            onSelectionChange={handleStudentSelectionChange}
-            onPreview={handlePreviewStudent}
-            onGenerateSelected={generateAttestations}
-            documentType="attestation"
-            isLoading={isLoading}
-            additionalInfo={`${encryptionEnabled ? "Chiffrement compact activé" : "Sans chiffrement"} • ${eligibilityData.ineligibleCount} non éligible(s) masqué(s)`}
-          />
+          <div className="space-y-4">
+            {/* Options d'export pour la sélection */}
+            <Card className="bg-gray-50 border-gray-200">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-gray-900 mb-0">Options d'Export</h4>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <Archive className="h-4 w-4 text-gray-600" />
+                      <Label htmlFor="selection-export-format" className="text-sm font-medium">Format:</Label>
+                      <select
+                        id="selection-export-format"
+                        value={exportFormat}
+                        onChange={(e) => setExportFormat(e.target.value)}
+                        className="text-sm border rounded px-2 py-1"
+                      >
+                        <option value="zip">ZIP</option>
+                        <option value="individual">Fichiers individuels</option>
+                        <option value="single">PDF unique</option>
+                      </select>
+                    </div>
+                    
+                    {exportFormat === 'zip' && (
+                      <div className="flex items-center space-x-2">
+                        <PackageOpen className="h-4 w-4 text-gray-600" />
+                        <Label className="text-sm">Compression:</Label>
+                        <input
+                          type="checkbox"
+                          checked={useCompression}
+                          onChange={(e) => setUseCompression(e.target.checked)}
+                          className="rounded"
+                        />
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Zap className="h-4 w-4 mr-1" />
+                      {exportFormat === 'single' ? "PDF unique" : exportFormat === 'individual' ? "Séparés" : useCompression ? "Compressé" : "Non compressé"}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <StudentSelector
+              students={eligibilityData.eligible} // Ne montrer que les étudiants éligibles
+              selectedStudents={selectedStudentMatricules}
+              onSelectionChange={handleStudentSelectionChange}
+              onPreview={handlePreviewStudent}
+              onGenerateSelected={generateAttestations}
+              documentType="attestation"
+              isLoading={isLoading}
+              additionalInfo={`${encryptionEnabled ? "Chiffrement compact activé" : "Sans chiffrement"} • ${eligibilityData.ineligibleCount} non éligible(s) masqué(s)`}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="presets">

@@ -251,6 +251,7 @@ export async function generateAttestationHTML(
         color: rgba(255, 0, 0, 0.15);
         font-family: Arial, sans-serif;
         letter-spacing: 20px;
+        
       }
       
       .demo-watermark::after {
@@ -355,7 +356,7 @@ export async function generateAttestationHTML(
 
       .header-row2 {
         text-align: center;
-        margin-bottom: ${theme.compactMode ? '5px' : '10px'};
+        margin-bottom: ${theme.compactMode ? '10px' : '15px'};
       }
       
       .header-row2 h1 {
@@ -383,7 +384,7 @@ export async function generateAttestationHTML(
 
       /* Contenu principal */
       .content {
-        margin: ${theme.compactMode ? '5px 0' : '10px 0'};
+        margin: ${theme.compactMode ? '16px 0' : '25px 0'};
       }
       
       .student-info, .list-nomination-header {
@@ -806,8 +807,8 @@ export async function generateAttestationHTML(
               <strong>Le Recteur de l'Université de Douala</strong><br>
               ${theme.showBilingualText ? '<em>The Rector of the University of Douala</em>' : ''}</p>
               <p id="to-nothidden" class="recteur-sign">
-              <strong>Le DOYEN</strong><br>
-              ${theme.showBilingualText ? '<em>The DEAN</em>' : ''}</p>
+              <strong>LE CHEF D'ÉTABLISSEMENT</strong><br>
+              ${theme.showBilingualText ? '<em>The Dean of the Faculty</em>' : ''}</p>
             </div>
         </div>
         

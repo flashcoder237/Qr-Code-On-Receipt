@@ -142,7 +142,7 @@ export const StudentSelector: React.FC<StudentSelectorProps> = ({
 
   // Filtrage et tri des étudiants avec validation des moyennes
   const filteredAndSortedStudents = useMemo(() => {
-    let filtered = students.filter(student => {
+    const filtered = students.filter(student => {
       const searchMatch = !searchTerm || 
         `${student.NOM} ${student.PRENOM} ${student.MATRICULE}`.toLowerCase()
           .includes(searchTerm.toLowerCase());

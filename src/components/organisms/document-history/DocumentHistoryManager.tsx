@@ -145,7 +145,7 @@ export const DocumentHistoryManager: React.FC = () => {
 
   // Filtrage des documents
   const filteredDocuments = useMemo(() => {
-    let filtered = documentHistory.filter(doc => {
+    const filtered = documentHistory.filter(doc => {
       const matchesSearch = 
         doc.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         doc.studentMatricule.toLowerCase().includes(searchTerm.toLowerCase()) ||
