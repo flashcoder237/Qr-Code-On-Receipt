@@ -83,6 +83,67 @@ export const AdvancedTranscriptConfigSchema = z.object({
   customCSS: z.string().optional(),
 });
 
+// Schéma pour la configuration d'espacement avancée
+export const AdvancedSpacingConfigSchema = z.object({
+  titleSpacing: z.number().min(0).max(50).optional(), // Espacement après le titre principal
+  subtitleSpacing: z.number().min(0).max(50).optional(), // Espacement après le sous-titre
+  headerSpacing: z.number().min(0).max(50).optional(), // Espacement après l'en-tête
+  studentInfoSpacing: z.number().min(0).max(50).optional(), // Espacement après les infos étudiant
+  tableSpacing: z.number().min(0).max(50).optional(), // Espacement entre les tableaux
+  paragraphSpacing: z.number().min(0).max(50).optional(), // Espacement entre paragraphes
+  sectionSpacing: z.number().min(0).max(50).optional(), // Espacement entre sections
+  footerSpacing: z.number().min(0).max(50).optional(), // Espacement avant le pied de page
+  signatureSpacing: z.number().min(0).max(50).optional(), // Espacement entre signatures
+});
+
+// Schéma pour la configuration de tableau avancée
+export const AdvancedTableConfigSchema = z.object({
+  // Couleurs avec support d'opacité
+  headerBackgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Couleur invalide").optional(),
+  headerBackgroundOpacity: z.number().min(0).max(1).optional(),
+  rowBackgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Couleur invalide").optional(),
+  rowBackgroundOpacity: z.number().min(0).max(1).optional(),
+  alternateRowBackgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Couleur invalide").optional(),
+  alternateRowBackgroundOpacity: z.number().min(0).max(1).optional(),
+  
+  // Bordures avancées
+  enableOuterBorder: z.boolean().optional(),
+  outerBorderStyle: z.enum(BORDER_STYLES).optional(),
+  outerBorderWidth: z.number().min(0).max(10).optional(),
+  outerBorderColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Couleur invalide").optional(),
+  
+  enableInnerBorder: z.boolean().optional(),
+  innerBorderStyle: z.enum(BORDER_STYLES).optional(),
+  innerBorderWidth: z.number().min(0).max(10).optional(),
+  innerBorderColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Couleur invalide").optional(),
+  
+  enableHeaderBorder: z.boolean().optional(),
+  headerBorderStyle: z.enum(BORDER_STYLES).optional(),
+  headerBorderWidth: z.number().min(0).max(10).optional(),
+  headerBorderColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Couleur invalide").optional(),
+  
+  // Effets visuels
+  enableShadow: z.boolean().optional(),
+  shadowColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Couleur invalide").optional(),
+  shadowOpacity: z.number().min(0).max(1).optional(),
+  shadowBlur: z.number().min(0).max(20).optional(),
+  shadowOffsetX: z.number().min(-10).max(10).optional(),
+  shadowOffsetY: z.number().min(-10).max(10).optional(),
+  
+  enableRadius: z.boolean().optional(),
+  borderRadius: z.number().min(0).max(20).optional(),
+  
+  // Padding et espacement
+  cellPadding: z.number().min(0).max(20).optional(),
+  headerCellPadding: z.number().min(0).max(20).optional(),
+  
+  // Styles de contenu
+  enableStriped: z.boolean().optional(),
+  enableHover: z.boolean().optional(),
+  hoverBackgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Couleur invalide").optional(),
+  hoverBackgroundOpacity: z.number().min(0).max(1).optional(),
+});
+
 // Configuration avancée pour les attestations
 export const AdvancedAttestationConfigSchema = z.object({
   // Polices
@@ -103,6 +164,12 @@ export const AdvancedAttestationConfigSchema = z.object({
   tableCellBorder: AdvancedBorderConfigSchema,
   signatureBorder: AdvancedBorderConfigSchema.optional(),
   
+  // NOUVEAU: Espacement avancé
+  spacing: AdvancedSpacingConfigSchema.optional(),
+  
+  // NOUVEAU: Configuration de tableau avancée
+  tableDesign: AdvancedTableConfigSchema.optional(),
+  
   // Options générales
   enableAdvancedTypography: z.boolean(),
   customCSS: z.string().optional(),
@@ -110,6 +177,8 @@ export const AdvancedAttestationConfigSchema = z.object({
 
 export type AdvancedFontConfig = z.infer<typeof AdvancedFontConfigSchema>;
 export type AdvancedBorderConfig = z.infer<typeof AdvancedBorderConfigSchema>;
+export type AdvancedSpacingConfig = z.infer<typeof AdvancedSpacingConfigSchema>;
+export type AdvancedTableConfig = z.infer<typeof AdvancedTableConfigSchema>;
 export type AdvancedTranscriptConfig = z.infer<typeof AdvancedTranscriptConfigSchema>;
 export type AdvancedAttestationConfig = z.infer<typeof AdvancedAttestationConfigSchema>;
 
@@ -336,5 +405,66 @@ export const defaultAdvancedAttestationConfig: AdvancedAttestationConfig = {
     style: "solid",
     width: 1,
     color: "#000000",
+  },
+
+  // NOUVEAU: Configuration d'espacement par défaut
+  spacing: {
+    titleSpacing: 8,        // 8px après le titre
+    subtitleSpacing: 6,     // 6px après le sous-titre
+    headerSpacing: 15,      // 15px après l'en-tête
+    studentInfoSpacing: 10, // 10px après les infos étudiant
+    tableSpacing: 8,        // 8px entre tableaux
+    paragraphSpacing: 6,    // 6px entre paragraphes
+    sectionSpacing: 20,     // 20px entre sections
+    footerSpacing: 15,      // 15px avant le pied de page
+    signatureSpacing: 25,   // 25px entre signatures
+  },
+
+  // NOUVEAU: Configuration de tableau par défaut
+  tableDesign: {
+    // Couleurs avec opacité
+    headerBackgroundColor: "#f0f0f0",
+    headerBackgroundOpacity: 1.0,
+    rowBackgroundColor: "#ffffff",
+    rowBackgroundOpacity: 1.0,
+    alternateRowBackgroundColor: "#f9f9f9",
+    alternateRowBackgroundOpacity: 1.0,
+    
+    // Bordures
+    enableOuterBorder: true,
+    outerBorderStyle: "solid",
+    outerBorderWidth: 1,
+    outerBorderColor: "#000000",
+    
+    enableInnerBorder: true,
+    innerBorderStyle: "solid",
+    innerBorderWidth: 1,
+    innerBorderColor: "#000000",
+    
+    enableHeaderBorder: true,
+    headerBorderStyle: "solid",
+    headerBorderWidth: 1,
+    headerBorderColor: "#000000",
+    
+    // Effets visuels
+    enableShadow: false,
+    shadowColor: "#000000",
+    shadowOpacity: 0.1,
+    shadowBlur: 4,
+    shadowOffsetX: 0,
+    shadowOffsetY: 2,
+    
+    enableRadius: false,
+    borderRadius: 0,
+    
+    // Espacement
+    cellPadding: 4,
+    headerCellPadding: 6,
+    
+    // Styles
+    enableStriped: false,
+    enableHover: false,
+    hoverBackgroundColor: "#e9ecef",
+    hoverBackgroundOpacity: 1.0,
   },
 };

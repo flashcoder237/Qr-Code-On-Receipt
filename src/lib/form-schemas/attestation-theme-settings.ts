@@ -271,7 +271,13 @@ export function getAdvancedAttestationConfig(theme: AttestationThemeSettingsPayl
   if (theme.advancedConfig) {
     return theme.advancedConfig;
   }
-  return convertAttestationThemeToAdvancedConfig(theme);
+  
+  // CORRECTION: Si pas de config avancée, retourner les valeurs par défaut avec enableAdvancedTypography = false
+  // pour préserver le style existant au lieu de le convertir
+  return {
+    ...defaultAdvancedAttestationConfig,
+    enableAdvancedTypography: false
+  };
 }
 
 // Export pour compatibilité

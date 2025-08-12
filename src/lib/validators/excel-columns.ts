@@ -195,6 +195,43 @@ export const ATTESTATION_OPTIONAL_COLUMNS: ColumnRequirement[] = [
     displayName: 'Email',
     required: false,
     alternatives: ['email', 'e-mail', 'mail', 'adresse email', 'courriel']
+  },
+  // NOUVEAU: Colonnes de traduction anglaise pour établissements faculty
+  {
+    key: 'DOMAINE_EN',
+    displayName: 'Domaine (anglais)',
+    required: false,
+    alternatives: ['domaine_en', 'domain_en', 'field_of_study_en']
+  },
+  {
+    key: 'PARCOURS_EN',
+    displayName: 'Parcours (anglais)',
+    required: false,
+    alternatives: ['parcours_en', 'course_en', 'program_en']
+  },
+  {
+    key: 'SPECIALITE_EN',
+    displayName: 'Spécialité (anglais)',
+    required: false,
+    alternatives: ['specialite_en', 'specialty_en', 'specialization_en']
+  },
+  {
+    key: 'OPTION_EN',
+    displayName: 'Option (anglais)',
+    required: false,
+    alternatives: ['option_en', 'minor_en', 'track_en']
+  },
+  {
+    key: 'FINALITE_EN',
+    displayName: 'Finalité (anglais)',
+    required: false,
+    alternatives: ['finalite_en', 'finality_en', 'degree_type_en']
+  },
+  {
+    key: 'MENTION_EN',
+    displayName: 'Mention (anglais)',
+    required: false,
+    alternatives: ['mention_en', 'honor_en', 'distinction_en']
   }
 ];
 
@@ -360,18 +397,72 @@ function findExactMatch(requirement: ColumnRequirement, availableColumns: string
 }
 
 /**
+ * NOUVEAU: Colonnes de traduction anglaise requises pour les établissements faculty
+ */
+export const FACULTY_REQUIRED_EN_COLUMNS: ColumnRequirement[] = [
+  {
+    key: 'DOMAINE_EN',
+    displayName: 'Domaine (anglais)',
+    required: true,
+    alternatives: ['domaine_en', 'domain_en', 'field_of_study_en']
+  },
+  {
+    key: 'PARCOURS_EN',
+    displayName: 'Parcours (anglais)',
+    required: true,
+    alternatives: ['parcours_en', 'course_en', 'program_en']
+  },
+  {
+    key: 'SPECIALITE_EN',
+    displayName: 'Spécialité (anglais)',
+    required: true,
+    alternatives: ['specialite_en', 'specialty_en', 'specialization_en']
+  },
+  {
+    key: 'OPTION_EN',
+    displayName: 'Option (anglais)',
+    required: true,
+    alternatives: ['option_en', 'minor_en', 'track_en']
+  },
+  {
+    key: 'FINALITE_EN',
+    displayName: 'Finalité (anglais)',
+    required: true,
+    alternatives: ['finalite_en', 'finality_en', 'degree_type_en']
+  },
+  {
+    key: 'MENTION_EN',
+    displayName: 'Mention (anglais)',
+    required: true,
+    alternatives: ['mention_en', 'honor_en', 'distinction_en']
+  }
+];
+
+/**
  * Valide les colonnes Excel pour un type de document donné
- * MISE À JOUR: Inclut maintenant la validation des sessions
+ * MISE À JOUR: Inclut maintenant la validation des sessions et validation conditionnelle faculty
  */
 export function validateExcelColumns(
   availableColumns: string[],
-  documentType: 'releve' | 'attestation'
+  documentType: 'releve' | 'attestation',
+  establishmentType?: string
 ): ValidationResult {
   console.log(`🔍 Validation des colonnes Excel pour ${documentType}`);
   console.log(`📋 Colonnes disponibles:`, availableColumns);
+  console.log(`🏛️ Type d'établissement: ${establishmentType || 'non spécifié'}`);
   
   const requiredColumns = documentType === 'releve' ? RELEVE_REQUIRED_COLUMNS : ATTESTATION_REQUIRED_COLUMNS;
   const optionalColumns = documentType === 'releve' ? RELEVE_OPTIONAL_COLUMNS : ATTESTATION_OPTIONAL_COLUMNS;
+
+  // NOUVEAU: Vérifier si c'est un établissement de type faculty
+  const isFacultyEstablishment = establishmentType?.toLowerCase().includes('faculty') || false;
+  
+  // NOUVEAU: Ajouter les colonnes de traduction anglaise comme requises pour les établissements faculty
+  let allRequiredColumns = [...requiredColumns];
+  if (isFacultyEstablishment && documentType === 'attestation') {
+    allRequiredColumns = [...requiredColumns, ...FACULTY_REQUIRED_EN_COLUMNS];
+    console.log(`🌐 Établissement Faculty détecté - Colonnes de traduction anglaise requises`);
+  }
   
   const missingRequired: ColumnRequirement[] = [];
   const missingOptional: ColumnRequirement[] = [];
@@ -382,11 +473,11 @@ export function validateExcelColumns(
   const sessionColumns = availableColumns.filter(col => col.startsWith('S/'));
   const sessionStats = detectSessionColumns(availableColumns);
 
-  console.log(`📝 Colonnes requises pour ${documentType}:`, requiredColumns.map(r => r.key));
+  console.log(`📝 Colonnes requises pour ${documentType}:`, allRequiredColumns.map(r => r.key));
   console.log(`🕐 Colonnes de session détectées: ${sessionStats.totalDetected} (${sessionStats.validFormat} valides, ${sessionStats.invalidFormat} invalides)`);
 
   // Vérifier les colonnes requises
-  requiredColumns.forEach(requirement => {
+  allRequiredColumns.forEach(requirement => {
     const exactMatch = findExactMatch(requirement, availableColumns);
     
     if (exactMatch) {
@@ -443,15 +534,24 @@ export function validateExcelColumns(
 
 /**
  * Génère un mapping automatique des colonnes Excel
- * MISE À JOUR: Exclut les colonnes de session du mapping automatique standard
+ * MISE À JOUR: Exclut les colonnes de session du mapping automatique standard et inclut les colonnes faculty
  */
 export function generateColumnMapping(
   availableColumns: string[],
-  documentType: 'releve' | 'attestation'
+  documentType: 'releve' | 'attestation',
+  establishmentType?: string
 ): { [key: string]: string } {
   const requiredColumns = documentType === 'releve' ? RELEVE_REQUIRED_COLUMNS : ATTESTATION_REQUIRED_COLUMNS;
   const optionalColumns = documentType === 'releve' ? RELEVE_OPTIONAL_COLUMNS : ATTESTATION_OPTIONAL_COLUMNS;
-  const allColumns = [...requiredColumns, ...optionalColumns];
+  
+  // NOUVEAU: Inclure les colonnes de traduction anglaise pour les établissements faculty
+  const isFacultyEstablishment = establishmentType?.toLowerCase().includes('faculty') || false;
+  let allColumns = [...requiredColumns, ...optionalColumns];
+  
+  if (isFacultyEstablishment && documentType === 'attestation') {
+    allColumns = [...requiredColumns, ...FACULTY_REQUIRED_EN_COLUMNS, ...optionalColumns];
+    console.log(`🌐 Génération mapping pour établissement Faculty - Colonnes EN incluses`);
+  }
   
   const mapping: { [key: string]: string } = {};
 

@@ -13,6 +13,7 @@ import { useLocalStorage } from "usehooks-ts";
 import { AttestationSettings } from "./AttestationSettings";
 import { AttestationThemeEditor } from "./AttestationThemeEditor";
 import { ThemePresetSelector } from "./ThemePresetSelector";
+import { AttestationExportOptions } from "./AttestationExportOptions";
 import { StudentSelector } from "../student-selector";
 import { FileUploader } from "@/components/organisms/receipts/ExcelUploader.tsx";
 import { FileDown, Loader2, Settings2, Table2, Palette, FileText, Eye, Wand2, Users, AlertCircle, CheckCircle, Shield, ShieldCheck, Info, TrendingUp, XCircle } from "lucide-react";
@@ -798,47 +799,23 @@ export const AttestationGenerator: React.FC = () => {
 
               {/* Options d'export */}
               {excelData.length > 0 && (
-                <Card className="bg-gray-50 border-gray-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-gray-900 mb-0">Options d'Export</h4>
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2">
-                          <Archive className="h-4 w-4 text-gray-600" />
-                          <Label htmlFor="export-format" className="text-sm font-medium">Format:</Label>
-                          <select
-                            id="export-format"
-                            value={exportFormat}
-                            onChange={(e) => setExportFormat(e.target.value)}
-                            className="text-sm border rounded px-2 py-1"
-                          >
-                            <option value="zip">ZIP</option>
-                            <option value="individual">Fichiers individuels</option>
-                            <option value="single">PDF unique</option>
-                          </select>
-                        </div>
-                        
-                        {exportFormat === 'zip' && (
-                          <div className="flex items-center space-x-2">
-                            <PackageOpen className="h-4 w-4 text-gray-600" />
-                            <Label className="text-sm">Compression:</Label>
-                            <input
-                              type="checkbox"
-                              checked={useCompression}
-                              onChange={(e) => setUseCompression(e.target.checked)}
-                              className="rounded"
-                            />
-                          </div>
-                        )}
-                        
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Zap className="h-4 w-4 mr-1" />
-                          {exportFormat === 'single' ? "PDF unique" : exportFormat === 'individual' ? "Séparés" : useCompression ? "Compressé" : "Non compressé"}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <AttestationExportOptions
+                  selectedStudents={selectedStudentMatricules.length > 0 
+                    ? excelData.filter(student => selectedStudentMatricules.includes(student.MATRICULE))
+                    : eligibilityData.eligibleStudents
+                  }
+                  schoolSettings={schoolSettings}
+                  attestationTheme={attestationTheme}
+                  exportFormat={exportFormat}
+                  useCompression={useCompression}
+                  encryptionEnabled={encryptionEnabled}
+                  onExportFormatChange={setExportFormat}
+                  onUseCompressionChange={setUseCompression}
+                  onEncryptionEnabledChange={setEncryptionEnabled}
+                  onExportData={() => generateAttestations()}
+                  onExportTemplate={() => {}}
+                  isLoading={isLoading}
+                />
               )}
 
               <div className="flex justify-end">

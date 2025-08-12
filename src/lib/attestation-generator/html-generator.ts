@@ -6,6 +6,7 @@ import { calculateMGP } from '../helpers/grades';
 import { AttestationThemeSettingsPayload, defaultAttestationTheme, getAdvancedAttestationConfig } from '../form-schemas/attestation-theme-settings';
 import { getQRCodeSizeEstimate } from '../helpers/qrcode';
 import { generateAdvancedAttestationCSS, combineStyles } from '../../utils/advanced-css-generator'; // NOUVEAU
+import { formatDateForAttestation } from '../../utils/date-formatter'; // NOUVEAU
 
 interface SchoolSettings {
   establishmentType: string;
@@ -83,35 +84,67 @@ export async function generateAttestationHTML(
   
   // Données de l'étudiant formatées
   const academicYear = sanitizedStudent["ANNEE ACADEMIQUE"];
-  const juryDate = sanitizedStudent["DATE JURY"];
+  const juryDateRaw = sanitizedStudent["DATE JURY"];
   const currentYear = new Date().getFullYear() % 100;
   
   const studentName = sanitizedStudent.NOM;
   const studentFirstname = sanitizedStudent.PRENOM;
   const studentFullName = `${studentName} ${studentFirstname}`;
   const matricule = sanitizedStudent.MATRICULE;
-  const birthDate = sanitizedStudent["DATE DE NAISSANCE"];
+  const birthDateRaw = sanitizedStudent["DATE DE NAISSANCE"];
   const birthPlace = sanitizedStudent["LIEU DE NAISSANCE"];
+
+  // NOUVEAU: Formatage des dates en lettres
+  const primaryLanguage = theme.primaryLanguage;
+  const juryDate = formatDateForAttestation(juryDateRaw, settings.establishmentType, primaryLanguage);
+  const birthDate = formatDateForAttestation(birthDateRaw, settings.establishmentType, primaryLanguage);
+
+  console.log(`📅 Dates formatées:`)
+  console.log(`   Date jury: "${juryDateRaw}" -> "${juryDate}"`);
+  console.log(`   Date naissance: "${birthDateRaw}" -> "${birthDate}"`);
+  console.log(`   Langue: ${primaryLanguage} (établissement: ${settings.establishmentType})`);
   
   const cycle = sanitizedStudent.CYCLE;
-  const fieldOfStudy = sanitizedStudent.DOMAINE;
-  const course = sanitizedStudent.PARCOURS;
-  const specialization = sanitizedStudent.SPECIALITE;
-  const option = sanitizedStudent.OPTION;
   
-  const credits = sanitizedStudent["TOTAL CREDIT"];
-  
-  // Récupérer la moyenne numérique
+  // Récupérer la moyenne numérique d'abord
   const numericAverage = typeof sanitizedStudent.MOYENNE === 'number' ? 
     sanitizedStudent.MOYENNE : parseFloat(String(sanitizedStudent.MOYENNE)) || 0;
+
+  // NOUVEAU: Support des traductions anglaises pour les établissements faculty
+  const isFacultyEstablishment = settings.establishmentType?.toLowerCase().includes('faculty');
+  const useEnglishTranslations = isFacultyEstablishment && theme.primaryLanguage === 'english';
+  
+  const fieldOfStudy = useEnglishTranslations && sanitizedStudent.DOMAINE_EN ? 
+    sanitizedStudent.DOMAINE_EN : sanitizedStudent.DOMAINE;
+  const course = useEnglishTranslations && sanitizedStudent.PARCOURS_EN ? 
+    sanitizedStudent.PARCOURS_EN : sanitizedStudent.PARCOURS;
+  const specialization = useEnglishTranslations && sanitizedStudent.SPECIALITE_EN ? 
+    sanitizedStudent.SPECIALITE_EN : sanitizedStudent.SPECIALITE;
+  const option = useEnglishTranslations && sanitizedStudent.OPTION_EN ? 
+    sanitizedStudent.OPTION_EN : sanitizedStudent.OPTION;
+
+  // NOUVEAU: Support des nouvelles traductions
+  const finality = useEnglishTranslations && sanitizedStudent.FINALITE_EN ? 
+    sanitizedStudent.FINALITE_EN : sanitizedStudent.FINALITE;
+  const mentionTranslated = useEnglishTranslations && sanitizedStudent.MENTION_EN ? 
+    sanitizedStudent.MENTION_EN : (sanitizedStudent.MENTION || calculateMention(numericAverage));
+
+  console.log(`🌐 Traductions anglaises:`)
+  console.log(`   Établissement faculty: ${isFacultyEstablishment}`);
+  console.log(`   Utiliser traductions EN: ${useEnglishTranslations}`);
+  console.log(`   Domaine: ${sanitizedStudent.DOMAINE} -> ${fieldOfStudy}`);
+  console.log(`   Parcours: ${sanitizedStudent.PARCOURS} -> ${course}`);
+  console.log(`   Spécialité: ${sanitizedStudent.SPECIALITE} -> ${specialization}`);
+  console.log(`   Finalité: ${sanitizedStudent.FINALITE} -> ${finality}`);
+  console.log(`   Mention: ${sanitizedStudent.MENTION} -> ${mentionTranslated}`);
+  
+  const credits = sanitizedStudent["TOTAL CREDIT"];
   
   // Calculer automatiquement les valeurs à partir de la moyenne
   const average = numericAverage.toFixed(2);
   const grade = calculateGrade(numericAverage);
-  const mention = calculateMention(numericAverage);
+  const mention = mentionTranslated; // Utiliser la mention traduite
   const mgp = calculateMGP(grade);
-  
-  const finality = sanitizedStudent["FINALITE"];
   
   console.log(`📊 Calculs automatiques pour ${studentFullName}:`);
   console.log(`   Moyenne: ${average}`);

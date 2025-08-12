@@ -1,5 +1,5 @@
-// src/lib/utils/advanced-css-generator.ts
-import { AdvancedFontConfig, AdvancedBorderConfig, AdvancedTranscriptConfig, AdvancedAttestationConfig } from "@/lib/form-schemas/advanced-typography";
+// src/utils/advanced-css-generator.ts
+import { AdvancedFontConfig, AdvancedBorderConfig, AdvancedSpacingConfig, AdvancedTableConfig, AdvancedTranscriptConfig, AdvancedAttestationConfig } from "@/lib/form-schemas/advanced-typography";
 
 /**
  * Génère le CSS pour une configuration de police avancée
@@ -49,6 +49,233 @@ export function generateFontCSS(fontConfig: AdvancedFontConfig, selector: string
   return `${selector} {
     ${styles.join(';\n    ')};
   }`;
+}
+
+/**
+ * Génère le CSS pour une configuration d'espacement avancée
+ */
+export function generateSpacingCSS(spacingConfig: AdvancedSpacingConfig): string {
+  const cssRules: string[] = [];
+
+  if (spacingConfig.titleSpacing !== undefined) {
+    cssRules.push(`.header-row2 h1, .main-title {
+      margin-bottom: ${spacingConfig.titleSpacing}px !important;
+    }`);
+  }
+
+  if (spacingConfig.subtitleSpacing !== undefined) {
+    cssRules.push(`.header-row2 h2, .subtitle {
+      margin-bottom: ${spacingConfig.subtitleSpacing}px !important;
+    }`);
+  }
+
+  if (spacingConfig.headerSpacing !== undefined) {
+    cssRules.push(`.header {
+      margin-bottom: ${spacingConfig.headerSpacing}px !important;
+    }`);
+  }
+
+  if (spacingConfig.studentInfoSpacing !== undefined) {
+    cssRules.push(`.student-info {
+      margin-bottom: ${spacingConfig.studentInfoSpacing}px !important;
+    }
+    
+    .student-info p {
+      margin-bottom: ${Math.round(spacingConfig.studentInfoSpacing * 0.6)}px !important;
+    }`);
+  }
+
+  if (spacingConfig.tableSpacing !== undefined) {
+    cssRules.push(`.table-container {
+      margin-bottom: ${spacingConfig.tableSpacing}px !important;
+    }`);
+  }
+
+  if (spacingConfig.paragraphSpacing !== undefined) {
+    cssRules.push(`.content p, .list-nomination-header p {
+      margin-bottom: ${spacingConfig.paragraphSpacing}px !important;
+    }`);
+  }
+
+  if (spacingConfig.sectionSpacing !== undefined) {
+    cssRules.push(`.content {
+      margin-top: ${spacingConfig.sectionSpacing}px !important;
+      margin-bottom: ${spacingConfig.sectionSpacing}px !important;
+    }
+    
+    .list-nomination-header {
+      margin-bottom: ${spacingConfig.sectionSpacing}px !important;
+    }`);
+  }
+
+  if (spacingConfig.footerSpacing !== undefined) {
+    cssRules.push(`.footer {
+      margin-top: ${spacingConfig.footerSpacing}px !important;
+    }`);
+  }
+
+  if (spacingConfig.signatureSpacing !== undefined) {
+    cssRules.push(`.signature {
+      margin-top: ${spacingConfig.signatureSpacing}px !important;
+    }
+    
+    .nomination-list-item {
+      margin-top: ${spacingConfig.signatureSpacing}px !important;
+    }
+    
+    .recteur-sign {
+      margin-top: ${spacingConfig.signatureSpacing}px !important;
+    }`);
+  }
+
+  return cssRules.join('\n\n');
+}
+
+/**
+ * Fonction utilitaire pour convertir une couleur hex en rgba avec opacité
+ */
+function hexToRgba(hex: string, opacity: number): string {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return hex;
+  const r = parseInt(result[1], 16);
+  const g = parseInt(result[2], 16);
+  const b = parseInt(result[3], 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
+/**
+ * Génère le CSS pour une configuration de tableau avancée
+ */
+export function generateTableDesignCSS(tableConfig: AdvancedTableConfig): string {
+  const cssRules: string[] = [];
+
+  // Styles généraux du tableau
+  const tableStyles: string[] = [];
+  
+  // Bordures extérieures
+  if (tableConfig.enableOuterBorder && tableConfig.outerBorderWidth && tableConfig.outerBorderStyle !== 'none') {
+    const borderColor = tableConfig.outerBorderColor || '#000000';
+    tableStyles.push(`border: ${tableConfig.outerBorderWidth}px ${tableConfig.outerBorderStyle} ${borderColor}`);
+  } else if (tableConfig.enableOuterBorder === false || tableConfig.outerBorderStyle === 'none') {
+    tableStyles.push('border: none');
+  }
+  
+  // Radius
+  if (tableConfig.enableRadius && tableConfig.borderRadius && tableConfig.borderRadius > 0) {
+    tableStyles.push(`border-radius: ${tableConfig.borderRadius}px`);
+    tableStyles.push('overflow: hidden'); // Pour que le radius fonctionne avec les cellules
+  }
+  
+  // Ombre
+  if (tableConfig.enableShadow && tableConfig.shadowBlur !== undefined) {
+    const shadowColor = tableConfig.shadowColor || '#000000';
+    const shadowOpacity = tableConfig.shadowOpacity || 0.1;
+    const offsetX = tableConfig.shadowOffsetX || 0;
+    const offsetY = tableConfig.shadowOffsetY || 2;
+    const blur = tableConfig.shadowBlur;
+    
+    const rgba = hexToRgba(shadowColor, shadowOpacity);
+    tableStyles.push(`box-shadow: ${offsetX}px ${offsetY}px ${blur}px ${rgba}`);
+  }
+
+  if (tableStyles.length > 0) {
+    cssRules.push(`table, .table-container table, .academic-table {
+      ${tableStyles.join(';\n  ')};
+    }`);
+  }
+
+  // Styles des en-têtes
+  const headerStyles: string[] = [];
+  
+  if (tableConfig.headerBackgroundColor) {
+    const opacity = tableConfig.headerBackgroundOpacity ?? 1;
+    const bgColor = opacity < 1 ? 
+      hexToRgba(tableConfig.headerBackgroundColor, opacity) : 
+      tableConfig.headerBackgroundColor;
+    headerStyles.push(`background-color: ${bgColor}`);
+  }
+  
+  if (tableConfig.headerCellPadding !== undefined) {
+    headerStyles.push(`padding: ${tableConfig.headerCellPadding}px`);
+  }
+  
+  // Bordures d'en-tête
+  if (tableConfig.enableHeaderBorder && tableConfig.headerBorderStyle !== 'none') {
+    const width = tableConfig.headerBorderWidth || 1;
+    const style = tableConfig.headerBorderStyle || 'solid';
+    const color = tableConfig.headerBorderColor || '#000000';
+    headerStyles.push(`border: ${width}px ${style} ${color}`);
+  } else if (tableConfig.enableHeaderBorder === false || tableConfig.headerBorderStyle === 'none') {
+    headerStyles.push('border: none');
+  }
+
+  if (headerStyles.length > 0) {
+    cssRules.push(`th, .academic-table th {
+      ${headerStyles.join(';\n  ')};
+    }`);
+  }
+
+  // Styles des cellules
+  const cellStyles: string[] = [];
+  
+  if (tableConfig.cellPadding !== undefined) {
+    cellStyles.push(`padding: ${tableConfig.cellPadding}px`);
+  }
+  
+  // Bordures intérieures
+  if (tableConfig.enableInnerBorder && tableConfig.innerBorderStyle !== 'none') {
+    const width = tableConfig.innerBorderWidth || 1;
+    const style = tableConfig.innerBorderStyle || 'solid';
+    const color = tableConfig.innerBorderColor || '#000000';
+    cellStyles.push(`border: ${width}px ${style} ${color}`);
+  } else if (tableConfig.enableInnerBorder === false || tableConfig.innerBorderStyle === 'none') {
+    cellStyles.push('border: none');
+  }
+
+  if (cellStyles.length > 0) {
+    cssRules.push(`td, .academic-table td {
+      ${cellStyles.join(';\n  ')};
+    }`);
+  }
+
+  // Couleur de fond des lignes
+  if (tableConfig.rowBackgroundColor) {
+    const opacity = tableConfig.rowBackgroundOpacity ?? 1;
+    const bgColor = opacity < 1 ? 
+      hexToRgba(tableConfig.rowBackgroundColor, opacity) : 
+      tableConfig.rowBackgroundColor;
+    
+    cssRules.push(`tbody tr, .academic-table tbody tr {
+      background-color: ${bgColor};
+    }`);
+  }
+
+  // Lignes alternées (striped)
+  if (tableConfig.enableStriped && tableConfig.alternateRowBackgroundColor) {
+    const opacity = tableConfig.alternateRowBackgroundOpacity ?? 1;
+    const bgColor = opacity < 1 ? 
+      hexToRgba(tableConfig.alternateRowBackgroundColor, opacity) : 
+      tableConfig.alternateRowBackgroundColor;
+    
+    cssRules.push(`tbody tr:nth-child(even), .academic-table tbody tr:nth-child(even) {
+      background-color: ${bgColor};
+    }`);
+  }
+
+  // Effet hover
+  if (tableConfig.enableHover && tableConfig.hoverBackgroundColor) {
+    const opacity = tableConfig.hoverBackgroundOpacity ?? 1;
+    const bgColor = opacity < 1 ? 
+      hexToRgba(tableConfig.hoverBackgroundColor, opacity) : 
+      tableConfig.hoverBackgroundColor;
+    
+    cssRules.push(`tbody tr:hover, .academic-table tbody tr:hover {
+      background-color: ${bgColor};
+      transition: background-color 0.2s ease;
+    }`);
+  }
+
+  return cssRules.join('\n\n');
 }
 
 /**
@@ -176,6 +403,24 @@ export function generateAdvancedAttestationCSS(config: AdvancedAttestationConfig
   }
 
   cssRules.push(...borderRules);
+
+  // NOUVEAU: Espacement avancé
+  if (config.spacing) {
+    const spacingCSS = generateSpacingCSS(config.spacing);
+    if (spacingCSS.trim() !== '') {
+      cssRules.push('/* Espacement avancé */');
+      cssRules.push(spacingCSS);
+    }
+  }
+
+  // NOUVEAU: Design de tableau avancé
+  if (config.tableDesign) {
+    const tableCSS = generateTableDesignCSS(config.tableDesign);
+    if (tableCSS.trim() !== '') {
+      cssRules.push('/* Design de tableau avancé */');
+      cssRules.push(tableCSS);
+    }
+  }
 
   // CSS personnalisé
   if (config.customCSS && config.customCSS.trim() !== '') {
@@ -342,4 +587,240 @@ th {
  */
 export function applyPreset(presetName: keyof typeof cssPresets): string {
   return cssPresets[presetName] || '';
+}
+
+/**
+ * Designs de tableau prédéfinis
+ */
+export const tableDesignPresets = {
+  // Design classique avec bordures simples
+  classic: {
+    headerBackgroundColor: "#f0f0f0",
+    headerBackgroundOpacity: 1.0,
+    rowBackgroundColor: "#ffffff",
+    rowBackgroundOpacity: 1.0,
+    alternateRowBackgroundColor: "#f9f9f9",
+    alternateRowBackgroundOpacity: 1.0,
+    
+    enableOuterBorder: true,
+    outerBorderStyle: "solid",
+    outerBorderWidth: 1,
+    outerBorderColor: "#000000",
+    
+    enableInnerBorder: true,
+    innerBorderStyle: "solid", 
+    innerBorderWidth: 1,
+    innerBorderColor: "#000000",
+    
+    enableHeaderBorder: true,
+    headerBorderStyle: "solid",
+    headerBorderWidth: 2,
+    headerBorderColor: "#000000",
+    
+    enableShadow: false,
+    enableRadius: false,
+    cellPadding: 6,
+    headerCellPadding: 8,
+    enableStriped: false,
+    enableHover: false,
+  },
+
+  // Design moderne avec ombres et arrondis
+  modern: {
+    headerBackgroundColor: "#667eea",
+    headerBackgroundOpacity: 1.0,
+    rowBackgroundColor: "#ffffff",
+    rowBackgroundOpacity: 1.0,
+    alternateRowBackgroundColor: "#f8f9fa",
+    alternateRowBackgroundOpacity: 1.0,
+    
+    enableOuterBorder: false,
+    enableInnerBorder: false,
+    enableHeaderBorder: false,
+    
+    enableShadow: true,
+    shadowColor: "#000000",
+    shadowOpacity: 0.15,
+    shadowBlur: 8,
+    shadowOffsetX: 0,
+    shadowOffsetY: 4,
+    
+    enableRadius: true,
+    borderRadius: 8,
+    
+    cellPadding: 12,
+    headerCellPadding: 16,
+    enableStriped: true,
+    enableHover: true,
+    hoverBackgroundColor: "#e3f2fd",
+    hoverBackgroundOpacity: 0.8,
+  },
+
+  // Design minimaliste sans bordures
+  minimal: {
+    headerBackgroundColor: "#ffffff",
+    headerBackgroundOpacity: 1.0,
+    rowBackgroundColor: "#ffffff",
+    rowBackgroundOpacity: 1.0,
+    alternateRowBackgroundColor: "#ffffff",
+    alternateRowBackgroundOpacity: 1.0,
+    
+    enableOuterBorder: false,
+    enableInnerBorder: false,
+    enableHeaderBorder: true,
+    headerBorderStyle: "solid",
+    headerBorderWidth: 2,
+    headerBorderColor: "#000000",
+    
+    enableShadow: false,
+    enableRadius: false,
+    
+    cellPadding: 8,
+    headerCellPadding: 8,
+    enableStriped: false,
+    enableHover: true,
+    hoverBackgroundColor: "#f5f5f5",
+    hoverBackgroundOpacity: 1.0,
+  },
+
+  // Design formel avec fond gris et bordures doubles
+  formal: {
+    headerBackgroundColor: "#e9ecef",
+    headerBackgroundOpacity: 1.0,
+    rowBackgroundColor: "#ffffff",
+    rowBackgroundOpacity: 1.0,
+    alternateRowBackgroundColor: "#f8f9fa",
+    alternateRowBackgroundOpacity: 1.0,
+    
+    enableOuterBorder: true,
+    outerBorderStyle: "double",
+    outerBorderWidth: 3,
+    outerBorderColor: "#000000",
+    
+    enableInnerBorder: true,
+    innerBorderStyle: "solid",
+    innerBorderWidth: 1,
+    innerBorderColor: "#6c757d",
+    
+    enableHeaderBorder: true,
+    headerBorderStyle: "double",
+    headerBorderWidth: 2,
+    headerBorderColor: "#000000",
+    
+    enableShadow: false,
+    enableRadius: false,
+    
+    cellPadding: 10,
+    headerCellPadding: 12,
+    enableStriped: true,
+    enableHover: false,
+  },
+
+  // Design élégant avec dégradés et effets subtils
+  elegant: {
+    headerBackgroundColor: "#6f42c1",
+    headerBackgroundOpacity: 0.9,
+    rowBackgroundColor: "#ffffff",
+    rowBackgroundOpacity: 1.0,
+    alternateRowBackgroundColor: "#f8f5ff",
+    alternateRowBackgroundOpacity: 0.6,
+    
+    enableOuterBorder: true,
+    outerBorderStyle: "solid",
+    outerBorderWidth: 1,
+    outerBorderColor: "#dee2e6",
+    
+    enableInnerBorder: true,
+    innerBorderStyle: "solid",
+    innerBorderWidth: 1,
+    innerBorderColor: "#e9ecef",
+    
+    enableHeaderBorder: false,
+    
+    enableShadow: true,
+    shadowColor: "#6f42c1",
+    shadowOpacity: 0.1,
+    shadowBlur: 6,
+    shadowOffsetX: 0,
+    shadowOffsetY: 2,
+    
+    enableRadius: true,
+    borderRadius: 4,
+    
+    cellPadding: 10,
+    headerCellPadding: 14,
+    enableStriped: true,
+    enableHover: true,
+    hoverBackgroundColor: "#f3e8ff",
+    hoverBackgroundOpacity: 0.7,
+  },
+
+  // Design sans bordures (transparent)
+  borderless: {
+    headerBackgroundColor: "#f8f9fa",
+    headerBackgroundOpacity: 0.8,
+    rowBackgroundColor: "#ffffff",
+    rowBackgroundOpacity: 0.0,
+    alternateRowBackgroundColor: "#f8f9fa",
+    alternateRowBackgroundOpacity: 0.3,
+    
+    enableOuterBorder: false,
+    enableInnerBorder: false,
+    enableHeaderBorder: false,
+    
+    enableShadow: false,
+    enableRadius: false,
+    
+    cellPadding: 8,
+    headerCellPadding: 10,
+    enableStriped: true,
+    enableHover: true,
+    hoverBackgroundColor: "#e9ecef",
+    hoverBackgroundOpacity: 0.5,
+  },
+};
+
+/**
+ * Applique un design de tableau prédéfini
+ */
+export function applyTableDesignPreset(presetName: keyof typeof tableDesignPresets): AdvancedTableConfig {
+  return tableDesignPresets[presetName] || tableDesignPresets.classic;
+}
+
+/**
+ * Obtient la liste des designs de tableau disponibles avec descriptions
+ */
+export function getTableDesignPresets(): Array<{key: keyof typeof tableDesignPresets, name: string, description: string}> {
+  return [
+    {
+      key: 'classic',
+      name: 'Classique',
+      description: 'Design traditionnel avec bordures noires et en-têtes gris'
+    },
+    {
+      key: 'modern', 
+      name: 'Moderne',
+      description: 'Design contemporain avec ombres, arrondis et dégradés bleus'
+    },
+    {
+      key: 'minimal',
+      name: 'Minimaliste', 
+      description: 'Design épuré sans bordures avec seulement une ligne d\'en-tête'
+    },
+    {
+      key: 'formal',
+      name: 'Formel',
+      description: 'Design institutionnel avec bordures doubles et lignes alternées'
+    },
+    {
+      key: 'elegant',
+      name: 'Élégant',
+      description: 'Design raffiné avec couleurs violettes et effets subtils'
+    },
+    {
+      key: 'borderless',
+      name: 'Sans bordures',
+      description: 'Design transparent avec arrière-plans légers et sans bordures'
+    }
+  ];
 }
