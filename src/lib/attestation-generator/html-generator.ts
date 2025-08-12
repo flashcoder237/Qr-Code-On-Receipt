@@ -40,6 +40,7 @@ interface SchoolSettings {
   themeColor?: string;
   themeFont?: string;
   theme?: AttestationThemeSettingsPayload;
+  advancedConfig?: any; // Configuration avancée du style
 }
 
 interface GenerationOptions {
@@ -90,9 +91,15 @@ export async function generateAttestationHTML(
   // Utiliser le thème fourni ou celui des paramètres ou le thème par défaut
   const theme = options.theme || settings.theme || defaultAttestationTheme;
 
-   // NOUVEAU: Obtenir la configuration avancée
-  const advancedConfig = getAdvancedAttestationConfig(theme);
+   // NOUVEAU: Obtenir la configuration avancée SEULEMENT si elle est explicitement fournie dans settings
+  // Ne pas utiliser getAdvancedAttestationConfig qui pourrait appliquer des styles non désirés
+  const advancedConfig = settings.advancedConfig || { 
+    enableAdvancedTypography: false,
+    spacing: { titleSpacing: 8, subtitleSpacing: 6, headerSpacing: 15, studentInfoSpacing: 10, tableSpacing: 8, paragraphSpacing: 6, sectionSpacing: 20, footerSpacing: 15, signatureSpacing: 25 },
+    tableDesign: {}
+  };
   console.log(`📝 Configuration avancée activée: ${advancedConfig.enableAdvancedTypography ? 'Oui' : 'Non'}`);
+  console.log(`🎨 Source config: ${settings.advancedConfig ? 'Utilisateur' : 'Défaut minimal'}`);
   
   // Récupérer les logos au format base64
   const schoolLogo = settings.logo || '';

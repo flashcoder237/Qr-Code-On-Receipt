@@ -487,22 +487,21 @@ export const AttestationGenerator: React.FC = () => {
   const handleAdvancedConfigChange = (newConfig: AdvancedAttestationConfig) => {
     setAdvancedConfig(newConfig);
     
-    // Si le mode aperçu est activé et qu'il y a des données de démonstration, rafraîchir l'aperçu
-    if (isAdvancedPreviewMode && selectedStudents.length > 0) {
-      setTimeout(() => {
-        handlePreviewAttestation(selectedStudents[0]);
-      }, 300); // Délai pour permettre la mise à jour de l'état
+    // Si le mode aperçu est activé et qu'il y a des étudiants sélectionnés, rafraîchir l'aperçu
+    if (isAdvancedPreviewMode && selectedStudentMatricules.length > 0) {
+      const selectedStudent = eligibilityData.eligible.find(s => s.MATRICULE === selectedStudentMatricules[0]);
+      if (selectedStudent) {
+        setTimeout(() => {
+          previewAttestation(selectedStudent);
+        }, 300); // Délai pour permettre la mise à jour de l'état
+      }
     }
   };
 
   // Handler pour l'aperçu du style avancé
   const handleAdvancedPreview = () => {
-    if (selectedStudents.length === 0) {
-      showNotification({
-        title: "Aperçu impossible",
-        message: "Veuillez d'abord sélectionner au moins un étudiant",
-        type: "warning"
-      });
+    if (eligibilityData.eligible.length === 0) {
+      notifyWarning("Aperçu impossible", "Aucun étudiant éligible disponible pour la prévisualisation");
       return;
     }
 
@@ -510,7 +509,13 @@ export const AttestationGenerator: React.FC = () => {
     
     // Ouvrir automatiquement l'aperçu si on active le mode
     if (!isAdvancedPreviewMode) {
-      handlePreviewAttestation(selectedStudents[0]);
+      const studentToPreview = selectedStudentMatricules.length > 0 
+        ? eligibilityData.eligible.find(s => s.MATRICULE === selectedStudentMatricules[0])
+        : eligibilityData.eligible[0];
+      
+      if (studentToPreview) {
+        previewAttestation(studentToPreview);
+      }
     }
   };
 
@@ -562,6 +567,7 @@ export const AttestationGenerator: React.FC = () => {
         {
           ...schoolSettings,
           theme: attestationTheme,
+          advancedConfig: advancedConfig.enableAdvancedTypography ? advancedConfig : getAdvancedAttestationConfig(attestationTheme),
         }, 
         { 
           qrCodePosition: safePosition,
@@ -974,6 +980,8 @@ export const AttestationGenerator: React.FC = () => {
             onChange={handleAdvancedConfigChange}
             onPreview={handleAdvancedPreview}
             isPreviewMode={isAdvancedPreviewMode}
+            standardTheme={attestationTheme}
+            onStandardThemeChange={handleThemeUpdate}
           />
         </TabsContent>
 
