@@ -60,8 +60,11 @@ export const AttestationExportOptions: React.FC<AttestationExportOptionsProps> =
       }
 
       // Validation des champs EN obligatoires pour les établissements Faculty
-      if (schoolSettings?.establishmentType?.toLowerCase().includes('faculty')) {
-        const requiredEnFields = ['DOMAINE_EN', 'PARCOURS_EN', 'SPECIALITE_EN', 'OPTION_EN', 'FINALITE_EN', 'MENTION_EN'];
+      if (schoolSettings?.establishmentType?.toLowerCase().includes('faculty') || 
+          schoolSettings?.establishmentType?.toLowerCase().includes('faculté')) {
+        // Seuls DOMAINE_EN, PARCOURS_EN, SPECIALITE_EN, FINALITE_EN sont obligatoires
+        // OPTION_EN est optionnelle, MENTION_EN se calcule automatiquement
+        const requiredEnFields = ['DOMAINE_EN', 'PARCOURS_EN', 'SPECIALITE_EN', 'FINALITE_EN'];
         const missingEnFields: string[] = [];
         
         selectedStudents.forEach((student, index) => {
@@ -75,7 +78,7 @@ export const AttestationExportOptions: React.FC<AttestationExportOptionsProps> =
         });
         
         if (missingEnFields.length > 0) {
-          alert(`⚠️ Champs de traduction anglaise manquants (requis pour les établissements Faculty):\n\n${missingEnFields.join('\n')}\n\nVeuillez compléter ces champs avant l'export.`);
+          alert(`⚠️ Champs de traduction anglaise manquants (requis pour les établissements Faculty):\n\n${missingEnFields.join('\n')}\n\nNote: OPTION_EN est optionnelle, MENTION_EN se calcule automatiquement\n\nVeuillez compléter ces champs avant l'export.`);
           return;
         }
       }

@@ -153,18 +153,19 @@ import { AdvancedAttestationConfig, defaultAdvancedAttestationConfig } from "./a
 
 // NOUVEAU: Fonction pour convertir un thème d'attestation en configuration avancée
 export function convertAttestationThemeToAdvancedConfig(theme: AttestationThemeSettingsPayload): AdvancedAttestationConfig {
-  const baseFont = theme.mainFont || defaultAdvancedAttestationConfig.mainTitle.fontFamily;
+  const baseFont = theme.mainFont || "Times New Roman, serif";
   const baseFontSize = theme.contentFontSize || 12;
   const baseLineHeight = 1.2;
 
   return {
-    enableAdvancedTypography: true,
+    // IMPORTANT: enableAdvancedTypography = false pour préserver la continuité avec le style standard
+    enableAdvancedTypography: false,
     mainTitle: {
       fontFamily: theme.headerFont || baseFont,
       fontSize: theme.titleFontSize || 24,
       fontWeight: "bold",
       fontStyle: "normal",
-      color: theme.primaryColor || "#000080",
+      color: theme.primaryColor || "#000000",
       lineHeight: baseLineHeight,
       textTransform: "uppercase",
     },
@@ -181,7 +182,7 @@ export function convertAttestationThemeToAdvancedConfig(theme: AttestationThemeS
       fontSize: theme.headerFontSize || 10,
       fontWeight: "normal",
       fontStyle: "normal",
-      color: theme.secondaryColor || "#505050",
+      color: theme.primaryColor || "#000000",
       lineHeight: baseLineHeight,
     },
     studentInfo: {
@@ -203,7 +204,7 @@ export function convertAttestationThemeToAdvancedConfig(theme: AttestationThemeS
     tableContent: {
       fontFamily: baseFont,
       fontSize: baseFontSize,
-      fontWeight: "normal",
+      fontWeight: "bold", // Conserver le style bold du tableau standard
       fontStyle: "normal",
       color: theme.primaryColor || "#000000",
       lineHeight: baseLineHeight,
@@ -213,7 +214,7 @@ export function convertAttestationThemeToAdvancedConfig(theme: AttestationThemeS
       fontSize: theme.footerFontSize || 12,
       fontWeight: "normal",
       fontStyle: "normal",
-      color: theme.secondaryColor || "#505050",
+      color: theme.primaryColor || "#000000",
       lineHeight: baseLineHeight,
     },
     signature: {
@@ -262,22 +263,63 @@ export function convertAttestationThemeToAdvancedConfig(theme: AttestationThemeS
       color: theme.tableBorderColor || "#000000",
       radius: 0,
     },
+    // Espacement basé sur les valeurs du thème standard
+    spacing: {
+      titleSpacing: Math.round((theme.titleFontSize || 24) * 0.3),
+      subtitleSpacing: Math.round((theme.subtitleFontSize || 22) * 0.27),
+      headerSpacing: theme.documentPadding || 15,
+      studentInfoSpacing: Math.round((theme.contentFontSize || 12) * 0.8),
+      tableSpacing: theme.tableCellPadding || 8,
+      paragraphSpacing: Math.round((theme.contentFontSize || 12) * 0.5),
+      sectionSpacing: theme.documentPadding || 20,
+      footerSpacing: Math.round((theme.footerFontSize || 12) * 1.2),
+      signatureSpacing: theme.documentPadding || 25,
+    },
+    // Design de tableau basé sur le thème standard
+    tableDesign: {
+      headerBackgroundColor: theme.tableHeaderBgColor || "#f0f0f0",
+      headerBackgroundOpacity: 1.0,
+      rowBackgroundColor: "#ffffff",
+      rowBackgroundOpacity: 1.0,
+      alternateRowBackgroundColor: "#f9f9f9",
+      alternateRowBackgroundOpacity: 1.0,
+      
+      enableOuterBorder: true,
+      outerBorderStyle: theme.borderStyle || "solid",
+      outerBorderWidth: theme.borderWidth || 1,
+      outerBorderColor: theme.tableBorderColor || "#000000",
+      
+      enableInnerBorder: true,
+      innerBorderStyle: theme.borderStyle || "solid",
+      innerBorderWidth: theme.borderWidth || 1,
+      innerBorderColor: theme.tableBorderColor || "#000000",
+      
+      enableHeaderBorder: true,
+      headerBorderStyle: theme.borderStyle || "solid",
+      headerBorderWidth: theme.borderWidth || 1,
+      headerBorderColor: theme.tableBorderColor || "#000000",
+      
+      enableShadow: false,
+      enableRadius: false,
+      cellPadding: theme.tableCellPadding || 4,
+      headerCellPadding: Math.round((theme.tableCellPadding || 4) * 1.5),
+      enableStriped: false,
+      enableHover: false,
+    },
     customCSS: "",
   };
 }
 
 // NOUVEAU: Fonction pour obtenir la configuration avancée des attestations
 export function getAdvancedAttestationConfig(theme: AttestationThemeSettingsPayload) {
-  if (theme.advancedConfig) {
+  if (theme.advancedConfig && theme.advancedConfig.enableAdvancedTypography) {
     return theme.advancedConfig;
   }
   
-  // CORRECTION: Si pas de config avancée, retourner les valeurs par défaut avec enableAdvancedTypography = false
-  // pour préserver le style existant au lieu de le convertir
-  return {
-    ...defaultAdvancedAttestationConfig,
-    enableAdvancedTypography: false
-  };
+  // Si pas de config avancée OU si la typographie avancée est désactivée,
+  // convertir automatiquement le thème standard en configuration avancée
+  // pour assurer la continuité
+  return convertAttestationThemeToAdvancedConfig(theme);
 }
 
 // Export pour compatibilité

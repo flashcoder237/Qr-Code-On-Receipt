@@ -22,6 +22,7 @@ interface FileUploaderProps {
   isLoading: boolean;
   documentType: 'releve' | 'attestation';
   allowPartialImport?: boolean;
+  establishmentType?: string;
 }
 
 /**
@@ -129,7 +130,8 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   onValidationResult,
   isLoading,
   documentType,
-  allowPartialImport = false
+  allowPartialImport = false,
+  establishmentType
 }) => {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [pendingData, setPendingData] = useState<{
@@ -160,8 +162,8 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       const columns = Object.keys(jsonData[0]);
       console.log('📋 Colonnes détectées:', columns);
       
-      // Valider les colonnes
-      const validation = validateExcelColumns(columns, documentType);
+      // Valider les colonnes avec le type d'établissement
+      const validation = validateExcelColumns(columns, documentType, establishmentType);
       setValidationResult(validation);
       
       if (onValidationResult) {

@@ -8,6 +8,23 @@ import { getQRCodeSizeEstimate } from '../helpers/qrcode';
 import { generateAdvancedAttestationCSS, combineStyles } from '../../utils/advanced-css-generator'; // NOUVEAU
 import { formatDateForAttestation } from '../../utils/date-formatter'; // NOUVEAU
 
+/**
+ * Traduit une mention française vers l'anglais
+ */
+function translateMentionToEnglish(mentionFR: string): string {
+  if (!mentionFR) return 'N/A';
+  
+  const translations: { [key: string]: string } = {
+    'Passable': 'Satisfactory',
+    'Assez Bien': 'Fairly Good', 
+    'Bien': 'Good',
+    'Très Bien': 'Very Good',
+    'Excellent': 'Excellent'
+  };
+  
+  return translations[mentionFR] || mentionFR;
+}
+
 interface SchoolSettings {
   establishmentType: string;
   nameFrench: string;
@@ -111,9 +128,12 @@ export async function generateAttestationHTML(
     sanitizedStudent.MOYENNE : parseFloat(String(sanitizedStudent.MOYENNE)) || 0;
 
   // NOUVEAU: Support des traductions anglaises pour les établissements faculty
-  const isFacultyEstablishment = settings.establishmentType?.toLowerCase().includes('faculty');
+  const isFacultyEstablishment = settings.establishmentType?.toLowerCase().includes('faculty') || 
+                                  settings.establishmentType?.toLowerCase().includes('faculté');
   const useEnglishTranslations = isFacultyEstablishment && theme.primaryLanguage === 'english';
+  const useBilingualDisplay = isFacultyEstablishment; // Toujours bilingue pour Faculty
   
+  // Valeurs principales (français ou anglais selon primaryLanguage)
   const fieldOfStudy = useEnglishTranslations && sanitizedStudent.DOMAINE_EN ? 
     sanitizedStudent.DOMAINE_EN : sanitizedStudent.DOMAINE;
   const course = useEnglishTranslations && sanitizedStudent.PARCOURS_EN ? 
@@ -122,12 +142,24 @@ export async function generateAttestationHTML(
     sanitizedStudent.SPECIALITE_EN : sanitizedStudent.SPECIALITE;
   const option = useEnglishTranslations && sanitizedStudent.OPTION_EN ? 
     sanitizedStudent.OPTION_EN : sanitizedStudent.OPTION;
-
-  // NOUVEAU: Support des nouvelles traductions
   const finality = useEnglishTranslations && sanitizedStudent.FINALITE_EN ? 
     sanitizedStudent.FINALITE_EN : sanitizedStudent.FINALITE;
   const mentionTranslated = useEnglishTranslations && sanitizedStudent.MENTION_EN ? 
     sanitizedStudent.MENTION_EN : (sanitizedStudent.MENTION || calculateMention(numericAverage));
+
+  // Versions anglaises pour affichage bilingue Faculty
+  const fieldOfStudyEN = sanitizedStudent.DOMAINE_EN || sanitizedStudent.DOMAINE || 'N/A';
+  const courseEN = sanitizedStudent.PARCOURS_EN || sanitizedStudent.PARCOURS || 'N/A';
+  const specializationEN = sanitizedStudent.SPECIALITE_EN || sanitizedStudent.SPECIALITE || 'N/A';
+  const optionEN = sanitizedStudent.OPTION_EN || sanitizedStudent.OPTION || 'N/A';
+  const finalityEN = sanitizedStudent.FINALITE_EN || sanitizedStudent.FINALITE || 'N/A';
+  
+  // Calculer la mention en anglais si manquante pour Faculty
+  let mentionTranslatedEN = sanitizedStudent.MENTION_EN;
+  if (useBilingualDisplay && !mentionTranslatedEN && sanitizedStudent.MENTION) {
+    mentionTranslatedEN = translateMentionToEnglish(sanitizedStudent.MENTION);
+  }
+  mentionTranslatedEN = mentionTranslatedEN || translateMentionToEnglish(calculateMention(numericAverage));
 
   console.log(`🌐 Traductions anglaises:`)
   console.log(`   Établissement faculty: ${isFacultyEstablishment}`);
@@ -786,10 +818,10 @@ export async function generateAttestationHTML(
                         <th>Option<br>${theme.showBilingualText ? '<em style="font-weight: normal">Learning option</em>' : ''}</th>
                     </tr>
                     <tr style="border-top: 1px solid ${theme.tableBorderColor}; background-color:${theme.tableHeaderBgColor}">
-                        <td><strong>${fieldOfStudy}</strong></td>
-                        <td><strong>${course}</strong></td>
-                        <td><strong>${specialization}</strong></td>
-                        <td><strong>${option}</strong></td>
+                        <td><strong>${fieldOfStudy}${useBilingualDisplay ? `<br><em style="font-weight: normal">${fieldOfStudyEN}</em>` : ''}</strong></td>
+                        <td><strong>${course}${useBilingualDisplay ? `<br><em style="font-weight: normal">${courseEN}</em>` : ''}</strong></td>
+                        <td><strong>${specialization}${useBilingualDisplay ? `<br><em style="font-weight: normal">${specializationEN}</em>` : ''}</strong></td>
+                        <td><strong>${option || 'N/D'}${useBilingualDisplay ? `<br><em style="font-weight: normal">${optionEN}</em>` : ''}</strong></td>
                     </tr>
                 </table>
             </div>
@@ -812,9 +844,9 @@ export async function generateAttestationHTML(
                         <td><strong>${average}</strong></td>
                         <td><strong>${grade}</strong></td>
                         <td><strong>${mgp.toFixed(2)}</strong></td>
-                        <td><strong>${mention}</strong></td>
+                        <td><strong>${mention}${useBilingualDisplay ? `<br><em style="font-weight: normal">${mentionTranslatedEN}</em>` : ''}</strong></td>
                         <td><strong>${academicYear}</strong></td>
-                        <td><strong>${finality}</strong></td>
+                        <td><strong>${finality}${useBilingualDisplay ? `<br><em style="font-weight: normal">${finalityEN}</em>` : ''}</strong></td>
                     </tr>
                 </table>
             </div>

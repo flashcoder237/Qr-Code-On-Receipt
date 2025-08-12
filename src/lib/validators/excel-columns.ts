@@ -398,6 +398,7 @@ function findExactMatch(requirement: ColumnRequirement, availableColumns: string
 
 /**
  * NOUVEAU: Colonnes de traduction anglaise requises pour les établissements faculty
+ * Note: OPTION_EN et MENTION_EN sont optionnelles (MENTION_EN calculée automatiquement si manquante)
  */
 export const FACULTY_REQUIRED_EN_COLUMNS: ColumnRequirement[] = [
   {
@@ -419,22 +420,30 @@ export const FACULTY_REQUIRED_EN_COLUMNS: ColumnRequirement[] = [
     alternatives: ['specialite_en', 'specialty_en', 'specialization_en']
   },
   {
-    key: 'OPTION_EN',
-    displayName: 'Option (anglais)',
-    required: true,
-    alternatives: ['option_en', 'minor_en', 'track_en']
-  },
-  {
     key: 'FINALITE_EN',
     displayName: 'Finalité (anglais)',
     required: true,
     alternatives: ['finalite_en', 'finality_en', 'degree_type_en']
+  }
+];
+
+/**
+ * NOUVEAU: Colonnes de traduction anglaise optionnelles pour les établissements faculty
+ * Ces colonnes peuvent être calculées automatiquement si manquantes
+ */
+export const FACULTY_OPTIONAL_EN_COLUMNS: ColumnRequirement[] = [
+  {
+    key: 'OPTION_EN',
+    displayName: 'Option (anglais)',
+    required: false,
+    alternatives: ['option_en', 'minor_en', 'track_en']
   },
   {
     key: 'MENTION_EN',
     displayName: 'Mention (anglais)',
-    required: true,
-    alternatives: ['mention_en', 'honor_en', 'distinction_en']
+    required: false,
+    alternatives: ['mention_en', 'honor_en', 'distinction_en'],
+    description: 'Calculée automatiquement si manquante'
   }
 ];
 
@@ -455,13 +464,33 @@ export function validateExcelColumns(
   const optionalColumns = documentType === 'releve' ? RELEVE_OPTIONAL_COLUMNS : ATTESTATION_OPTIONAL_COLUMNS;
 
   // NOUVEAU: Vérifier si c'est un établissement de type faculty
-  const isFacultyEstablishment = establishmentType?.toLowerCase().includes('faculty') || false;
+  const isFacultyEstablishment = establishmentType?.toLowerCase().includes('faculty') || 
+                                  establishmentType?.toLowerCase().includes('faculté') || 
+                                  false;
+  console.log(`🏛️ Vérification établissement Faculty: "${establishmentType}" -> ${isFacultyEstablishment}`);
   
   // NOUVEAU: Ajouter les colonnes de traduction anglaise comme requises pour les établissements faculty
   let allRequiredColumns = [...requiredColumns];
+  let allOptionalColumns = [...optionalColumns];
+  
   if (isFacultyEstablishment && documentType === 'attestation') {
+    // Colonnes EN obligatoires: DOMAINE_EN, PARCOURS_EN, SPECIALITE_EN, FINALITE_EN
+    // Colonnes EN optionnelles: OPTION_EN, MENTION_EN (calculée automatiquement)
+    const requiredEnKeys = ['DOMAINE_EN', 'PARCOURS_EN', 'SPECIALITE_EN', 'FINALITE_EN'];
+    const optionalEnKeys = ['OPTION_EN', 'MENTION_EN'];
+    
+    // Ajouter les colonnes EN obligatoires aux colonnes requises
     allRequiredColumns = [...requiredColumns, ...FACULTY_REQUIRED_EN_COLUMNS];
-    console.log(`🌐 Établissement Faculty détecté - Colonnes de traduction anglaise requises`);
+    
+    // Supprimer seulement les colonnes EN obligatoires des optionnelles
+    allOptionalColumns = optionalColumns.filter(col => !requiredEnKeys.includes(col.key));
+    
+    // Ajouter les colonnes EN optionnelles aux colonnes optionnelles
+    allOptionalColumns = [...allOptionalColumns, ...FACULTY_OPTIONAL_EN_COLUMNS];
+    
+    console.log(`🌐 Établissement Faculty détecté - Colonnes de traduction anglaise`);
+    console.log(`📋 Colonnes *_EN obligatoires:`, requiredEnKeys);
+    console.log(`📋 Colonnes *_EN optionnelles:`, optionalEnKeys);
   }
   
   const missingRequired: ColumnRequirement[] = [];
@@ -491,8 +520,8 @@ export function validateExcelColumns(
     }
   });
 
-  // Vérifier les colonnes optionnelles
-  optionalColumns.forEach(requirement => {
+  // Vérifier les colonnes optionnelles (en utilisant la liste mise à jour)
+  allOptionalColumns.forEach(requirement => {
     const exactMatch = findExactMatch(requirement, availableColumns);
     
     if (exactMatch) {
@@ -545,12 +574,19 @@ export function generateColumnMapping(
   const optionalColumns = documentType === 'releve' ? RELEVE_OPTIONAL_COLUMNS : ATTESTATION_OPTIONAL_COLUMNS;
   
   // NOUVEAU: Inclure les colonnes de traduction anglaise pour les établissements faculty
-  const isFacultyEstablishment = establishmentType?.toLowerCase().includes('faculty') || false;
+  const isFacultyEstablishment = establishmentType?.toLowerCase().includes('faculty') || 
+                                  establishmentType?.toLowerCase().includes('faculté') || 
+                                  false;
   let allColumns = [...requiredColumns, ...optionalColumns];
   
   if (isFacultyEstablishment && documentType === 'attestation') {
-    allColumns = [...requiredColumns, ...FACULTY_REQUIRED_EN_COLUMNS, ...optionalColumns];
-    console.log(`🌐 Génération mapping pour établissement Faculty - Colonnes EN incluses`);
+    // Colonnes EN obligatoires: DOMAINE_EN, PARCOURS_EN, SPECIALITE_EN, FINALITE_EN
+    // Colonnes EN optionnelles: OPTION_EN, MENTION_EN
+    const requiredEnKeys = ['DOMAINE_EN', 'PARCOURS_EN', 'SPECIALITE_EN', 'FINALITE_EN'];
+    const filteredOptionalColumns = optionalColumns.filter(col => !requiredEnKeys.includes(col.key));
+    
+    allColumns = [...requiredColumns, ...FACULTY_REQUIRED_EN_COLUMNS, ...filteredOptionalColumns, ...FACULTY_OPTIONAL_EN_COLUMNS];
+    console.log(`🌐 Génération mapping pour établissement Faculty - Colonnes EN (4 obligatoires, 2 optionnelles)`);
   }
   
   const mapping: { [key: string]: string } = {};

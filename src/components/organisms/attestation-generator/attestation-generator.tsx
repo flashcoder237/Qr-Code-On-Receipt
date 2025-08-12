@@ -14,12 +14,14 @@ import { AttestationSettings } from "./AttestationSettings";
 import { AttestationThemeEditor } from "./AttestationThemeEditor";
 import { ThemePresetSelector } from "./ThemePresetSelector";
 import { AttestationExportOptions } from "./AttestationExportOptions";
+import { AttestationAdvancedStyler } from "./AttestationAdvancedStyler";
 import { StudentSelector } from "../student-selector";
 import { FileUploader } from "@/components/organisms/receipts/ExcelUploader.tsx";
 import { FileDown, Loader2, Settings2, Table2, Palette, FileText, Eye, Wand2, Users, AlertCircle, CheckCircle, Shield, ShieldCheck, Info, TrendingUp, XCircle } from "lucide-react";
 import { calculateGrade, calculateMention, getCurrentAcademicYear } from "@/lib/attestation-generator/utils";
 import { openAttestationPreview } from "@/lib/attestation-generator/preview";
-import { AttestationThemeSettingsPayload, defaultAttestationTheme } from "@/lib/form-schemas/attestation-theme-settings";
+import { AttestationThemeSettingsPayload, defaultAttestationTheme, getAdvancedAttestationConfig } from "@/lib/form-schemas/attestation-theme-settings";
+import { AdvancedAttestationConfig, defaultAdvancedAttestationConfig } from "@/lib/form-schemas/advanced-typography";
 import { useNotifications } from "@/components/ui/notification-system";
 import { useDocumentHistory } from "@/components/organisms/document-history/DocumentHistoryManager";
 import { testCompactEncryption, createCompactDataFromStudent, getCompactEncryptionInfo } from "@/lib/crypto/compact-encryption";
@@ -30,7 +32,7 @@ import { Download, Archive, FileText as FileTextIcon, PackageOpen, Zap } from "l
 import { useProcessing } from "../receipts/hooks/useProcessing";
 
 export const AttestationGenerator: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"generator" | "settings" | "theme" | "presets" | "selection">("generator");
+  const [activeTab, setActiveTab] = useState<"generator" | "settings" | "theme" | "presets" | "selection" | "advanced">("generator");
   const [excelData, setExcelData] = useState<StudentExcelRecord[]>([]);
   const [excelColumns, setExcelColumns] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -84,6 +86,15 @@ export const AttestationGenerator: React.FC = () => {
     "attestation-theme", 
     defaultAttestationTheme
   );
+
+  // Configuration avancée des attestations
+  const [advancedConfig, setAdvancedConfig] = useLocalStorage<AdvancedAttestationConfig>(
+    "attestation-advanced-config",
+    defaultAdvancedAttestationConfig
+  );
+
+  // État pour le mode aperçu du style avancé
+  const [isAdvancedPreviewMode, setIsAdvancedPreviewMode] = useState(false);
 
   // Validation des moyennes et statistiques
   const eligibilityData = React.useMemo(() => {
@@ -266,6 +277,7 @@ export const AttestationGenerator: React.FC = () => {
       settings: {
         ...schoolSettings,
         theme: attestationTheme,
+        advancedConfig: advancedConfig.enableAdvancedTypography ? advancedConfig : getAdvancedAttestationConfig(attestationTheme),
       },
       options: {
         demoMode: isDemoMode,
@@ -471,6 +483,37 @@ export const AttestationGenerator: React.FC = () => {
     notifySuccess("Thème", "Thème sauvegardé avec succès");
   };
 
+  // Handler pour la configuration avancée
+  const handleAdvancedConfigChange = (newConfig: AdvancedAttestationConfig) => {
+    setAdvancedConfig(newConfig);
+    
+    // Si le mode aperçu est activé et qu'il y a des données de démonstration, rafraîchir l'aperçu
+    if (isAdvancedPreviewMode && selectedStudents.length > 0) {
+      setTimeout(() => {
+        handlePreviewAttestation(selectedStudents[0]);
+      }, 300); // Délai pour permettre la mise à jour de l'état
+    }
+  };
+
+  // Handler pour l'aperçu du style avancé
+  const handleAdvancedPreview = () => {
+    if (selectedStudents.length === 0) {
+      showNotification({
+        title: "Aperçu impossible",
+        message: "Veuillez d'abord sélectionner au moins un étudiant",
+        type: "warning"
+      });
+      return;
+    }
+
+    setIsAdvancedPreviewMode(!isAdvancedPreviewMode);
+    
+    // Ouvrir automatiquement l'aperçu si on active le mode
+    if (!isAdvancedPreviewMode) {
+      handlePreviewAttestation(selectedStudents[0]);
+    }
+  };
+
   const handlePresetSelect = (newTheme: AttestationThemeSettingsPayload) => {
     setAttestationTheme(newTheme);
     notifySuccess("Préréglage", "Préréglage appliqué avec succès");
@@ -580,7 +623,7 @@ export const AttestationGenerator: React.FC = () => {
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
         <div className="flex justify-between items-center mb-4">
-          <TabsList className="grid grid-cols-5">
+          <TabsList className="grid grid-cols-6">
             <TabsTrigger value="generator" className="flex items-center gap-2">
               <Table2 className="h-4 w-4" />
               Générateur
@@ -596,6 +639,10 @@ export const AttestationGenerator: React.FC = () => {
             <TabsTrigger value="theme" className="flex items-center gap-2">
               <Palette className="h-4 w-4" />
               Thème
+            </TabsTrigger>
+            <TabsTrigger value="advanced" className="flex items-center gap-2">
+              <Wand2 className="h-4 w-4" />
+              Style Avancé
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings2 className="h-4 w-4" />
@@ -714,6 +761,7 @@ export const AttestationGenerator: React.FC = () => {
                   isLoading={isLoading}
                   documentType="attestation"
                   allowPartialImport={true}
+                  establishmentType={schoolSettings.establishmentType}
                 />
               </div>
 
@@ -917,6 +965,15 @@ export const AttestationGenerator: React.FC = () => {
             onThemeChange={handleThemeUpdate}
             onSave={handleThemeSave}
             onPreview={handleThemePreview}
+          />
+        </TabsContent>
+
+        <TabsContent value="advanced">
+          <AttestationAdvancedStyler
+            config={advancedConfig}
+            onChange={handleAdvancedConfigChange}
+            onPreview={handleAdvancedPreview}
+            isPreviewMode={isAdvancedPreviewMode}
           />
         </TabsContent>
 
