@@ -220,7 +220,7 @@ export const AttestationGenerator: React.FC = () => {
           CYCLE: row.CYCLE || 'N/D',
           MOYENNE: row.MOYENNE || 0,
           GRADE: row.GRADE || calculateGrade(parseFloat(String(row.MOYENNE)) || 0),
-          MENTION: row.MENTION || calculateMention(parseFloat(String(row.MOYENNE)) || 0),
+          MENTION: row.MENTION || calculateMention(parseFloat(String(row.MOYENNE)) || 0, row.PARCOURS, row.NIVEAU),
           "ANNEE ACADEMIQUE": row["ANNEE ACADEMIQUE"] || getCurrentAcademicYear(),
           "DATE JURY": row["DATE JURY"] || 'N/D',
           "FINALITE": row.FINALITE || 'N/D',

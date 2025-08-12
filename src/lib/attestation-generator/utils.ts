@@ -62,10 +62,33 @@ export function calculateGrade(average: number | string): string {
 
 /**
  * Détermine la mention en fonction de la moyenne
+ * Avec système spécialisé pour Médecine/Pharmacie niveau 7
  */
-export function calculateMention(average: number | string): string {
+export function calculateMention(
+  average: number | string, 
+  parcours?: string, 
+  niveau?: string | number
+): string {
   const numAverage = typeof average === 'string' ? parseFloat(average) : average;
   
+  // Système spécialisé pour Médecine/Pharmacie niveau 7
+  const isNiveau7 = niveau === 7 || niveau === "7" || String(niveau).toLowerCase().includes("7");
+  const isMedecinePharmcie = parcours && (
+    parcours.toLowerCase().includes('medecine') || 
+    parcours.toLowerCase().includes('médecine') || 
+    parcours.toLowerCase().includes('medicine') ||
+    parcours.toLowerCase().includes('pharmacie') ||
+    parcours.toLowerCase().includes('pharmacy')
+  );
+  
+  if (isNiveau7 && isMedecinePharmcie) {
+    if (numAverage >= 15) return "Très Honorable avec Félicitations du Jury";
+    if (numAverage >= 14) return "Très Honorable";
+    if (numAverage >= 10) return "Honorable";
+    return "Médiocre"; // 0-10
+  }
+  
+  // Système standard pour tous les autres cas
   if (numAverage >= 16) return "Très Bien";
   if (numAverage >= 14) return "Bien";
   if (numAverage >= 12) return "Assez Bien";

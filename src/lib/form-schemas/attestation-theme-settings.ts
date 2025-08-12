@@ -158,8 +158,8 @@ export function convertAttestationThemeToAdvancedConfig(theme: AttestationThemeS
   const baseLineHeight = 1.2;
 
   return {
-    // IMPORTANT: enableAdvancedTypography = false pour préserver la continuité avec le style standard
-    enableAdvancedTypography: false,
+    // IMPORTANT: enableAdvancedTypography = true par défaut pour utiliser toute la typographie
+    enableAdvancedTypography: true,
     mainTitle: {
       fontFamily: theme.headerFont || baseFont,
       fontSize: theme.titleFontSize || 24,

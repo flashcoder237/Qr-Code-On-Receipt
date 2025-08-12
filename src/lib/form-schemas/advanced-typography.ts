@@ -299,7 +299,7 @@ export const defaultAdvancedTranscriptConfig: AdvancedTranscriptConfig = {
 
 // Configurations par défaut pour les attestations
 export const defaultAdvancedAttestationConfig: AdvancedAttestationConfig = {
-  enableAdvancedTypography: false,
+  enableAdvancedTypography: true,
   
   mainTitle: {
     fontFamily: "Times New Roman, serif",

@@ -112,12 +112,8 @@ export const AttestationAdvancedStyler: React.FC<AttestationAdvancedStylerProps>
     }
   };
 
-  // État pour activer globalement le style avancé
-  const [isAdvancedStyleEnabled, setIsAdvancedStyleEnabled] = useState(
-    config.enableAdvancedTypography || 
-    (config.spacing && Object.keys(config.spacing).some(key => config.spacing[key] !== getDefaultSpacingValue(key))) ||
-    (config.tableDesign && Object.keys(config.tableDesign).length > 0)
-  );
+  // État pour activer globalement le style avancé - TOUJOURS ACTIVÉ PAR DÉFAUT
+  const [isAdvancedStyleEnabled, setIsAdvancedStyleEnabled] = useState(true);
 
 
   // Fonction pour synchroniser depuis le thème standard vers avancé

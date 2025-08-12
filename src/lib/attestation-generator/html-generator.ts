@@ -19,7 +19,12 @@ function translateMentionToEnglish(mentionFR: string): string {
     'Assez Bien': 'Fairly Good', 
     'Bien': 'Good',
     'Très Bien': 'Very Good',
-    'Excellent': 'Excellent'
+    'Excellent': 'Excellent',
+    // Mentions spécialisées Médecine/Pharmacie niveau 7
+    'Médiocre': 'Mediocre',
+    'Honorable': 'Honorable',
+    'Très Honorable': 'Very Honorable',
+    'Très Honorable avec Félicitations du Jury': 'Very Honorable with Jury Congratulations'
   };
   
   return translations[mentionFR] || mentionFR;
@@ -152,7 +157,7 @@ export async function generateAttestationHTML(
   const finality = useEnglishTranslations && sanitizedStudent.FINALITE_EN ? 
     sanitizedStudent.FINALITE_EN : sanitizedStudent.FINALITE;
   const mentionTranslated = useEnglishTranslations && sanitizedStudent.MENTION_EN ? 
-    sanitizedStudent.MENTION_EN : (sanitizedStudent.MENTION || calculateMention(numericAverage));
+    sanitizedStudent.MENTION_EN : (sanitizedStudent.MENTION || calculateMention(numericAverage, sanitizedStudent.PARCOURS, sanitizedStudent.NIVEAU));
 
   // Versions anglaises pour affichage bilingue Faculty
   const fieldOfStudyEN = sanitizedStudent.DOMAINE_EN || sanitizedStudent.DOMAINE || 'N/A';
@@ -166,7 +171,7 @@ export async function generateAttestationHTML(
   if (useBilingualDisplay && !mentionTranslatedEN && sanitizedStudent.MENTION) {
     mentionTranslatedEN = translateMentionToEnglish(sanitizedStudent.MENTION);
   }
-  mentionTranslatedEN = mentionTranslatedEN || translateMentionToEnglish(calculateMention(numericAverage));
+  mentionTranslatedEN = mentionTranslatedEN || translateMentionToEnglish(calculateMention(numericAverage, sanitizedStudent.PARCOURS, sanitizedStudent.NIVEAU));
 
   console.log(`🌐 Traductions anglaises:`)
   console.log(`   Établissement faculty: ${isFacultyEstablishment}`);
