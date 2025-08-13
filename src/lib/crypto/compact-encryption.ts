@@ -1,5 +1,6 @@
 // src/lib/crypto/compact-encryption.ts
 import CryptoJS from 'crypto-js';
+import { calculateGrade, calculateMention } from '../attestation-generator/utils';
 
 /**
  * Interface pour les données sensibles minimales à chiffrer
@@ -268,18 +269,50 @@ export function validateCompactQRCode(
 
 /**
  * Fonction utilitaire pour créer les données depuis un enregistrement étudiant
+ * Utilise les mêmes calculs que l'attestation pour la cohérence
  */
 export function createCompactDataFromStudent(
   student: any,
   documentType: 'releve' | 'attestation' | 'diplome'
 ): { publicData: PublicData; sensitiveData: CompactSensitiveData } {
-  // Données publiques (non chiffrées)
+  
+  // Calculer le grade et la mention au lieu d'utiliser les valeurs brutes Excel
+  const moyenneNumber = typeof student.MOYENNE === 'number' ? student.MOYENNE : Number(student.MOYENNE);
+  
+  // Calculer le grade (A+, B+, etc.)
+  const calculatedGrade = isNaN(moyenneNumber) ? 'N/D' : calculateGrade(moyenneNumber);
+  
+  // Calculer la mention ou utiliser une validée depuis Excel
+  let calculatedMention = 'Passable';
+  if (student.MENTION) {
+    const mentionValue = String(student.MENTION).trim();
+    // Vérifier si c'est une vraie mention (pas juste un chiffre comme "2")
+    const isValidMention = mentionValue && 
+                          mentionValue !== '1' && 
+                          mentionValue !== 'true' && 
+                          mentionValue !== 'false' &&
+                          /[a-zA-Z]/.test(mentionValue) &&  // Doit contenir des lettres
+                          !/^\d+$/.test(mentionValue);      // Ne doit pas être juste un chiffre
+    
+    if (isValidMention) {
+      calculatedMention = mentionValue;
+    } else {
+      // Si MENTION contient une valeur problématique, calculer
+      calculatedMention = calculateMention(moyenneNumber, student.PARCOURS, student.NIVEAU, student.FINALITE) || 'Passable';
+    }
+  } else {
+    calculatedMention = calculateMention(moyenneNumber, student.PARCOURS, student.NIVEAU, student.FINALITE) || 'Passable';
+  }
+  
+  console.log(`🔄 QR Code Compact - Grade calculé: ${calculatedGrade}, Mention calculée: ${calculatedMention}`);
+
+  // Données publiques (non chiffrées) avec calculs cohérents
   const publicData: PublicData = {
     etablissement: student.ETABLISSEMENT || student.etablissement || 'N/D',
     nom: student.NOM || student.nom || 'N/D',
     prenom: student.PRENOM || student.prenom || 'N/D',
-    grade: student.GRADE || student.grade || 'N/D',
-    mention: student.MENTION || student.mention || 'N/D'
+    grade: calculatedGrade,
+    mention: calculatedMention
   };
 
   // Ajouter des champs spécifiques selon le type de document

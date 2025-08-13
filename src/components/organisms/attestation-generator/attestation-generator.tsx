@@ -206,7 +206,7 @@ export const AttestationGenerator: React.FC = () => {
       
       // Conversion finale et validation
       const convertedData = data.map((row) => {
-        // S'assurer que les champs critiques existent
+        // S'assurer que les champs critiques existent + PRESERVER LES COLONNES EN
         const standardizedRow: StudentExcelRecord = {
           ETABLISSEMENT: row.ETABLISSEMENT || schoolSettings.nameFrench || 'N/D',
           NOM: row.NOM || 'N/D',
@@ -226,7 +226,23 @@ export const AttestationGenerator: React.FC = () => {
           "FINALITE": row.FINALITE || 'N/D',
           "TOTAL CREDIT": row["TOTAL CREDIT"] || '60',
           "DOMAINE": row.DOMAINE || 'SCIENCES MEDICO-SANITAIRES',
+          // COLONNES EN PRESERVEES
+          DOMAINE_EN: row.DOMAINE_EN,
+          PARCOURS_EN: row.PARCOURS_EN,
+          SPECIALITE_EN: row.SPECIALITE_EN,
+          OPTION_EN: row.OPTION_EN,
+          FINALITE_EN: row.FINALITE_EN,
+          MENTION_EN: row.MENTION_EN,
+          // Garder aussi NIVEAU pour les mentions spécialisées
+          NIVEAU: row.NIVEAU,
         };
+        
+        console.log('🔍 Row standardisé avec colonnes EN pour', row.NOM, {
+          'DOMAINE_EN': standardizedRow.DOMAINE_EN,
+          'PARCOURS_EN': standardizedRow.PARCOURS_EN,
+          'SPECIALITE_EN': standardizedRow.SPECIALITE_EN,
+          'MENTION_EN': standardizedRow.MENTION_EN
+        });
         return standardizedRow;
       });
 

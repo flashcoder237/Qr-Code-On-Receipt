@@ -839,7 +839,51 @@ export const AttestationAdvancedStyler: React.FC<AttestationAdvancedStylerProps>
                         />
                       </div>
 
-                      {/* Couleur supprimée - utilise les couleurs du thème de base */}
+                      <div className="space-y-2">
+                        <Label>Poids</Label>
+                        <Select
+                          value={config.tableHeader?.fontWeight || "bold"}
+                          onValueChange={(value) => updateFont('tableHeader', 'fontWeight', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_WEIGHTS.map(weight => (
+                              <SelectItem key={weight} value={weight}>{weight}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Style</Label>
+                        <Select
+                          value={config.tableHeader?.fontStyle || "normal"}
+                          onValueChange={(value) => updateFont('tableHeader', 'fontStyle', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_STYLES.map(style => (
+                              <SelectItem key={style} value={style}>{style}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Hauteur de ligne ({config.tableHeader?.lineHeight || 1.2})</Label>
+                        <Slider
+                          value={[config.tableHeader?.lineHeight || 1.2]}
+                          onValueChange={(value) => updateFont('tableHeader', 'lineHeight', value[0])}
+                          max={3}
+                          min={0.8}
+                          step={0.1}
+                          className="w-full"
+                        />
+                      </div>
                     </div>
                   </Card>
 
@@ -876,7 +920,618 @@ export const AttestationAdvancedStyler: React.FC<AttestationAdvancedStylerProps>
                         />
                       </div>
 
-                      {/* Couleur supprimée - utilise les couleurs du thème de base */}
+                      <div className="space-y-2">
+                        <Label>Poids</Label>
+                        <Select
+                          value={config.tableContent?.fontWeight || "bold"}
+                          onValueChange={(value) => updateFont('tableContent', 'fontWeight', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_WEIGHTS.map(weight => (
+                              <SelectItem key={weight} value={weight}>{weight}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Style</Label>
+                        <Select
+                          value={config.tableContent?.fontStyle || "normal"}
+                          onValueChange={(value) => updateFont('tableContent', 'fontStyle', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_STYLES.map(style => (
+                              <SelectItem key={style} value={style}>{style}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Hauteur de ligne ({config.tableContent?.lineHeight || 1.2})</Label>
+                        <Slider
+                          value={[config.tableContent?.lineHeight || 1.2]}
+                          onValueChange={(value) => updateFont('tableContent', 'lineHeight', value[0])}
+                          max={3}
+                          min={0.8}
+                          step={0.1}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Sous-titre */}
+                  <Card className="p-4">
+                    <h4 className="font-medium mb-3">Sous-titre</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Police</Label>
+                        <Select
+                          value={config.subtitle?.fontFamily || "Times New Roman, serif"}
+                          onValueChange={(value) => updateFont('subtitle', 'fontFamily', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AVAILABLE_FONTS.map(font => (
+                              <SelectItem key={font} value={font}>{font.split(',')[0]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Taille ({config.subtitle?.fontSize || 22}px)</Label>
+                        <Slider
+                          value={[config.subtitle?.fontSize || 22]}
+                          onValueChange={(value) => updateFont('subtitle', 'fontSize', value[0])}
+                          max={36}
+                          min={12}
+                          step={1}
+                          className="w-full"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Poids</Label>
+                        <Select
+                          value={config.subtitle?.fontWeight || "bold"}
+                          onValueChange={(value) => updateFont('subtitle', 'fontWeight', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_WEIGHTS.map(weight => (
+                              <SelectItem key={weight} value={weight}>{weight}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Style</Label>
+                        <Select
+                          value={config.subtitle?.fontStyle || "italic"}
+                          onValueChange={(value) => updateFont('subtitle', 'fontStyle', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_STYLES.map(style => (
+                              <SelectItem key={style} value={style}>{style}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Hauteur de ligne ({config.subtitle?.lineHeight || 1.2})</Label>
+                        <Slider
+                          value={[config.subtitle?.lineHeight || 1.2]}
+                          onValueChange={(value) => updateFont('subtitle', 'lineHeight', value[0])}
+                          max={3}
+                          min={0.8}
+                          step={0.1}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Informations d'en-tête */}
+                  <Card className="p-4">
+                    <h4 className="font-medium mb-3">Informations d'en-tête</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Police</Label>
+                        <Select
+                          value={config.headerInfo?.fontFamily || "Times New Roman, serif"}
+                          onValueChange={(value) => updateFont('headerInfo', 'fontFamily', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AVAILABLE_FONTS.map(font => (
+                              <SelectItem key={font} value={font}>{font.split(',')[0]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Taille ({config.headerInfo?.fontSize || 10}px)</Label>
+                        <Slider
+                          value={[config.headerInfo?.fontSize || 10]}
+                          onValueChange={(value) => updateFont('headerInfo', 'fontSize', value[0])}
+                          max={18}
+                          min={8}
+                          step={1}
+                          className="w-full"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Poids</Label>
+                        <Select
+                          value={config.headerInfo?.fontWeight || "normal"}
+                          onValueChange={(value) => updateFont('headerInfo', 'fontWeight', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_WEIGHTS.map(weight => (
+                              <SelectItem key={weight} value={weight}>{weight}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Style</Label>
+                        <Select
+                          value={config.headerInfo?.fontStyle || "normal"}
+                          onValueChange={(value) => updateFont('headerInfo', 'fontStyle', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_STYLES.map(style => (
+                              <SelectItem key={style} value={style}>{style}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Hauteur de ligne ({config.headerInfo?.lineHeight || 1.2})</Label>
+                        <Slider
+                          value={[config.headerInfo?.lineHeight || 1.2]}
+                          onValueChange={(value) => updateFont('headerInfo', 'lineHeight', value[0])}
+                          max={3}
+                          min={0.8}
+                          step={0.1}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Contenu principal */}
+                  <Card className="p-4">
+                    <h4 className="font-medium mb-3">Contenu principal (paragraphes, texte)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Police</Label>
+                        <Select
+                          value={config.footer?.fontFamily || "Times New Roman, serif"}
+                          onValueChange={(value) => updateFont('footer', 'fontFamily', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AVAILABLE_FONTS.map(font => (
+                              <SelectItem key={font} value={font}>{font.split(',')[0]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Taille ({config.footer?.fontSize || 12}px)</Label>
+                        <Slider
+                          value={[config.footer?.fontSize || 12]}
+                          onValueChange={(value) => updateFont('footer', 'fontSize', value[0])}
+                          max={18}
+                          min={8}
+                          step={1}
+                          className="w-full"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Poids</Label>
+                        <Select
+                          value={config.footer?.fontWeight || "normal"}
+                          onValueChange={(value) => updateFont('footer', 'fontWeight', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_WEIGHTS.map(weight => (
+                              <SelectItem key={weight} value={weight}>{weight}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Style</Label>
+                        <Select
+                          value={config.footer?.fontStyle || "normal"}
+                          onValueChange={(value) => updateFont('footer', 'fontStyle', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_STYLES.map(style => (
+                              <SelectItem key={style} value={style}>{style}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Hauteur de ligne ({config.footer?.lineHeight || 1.4})</Label>
+                        <Slider
+                          value={[config.footer?.lineHeight || 1.4]}
+                          onValueChange={(value) => updateFont('footer', 'lineHeight', value[0])}
+                          max={3}
+                          min={0.8}
+                          step={0.1}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Informations étudiant */}
+                  <Card className="p-4">
+                    <h4 className="font-medium mb-3">Informations étudiant</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Police</Label>
+                        <Select
+                          value={config.studentInfo?.fontFamily || "Times New Roman, serif"}
+                          onValueChange={(value) => updateFont('studentInfo', 'fontFamily', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AVAILABLE_FONTS.map(font => (
+                              <SelectItem key={font} value={font}>{font.split(',')[0]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Taille ({config.studentInfo?.fontSize || 12}px)</Label>
+                        <Slider
+                          value={[config.studentInfo?.fontSize || 12]}
+                          onValueChange={(value) => updateFont('studentInfo', 'fontSize', value[0])}
+                          max={20}
+                          min={8}
+                          step={1}
+                          className="w-full"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Poids</Label>
+                        <Select
+                          value={config.studentInfo?.fontWeight || "normal"}
+                          onValueChange={(value) => updateFont('studentInfo', 'fontWeight', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_WEIGHTS.map(weight => (
+                              <SelectItem key={weight} value={weight}>{weight}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Style</Label>
+                        <Select
+                          value={config.studentInfo?.fontStyle || "normal"}
+                          onValueChange={(value) => updateFont('studentInfo', 'fontStyle', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_STYLES.map(style => (
+                              <SelectItem key={style} value={style}>{style}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Hauteur de ligne ({config.studentInfo?.lineHeight || 1.4})</Label>
+                        <Slider
+                          value={[config.studentInfo?.lineHeight || 1.4]}
+                          onValueChange={(value) => updateFont('studentInfo', 'lineHeight', value[0])}
+                          max={3}
+                          min={0.8}
+                          step={0.1}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Pied de page */}
+                  <Card className="p-4">
+                    <h4 className="font-medium mb-3">Pied de page</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Police</Label>
+                        <Select
+                          value={config.footer?.fontFamily || "Times New Roman, serif"}
+                          onValueChange={(value) => updateFont('footer', 'fontFamily', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AVAILABLE_FONTS.map(font => (
+                              <SelectItem key={font} value={font}>{font.split(',')[0]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Taille ({config.footer?.fontSize || 12}px)</Label>
+                        <Slider
+                          value={[config.footer?.fontSize || 12]}
+                          onValueChange={(value) => updateFont('footer', 'fontSize', value[0])}
+                          max={18}
+                          min={8}
+                          step={1}
+                          className="w-full"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Poids</Label>
+                        <Select
+                          value={config.footer?.fontWeight || "normal"}
+                          onValueChange={(value) => updateFont('footer', 'fontWeight', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_WEIGHTS.map(weight => (
+                              <SelectItem key={weight} value={weight}>{weight}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Style</Label>
+                        <Select
+                          value={config.footer?.fontStyle || "normal"}
+                          onValueChange={(value) => updateFont('footer', 'fontStyle', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_STYLES.map(style => (
+                              <SelectItem key={style} value={style}>{style}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Hauteur de ligne ({config.footer?.lineHeight || 1.4})</Label>
+                        <Slider
+                          value={[config.footer?.lineHeight || 1.4]}
+                          onValueChange={(value) => updateFont('footer', 'lineHeight', value[0])}
+                          max={3}
+                          min={0.8}
+                          step={0.1}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Signatures */}
+                  <Card className="p-4">
+                    <h4 className="font-medium mb-3">Signatures</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Police</Label>
+                        <Select
+                          value={config.signature?.fontFamily || "Times New Roman, serif"}
+                          onValueChange={(value) => updateFont('signature', 'fontFamily', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AVAILABLE_FONTS.map(font => (
+                              <SelectItem key={font} value={font}>{font.split(',')[0]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Taille ({config.signature?.fontSize || 12}px)</Label>
+                        <Slider
+                          value={[config.signature?.fontSize || 12]}
+                          onValueChange={(value) => updateFont('signature', 'fontSize', value[0])}
+                          max={18}
+                          min={8}
+                          step={1}
+                          className="w-full"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Poids</Label>
+                        <Select
+                          value={config.signature?.fontWeight || "bold"}
+                          onValueChange={(value) => updateFont('signature', 'fontWeight', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_WEIGHTS.map(weight => (
+                              <SelectItem key={weight} value={weight}>{weight}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Style</Label>
+                        <Select
+                          value={config.signature?.fontStyle || "normal"}
+                          onValueChange={(value) => updateFont('signature', 'fontStyle', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_STYLES.map(style => (
+                              <SelectItem key={style} value={style}>{style}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Hauteur de ligne ({config.signature?.lineHeight || 1.2})</Label>
+                        <Slider
+                          value={[config.signature?.lineHeight || 1.2]}
+                          onValueChange={(value) => updateFont('signature', 'lineHeight', value[0])}
+                          max={3}
+                          min={0.8}
+                          step={0.1}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Disclaimer */}
+                  <Card className="p-4">
+                    <h4 className="font-medium mb-3">Texte de bas de page (disclaimer)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Police</Label>
+                        <Select
+                          value={config.disclaimer?.fontFamily || "Times New Roman, serif"}
+                          onValueChange={(value) => updateFont('disclaimer', 'fontFamily', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AVAILABLE_FONTS.map(font => (
+                              <SelectItem key={font} value={font}>{font.split(',')[0]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Taille ({config.disclaimer?.fontSize || 8}px)</Label>
+                        <Slider
+                          value={[config.disclaimer?.fontSize || 8]}
+                          onValueChange={(value) => updateFont('disclaimer', 'fontSize', value[0])}
+                          max={14}
+                          min={6}
+                          step={1}
+                          className="w-full"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Poids</Label>
+                        <Select
+                          value={config.disclaimer?.fontWeight || "normal"}
+                          onValueChange={(value) => updateFont('disclaimer', 'fontWeight', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_WEIGHTS.map(weight => (
+                              <SelectItem key={weight} value={weight}>{weight}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Style</Label>
+                        <Select
+                          value={config.disclaimer?.fontStyle || "italic"}
+                          onValueChange={(value) => updateFont('disclaimer', 'fontStyle', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_STYLES.map(style => (
+                              <SelectItem key={style} value={style}>{style}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Hauteur de ligne ({config.disclaimer?.lineHeight || 1.4})</Label>
+                        <Slider
+                          value={[config.disclaimer?.lineHeight || 1.4]}
+                          onValueChange={(value) => updateFont('disclaimer', 'lineHeight', value[0])}
+                          max={3}
+                          min={0.8}
+                          step={0.1}
+                          className="w-full"
+                        />
+                      </div>
                     </div>
                   </Card>
                 </>

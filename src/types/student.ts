@@ -48,6 +48,13 @@ export interface StudentRecord {
     FILIERE?: string;
     "ANNEE ACADEMIQUE"?: string;
     OPTION?: string;
+    // Versions anglaises
+    DOMAINE_EN?: string;
+    PARCOURS_EN?: string;
+    SPECIALITE_EN?: string;
+    OPTION_EN?: string;
+    FINALITE_EN?: string;
+    MENTION_EN?: string;
     // Colonnes dynamiques pour les notes et sessions
     [key: string]: any;
   }

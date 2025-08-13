@@ -9,6 +9,7 @@ import {
   CompactQRCodeData,
   testCompactEncryption
 } from '../crypto/compact-encryption';
+import { calculateGrade, calculateMention } from '../attestation-generator/utils';
 
 export interface StudentExcelRecord {
   ETABLISSEMENT?: string;
@@ -33,6 +34,13 @@ export interface StudentExcelRecord {
   DOMAINE?: string;
   "ANNEE D'OBTENTION"?: string;
   "DATE JURY"?: string;
+  // Versions anglaises
+  DOMAINE_EN?: string;
+  PARCOURS_EN?: string;
+  SPECIALITE_EN?: string;
+  OPTION_EN?: string;
+  FINALITE_EN?: string;
+  MENTION_EN?: string;
   [key: string]: any;
 }
 
@@ -42,12 +50,14 @@ export interface StudentExcelRecord {
 export function sanitizeStudentData(student: StudentExcelRecord): StudentExcelRecord {
   const sanitized = { ...student };
   
-  // Liste des champs à sanitiser
+  // Liste des champs à sanitiser (incluant les versions EN)
   const fieldsToSanitize = [
     'ETABLISSEMENT', 'NOM', 'PRENOM', 'MATRICULE', 'DATE DE NAISSANCE', 'LIEU DE NAISSANCE',
     'PARCOURS', 'SPECIALITE', 'OPTION', 'GRADE', 'MENTION', 'ANNEE ACADEMIQUE',
     'NIVEAU', 'SEMESTRE', 'CYCLE', 'FILIERE', 'FINALITE', 'TOTAL CREDIT', 'DOMAINE',
-    'ANNEE D\'OBTENTION', 'DATE JURY'
+    'ANNEE D\'OBTENTION', 'DATE JURY',
+    // Versions anglaises
+    'DOMAINE_EN', 'PARCOURS_EN', 'SPECIALITE_EN', 'OPTION_EN', 'FINALITE_EN', 'MENTION_EN'
   ];
   
   fieldsToSanitize.forEach(field => {
@@ -165,11 +175,13 @@ export function getQrCodePayloadWithEncryption(
 
 /**
  * Génère le contenu QR traditionnel (sans chiffrement) - pour compatibilité
+ * Utilise les mêmes calculs que l'attestation pour la cohérence
  */
 function generateTraditionalQRContent(
   student: StudentExcelRecord,
   documentType: 'releve' | 'attestation' | 'diplome'
 ): string {
+  
   const visibleContent = `Établissement: ${student.ETABLISSEMENT}
 Nom: ${student.NOM}
 Prénom: ${student.PRENOM}
@@ -201,11 +213,40 @@ Année d'obtention: ${student["ANNEE D'OBTENTION"]}`;
       break;
   }
 
+  // Calculs cohérents avec l'attestation
   const moyenneNumber = typeof student.MOYENNE === 'number' ? student.MOYENNE : Number(student.MOYENNE);
+  
+  // Calculer le grade (A+, B+, etc.) au lieu d'utiliser student.GRADE directement
+  const calculatedGrade = isNaN(moyenneNumber) ? 'N/D' : calculateGrade(moyenneNumber);
+  
+  // Calculer la mention ou utiliser une validée depuis Excel
+  let calculatedMention = 'Passable';
+  if (student.MENTION) {
+    const mentionValue = String(student.MENTION).trim();
+    // Vérifier si c'est une vraie mention (pas juste un chiffre comme "2")
+    const isValidMention = mentionValue && 
+                          mentionValue !== '1' && 
+                          mentionValue !== 'true' && 
+                          mentionValue !== 'false' &&
+                          /[a-zA-Z]/.test(mentionValue) &&  // Doit contenir des lettres
+                          !/^\d+$/.test(mentionValue);      // Ne doit pas être juste un chiffre
+    
+    if (isValidMention) {
+      calculatedMention = mentionValue;
+    } else {
+      // Si MENTION contient une valeur problématique, calculer
+      calculatedMention = calculateMention(moyenneNumber, student.PARCOURS, student.NIVEAU, student.FINALITE) || 'Passable';
+    }
+  } else {
+    calculatedMention = calculateMention(moyenneNumber, student.PARCOURS, student.NIVEAU, student.FINALITE) || 'Passable';
+  }
+  
+  console.log(`🔄 QR Code - Moyenne: ${moyenneNumber}, Grade calculé: ${calculatedGrade}, Mention calculée: ${calculatedMention}`);
+  
   const commonContent = `
 Moyenne: ${isNaN(moyenneNumber) ? 'N/D' : moyenneNumber.toFixed(2)}
-Grade: ${student.GRADE}
-Mention: ${student.MENTION}
+Grade: ${calculatedGrade}
+Mention: ${calculatedMention}
 Année académique: ${student["ANNEE ACADEMIQUE"]}`;
 
   return visibleContent + specificContent + commonContent;

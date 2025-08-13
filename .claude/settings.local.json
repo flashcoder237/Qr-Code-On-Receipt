@@ -4,7 +4,9 @@
       "Bash(npm run typecheck:*)",
       "Bash(npm run:*)",
       "Bash(npx tsc:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(rg:*)",
+      "Bash(del test-mention-fix.js)"
     ],
     "deny": []
   }

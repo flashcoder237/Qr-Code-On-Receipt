@@ -15,16 +15,16 @@ function translateMentionToEnglish(mentionFR: string): string {
   if (!mentionFR) return 'N/A';
   
   const translations: { [key: string]: string } = {
-    'Passable': 'Satisfactory',
-    'Assez Bien': 'Fairly Good', 
-    'Bien': 'Good',
-    'Très Bien': 'Very Good',
+    // Système de mentions standard - utilisé pour tous les étudiants
     'Excellent': 'Excellent',
-    // Mentions spécialisées Médecine/Pharmacie niveau 7
-    'Médiocre': 'Mediocre',
-    'Honorable': 'Honorable',
-    'Très Honorable': 'Very Honorable',
-    'Très Honorable avec Félicitations du Jury': 'Very Honorable with Jury Congratulations'
+    'Très Bien': 'Very Good',
+    'Bien': 'Good',
+    'Assez Bien': 'Fairly Good',
+    'Passable': 'Satisfactory',
+    'Insuffisant': 'Insufficient',
+    'Faible': 'Weak',
+    'Très Faible': 'Very Weak',
+    'Nul': 'Null'
   };
   
   return translations[mentionFR] || mentionFR;
@@ -85,6 +85,22 @@ export async function generateAttestationHTML(
   // Sanitiser les données de l'étudiant
   const sanitizedStudent = sanitizeStudentData(student);
   console.log('🧹 Données étudiant sanitisées');
+  console.log('🔍 Colonnes EN dans données brutes:', {
+    DOMAINE_EN: student.DOMAINE_EN,
+    PARCOURS_EN: student.PARCOURS_EN, 
+    SPECIALITE_EN: student.SPECIALITE_EN,
+    OPTION_EN: student.OPTION_EN,
+    FINALITE_EN: student.FINALITE_EN,
+    MENTION_EN: student.MENTION_EN
+  });
+  console.log('🔍 Colonnes EN après sanitisation:', {
+    DOMAINE_EN: sanitizedStudent.DOMAINE_EN,
+    PARCOURS_EN: sanitizedStudent.PARCOURS_EN,
+    SPECIALITE_EN: sanitizedStudent.SPECIALITE_EN,
+    OPTION_EN: sanitizedStudent.OPTION_EN,
+    FINALITE_EN: sanitizedStudent.FINALITE_EN,
+    MENTION_EN: sanitizedStudent.MENTION_EN
+  });
   
   // Par défaut, le chiffrement compact est activé sauf indication contraire
   const encryptionEnabled = options.encryptionEnabled !== false;
@@ -156,22 +172,105 @@ export async function generateAttestationHTML(
     sanitizedStudent.OPTION_EN : sanitizedStudent.OPTION;
   const finality = useEnglishTranslations && sanitizedStudent.FINALITE_EN ? 
     sanitizedStudent.FINALITE_EN : sanitizedStudent.FINALITE;
-  const mentionTranslated = useEnglishTranslations && sanitizedStudent.MENTION_EN ? 
-    sanitizedStudent.MENTION_EN : (sanitizedStudent.MENTION || calculateMention(numericAverage, sanitizedStudent.PARCOURS, sanitizedStudent.NIVEAU));
-
-  // Versions anglaises pour affichage bilingue Faculty
-  const fieldOfStudyEN = sanitizedStudent.DOMAINE_EN || sanitizedStudent.DOMAINE || 'N/A';
-  const courseEN = sanitizedStudent.PARCOURS_EN || sanitizedStudent.PARCOURS || 'N/A';
-  const specializationEN = sanitizedStudent.SPECIALITE_EN || sanitizedStudent.SPECIALITE || 'N/A';
-  const optionEN = sanitizedStudent.OPTION_EN || sanitizedStudent.OPTION || 'N/A';
-  const finalityEN = sanitizedStudent.FINALITE_EN || sanitizedStudent.FINALITE || 'N/A';
-  
-  // Calculer la mention en anglais si manquante pour Faculty
-  let mentionTranslatedEN = sanitizedStudent.MENTION_EN;
-  if (useBilingualDisplay && !mentionTranslatedEN && sanitizedStudent.MENTION) {
-    mentionTranslatedEN = translateMentionToEnglish(sanitizedStudent.MENTION);
+  // Calculer la mention de base d'abord - NETTOYER LES VALEURS PROBLÉMATIQUES
+  let baseMention = 'Passable'; // Valeur par défaut
+  if (sanitizedStudent.MENTION) {
+    const mentionValue = String(sanitizedStudent.MENTION).trim();
+    // Vérifier si c'est une vraie mention (contient des lettres, pas juste un chiffre)
+    const isValidMention = mentionValue && 
+                          mentionValue !== '1' && 
+                          mentionValue !== 'true' && 
+                          mentionValue !== 'false' &&
+                          /[a-zA-Z]/.test(mentionValue) &&  // Doit contenir des lettres
+                          !/^\d+$/.test(mentionValue);      // Ne doit pas être juste un chiffre
+    
+    if (isValidMention) {
+      baseMention = mentionValue;
+      console.log(`✅ MENTION Excel valide utilisée: "${mentionValue}"`);
+    } else {
+      // Si MENTION contient une valeur problématique (comme "2"), calculer la mention
+      baseMention = calculateMention(numericAverage, sanitizedStudent.PARCOURS, sanitizedStudent.NIVEAU, sanitizedStudent.FINALITE) || 'Passable';
+      console.log(`❌ MENTION Excel ignorée (chiffre/invalide: "${mentionValue}"), mention calculée: "${baseMention}"`);
+    }
+  } else {
+    // Si pas de MENTION, calculer
+    baseMention = calculateMention(numericAverage, sanitizedStudent.PARCOURS, sanitizedStudent.NIVEAU, sanitizedStudent.FINALITE) || 'Passable';
+    console.log(`📊 Aucune MENTION Excel, mention calculée: "${baseMention}"`);
   }
-  mentionTranslatedEN = mentionTranslatedEN || translateMentionToEnglish(calculateMention(numericAverage, sanitizedStudent.PARCOURS, sanitizedStudent.NIVEAU));
+  console.log(`📋 Mention de base calculée: "${baseMention}" (depuis EXCEL: ${sanitizedStudent.MENTION ? (sanitizedStudent.MENTION === '1' || sanitizedStudent.MENTION === 1 ? 'Oui (mais valeur problématique)' : 'Oui') : 'Non'})`);
+  
+  // Priorité : MENTION_EN du fichier Excel > mention traduite > mention de base
+  let mentionTranslated = String(baseMention); // Valeur par défaut sécurisée
+  if (useEnglishTranslations && sanitizedStudent.MENTION_EN) {
+    // Convertir en chaîne et nettoyer si nécessaire
+    const mentionENValue = String(sanitizedStudent.MENTION_EN).trim();
+    if (mentionENValue && mentionENValue !== '1' && mentionENValue !== 'true' && mentionENValue !== 'false') {
+      mentionTranslated = mentionENValue;
+    }
+  }
+  console.log(`🌐 Mention traduite: "${mentionTranslated}" (useEnglish: ${useEnglishTranslations}, MENTION_EN: ${sanitizedStudent.MENTION_EN || 'N/A'})`);
+  console.log(`🔍 DEBUG mentionTranslated - Type: ${typeof mentionTranslated}, Value: ${mentionTranslated}, JSON: ${JSON.stringify(mentionTranslated)}`);
+  console.log(`🔍 DEBUG MENTION_EN - Type: ${typeof sanitizedStudent.MENTION_EN}, Value: ${sanitizedStudent.MENTION_EN}, JSON: ${JSON.stringify(sanitizedStudent.MENTION_EN)}`);
+  console.log(`🔍 DEBUG MENTION - Type: ${typeof sanitizedStudent.MENTION}, Value: ${sanitizedStudent.MENTION}, JSON: ${JSON.stringify(sanitizedStudent.MENTION)}`);
+
+  // Versions anglaises pour affichage bilingue Faculty - CORRECTION DE LA LOGIQUE
+  const fieldOfStudyEN = (sanitizedStudent.DOMAINE_EN && sanitizedStudent.DOMAINE_EN !== 'N/D') ? 
+    sanitizedStudent.DOMAINE_EN : (sanitizedStudent.DOMAINE || 'N/A');
+  const courseEN = (sanitizedStudent.PARCOURS_EN && sanitizedStudent.PARCOURS_EN !== 'N/D') ? 
+    sanitizedStudent.PARCOURS_EN : (sanitizedStudent.PARCOURS || 'N/A');
+  const specializationEN = (sanitizedStudent.SPECIALITE_EN && sanitizedStudent.SPECIALITE_EN !== 'N/D') ? 
+    sanitizedStudent.SPECIALITE_EN : (sanitizedStudent.SPECIALITE || 'N/A');
+  const optionEN = (sanitizedStudent.OPTION_EN && sanitizedStudent.OPTION_EN !== 'N/D') ? 
+    sanitizedStudent.OPTION_EN : (sanitizedStudent.OPTION || 'N/A');
+  const finalityEN = (sanitizedStudent.FINALITE_EN && sanitizedStudent.FINALITE_EN !== 'N/D') ? 
+    sanitizedStudent.FINALITE_EN : (sanitizedStudent.FINALITE || 'N/A');
+  
+  console.log('🔍 Versions anglaises calculées:', {
+    'DOMAINE_EN raw': sanitizedStudent.DOMAINE_EN,
+    'fieldOfStudyEN final': fieldOfStudyEN,
+    'PARCOURS_EN raw': sanitizedStudent.PARCOURS_EN,
+    'courseEN final': courseEN,
+    'SPECIALITE_EN raw': sanitizedStudent.SPECIALITE_EN,
+    'specializationEN final': specializationEN
+  });
+  
+  // Calculer la mention en anglais si manquante pour Faculty - RESPECTER LES VERSIONS EXCEL
+  // Calculer mentionTranslatedEN en nettoyant les valeurs problématiques  
+  let mentionTranslatedEN = null;
+  if (useBilingualDisplay) {
+    // Priorité 1: Si MENTION_EN dans Excel est une vraie traduction anglaise (pas un chiffre)
+    if (sanitizedStudent.MENTION_EN) {
+      const mentionENValue = String(sanitizedStudent.MENTION_EN).trim();
+      // Vérifier si c'est une vraie traduction (contient des lettres ET n'est pas juste un chiffre)
+      const isValidTranslation = mentionENValue && 
+                                mentionENValue !== '1' && 
+                                mentionENValue !== 'true' && 
+                                mentionENValue !== 'false' && 
+                                /[a-zA-Z]/.test(mentionENValue) &&
+                                !/^\d+$/.test(mentionENValue); // Exclure les chiffres purs comme "2", "3", etc.
+      
+      if (isValidTranslation) {
+        mentionTranslatedEN = mentionENValue;
+        console.log(`✅ MENTION_EN valide utilisée: "${mentionENValue}"`);
+      } else {
+        console.log(`❌ MENTION_EN ignorée (chiffre ou invalide): "${mentionENValue}"`);
+      }
+    }
+    
+    // Priorité 2: Traduire la MENTION du fichier Excel s'il y en a une
+    if (!mentionTranslatedEN && sanitizedStudent.MENTION) {
+      mentionTranslatedEN = translateMentionToEnglish(sanitizedStudent.MENTION);
+      console.log(`📝 Traduction de MENTION Excel: "${sanitizedStudent.MENTION}" -> "${mentionTranslatedEN}"`);
+    } 
+    
+    // Priorité 3: Calculer et traduire
+    if (!mentionTranslatedEN) {
+      const calculatedMention = calculateMention(numericAverage, sanitizedStudent.PARCOURS, sanitizedStudent.NIVEAU, sanitizedStudent.FINALITE);
+      mentionTranslatedEN = translateMentionToEnglish(calculatedMention);
+      console.log(`🔢 Traduction de mention calculée: "${calculatedMention}" -> "${mentionTranslatedEN}"`);
+    }
+  }
+  console.log(`🇺🇸 Mention EN finale: "${mentionTranslatedEN}" (depuis EXCEL: ${sanitizedStudent.MENTION_EN ? 'Oui' : 'Non'})`);
 
   console.log(`🌐 Traductions anglaises:`)
   console.log(`   Établissement faculty: ${isFacultyEstablishment}`);
@@ -187,21 +286,62 @@ export async function generateAttestationHTML(
   // Calculer automatiquement les valeurs à partir de la moyenne
   const average = numericAverage.toFixed(2);
   const grade = calculateGrade(numericAverage);
-  const mention = mentionTranslated; // Utiliser la mention traduite
+  // Calcul sécurisé de la mention finale
+  let mention = 'Passable'; // Valeur par défaut
+  if (mentionTranslated && typeof mentionTranslated === 'string') {
+    mention = mentionTranslated;
+  } else {
+    mention = calculateMention(numericAverage, sanitizedStudent.PARCOURS, sanitizedStudent.NIVEAU, sanitizedStudent.FINALITE) || 'Passable';
+  }
+  
+  console.log(`🎯 Mention finale sécurisée: "${mention}" (type: ${typeof mention}, longueur: ${mention.length})`);
+  
+  // S'assurer que mentionTranslatedEN existe pour l'affichage bilingue
+  if (useBilingualDisplay && !mentionTranslatedEN) {
+    mentionTranslatedEN = translateMentionToEnglish(mention);
+    console.log(`🔄 Traduction garantie de la mention finale: "${mention}" -> "${mentionTranslatedEN}"`);
+  }
+  
   const mgp = calculateMGP(grade);
   
   console.log(`📊 Calculs automatiques pour ${studentFullName}:`);
   console.log(`   Moyenne: ${average}`);
   console.log(`   Grade: ${grade}`);
-  console.log(`   Mention: ${mention}`);
+  console.log(`   MentionTranslated: "${mentionTranslated}" (type: ${typeof mentionTranslated})`);
+  console.log(`   Mention finale: "${mention}" (type: ${typeof mention})`);
+  console.log(`   PARCOURS: ${sanitizedStudent.PARCOURS}, NIVEAU: ${sanitizedStudent.NIVEAU}`);
+  console.log(`   useBilingualDisplay: ${useBilingualDisplay}, mentionTranslatedEN: "${mentionTranslatedEN}"`);
   console.log(`   MGP: ${mgp}`);
+  
+  // Calculer la traduction finale de la mention pour le template
+  let finalMentionEN = '';
+  if (useBilingualDisplay) {
+    // Nettoyer mentionTranslatedEN des valeurs problématiques
+    let cleanMentionTranslatedEN = null;
+    if (mentionTranslatedEN && typeof mentionTranslatedEN === 'string') {
+      const cleanValue = mentionTranslatedEN.trim();
+      if (cleanValue && cleanValue !== '1' && cleanValue !== 'true' && cleanValue !== 'false') {
+        cleanMentionTranslatedEN = cleanValue;
+      }
+    }
+    
+    finalMentionEN = String(cleanMentionTranslatedEN || translateMentionToEnglish(mention) || 'N/A');
+    console.log(`🔍 DEBUG BILINGUE MENTION:`);
+    console.log(`   - useBilingualDisplay: ${useBilingualDisplay}`);
+    console.log(`   - mention (français): "${mention}"`);
+    console.log(`   - mentionTranslatedEN (brut): "${mentionTranslatedEN}"`);
+    console.log(`   - cleanMentionTranslatedEN: "${cleanMentionTranslatedEN}"`);
+    console.log(`   - translateMentionToEnglish(mention): "${translateMentionToEnglish(mention)}"`);
+    console.log(`   - finalMentionEN (ce qui s'affichera): "${finalMentionEN}"`);
+    console.log(`   - Template HTML final: ${String(mention) || 'ERREUR_MENTION'}<br><em>${finalMentionEN}</em>`);
+  }
 
   const getCycleTranslateEn = (cycle : string) => {
     switch (cycle.toUpperCase()) {
       case "DOCTORAT":
-        return "OF STATE DOCTORATE";
+        return "OF DOCTORATE";
       case "DOCTORAT PHARMACIE":
-        return "OF STATE DOCTORATE";
+        return "OF DOCTORATE OF PHARMACY";
       case "MASTER":
         return "OF MASTER'S DEGREE";
       case "LICENCE":
@@ -216,7 +356,7 @@ export async function generateAttestationHTML(
   const getCycleTranslateFr = (cycle : string) => {
     switch (cycle.toUpperCase()) {
       case "DOCTORAT":
-        return "DE DOCTORAT D'ETAT";
+        return "DE DOCTORAT";
       case "MASTER":
         return "DE MASTER";
       case "LICENCE":
@@ -288,7 +428,7 @@ export async function generateAttestationHTML(
         width: calc(210mm - ${theme.documentPadding * 2}px);
         height: calc(297mm - ${theme.documentPadding * 2}px);
         font-family: ${theme.mainFont};
-        font-size: ${theme.contentFontSize}px;
+        font-size: ${theme.contentFontSize}px !important;
         color: ${theme.primaryColor};
         background-color: white;
         ${theme.compactMode ? 'line-height: 1.2;' : 'line-height: 1.4;'}
@@ -776,7 +916,7 @@ export async function generateAttestationHTML(
               <h1 class="main-title">${theme.customTitle || `ATTESTATION DE REUSSITE ${getCycleTranslateFr(cycle)}`}</h1>
               ${theme.showBilingualText ? `<h2 class="subtitle">${theme.customSubtitle || `ATTESTATION OF COMPLETION ${getCycleTranslateEn(cycle)}`}</h2>` : ''}
               
-              <p style="margin-top: 6px"><strong>Ref N°............./${currentYear}/UDo/FMSP/VDRC/${settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE"}</strong></p>
+              <p style="margin-top: 6px"><strong>Ref N°............./${currentYear}/UDo/FMSP${settings.establishmentType === "ipes" ? "/VDRC/"+settings.nameAbreviation : "/VDPSAA/VDSSE/VDRC/CDAASR/SSE"}</strong></p>
             </div>
         </div>
         
@@ -813,9 +953,9 @@ export async function generateAttestationHTML(
                 ${theme.showBilingualText ? '<em>Born on: <strong style="opacity:0">' + birthDate + '</strong></em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>at:</em>' : ''}</p>
                 
                 <p id="to-hidden">Inscrit(e) à <strong>${settings.nameFrench}</strong> sous le matricule: <strong>${matricule}</strong><br>
-                ${theme.showBilingualText ? `<em>Registered <strong>${settings.nameFrench}</strong> under the matricule number:</em>` : ''}</p>
+                ${theme.showBilingualText ? `<em>Registered <strong>${settings.nameEnglish}</strong> under the matricule number:</em>` : ''}</p>
 
-                <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase()}</strong> en <strong>${specialization.toUpperCase()}</strong> ${option && option !== 'N/D' ? `option <strong>${option.toUpperCase()}</strong>` : ''}<br>
+                <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase()}</strong> en <strong>${specialization.toUpperCase()}</strong> ${settings.establishmentType === "ipes" ? (option && option !== 'N/D' ? `option <strong>${option.toUpperCase()}</strong>` : '') : ""}<br>
                 ${theme.showBilingualText ? '<em>Having successfully fufilled the requirements qualifying for the :</em>' : ''}</p>
           
             </div>
@@ -856,7 +996,7 @@ export async function generateAttestationHTML(
                         <td><strong>${average}</strong></td>
                         <td><strong>${grade}</strong></td>
                         <td><strong>${mgp.toFixed(2)}</strong></td>
-                        <td><strong>${mention}${useBilingualDisplay ? `<br><em style="font-weight: normal">${mentionTranslatedEN}</em>` : ''}</strong></td>
+                        <td><strong>${String(mention) || 'ERREUR_MENTION'}${useBilingualDisplay ? `<br><em style="font-weight: normal">${finalMentionEN}</em>` : ''}</strong></td>
                         <td><strong>${academicYear}</strong></td>
                         <td><strong>${finality}${useBilingualDisplay ? `<br><em style="font-weight: normal">${finalityEN}</em>` : ''}</strong></td>
                     </tr>

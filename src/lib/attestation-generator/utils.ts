@@ -61,39 +61,36 @@ export function calculateGrade(average: number | string): string {
 }
 
 /**
- * Détermine la mention en fonction de la moyenne
- * Avec système spécialisé pour Médecine/Pharmacie niveau 7
+ * Détermine la mention en fonction de la moyenne - Système standard pour tous
  */
 export function calculateMention(
   average: number | string, 
   parcours?: string, 
-  niveau?: string | number
+  niveau?: string | number,
+  finalite?: string
 ): string {
+  console.log(`🔍 calculateMention appelé avec:`, { average, parcours, niveau, finalite });
+  
   const numAverage = typeof average === 'string' ? parseFloat(average) : average;
   
-  // Système spécialisé pour Médecine/Pharmacie niveau 7
-  const isNiveau7 = niveau === 7 || niveau === "7" || String(niveau).toLowerCase().includes("7");
-  const isMedecinePharmcie = parcours && (
-    parcours.toLowerCase().includes('medecine') || 
-    parcours.toLowerCase().includes('médecine') || 
-    parcours.toLowerCase().includes('medicine') ||
-    parcours.toLowerCase().includes('pharmacie') ||
-    parcours.toLowerCase().includes('pharmacy')
-  );
+  let result: string;
   
-  if (isNiveau7 && isMedecinePharmcie) {
-    if (numAverage >= 15) return "Très Honorable avec Félicitations du Jury";
-    if (numAverage >= 14) return "Très Honorable";
-    if (numAverage >= 10) return "Honorable";
-    return "Médiocre"; // 0-10
-  }
+  // Système standard pour tous les étudiants
+  if (numAverage >= 18) result = "Excellent";           // [18-20]
+  else if (numAverage >= 16) result = "Très Bien";      // [16-18[
+  else if (numAverage >= 14) result = "Bien";           // [14-16[
+  else if (numAverage >= 13) result = "Assez Bien";     // [13-14[
+  else if (numAverage >= 12) result = "Assez Bien";     // [12-13[
+  else if (numAverage >= 11) result = "Passable";       // [11-12[
+  else if (numAverage >= 10) result = "Passable";       // [10-11[
+  else if (numAverage >= 9) result = "Insuffisant";     // [09-10[
+  else if (numAverage >= 8) result = "Faible";          // [08-09[
+  else if (numAverage >= 6) result = "Très Faible";     // [06-08[
+  else result = "Nul";                                   // [00-06[
   
-  // Système standard pour tous les autres cas
-  if (numAverage >= 16) return "Très Bien";
-  if (numAverage >= 14) return "Bien";
-  if (numAverage >= 12) return "Assez Bien";
-  if (numAverage >= 10) return "Passable";
-  return "Insuffisant";
+  console.log(`📝 Mention standard: ${result}`);
+  console.log(`🏆 Résultat final calculateMention: "${result}" (type: ${typeof result})`);
+  return result;
 }
 
 /**
