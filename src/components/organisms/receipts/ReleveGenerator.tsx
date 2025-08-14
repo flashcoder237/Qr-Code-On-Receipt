@@ -47,6 +47,7 @@ interface TranscriptSettings {
   facultyLogo: string;
   themeColor: string;
   themeFont: string;
+  qrCodeSize?: "small" | "medium" | "large";
 }
 
 export const ReleveGenerator: React.FC = () => {
@@ -80,6 +81,7 @@ export const ReleveGenerator: React.FC = () => {
 
   // Load settings from localStorage
   const [settings] = useLocalStorage<TranscriptSettings>("settings", {
+    establishmentType: "ipes",
     nameFrench: "",
     nameEnglish: "",
     postalBox: "",
@@ -90,6 +92,7 @@ export const ReleveGenerator: React.FC = () => {
     facultyLogo: "",
     themeColor: "#000000",
     themeFont: "Times New Roman, serif",
+    qrCodeSize: "medium",
   });
 
   // Load configurations from localStorage only once during component mount

@@ -29,6 +29,7 @@ interface TranscriptSettingsPayload {
   watermarkLogo?: string; // NOUVEAU: Logo personnalisé pour le fond des relevés
   themeColor: string;
   themeFont: string;
+  qrCodeSize?: "small" | "medium" | "large"; // NOUVEAU: Taille du QR code
   theme?: ThemeSettingsPayload;
   encryptionEnabled?: boolean;
   demoMode?: boolean; // NOUVEAU: Passer explicitement le mode démo
@@ -59,6 +60,14 @@ function generateThemeStyles(params: GeneratePDFParams): string {
   
   // CORRECTION: Récupérer le mode démo depuis les paramètres au lieu de localStorage
   const isDemoMode = params.settings.demoMode === true;
+
+  // Déterminer la taille du QR code
+  const qrCodeSizeMap = {
+    small: { width: '80px', height: '80px' },
+    medium: { width: '100px', height: '100px' },
+    large: { width: '120px', height: '120px' }
+  };
+  const qrCodeSize = qrCodeSizeMap[params.settings.qrCodeSize || 'medium'];
 
   const baseCSS = `
     @page {
@@ -180,8 +189,8 @@ function generateThemeStyles(params: GeneratePDFParams): string {
     }
     
     .qr-code {
-      width: 100px;
-      height: 100px;
+      width: ${qrCodeSize.width};
+      height: ${qrCodeSize.height};
       display: ${theme.showQRCode ? 'block' : 'none'};
       position: relative;
     }

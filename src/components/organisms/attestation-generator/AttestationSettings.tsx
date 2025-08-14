@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLocalStorage } from "usehooks-ts";
 import { useDropzone } from "react-dropzone";
@@ -29,6 +30,7 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
     facultyLogo: "",
     convTextEn: "",
     convTextFr: "",
+    qrCodeSize: "medium", // Nouvelle option pour la taille du QR code
   });
 
   // État local pour la modification
@@ -607,6 +609,33 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Paramètres des documents */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-gray-200">
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Paramètres des documents</h3>
+              
+              <div className="space-y-2">
+                <Label>Taille du QR code</Label>
+                <Select
+                  value={formValues.qrCodeSize || "medium"}
+                  onValueChange={(value) => 
+                    setFormValues(prev => ({ ...prev, qrCodeSize: value as "small" | "medium" | "large" }))
+                  }
+                  disabled={!isEditing}
+                >
+                  <SelectTrigger className={!isEditing ? "bg-gray-50 text-gray-500" : ""}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="small">Petit (80x80px)</SelectItem>
+                    <SelectItem value="medium">Moyen (100x100px)</SelectItem>
+                    <SelectItem value="large">Grand (120x120px)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

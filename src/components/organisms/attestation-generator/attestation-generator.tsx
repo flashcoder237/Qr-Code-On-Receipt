@@ -36,6 +36,7 @@ export const AttestationGenerator: React.FC = () => {
   const [excelData, setExcelData] = useState<StudentExcelRecord[]>([]);
   const [excelColumns, setExcelColumns] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCancelled, setIsCancelled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [selectedStudentMatricules, setSelectedStudentMatricules] = useState<string[]>([]);
@@ -304,6 +305,12 @@ export const AttestationGenerator: React.FC = () => {
     };
   };
 
+  // Fonction pour annuler la génération
+  const cancelGeneration = () => {
+    setIsCancelled(true);
+    notifyWarning("Annulation", "Génération annulée par l'utilisateur");
+  };
+
   const generateAttestations = async (studentsToGenerate?: StudentExcelRecord[]) => {
     // Si des étudiants sont explicitement passés, les utiliser directement
     // Sinon utiliser la logique de sélection par défaut
@@ -359,6 +366,7 @@ export const AttestationGenerator: React.FC = () => {
 
     try {
       setIsLoading(true);
+      setIsCancelled(false); // Réinitialiser l'annulation
       setError(null);
       setProcessingProgress(0);
       
@@ -394,6 +402,12 @@ export const AttestationGenerator: React.FC = () => {
       let processedCount = 0;
       
       for (const [fileName, data] of preparedData.entries()) {
+        // Vérifier si l'annulation a été demandée
+        if (isCancelled) {
+          notifyWarning("Annulé", `Génération annulée après ${processedCount} fichier(s)`);
+          return;
+        }
+
         try {
           const pdfBytes = await window.ipcRenderer.invoke('generate-attestation-pdf', data);
           results.set(fileName, pdfBytes);
@@ -902,7 +916,17 @@ export const AttestationGenerator: React.FC = () => {
                 />
               )}
 
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                {isLoading && (
+                  <Button 
+                    variant="outline" 
+                    onClick={cancelGeneration}
+                    className="min-w-24"
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Annuler
+                  </Button>
+                )}
                 <Button 
                   onClick={() => generateAttestations()} 
                   disabled={isLoading || excelData.length === 0 || eligibilityData.eligibleCount === 0}
