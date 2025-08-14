@@ -1,6 +1,7 @@
 // src/lib/constants/menu.tsx - Mise à jour avec gestion du mode démo
 
 import { QrCodeOnPdf } from "@/components/organisms/qrcode-on-pdf";
+import { QRCodeDocumentProcessor } from "@/components/organisms/qr-document-processor/QRCodeDocumentProcessor";
 import { AttestationGenerator } from "@/components/organisms/attestation-generator";
 import { SettingsForm } from "@/components/organisms/settings-form";
 import { CoursesList } from "@/components/organisms/courses-list";
@@ -19,6 +20,7 @@ import {
   FileText,
   History,
   Settings,
+  QrCode,
 } from "lucide-react";
 
 interface MenuItem {
@@ -66,6 +68,12 @@ const menuItems: MenuItem[] = [
     icon: File,
     component: <QrCodeOnPdf />,
     demoRestricted: true, // Cette fonctionnalité est restreinte en mode démo
+  },
+  {
+    title: "Placement QR sur Documents",
+    url: "qr-document-processor",
+    icon: QrCode,
+    component: <QRCodeDocumentProcessor />,
   },
   {
     title: "Aide",
