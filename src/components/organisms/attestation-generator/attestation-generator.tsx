@@ -305,30 +305,32 @@ export const AttestationGenerator: React.FC = () => {
   };
 
   const generateAttestations = async (studentsToGenerate?: StudentExcelRecord[]) => {
+    // Si des étudiants sont explicitement passés, les utiliser directement
+    // Sinon utiliser la logique de sélection par défaut
     const dataToProcess = studentsToGenerate || 
       (selectedStudentMatricules.length > 0 
         ? excelData.filter(s => selectedStudentMatricules.includes(s.MATRICULE))
-        : excelData);
+        : eligibilityData.eligible); // Utiliser les éligibles par défaut au lieu de tous
 
     if (dataToProcess.length === 0) {
-      const message = "Aucun étudiant sélectionné pour la génération";
+      const message = "Aucun étudiant sélectionné ou éligible pour la génération";
       setError(message);
       notifyWarning("Sélection vide", message);
       return;
     }
 
-    // Validation des moyennes pour les attestations
+    // Validation des moyennes pour les attestations - Afficher avertissement mais continuer
     const validationResult = validateSelectedStudents(excelData, dataToProcess.map(s => s.MATRICULE));
     
-    if (!validationResult.isValid) {
+    if (!validationResult.isValid && validationResult.ineligibleStudents.length > 0) {
       const ineligibleList = validationResult.ineligibleStudents
         .map(({ student, reason }) => `• ${student.NOM} ${student.PRENOM}: ${reason}`)
         .join('\n');
       
-      const message = `Impossible de générer les attestations pour les étudiants suivants :\n\n${ineligibleList}\n\nSeuls les étudiants avec une moyenne ≥ 10/20 peuvent recevoir une attestation.`;
-      setError(message);
-      notifyError("Étudiants non éligibles", message);
-      return;
+      notifyWarning(
+        "Étudiants ignorés", 
+        `Les étudiants suivants seront ignorés (moyenne < 10/20) :\n\n${ineligibleList}`
+      );
     }
 
     // Filtrer pour ne garder que les étudiants éligibles
@@ -432,6 +434,7 @@ export const AttestationGenerator: React.FC = () => {
             notifySuccess("Export terminé", `${results.size} fichiers téléchargés individuellement`);
             break;
             
+          case 'pdf':
           case 'single':
             await downloadSinglePDF(results, prefix, 'descriptive');
             notifySuccess("Export terminé", "PDF combiné téléchargé avec succès");
@@ -872,7 +875,7 @@ export const AttestationGenerator: React.FC = () => {
                 <AttestationExportOptions
                   selectedStudents={selectedStudentMatricules.length > 0 
                     ? excelData.filter(student => selectedStudentMatricules.includes(student.MATRICULE))
-                    : eligibilityData.eligibleStudents
+                    : eligibilityData.eligible
                   }
                   schoolSettings={schoolSettings}
                   attestationTheme={attestationTheme}
@@ -882,8 +885,19 @@ export const AttestationGenerator: React.FC = () => {
                   onExportFormatChange={setExportFormat}
                   onUseCompressionChange={setUseCompression}
                   onEncryptionEnabledChange={setEncryptionEnabled}
-                  onExportData={() => generateAttestations()}
+                  onExportData={() => {
+                    const studentsToGenerate = selectedStudentMatricules.length > 0 
+                      ? excelData.filter(student => selectedStudentMatricules.includes(student.MATRICULE))
+                      : eligibilityData.eligible;
+                    generateAttestations(studentsToGenerate);
+                  }}
                   onExportTemplate={() => {}}
+                  onExportPDF={() => {
+                    const studentsToGenerate = selectedStudentMatricules.length > 0 
+                      ? excelData.filter(student => selectedStudentMatricules.includes(student.MATRICULE))
+                      : eligibilityData.eligible;
+                    generateAttestations(studentsToGenerate);
+                  }}
                   isLoading={isLoading}
                 />
               )}
