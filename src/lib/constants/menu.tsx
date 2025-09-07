@@ -11,8 +11,8 @@ import { DocumentHistoryManager } from "@/components/organisms/document-history/
 import { HelpSupport } from '@/components/organisms/help-support';
 import {SettingsPage} from '@/components/pages/SettingsPage';
 import {
-  FileDownIcon,
-  HelpCircleIcon,
+  Download,
+  HelpCircle,
   ListCheck,
   Settings2,
   Award,
@@ -21,6 +21,9 @@ import {
   History,
   Settings,
   QrCode,
+  GraduationCap,
+  FileSpreadsheet,
+  Cog
 } from "lucide-react";
 
 interface MenuItem {
@@ -35,13 +38,13 @@ const menuItems: MenuItem[] = [
   {
     title: "Génerer les relevés",
     url: "receipts",
-    icon: FileText,
+    icon: FileSpreadsheet,
     component: <ReleveGenerator />,
   },
   {
     title: "Générer les attestations",
     url: "attestation",
-    icon: Award,
+    icon: GraduationCap,
     component: <AttestationGenerator />,
   },
   {
@@ -53,7 +56,7 @@ const menuItems: MenuItem[] = [
   {
     title: "Configurer les entêtes",
     url: "settings",
-    icon: Settings2,
+    icon: Cog,
     component: <SettingsForm />,
   },
   {
@@ -78,7 +81,7 @@ const menuItems: MenuItem[] = [
   {
     title: "Aide",
     url: "help",
-    icon: HelpCircleIcon,
+    icon: HelpCircle,
     component: <HelpSupport />,
   },
   {
