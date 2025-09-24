@@ -761,7 +761,7 @@ const SettingForm: React.FC = () => {
                                     </div>
                                   ) : (
                                     <div className="flex flex-col items-center">
-                                      <Upload className={`h-10 w-10 mb-2 ${!isEditing ? "text-gray-400" : "text-gray-500"}`} />
+                                      <UploadIcon className={`h-10 w-10 mb-2 ${!isEditing ? "text-gray-400" : "text-gray-500"}`} />
                                       <p className={`text-sm ${!isEditing ? "text-gray-400" : "text-gray-500"}`}>
                                         {isEditing ? "Cliquez ou glissez-déposez pour ajouter" : "Mode lecture seule"}
                                       </p>

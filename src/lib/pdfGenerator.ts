@@ -477,21 +477,22 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
     const ueCode = course.CODE;
     
     if (!ueValidatedCredits.has(ueCode)) {
-      const ecNotes = student.COURSES
-        .filter(c => c.CODE === ueCode)
-        .map(c => c.NOTE);
-      
-      const ueAverage = course.UE_AVERAGE || 0;
-      const hasFailingEC = ecNotes.some(note => note <= 6);
-      const isUEValidated = ueAverage >= 10 && !hasFailingEC;
-      
-      // Stocker si l'UE est validée ou non et ses informations
-      ueValidatedCredits.set(ueCode, {
-        isValidated: isUEValidated,
-        credits: course.UE_CREDIT || 0,
-        average: ueAverage
-      });
-    }
+  const ecNotes = student.COURSES
+    .filter(c => c.CODE === ueCode);
+  console.log(student.COURSES);
+  
+  
+  const ueAverage = course.UE_AVERAGE || 0;
+  const hasFailingEC = ecNotes.some(ec => ec.NOTE <= (ec.NOTE_BASE * 0.35));
+  const isUEValidated = ueAverage >= 10 && !hasFailingEC;
+  
+  // Stocker si l'UE est validée ou non et ses informations
+  ueValidatedCredits.set(ueCode, {
+    isValidated: isUEValidated,
+    credits: course.UE_CREDIT || 0,
+    average: ueAverage
+  });
+}
   });
 
   // Deuxième étape : calcul des crédits validés et de la moyenne du semestre
@@ -825,13 +826,13 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                     <strong><em>FACULTY OF MEDICINE AND PHARMACEUTICAL SCIENCES</em></strong><br>
                     <h4 class="header-title"><strong>B.P. 2701. e-mail : <em><a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a></em></strong></h4></h2></span>
                     <h1 class="header-title"><strong>RELEVE DE NOTES</strong> / TRANSCRIPT</h1>
-                    <p><strong>Ref No</strong>&nbsp;&nbsp;  /${currentYear}/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR/${settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE"}</p>
+                    <p><strong>Ref No</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  /${currentYear}/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR/${settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE"}</p>
                 </div>
             </div>
         
             <div class="student_block1">
                 <div>
-                    <p><strong><strong>NOM ET PRENOM: </strong>${student.NOM.toUpperCase()} ${student.PRENOM.toUpperCase()}</strong></p>
+                    <p><strong><strong>NOM(S) ET PRENOM(S): </strong>${student.NOM.toUpperCase()} ${student.PRENOM !== "N/D" ? student.PRENOM.toUpperCase() : ""}</strong></p>
                     <p><em>surname and name:</em></p>
                 </div>
                 <div>
@@ -870,7 +871,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                     <p><strong>SEMESTRE:</strong> <strong>${student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "N/D") : "N/D"}</strong></p>
                     <div><em>Semester:</em></div>
                 </div>
-                <div>
+                <div style="${student.OPTION === 'N/D' ? 'display:none' : ''}">
                     <p><strong>OPTION:</strong> <strong>${student.OPTION.toUpperCase() || "N/D"}</strong></p>
                     <div><em>Option:</em></div>
                 </div>

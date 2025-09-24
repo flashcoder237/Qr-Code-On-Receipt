@@ -133,7 +133,7 @@ export async function generateAttestationHTML(
   const currentYear = new Date().getFullYear() % 100;
   
   const studentName = sanitizedStudent.NOM;
-  const studentFirstname = sanitizedStudent.PRENOM;
+  const studentFirstname = sanitizedStudent.PRENOM !== "N/D" ? sanitizedStudent.PRENOM : "";
   const studentFullName = `${studentName} ${studentFirstname}`;
   const matricule = sanitizedStudent.MATRICULE;
   const birthDateRaw = sanitizedStudent["DATE DE NAISSANCE"];
@@ -955,7 +955,7 @@ export async function generateAttestationHTML(
                 <p id="to-hidden">Inscrit(e) à <strong>${settings.nameFrench}</strong> sous le matricule: <strong>${matricule}</strong><br>
                 ${theme.showBilingualText ? `<em>Registered <strong>${settings.nameEnglish}</strong> under the matricule number:</em>` : ''}</p>
 
-                <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase()}</strong> en <strong>${specialization.toUpperCase()}</strong> ${settings.establishmentType === "ipes" ? (option && option !== 'N/D' ? `option <strong>${option.toUpperCase()}</strong>` : '') : ""}<br>
+                <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase()}</strong> en <strong>${specialization.toUpperCase()}</strong> ${settings.establishmentType === "ipes" ? (option && option !== 'N/D' && typeof option === 'string' ? `option <strong>${option.toUpperCase()}</strong>` : '') : ""}<br>
                 ${theme.showBilingualText ? '<em>Having successfully fufilled the requirements qualifying for the :</em>' : ''}</p>
           
             </div>
