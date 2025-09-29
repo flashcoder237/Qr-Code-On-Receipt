@@ -506,17 +506,17 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
   // Première étape : regrouper les EC par UE et calculer les moyennes des UE
   student.COURSES?.forEach(course => {
     const ueCode = course.CODE;
-    
+
     if (!ueValidatedCredits.has(ueCode)) {
   const ecNotes = student.COURSES
     .filter(c => c.CODE === ueCode);
   console.log(student.COURSES);
-  
-  
+
+
   const ueAverage = course.UE_AVERAGE || 0;
   const hasFailingEC = ecNotes.some(ec => ec.NOTE <= (ec.NOTE_BASE * 0.35));
   const isUEValidated = ueAverage >= 10 && !hasFailingEC;
-  
+
   // Stocker si l'UE est validée ou non et ses informations
   ueValidatedCredits.set(ueCode, {
     isValidated: isUEValidated,
@@ -526,6 +526,62 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
 }
   });
 
+  // NOUVEAU: Fonction pour calculer les statistiques par semestre
+  const calculateSemesterStats = (courses) => {
+    const ueValidatedCreditsLocal = new Map();
+
+    // Regrouper les EC par UE pour ce semestre spécifique
+    courses.forEach(course => {
+      const ueCode = course.CODE;
+
+      if (!ueValidatedCreditsLocal.has(ueCode)) {
+        const ecNotes = courses.filter(c => c.CODE === ueCode);
+        const ueAverage = course.UE_AVERAGE || 0;
+        const hasFailingEC = ecNotes.some(ec => ec.NOTE <= (ec.NOTE_BASE * 0.35));
+        const isUEValidated = ueAverage >= 10 && !hasFailingEC;
+
+        ueValidatedCreditsLocal.set(ueCode, {
+          isValidated: isUEValidated,
+          credits: course.UE_CREDIT || 0,
+          average: ueAverage
+        });
+      }
+    });
+
+    // Calculer les totaux pour ce semestre
+    let totalCreditsValidated = 0;
+    let weightedSum = 0;
+    let totalCredits = 0;
+
+    ueValidatedCreditsLocal.forEach((ueInfo, ueCode) => {
+      const credits = ensureNumber(ueInfo.credits);
+      const average = ensureNumber(ueInfo.average);
+
+      totalCredits += credits;
+      weightedSum += average * credits;
+
+      if (ueInfo.isValidated) {
+        totalCreditsValidated += credits;
+      }
+    });
+
+    const semesterAverage = totalCredits > 0 ? weightedSum / totalCredits : 0;
+    const mgp = calculateMGP(semesterAverage);
+    const grade = getGradeFromAverage(semesterAverage);
+    const isEnoughCredits = totalCreditsValidated >= (totalCredits * 0.7);
+    const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
+
+    return {
+      totalCreditsValidated,
+      totalCredits,
+      semesterAverage,
+      mgp,
+      grade,
+      decision,
+      isEnoughCredits
+    };
+  };
+
   // Deuxième étape : calcul des crédits validés et de la moyenne du semestre
   let totalCreditsValidated = 0;
   let weightedSum = 0;
@@ -534,10 +590,10 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
     // Utilisez ensureNumber pour garantir que vous travaillez avec des nombres
     const credits = ensureNumber(ueInfo.credits);
     const average = ensureNumber(ueInfo.average);
-    
+
     // Pour la formule de moyenne, on considère toutes les UE, validées ou non
     weightedSum += average * credits;
-    
+
     // Mais pour le total des crédits validés, on ne compte que les UE validées
     if (ueInfo.isValidated) {
       totalCreditsValidated += credits;
@@ -1053,22 +1109,106 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                         </tr>
                         <tr class="table-footer">
                             <td class="summary-label">RELEVE NIVEAU</td>
-                            ${(config?.hideSemesterColumn !== true) ? '<td class="summary-label">' + (isCompositeSemester ? 'SEMESTRES' : 'SEMESTRE') + '</td>' : ''}
-                            <td class="summary-label">${isCompositeSemester ? 'TOTAL CREDIT ANNUEL' : 'TOTAL CREDIT'}</td>
-                            <td colspan="2" class="summary-label">${isCompositeSemester ? 'MOYENNE ANNUELLE / 20' : 'MOYENNE SEMESTRIELLE / 20'}</td>
+                            ${(config?.hideSemesterColumn !== true) ? '<td class="summary-label">' + (isCompositeSemester ? (config?.semesters?.find(s => s.isComposite && s.showSemesterSeparation) ? 'SEMESTRE(S)' : 'SEMESTRE') : 'SEMESTRE') + '</td>' : ''}
+                            <td class="summary-label">${isCompositeSemester ? (config?.semesters?.find(s => s.isComposite && s.showSemesterSeparation) ? 'TOTAL CREDIT' : 'TOTAL CREDIT ANNUEL') : 'TOTAL CREDIT'}</td>
+                            <td colspan="2" class="summary-label">${isCompositeSemester ? (config?.semesters?.find(s => s.isComposite && s.showSemesterSeparation) ? 'MOYENNE / 20' : 'MOYENNE ANNUELLE / 20') : 'MOYENNE SEMESTRIELLE / 20'}</td>
                             <td class="summary-label">MGP</td>
                             <td class="summary-label">GRADE</td>
                             <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-label">DECISION DU JURY</td>
                         </tr>
-                        <tr class="table-footer-values">
-                            <td class="summary-value"><strong>${student.NIVEAU || "1"}</strong></td>
-                            ${(config?.hideSemesterColumn !== true) ? '<td class="summary-value"><strong>' + (student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "1") : "1") + '</strong></td>' : ''}
-                            <td class="summary-value"><strong>${totalCreditsValidated}</strong></td>
-                            <td colspan="2" class="summary-value"><strong>${semesterAverage.toFixed(2)}</strong></td>
-                            <td class="summary-value"><strong>${mgp.toFixed(1)}</strong></td>
-                            <td class="summary-value"><strong>${grade}</strong></td>
-                            <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-value ${(isCompositeSemester ? totalCreditsValidated >= (totalSemesterCredits * 0.7) : decision === "SEMESTRE VALIDE") ? "validated" : "not-validated"}"><strong>${isCompositeSemester ? (totalCreditsValidated >= (totalSemesterCredits * 0.7) ? "SEMESTRES VALIDES" : "SEMESTRES NON VALIDES") : decision}</strong></td>
-                        </tr>
+                        ${(() => {
+                          // Vérifier si c'est un semestre composite avec séparation activée
+                          const isCompositeWithSeparation = config?.semesters?.find(s =>
+                            s.isComposite && s.showSemesterSeparation
+                          );
+
+                          if (isCompositeWithSeparation && isCompositeWithSeparation.showSemesterSeparation) {
+                            // Extraire les numéros de semestre depuis le nom
+                            const semesterNumbers = extractSemesterNumbers(isCompositeWithSeparation.name);
+
+                            // Regrouper les cours par semestre pour calculer les statistiques individuelles
+                            const coursesBySemester = new Map();
+
+                            student.COURSES.forEach(course => {
+                              const ueCode = course.CODE || '';
+                              const ueIntitule = course.INTITULE || '';
+
+                              // Trouver l'UE correspondante dans la configuration
+                              let ue = isCompositeWithSeparation.ues.find(u => u.code === ueCode);
+                              if (!ue) {
+                                ue = isCompositeWithSeparation.ues.find(u => u.id === ueCode);
+                              }
+                              if (!ue) {
+                                ue = isCompositeWithSeparation.ues.find(u => u.name === ueIntitule);
+                              }
+
+                              // Utiliser le semesterNumber de l'UE si défini, sinon utiliser le premier semestre disponible
+                              let semesterNumber;
+                              if (ue && ue.semesterNumber) {
+                                semesterNumber = ue.semesterNumber;
+                              } else {
+                                semesterNumber = semesterNumbers[0] || 1;
+                              }
+
+                              if (!coursesBySemester.has(semesterNumber)) {
+                                coursesBySemester.set(semesterNumber, []);
+                              }
+                              coursesBySemester.get(semesterNumber).push(course);
+                            });
+
+                            // Calculer les statistiques pour chaque semestre
+                            const sortedSemesters = Array.from(coursesBySemester.keys()).sort((a, b) => a - b);
+                            let html = '';
+
+                            // Calculer le nombre total de lignes (semestres + ligne totale)
+                            const totalRows = sortedSemesters.length + 1;
+
+                            // Générer une ligne pour chaque semestre individuel
+                            sortedSemesters.forEach((semesterNumber, index) => {
+                              const semesterCourses = coursesBySemester.get(semesterNumber);
+                              const stats = calculateSemesterStats(semesterCourses);
+
+                              html += `
+                                <tr class="table-footer-values">
+                                  ${index === 0 ? `<td rowspan="${totalRows}" class="summary-value"><strong>${student.NIVEAU || "1"}</strong></td>` : ''}
+                                  ${(config?.hideSemesterColumn !== true) ? '<td class="summary-value"><strong>' + semesterNumber + '</strong></td>' : ''}
+                                  <td class="summary-value"><strong>${stats.totalCreditsValidated}</strong></td>
+                                  <td colspan="2" class="summary-value"><strong>${stats.semesterAverage.toFixed(2)}</strong></td>
+                                  <td class="summary-value"><strong>${stats.mgp.toFixed(1)}</strong></td>
+                                  <td class="summary-value"><strong>${stats.grade}</strong></td>
+                                  <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-value ${stats.isEnoughCredits ? "validated" : "not-validated"}"><strong>${stats.decision}</strong></td>
+                                </tr>
+                              `;
+                            });
+
+                            // Ajouter la ligne de total/moyenne générale (sans cellule niveau car fusionnée)
+                            html += `
+                              <tr class="table-footer-values" style="border-top: 2px solid black; font-weight: bold;">
+                                 ${(config?.hideSemesterColumn !== true) ? '<td class="summary-value"><strong>' + (student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "1") : "1") + '</strong></td>' : ''}
+                                <td class="summary-value"><strong>${totalCreditsValidated}</strong></td>
+                                <td colspan="2" class="summary-value"><strong>${semesterAverage.toFixed(2)}</strong></td>
+                                <td class="summary-value"><strong>${mgp.toFixed(1)}</strong></td>
+                                <td class="summary-value"><strong>${grade}</strong></td>
+                                <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-value ${totalCreditsValidated >= (totalSemesterCredits * 0.7) ? "validated" : "not-validated"}"><strong>${totalCreditsValidated >= (totalSemesterCredits * 0.7) ? "SEMESTRES VALIDES" : "SEMESTRES NON VALIDES"}</strong></td>
+                              </tr>
+                            `;
+
+                            return html;
+                          } else {
+                            // Logique normale pour un seul table-footer-values
+                            return `
+                              <tr class="table-footer-values">
+                                <td class="summary-value"><strong>${student.NIVEAU || "1"}</strong></td>
+                                ${(config?.hideSemesterColumn !== true) ? '<td class="summary-value"><strong>' + (student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "1") : "1") + '</strong></td>' : ''}
+                                <td class="summary-value"><strong>${totalCreditsValidated}</strong></td>
+                                <td colspan="2" class="summary-value"><strong>${semesterAverage.toFixed(2)}</strong></td>
+                                <td class="summary-value"><strong>${mgp.toFixed(1)}</strong></td>
+                                <td class="summary-value"><strong>${grade}</strong></td>
+                                <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-value ${(isCompositeSemester ? totalCreditsValidated >= (totalSemesterCredits * 0.7) : decision === "SEMESTRE VALIDE") ? "validated" : "not-validated"}"><strong>${isCompositeSemester ? (totalCreditsValidated >= (totalSemesterCredits * 0.7) ? "SEMESTRES VALIDES" : "SEMESTRES NON VALIDES") : decision}</strong></td>
+                              </tr>
+                            `;
+                          }
+                        })()}
                     </tbody>
                 </table>
             </div>
