@@ -314,6 +314,33 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
     setTimeout(() => setSuccess(null), 3000);
   };
 
+  // NOUVEAU: Fonction pour gérer la séparation des semestres composites
+  const toggleSemesterSeparation = (semesterId: string, enabled: boolean) => {
+    const updatedConfig = { ...config };
+    const semester = updatedConfig.semesters.find(s => s.id === semesterId);
+    if (!semester) return;
+
+    semester.showSemesterSeparation = enabled;
+    onConfigUpdate(updatedConfig);
+    setSuccess(`Séparation des semestres ${enabled ? 'activée' : 'désactivée'} pour ${semester.name}`);
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  // NOUVEAU: Fonction pour définir le numéro de semestre d'une UE
+  const setUESemesterNumber = (semesterId: string, ueId: string, semesterNumber: number | undefined) => {
+    const updatedConfig = { ...config };
+    const semester = updatedConfig.semesters.find(s => s.id === semesterId);
+    if (!semester) return;
+
+    const ue = semester.ues.find(u => u.id === ueId);
+    if (!ue) return;
+
+    ue.semesterNumber = semesterNumber;
+    onConfigUpdate(updatedConfig);
+    setSuccess(`Semestre ${semesterNumber || 'non défini'} assigné à l'UE ${ue.name}`);
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
   // Fonction pour changer le format d'affichage des sessions
   const setSessionDisplayFormat = (format: 'short' | 'full') => {
     const updatedConfig = { ...config };
@@ -675,6 +702,40 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Configuration spécifique aux semestres composites */}
+            {semester.isComposite && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-amber-600" />
+                  <span className="font-medium text-amber-900">Options pour semestre composite</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium text-amber-900">
+                      Afficher la séparation des semestres
+                    </Label>
+                    <p className="text-xs text-amber-700">
+                      Ajoute des lignes "Semestre X" dans le tableau pour délimiter les UEs de chaque semestre
+                    </p>
+                  </div>
+                  <Switch
+                    checked={semester.showSemesterSeparation === true}
+                    onCheckedChange={(enabled) => toggleSemesterSeparation(semester.id, enabled)}
+                  />
+                </div>
+
+                {semester.showSemesterSeparation && (
+                  <Alert className="bg-blue-50 border-blue-200">
+                    <Info className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800 text-sm">
+                      <strong>Astuce :</strong> Assignez un numéro de semestre (1, 2, etc.) à chaque UE ci-dessous pour
+                      définir leur ordre d'affichage dans le tableau.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
             {semester.ues.map((ue) => (
               <div key={ue.id} className="border rounded-lg p-4 bg-gray-50">
                 <div className="flex items-center justify-between mb-3">
@@ -683,6 +744,54 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
                     <p className="text-sm text-gray-600">{ue.code} - {ue.credits} crédits</p>
                   </div>
                   <div className="flex items-center gap-2">
+                    {semester.isComposite && (
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm">Semestre:</Label>
+                        <Select
+                          value={ue.semesterNumber?.toString() || "undefined"}
+                          onValueChange={(value) => setUESemesterNumber(
+                            semester.id,
+                            ue.id,
+                            value === "undefined" ? undefined : parseInt(value)
+                          )}
+                        >
+                          <SelectTrigger className="w-20 h-8">
+                            <SelectValue placeholder="N°" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="undefined">-</SelectItem>
+                            {(() => {
+                              // Extraire les numéros de semestre depuis le nom du semestre composite
+                              const extractSemesterNumbers = (name: string): number[] => {
+                                if (!name) return [];
+                                const rangeMatch = name.match(/(\d+)-(\d+)/);
+                                if (rangeMatch) {
+                                  const start = parseInt(rangeMatch[1]);
+                                  const end = parseInt(rangeMatch[2]);
+                                  const numbers = [];
+                                  for (let i = start; i <= end; i++) {
+                                    numbers.push(i);
+                                  }
+                                  return numbers;
+                                }
+                                const individualMatch = name.match(/\d+/g);
+                                if (individualMatch) {
+                                  return individualMatch.map(n => parseInt(n)).sort((a, b) => a - b);
+                                }
+                                return Array.from({ length: semester.compositeEquivalent || 2 }, (_, i) => i + 1);
+                              };
+
+                              const semesterNumbers = extractSemesterNumbers(semester.name);
+                              return semesterNumbers.map(num => (
+                                <SelectItem key={num} value={num.toString()}>
+                                  {num}
+                                </SelectItem>
+                              ));
+                            })()}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <Label className="text-sm">Moyenne sur:</Label>
                       <Input

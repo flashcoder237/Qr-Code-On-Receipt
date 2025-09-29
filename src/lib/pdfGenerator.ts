@@ -245,17 +245,23 @@ function generateThemeStyles(params: GeneratePDFParams): string {
       margin-left: auto;
       margin-right: auto;
       font-size: ${theme.contentFontSize}px;
-      line-height: 0px;
       gap: 10px;
     }
     .student-info {
       display: ${theme.studentInfoLayout === 'grille' ? 'grid' : 
                 theme.studentInfoLayout === 'colonnes' ? 'flex' : 'block'};
-      ${theme.studentInfoLayout === 'grille' ? 'grid-template-columns: 1fr 1fr 1fr;' : 
+      ${theme.studentInfoLayout === 'grille' ? 'grid-template-columns: 1fr 1fr 1.2fr;' : 
         theme.studentInfoLayout === 'colonnes' ? 'flex-direction: column;' : ''}
       margin-bottom: 20px;
     }
     .student-info p {
+      font-size: ${theme.contentFontSize}px;
+      margin:0px;
+      padding:0px;
+    }
+      .student-info  > div {
+      margin:0px;
+      padding:0px;
       font-size: ${theme.contentFontSize}px;
     }
     table {
@@ -364,7 +370,7 @@ function generateThemeStyles(params: GeneratePDFParams): string {
     .table-ue-code, .table-ue-label, .table-ue-avearage{
       font-weight: bold;
     }
-    .table-ec{
+    .table-ec, .table-ue-title{
       text-align: left;
     }
     .grade-sign{
@@ -412,6 +418,31 @@ function generateThemeStyles(params: GeneratePDFParams): string {
   const advancedCSS = generateAdvancedTranscriptCSS(advancedConfig);
 
   return combineStyles(baseCSS, advancedCSS);
+}
+
+// Fonction helper pour extraire les numéros de semestre depuis un nom de semestre composite
+function extractSemesterNumbers(semesterName: string): number[] {
+  if (!semesterName) return [];
+
+  // Regex pour capturer les patterns comme "3-4", "1-2", "5-6", etc.
+  const rangeMatch = semesterName.match(/(\d+)-(\d+)/);
+  if (rangeMatch) {
+    const start = parseInt(rangeMatch[1]);
+    const end = parseInt(rangeMatch[2]);
+    const numbers = [];
+    for (let i = start; i <= end; i++) {
+      numbers.push(i);
+    }
+    return numbers;
+  }
+
+  // Regex pour capturer des numéros individuels comme "Semestre 3, 4" ou "Sem 1 et 2"
+  const individualMatch = semesterName.match(/\d+/g);
+  if (individualMatch) {
+    return individualMatch.map(n => parseInt(n)).sort((a, b) => a - b);
+  }
+
+  return [];
 }
 
 // Create HTML template for the transcript based on the provided model
@@ -606,46 +637,171 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
   // Helper function to generate course rows
   const generateCourseRows = () => {
     if (!student.COURSES || student.COURSES.length === 0) return '';
-    
+
     let html = '';
     let currentUECode = '';
     let ueElements = [];
     let ueCredit = 0;
-    
-    student.COURSES.forEach((course, index) => {
+
+    // NOUVEAU: Variables pour la séparation des semestres composites
+    let currentSemesterNumber = null;
+    let semesterGroupedCourses = [];
+
+    // NOUVEAU: Vérifier si c'est un semestre composite avec séparation activée
+    const isComposite = config?.semesters?.find(s =>
+      s.isComposite && s.showSemesterSeparation
+    );
+
+    console.log('🔍 Vérification semestre composite:', {
+      hasConfig: !!config,
+      semesters: config?.semesters?.length,
+      compositeFound: !!isComposite,
+      showSeparation: isComposite?.showSemesterSeparation
+    });
+
+    if (isComposite && isComposite.showSemesterSeparation) {
+      console.log('✅ Semestre composite avec séparation détecté');
+      console.log('📋 Nom du semestre composite:', isComposite.name);
+
+      // Extraire les numéros de semestre depuis le nom (ex: "Semestre 3-4" -> [3, 4])
+      const semesterNumbers = extractSemesterNumbers(isComposite.name);
+      console.log('🔢 Numéros de semestres extraits:', semesterNumbers);
+
+      console.log('📋 UEs disponibles dans la configuration:', isComposite.ues.map(u => ({
+        id: u.id,
+        code: u.code,
+        name: u.name,
+        semesterNumber: u.semesterNumber
+      })));
+
+      // Regrouper les cours par semestre d'abord
+      const coursesBySemester = new Map();
+
+      student.COURSES.forEach(course => {
+        const ueCode = course.CODE || '';
+        const ueIntitule = course.INTITULE || '';
+
+        console.log(`🔍 Recherche pour cours:`, {
+          courseCode: ueCode,
+          courseIntitule: ueIntitule
+        });
+
+        // Trouver l'UE correspondante dans la configuration - essayer plusieurs correspondances
+        let ue = isComposite.ues.find(u => u.code === ueCode);
+        if (!ue) {
+          ue = isComposite.ues.find(u => u.id === ueCode);
+        }
+        if (!ue) {
+          ue = isComposite.ues.find(u => u.name === ueIntitule);
+        }
+
+        // Utiliser le semesterNumber de l'UE si défini, sinon utiliser le premier semestre disponible
+        let semesterNumber;
+        if (ue && ue.semesterNumber) {
+          semesterNumber = ue.semesterNumber;
+        } else {
+          // Si pas de semesterNumber défini, utiliser le premier semestre extrait du nom
+          semesterNumber = semesterNumbers[0] || 1;
+        }
+
+        console.log(`📚 Cours ${ueCode}: assigné au semestre ${semesterNumber}`, {
+          courseCode: ueCode,
+          courseIntitule: ueIntitule,
+          ueFound: !!ue,
+          ueDetails: ue ? { id: ue.id, code: ue.code, name: ue.name, semesterNumber: ue.semesterNumber } : null,
+          availableSemesters: semesterNumbers,
+          finalSemester: semesterNumber
+        });
+
+        if (!coursesBySemester.has(semesterNumber)) {
+          coursesBySemester.set(semesterNumber, []);
+        }
+        coursesBySemester.get(semesterNumber).push(course);
+      });
+
+      console.log('📊 Répartition par semestre:', {
+        totalCourses: student.COURSES.length,
+        semesterGroups: Object.fromEntries(
+          Array.from(coursesBySemester.entries()).map(([sem, courses]) => [
+            `Semestre ${sem}`, courses.length
+          ])
+        )
+      });
+
+      // Trier les semestres par numéro
+      const sortedSemesters = Array.from(coursesBySemester.keys()).sort((a, b) => a - b);
+      console.log('🔢 Semestres triés:', sortedSemesters);
+
+      // Générer le HTML pour chaque semestre
+      sortedSemesters.forEach(semesterNumber => {
+        console.log(`🔨 Génération HTML pour semestre ${semesterNumber}`);
+
+        // Ajouter la ligne de séparation du semestre
+        html += `
+          <tr class="semester-separator">
+            <td colspan="${student.DISPLAY_SESSIONS ? 10 : 9}" style="
+              font-weight: bold;
+              text-align: center;
+            ">
+               --- <em>SEMESTRE ${semesterNumber}</em> ---
+            </td>
+          </tr>
+        `;
+
+        // Traiter les cours de ce semestre
+        const semesterCourses = coursesBySemester.get(semesterNumber);
+        html += generateCoursesForSemester(semesterCourses);
+      });
+    } else {
+      console.log('⚪ Utilisation de la logique normale (pas de séparation composite)');
+      // Logique normale pour les semestres non composites
+      html += generateCoursesForSemester(student.COURSES);
+    }
+
+    return html;
+  };
+
+  // NOUVEAU: Fonction helper pour générer les cours d'un semestre spécifique
+  const generateCoursesForSemester = (courses) => {
+    let html = '';
+    let currentUECode = '';
+    let ueElements = [];
+    let ueCredit = 0;
+
+    courses.forEach((course, index) => {
       // Utiliser le CODE explicite du cours qui contient le code UE
       const ueCode = course.CODE || '';
       const ueTitle = course.INTITULE || '';
-      
+
       // Check if this is a new UE or continuation of previous UE
       if (ueCode !== currentUECode) {
         // If we have accumulated elements for a previous UE, output them
         if (ueElements.length > 0) {
           // Utiliser la moyenne UE pré-calculée
           const ueAverage = ueElements[0].ueAverage;
-          
+
           // Check if any EC has a note of 6 or less
           const hasFailingEC = ueElements.some(ec => ec.note <= 6);
-          
+
           // Determine if UE is validated (average >= 10 AND no EC with note <= 6)
           const isUEValidated = ueAverage >= 10 && !hasFailingEC;
-          
+
           // Apply credits only if UE is validated
-          const creditValue = typeof ueCredit === 'number' ? ueCredit : 
+          const creditValue = typeof ueCredit === 'number' ? ueCredit :
                              (typeof ueCredit === 'string' ? parseFloat(ueCredit) : 0);
-          
+
           const ueValidatedCredits = isUEValidated ? creditValue : 0;
-          
+
           html += generateUERowsHTML(currentUECode, ueElements[0].title, ueElements, ueAverage, ueValidatedCredits, isUEValidated);
           ueElements = [];
         }
-        
+
         currentUECode = ueCode;
         // Récupérer le crédit associé à l'UE
-        ueCredit = typeof course.UE_CREDIT === 'number' ? course.UE_CREDIT : 
+        ueCredit = typeof course.UE_CREDIT === 'number' ? course.UE_CREDIT :
                   (typeof course.UE_CREDIT === 'string' ? parseFloat(course.UE_CREDIT) : 0);
       }
-      
+
       // Add this course as an element of the current UE
       ueElements.push({
         title: ueTitle,
@@ -655,25 +811,25 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
         session: course.SESSION || 'N/A' // NOUVEAU: Ajouter la session
       });
     });
-    
+
     // Don't forget to output the last UE
     if (ueElements.length > 0) {
       const ueAverage = ueElements[0].ueAverage;
-      
+
       // Check if any EC has a note of 6 or less
       const hasFailingEC = ueElements.some(ec => ec.note <= 6);
-      
+
       // Determine if UE is validated (average >= 10 AND no EC with note <= 6)
       const isUEValidated = ueAverage >= 10 && !hasFailingEC;
-      
-      const creditValue = typeof ueCredit === 'number' ? ueCredit : 
+
+      const creditValue = typeof ueCredit === 'number' ? ueCredit :
                          (typeof ueCredit === 'string' ? parseFloat(ueCredit) : 0);
-      
+
       const ueValidatedCredits = isUEValidated ? creditValue : 0;
-      
+
       html += generateUERowsHTML(currentUECode, ueElements[0].title, ueElements, ueAverage, ueValidatedCredits, isUEValidated);
     }
-    
+
     return html;
   };
 
@@ -686,7 +842,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
       return `
         <tr class="${cssClass}">
           <td class="table-code"><strong>${ueCode}</strong></td>
-          <td colspan="3" class="table-ue"><strong>${ueTitle}</strong></td>
+          <td colspan="3" class="table-ue table-ue-title"><strong>${ueTitle}</strong></td>
           <td colspan="2" class="table-ec">${elements[0].name}</td>
           ${student.DISPLAY_SESSIONS ? `<td class="table-session">${elements[0].session || 'N/A'}</td>` : ''}
           <td class="table-note">${elements[0].note.toFixed(2)}</td>
@@ -699,7 +855,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
       let html = `
         <tr class="${cssClass}">
           <td rowspan="${elements.length}" class="table-code"><strong>${ueCode}</strong></td>
-          <td colspan="3" rowspan="${elements.length}" class="table-ue"><strong>${ueTitle}</strong></td>
+          <td colspan="3" rowspan="${elements.length}" class="table-ue table-ue-title"><strong>${ueTitle}</strong></td>
           <td colspan="2" class="table-ec">${elements[0].name}</td>
           ${student.DISPLAY_SESSIONS ? `<td class="table-session">${elements[0].session || 'N/A'}</td>` : ''}
           <td class="table-note">${elements[0].note.toFixed(2)}</td>
@@ -832,48 +988,48 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
         
             <div class="student_block1">
                 <div>
-                    <p><strong><strong>NOM(S) ET PRENOM(S): </strong>${student.NOM.toUpperCase()} ${student.PRENOM !== "N/D" ? student.PRENOM.toUpperCase() : ""}</strong></p>
-                    <p><em>surname and name:</em></p>
+                    <p><strong><strong>NOM(S) ET PRENOM(S): </strong>${student.NOM.toUpperCase()} ${student.PRENOM !== "N/D" ? student.PRENOM.toUpperCase() : ""}</strong><br>
+                    <em>surname and name:</em></p>
                 </div>
                 <div>
-                    <p><strong>MATRICULE:</strong> <strong>${student.MATRICULE.toUpperCase()}</strong></p>
-                    <p><em>Registration N°:</em></p>
+                    <p><strong>MATRICULE:</strong> <strong>${student.MATRICULE.toUpperCase()}</strong><br>
+                    <em>Registration N°:</em></p>
                 </div>
             </div>
             <div class="student-info">
                 <div>
-                    <p><strong>NÉ(E) LE: ${student["DATE DE NAISSANCE"]|| "N/D"}</strong></p>
-                    <div><em>Born on:</em></div>
+                    <p><strong>NÉ(E) LE: ${student["DATE DE NAISSANCE"]|| "N/D"}</strong><br>
+                    <em>Born on:</em></p>
                 </div>
                 <div>
-                    <p><strong>A:</strong> <strong>${student["LIEU DE NAISSANCE"].toUpperCase() || ""}</strong></p>
-                    <div><em>At:</em></div>
+                    <p><strong>A:</strong> <strong>${student["LIEU DE NAISSANCE"].toUpperCase() || ""}</strong><br>
+                    <em>At:</em></p>
                 </div>
                 <div></div>
                 <div>
-                    <p><strong>CYCLE:</strong> <strong>${student.CYCLE.toUpperCase() || "N/D"}</strong></p>
-                    <div><em>Training cycle:</em></div>
+                    <p><strong>CYCLE:</strong> <strong>${student.CYCLE.toUpperCase() || "N/D"}</strong><br>
+                    <em>Training cycle:</em></p>
                 </div>
                 <div>
-                    <p><strong>ANNÉE ACADÉMIQUE:</strong> <strong>${student["ANNEE ACADÉMIQUE"] || "N/D"}</strong></p>
-                    <div><em>Academic Year:</em></div>
+                    <p><strong>ANNÉE ACADÉMIQUE:</strong> <strong>${student["ANNEE ACADÉMIQUE"] || "N/D"}</strong><br>
+                    <em>Academic Year:</em></p>
                 </div>
                 <div>
-                    <p><strong>FILIÈRE:</strong> <strong>${student.FILIERE.toUpperCase() || "N/D"}</strong></p>
-                    <div><em>Field of Study:</em></div>
+                    <p><strong>FILIÈRE:</strong> <strong>${student.FILIERE.toUpperCase() || "N/D"}</strong><br>
+                    <em>Field of Study:</em></p>
                 </div>
                 
                 <div>
-                    <p><strong>NIVEAU:</strong> <strong>${student.NIVEAU || "N/D"}</strong></p>
-                    <div><em>Level:</em></div>
+                    <p><strong>NIVEAU:</strong> <strong>${student.NIVEAU || "N/D"}</strong><br>
+                    <em>Level:</em></p>
                 </div>
                 <div style="${(config?.hideSemesterColumn === true) ? 'display:none' : ''}">
-                    <p><strong>SEMESTRE:</strong> <strong>${student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "N/D") : "N/D"}</strong></p>
-                    <div><em>Semester:</em></div>
+                    <p><strong>SEMESTRE:</strong> <strong>${student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "N/D") : "N/D"}</strong><br>
+                    <em>Semester:</em></p>
                 </div>
-                <div style="${student.OPTION === 'N/D' ? 'display:none' : ''}">
-                    <p><strong>OPTION:</strong> <strong>${student.OPTION.toUpperCase() || "N/D"}</strong></p>
-                    <div><em>Option:</em></div>
+                <div style="${(student.OPTION === 'N/D'|| student.OPTION === '') ? 'display:none' : ''}">
+                    <p><strong>OPTION:</strong> <strong>${student.OPTION.toUpperCase()}</strong><br>
+                    <em>Option:</em></p>
                 </div>
             </div>
         

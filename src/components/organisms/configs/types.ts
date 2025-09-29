@@ -13,6 +13,7 @@ export interface UE {
   credits: number;
   ecs: EC[];
   displayBase?: number; // Sur combien la moyenne de l'UE est affichée (défaut: 20)
+  semesterNumber?: number; // Pour les semestres composites: 1, 2, etc. Indique à quel semestre cette UE appartient
 }
 
 export interface Semester {
@@ -22,6 +23,7 @@ export interface Semester {
   creditsRequired?: number; // Crédits requis pour valider le semestre (défaut: 30)
   isComposite?: boolean; // Si true, ce semestre représente plusieurs semestres académiques
   compositeEquivalent?: number; // Nombre de semestres équivalents (ex: 2 pour une année complète)
+  showSemesterSeparation?: boolean; // Pour les semestres composites: affiche une séparation entre les semestres dans le tableau
 }
 
 // Interface pour la configuration des semestres fusionnés

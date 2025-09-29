@@ -209,11 +209,11 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 Niveau
-                {config.semesters.length > 0 && (
+                {/* {config.semesters.length > 0 && (
                   <span className="text-xs text-orange-600 ml-1">
                     (modifiable uniquement si aucun semestre)
                   </span>
-                )}
+                )} */}
               </label>
               {isEditing ? (
                 <Input
@@ -224,7 +224,7 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                   onChange={(e) => handleUpdate('niveau', e.target.value)}
                   placeholder="Ex: 1"
                   onClick={(e) => e.stopPropagation()}
-                  disabled={config.semesters.length > 0}
+                  // disabled={config.semesters.length > 0}
                   className={config.semesters.length > 0 ? "bg-gray-100" : ""}
                 />
               ) : (
