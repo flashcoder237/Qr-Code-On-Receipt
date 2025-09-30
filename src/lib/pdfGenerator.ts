@@ -461,13 +461,18 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
         // Si c'est une Map, utilisez la première valeur ou 0
         return value.size > 0 ? ensureNumber(Array.from(value.values())[0]) : 0;
       }
-      
+
       // Pour d'autres objets, essayez de voir s'ils ont une propriété numérique
       for (const key in value) {
         if (typeof value[key] === 'number') return value[key];
       }
     }
     return 0;
+  }
+
+  // Helper function to format numbers in French format (comma as decimal separator)
+  function formatFrenchNumber(value, decimals = 2) {
+    return ensureNumber(value).toFixed(decimals).replace('.', ',');
   }
 
   // Récupération des paramètres de thème
@@ -628,14 +633,19 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
         "DATE DE NAISSANCE": student["DATE DE NAISSANCE"] || 'N/D',
         "LIEU DE NAISSANCE": student["LIEU DE NAISSANCE"] || 'N/D',
         NIVEAU: student.NIVEAU || 'N/D',
-        ...(config?.hideSemesterColumn !== true && { SEMESTRE: student.SEMESTRE || ' ' }), // Inclure SEMESTRE seulement si pas masqué
+        ...(config?.hideSemesterColumn !== true && { SEMESTRE: student.SEMESTRE.split(' ')[1] || ' ' }), // Inclure SEMESTRE seulement si pas masqué
         CYCLE: student.CYCLE || 'N/D',
         FILIERE: student.FILIERE || 'N/D',
+        ...(student.OPTION && student.OPTION !== 'N/D' && student.OPTION.trim() !== '' && { OPTION: student.OPTION }), // Inclure OPTION seulement si pas vide et pas 'N/D'
         "ANNEE ACADEMIQUE": student["ANNEE ACADÉMIQUE"] || 'N/D',
-        MOYENNE: semesterAverage,
+        MOYENNE: formatFrenchNumber(semesterAverage, 2), // Format français avec 2 décimales
         GRADE: grade,
         MENTION: getMention(semesterAverage)
       };
+      console.log(studentForQR);
+      console.log("je suis ici sans erreurs");
+      
+      
 
       // Sanitiser les données
       const sanitizedStudent = sanitizeStudentData(studentForQR);
@@ -658,8 +668,8 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
       // Fallback vers l'ancien système si le nouveau échoue
       const qrDataParts = [
         `Établissement: ${settings.nameFrench}`,
-        `Nom: ${student.NOM}`,
-        `Prénom: ${student.PRENOM}`,
+        `Nom(s): ${student.NOM}`,
+        `Prénom(s): ${student.PRENOM}`,
         `Matricule: ${student.MATRICULE}`,
         `Date de naissance: ${student["DATE DE NAISSANCE"]}`,
         `Lieu de naissance: ${student["LIEU DE NAISSANCE"]}`,
@@ -670,9 +680,14 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
       if (config?.hideSemesterColumn !== true) {
         qrDataParts.push(`Semestre: ${student.SEMESTRE ? student.SEMESTRE.split(" ")[1] || 'N/D' : 'N/D'}`);
       }
+
+      // Inclure l'option seulement si elle n'est pas vide et différente de 'N/D'
+      if (student.OPTION && student.OPTION !== 'N/D' && student.OPTION !== '') {
+        qrDataParts.push(`Option: ${student.OPTION}`);
+      }
       
       qrDataParts.push(
-        `Moyenne: ${semesterAverage.toFixed(2)}`,
+        `Moyenne: ${formatFrenchNumber(semesterAverage)}`,
         `Grade: ${grade}`,
         `Mention: ${getMention(semesterAverage)}`,
         `Année académique: ${student["ANNEE ACADÉMIQUE"]}`
@@ -685,6 +700,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
         margin: 1,
         width: 150
       });
+      console.log("je suis ici avec erreurs");
       
       console.log('⚠️ QR Code généré en mode fallback (ancien système)');
     }
@@ -901,8 +917,8 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
           <td colspan="3" class="table-ue table-ue-title"><strong>${ueTitle}</strong></td>
           <td colspan="2" class="table-ec">${elements[0].name}</td>
           ${student.DISPLAY_SESSIONS ? `<td class="table-session">${elements[0].session || 'N/A'}</td>` : ''}
-          <td class="table-note">${elements[0].note.toFixed(2)}</td>
-          <td class="table-average"><strong>${average.toFixed(2)}</strong></td>
+          <td class="table-note">${formatFrenchNumber(elements[0].note)}</td>
+          <td class="table-average"><strong>${formatFrenchNumber(average)}</strong></td>
           <td class="table-credit">${creditValue}</td>
         </tr>
       `;
@@ -914,8 +930,8 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
           <td colspan="3" rowspan="${elements.length}" class="table-ue table-ue-title"><strong>${ueTitle}</strong></td>
           <td colspan="2" class="table-ec">${elements[0].name}</td>
           ${student.DISPLAY_SESSIONS ? `<td class="table-session">${elements[0].session || 'N/A'}</td>` : ''}
-          <td class="table-note">${elements[0].note.toFixed(2)}</td>
-          <td rowspan="${elements.length}" class="table-average"><strong>${average.toFixed(2)}</strong></td>
+          <td class="table-note">${formatFrenchNumber(elements[0].note)}</td>
+          <td rowspan="${elements.length}" class="table-average"><strong>${formatFrenchNumber(average)}</strong></td>
           <td rowspan="${elements.length}" class="table-credit">${creditValue}</td>
         </tr>
       `;
@@ -926,7 +942,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
           <tr class="${cssClass}">
             <td colspan="2" class="table-ec">${elements[i].name}</td>
             ${student.DISPLAY_SESSIONS ? `<td class="table-session">${elements[i].session || 'N/A'}</td>` : ''}
-            <td class="table-note">${elements[i].note.toFixed(2)}</td>
+            <td class="table-note">${formatFrenchNumber(elements[i].note)}</td>
           </tr>
         `;
       }
@@ -1173,8 +1189,8 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                                   ${index === 0 ? `<td rowspan="${totalRows}" class="summary-value"><strong>${student.NIVEAU || "1"}</strong></td>` : ''}
                                   ${(config?.hideSemesterColumn !== true) ? '<td class="summary-value"><strong>' + semesterNumber + '</strong></td>' : ''}
                                   <td class="summary-value"><strong>${stats.totalCreditsValidated}</strong></td>
-                                  <td colspan="2" class="summary-value"><strong>${stats.semesterAverage.toFixed(2)}</strong></td>
-                                  <td class="summary-value"><strong>${stats.mgp.toFixed(1)}</strong></td>
+                                  <td colspan="2" class="summary-value"><strong>${formatFrenchNumber(stats.semesterAverage)}</strong></td>
+                                  <td class="summary-value"><strong>${formatFrenchNumber(stats.mgp, 1)}</strong></td>
                                   <td class="summary-value"><strong>${stats.grade}</strong></td>
                                   <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-value ${stats.isEnoughCredits ? "validated" : "not-validated"}"><strong>${stats.decision}</strong></td>
                                 </tr>
@@ -1186,10 +1202,10 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                               <tr class="table-footer-values" style="border-top: 2px solid black; font-weight: bold;">
                                  ${(config?.hideSemesterColumn !== true) ? '<td class="summary-value"><strong>' + (student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "1") : "1") + '</strong></td>' : ''}
                                 <td class="summary-value"><strong>${totalCreditsValidated}</strong></td>
-                                <td colspan="2" class="summary-value"><strong>${semesterAverage.toFixed(2)}</strong></td>
-                                <td class="summary-value"><strong>${mgp.toFixed(1)}</strong></td>
+                                <td colspan="2" class="summary-value"><strong>${formatFrenchNumber(semesterAverage)}</strong></td>
+                                <td class="summary-value"><strong>${formatFrenchNumber(mgp, 1)}</strong></td>
                                 <td class="summary-value"><strong>${grade}</strong></td>
-                                <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-value ${totalCreditsValidated >= (totalSemesterCredits * 0.7) ? "validated" : "not-validated"}"><strong>${totalCreditsValidated >= (totalSemesterCredits * 0.7) ? "SEMESTRES VALIDES" : "SEMESTRES NON VALIDES"}</strong></td>
+                                <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-value ${totalCreditsValidated == (totalSemesterCredits) ? "validated" : "not-validated"}"><strong>${totalCreditsValidated == (totalSemesterCredits) ? "SEMESTRES VALIDES" : "SEMESTRES NON VALIDES"}</strong></td>
                               </tr>
                             `;
 
@@ -1201,8 +1217,8 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                                 <td class="summary-value"><strong>${student.NIVEAU || "1"}</strong></td>
                                 ${(config?.hideSemesterColumn !== true) ? '<td class="summary-value"><strong>' + (student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "1") : "1") + '</strong></td>' : ''}
                                 <td class="summary-value"><strong>${totalCreditsValidated}</strong></td>
-                                <td colspan="2" class="summary-value"><strong>${semesterAverage.toFixed(2)}</strong></td>
-                                <td class="summary-value"><strong>${mgp.toFixed(1)}</strong></td>
+                                <td colspan="2" class="summary-value"><strong>${formatFrenchNumber(semesterAverage)}</strong></td>
+                                <td class="summary-value"><strong>${formatFrenchNumber(mgp, 1)}</strong></td>
                                 <td class="summary-value"><strong>${grade}</strong></td>
                                 <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-value ${(isCompositeSemester ? totalCreditsValidated >= (totalSemesterCredits * 0.7) : decision === "SEMESTRE VALIDE") ? "validated" : "not-validated"}"><strong>${isCompositeSemester ? (totalCreditsValidated >= (totalSemesterCredits * 0.7) ? "SEMESTRES VALIDES" : "SEMESTRES NON VALIDES") : decision}</strong></td>
                               </tr>

@@ -9,6 +9,14 @@ import { generateAdvancedAttestationCSS, combineStyles } from '../../utils/advan
 import { formatDateForAttestation } from '../../utils/date-formatter'; // NOUVEAU
 
 /**
+ * Helper function to format numbers in French format (comma as decimal separator)
+ */
+function formatFrenchNumber(value: number, decimals: number = 2): string {
+  if (value === null || value === undefined || isNaN(value)) return '0,00';
+  return value.toFixed(decimals).replace('.', ',');
+}
+
+/**
  * Traduit une mention française vers l'anglais
  */
 function translateMentionToEnglish(mentionFR: string): string {
@@ -284,7 +292,7 @@ export async function generateAttestationHTML(
   const credits = sanitizedStudent["TOTAL CREDIT"];
   
   // Calculer automatiquement les valeurs à partir de la moyenne
-  const average = numericAverage.toFixed(2);
+  const average = formatFrenchNumber(numericAverage);
   const grade = calculateGrade(numericAverage);
   // Calcul sécurisé de la mention finale
   let mention = 'Passable'; // Valeur par défaut
@@ -995,7 +1003,7 @@ export async function generateAttestationHTML(
                         <td><strong>${credits}</strong></td>
                         <td><strong>${average}</strong></td>
                         <td><strong>${grade}</strong></td>
-                        <td><strong>${mgp.toFixed(2)}</strong></td>
+                        <td><strong>${formatFrenchNumber(mgp)}</strong></td>
                         <td><strong>${String(mention) || 'ERREUR_MENTION'}${useBilingualDisplay ? `<br><em style="font-weight: normal">${finalMentionEN}</em>` : ''}</strong></td>
                         <td><strong>${academicYear}</strong></td>
                         <td><strong>${finality}${useBilingualDisplay ? `<br><em style="font-weight: normal">${finalityEN}</em>` : ''}</strong></td>
