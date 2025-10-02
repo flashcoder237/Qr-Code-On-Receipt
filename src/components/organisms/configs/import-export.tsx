@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Download, Upload, FileDown } from "lucide-react";
 import ExcelJS from 'exceljs';
 import { ClassConfig, Semester, UE, EC } from "@/components/organisms/configs/types";
+import { useToast } from "@/hooks/use-toast";
+import { ToastContainer } from "@/components/ui/toast";
 
 interface ImportExportExcelProps {
   configs: ClassConfig[];
@@ -14,6 +16,7 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
   onImport,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const { toasts, toast, removeToast } = useToast();
 
   // Styles avancés avec gestion du texte améliorée
   const styles = {
@@ -319,12 +322,23 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
     return baseStyle;
   };
 
+  // Fonction utilitaire pour nettoyer les valeurs
+  const cleanValue = (value: any): any => {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      // Nettoyer les caractères de contrôle problématiques
+      return value.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+    }
+    return value;
+  };
+
   // Fonction pour créer une feuille stylée avec gestion avancée du texte
   const createAdvancedStyledWorksheet = async (
-    workbook: ExcelJS.Workbook, 
-    data: any[], 
-    title: string, 
-    description: string, 
+    workbook: ExcelJS.Workbook,
+    data: any[],
+    title: string,
+    description: string,
     sheetName: string
   ) => {
     const worksheet = workbook.addWorksheet(sheetName);
@@ -345,10 +359,10 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
       }
     };
 
-    // Ajouter l'en-tête informatif avec emoji et formatage avancé
-    const titleText = `${title}`;
-    const descText = `${description}`;
-    
+    // Ajouter l'en-tête informatif avec formatage avancé
+    const titleText = cleanValue(title);
+    const descText = cleanValue(description);
+
     worksheet.addRow([titleText]);
     worksheet.addRow([descText]);
     worksheet.addRow([]); // Ligne vide
@@ -372,23 +386,23 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
     worksheet.getRow(2).height = Math.max(30, Math.ceil(descText.length / 80) * 15);
     worksheet.getRow(3).height = 10; // Ligne de séparation
 
-    // En-têtes de colonnes avec descriptions améliorées
+    // En-têtes de colonnes avec accents
     const headers = [
-      'ID Config\n(Identifiant unique)', 
-      'Nom Configuration\n(Formation complète)', 
-      'Année Académique\n(Ex: 2024-2025)', 
-      'Filière\n(Domaine d\'étude)', 
-      'Niveau\n(Année)', 
-      'Cycle\n(Licence/Master)', 
-      'Option\n(Spécialisation)',
-      'ID Semestre\n(Identifiant unique)', 
-      'Nom Semestre\n(Ex: Semestre 1)', 
-      'ID UE\n(Identifiant unique)', 
-      'Code UE\n(Ex: INF1101)', 
-      'Nom UE\n(Matière principale)', 
-      'Crédits UE\n(ECTS)', 
-      'ID EC\n(Identifiant unique)', 
-      'Nom EC\n(Cours/Module)'
+      'ID Config',
+      'Nom Configuration',
+      'Année Académique',
+      'Filière',
+      'Niveau',
+      'Cycle',
+      'Option',
+      'ID Semestre',
+      'Nom Semestre',
+      'ID UE',
+      'Code UE',
+      'Nom UE',
+      'Crédits UE',
+      'ID EC',
+      'Nom EC'
     ];
     
     const headerRow = worksheet.addRow(headers);
@@ -402,21 +416,21 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
     // Ajouter les données avec styles conditionnels et hauteurs dynamiques
     data.forEach((rowData, index) => {
       const rowValues = [
-        rowData.configId || '',
-        rowData.configName || '',
-        rowData.academicYear || '',
-        rowData.filiere || '',
-        rowData.niveau || '',
-        rowData.cycle || '',
-        rowData.option || '',
-        rowData.semesterId || '',
-        rowData.semesterName || '',
-        rowData.ueId || '',
-        rowData.ueCode || '',
-        rowData.ueName || '',
-        rowData.ueCredits || '',
-        rowData.ecId || '',
-        rowData.ecName || ''
+        cleanValue(rowData.configId || ''),
+        cleanValue(rowData.configName || ''),
+        cleanValue(rowData.academicYear || ''),
+        cleanValue(rowData.filiere || ''),
+        cleanValue(rowData.niveau || ''),
+        cleanValue(rowData.cycle || ''),
+        cleanValue(rowData.option || ''),
+        cleanValue(rowData.semesterId || ''),
+        cleanValue(rowData.semesterName || ''),
+        cleanValue(rowData.ueId || ''),
+        cleanValue(rowData.ueCode || ''),
+        cleanValue(rowData.ueName || ''),
+        rowData.ueCredits !== '' && rowData.ueCredits !== null && rowData.ueCredits !== undefined ? Number(rowData.ueCredits) : '',
+        cleanValue(rowData.ecId || ''),
+        cleanValue(rowData.ecName || '')
       ];
 
       const row = worksheet.addRow(rowValues);
@@ -494,107 +508,93 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
   const createAdvancedInstructionWorksheet = (workbook: ExcelJS.Workbook, instructionsData: any[], sheetName: string) => {
     const worksheet = workbook.addWorksheet(sheetName);
 
-    // Configuration de la page pour les instructions
-    worksheet.pageSetup = {
-      paperSize: 9, // A4
-      orientation: 'portrait',
-      margins: {
-        left: 1,
-        right: 1,
-        top: 1,
-        bottom: 1
-      }
-    };
-
     // Titre de la section
-    worksheet.addRow(['📖 GUIDE D\'UTILISATION COMPLET']);
+    worksheet.addRow([cleanValue('GUIDE D\'UTILISATION COMPLET')]);
     worksheet.addRow(['']);
-    
-    // Fusionner et styliser le titre
+
+    // Fusionner le titre
     worksheet.mergeCells('A1:C1');
     const titleCell = worksheet.getCell('A1');
-    titleCell.style = {
-      font: { bold: true, size: 16, color: { argb: 'FF1F497D' } },
-      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE7F3FF' } },
-      alignment: { horizontal: 'center', vertical: 'middle' },
-      border: {
-        top: { style: 'thick', color: { argb: 'FF1F497D' } },
-        bottom: { style: 'thick', color: { argb: 'FF1F497D' } },
-        left: { style: 'thick', color: { argb: 'FF1F497D' } },
-        right: { style: 'thick', color: { argb: 'FF1F497D' } }
-      }
+    titleCell.font = { bold: true, size: 16, color: { argb: 'FF1F497D' } };
+    titleCell.fill = {
+      type: 'pattern' as const,
+      pattern: 'solid' as const,
+      fgColor: { argb: 'FFE7F3FF' }
     };
-    
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     worksheet.getRow(1).height = 40;
 
     // En-têtes du tableau d'instructions
-    const headerRow = worksheet.addRow(['Étape', 'Instruction', 'Description Détaillée']);
+    const headerRow = worksheet.addRow([
+      cleanValue('Étape'),
+      cleanValue('Instruction'),
+      cleanValue('Description Détaillée')
+    ]);
     headerRow.height = 35;
-    
+
     headerRow.eachCell((cell) => {
-      cell.style = styles.instructionHeader;
+      cell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+      cell.fill = {
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
+        fgColor: { argb: 'FF70AD47' }
+      };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     });
 
-    // Données des instructions avec calcul de hauteur
+    // Données des instructions
     instructionsData.forEach((instruction) => {
       const row = worksheet.addRow([
-        instruction.étape, 
-        instruction.instruction, 
-        instruction.description
+        cleanValue(instruction.étape),
+        cleanValue(instruction.instruction),
+        cleanValue(instruction.description)
       ]);
-      
-      // Calculer la hauteur en fonction de la longueur de la description
-      const descriptionLength = instruction.description.length;
+
+      const descriptionLength = (instruction.description || '').length;
       const estimatedLines = Math.ceil(descriptionLength / 80);
       row.height = Math.max(40, estimatedLines * 15);
-      
+
       row.eachCell((cell) => {
-        cell.style = styles.instructionData;
+        cell.font = { size: 10 };
+        cell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
       });
     });
 
-    // Largeurs de colonnes optimisées
-    worksheet.getColumn('A').width = 8;   // Étape
-    worksheet.getColumn('B').width = 35;  // Instruction
-    worksheet.getColumn('C').width = 85;  // Description (très large)
+    // Largeurs de colonnes
+    worksheet.getColumn('A').width = 8;
+    worksheet.getColumn('B').width = 35;
+    worksheet.getColumn('C').width = 85;
 
-    // Ajouter une section de conseils supplémentaires
+    // Section conseils
     const tipsStartRow = worksheet.rowCount + 2;
-    
     worksheet.addRow(['']);
-    worksheet.addRow(['💡 CONSEILS SUPPLÉMENTAIRES']);
+    worksheet.addRow([cleanValue('CONSEILS SUPPLEMENTAIRES')]);
     worksheet.addRow(['']);
 
     const tipsTitle = worksheet.getCell(`A${tipsStartRow + 1}`);
     worksheet.mergeCells(`A${tipsStartRow + 1}:C${tipsStartRow + 1}`);
-    tipsTitle.style = {
-      font: { bold: true, size: 14, color: { argb: 'FFFF8C00' } },
-      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF4E6' } },
-      alignment: { horizontal: 'center', vertical: 'middle' },
-      border: {
-        top: { style: 'medium', color: { argb: 'FFFF8C00' } },
-        bottom: { style: 'medium', color: { argb: 'FFFF8C00' } },
-        left: { style: 'medium', color: { argb: 'FFFF8C00' } },
-        right: { style: 'medium', color: { argb: 'FFFF8C00' } }
-      }
+    tipsTitle.font = { bold: true, size: 14, color: { argb: 'FFFF8C00' } };
+    tipsTitle.fill = {
+      type: 'pattern' as const,
+      pattern: 'solid' as const,
+      fgColor: { argb: 'FFFFF4E6' }
     };
+    tipsTitle.alignment = { horizontal: 'center', vertical: 'middle' };
 
     const tips = [
-      '• Utilisez Ctrl+F pour rechercher rapidement dans le fichier',
-      '• Triez les données par ID Config puis ID Semestre pour voir la hiérarchie',
-      '• Les cellules avec bordures colorées indiquent différents types d\'éléments',
-      '• Sauvegardez régulièrement votre travail au format .xlsx',
-      '• Les formules Excel peuvent être utilisées pour calculer automatiquement les totaux de crédits'
+      'Utilisez Ctrl+F pour rechercher rapidement dans le fichier',
+      'Triez les données par ID Config puis ID Semestre pour voir la hiérarchie',
+      'Les cellules avec bordures colorées indiquent différents types d\'éléments',
+      'Sauvegardez régulièrement votre travail au format .xlsx',
+      'Les formules Excel peuvent être utilisées pour calculer automatiquement les totaux de crédits'
     ];
 
     tips.forEach(tip => {
-      const tipRow = worksheet.addRow(['', tip, '']);
+      const tipRow = worksheet.addRow(['', cleanValue(tip), '']);
       worksheet.mergeCells(`B${tipRow.number}:C${tipRow.number}`);
       tipRow.height = 25;
-      tipRow.getCell(2).style = {
-        font: { size: 11, italic: true },
-        alignment: { horizontal: 'left', vertical: 'middle', wrapText: true }
-      };
+      tipRow.getCell(2).font = { size: 11, italic: true };
+      tipRow.getCell(2).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
     });
 
     return worksheet;
@@ -618,7 +618,7 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
       }).flat();
 
       if (worksheetData.length === 0) {
-        alert("Aucune donnée à exporter. Veuillez d'abord créer des configurations.");
+        toast.warning("Aucune donnée à exporter", "Veuillez d'abord créer des configurations.");
         return;
       }
 
@@ -626,59 +626,59 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
       await createAdvancedStyledWorksheet(
         workbook,
         worksheetData,
-        "🎓 EXPORT CONFIGURATIONS ACADÉMIQUES",
-        `📅 Généré le ${new Date().toLocaleDateString('fr-FR', { 
+        "EXPORT CONFIGURATIONS ACADEMIQUES",
+        `Genere le ${new Date().toLocaleDateString('fr-FR', {
           weekday: 'long',
           year: 'numeric',
           month: 'long',
           day: 'numeric'
-        })} à ${new Date().toLocaleTimeString('fr-FR')} | Total: ${worksheetData.length} entrées | Configurations: ${configs.length}`,
-        "🎓 Configurations"
+        })} a ${new Date().toLocaleTimeString('fr-FR')} | Total: ${worksheetData.length} entrees | Configurations: ${configs.length}`,
+        "Configurations"
       );
 
       // Instructions détaillées
       const instructionsData = [
-        { 
-          étape: "1", 
-          instruction: "📋 Comprendre la structure", 
+        {
+          étape: "1",
+          instruction: "Comprendre la structure", 
           description: "Chaque ligne représente un élément constitutif (EC) dans une unité d'enseignement (UE). La hiérarchie est : Configuration → Semestre → UE → EC. Les couleurs facilitent l'identification : bleu pour les configurations, jaune pour les UEs, gris pour les ECs." 
         },
-        { 
-          étape: "2", 
-          instruction: "🔑 Gérer les identifiants", 
+        {
+          étape: "2",
+          instruction: "Gerer les identifiants", 
           description: "Les colonnes contenant 'ID' sont cruciales pour maintenir les relations. Ne les modifiez jamais lors des mises à jour. Pour créer de nouveaux éléments, laissez ces champs vides - le système générera automatiquement de nouveaux identifiants uniques." 
         },
-        { 
-          étape: "3", 
-          instruction: "➕ Créer de nouvelles configurations", 
-          description: "Pour ajouter une nouvelle formation : 1) Choisissez un nouvel ID Config unique, 2) Remplissez toutes les informations de base, 3) Utilisez des ID cohérents pour les semestres, UEs et ECs associés, 4) Respectez la hiérarchie en dupliquant les informations parentes." 
+        {
+          étape: "3",
+          instruction: "Creer de nouvelles configurations",
+          description: "Pour ajouter une nouvelle formation : 1) Choisissez un nouvel ID Config unique, 2) Remplissez toutes les informations de base, 3) Utilisez des ID coherents pour les semestres, UEs et ECs associes, 4) Respectez la hierarchie en dupliquant les informations parentes."
         },
-        { 
-          étape: "4", 
-          instruction: "⚠️ Respecter les champs obligatoires", 
-          description: "Colonnes essentielles à remplir : 'Nom Configuration' (pour identifier la formation), 'Année Académique' (période), 'Nom Semestre' (pour nouveaux semestres), 'Nom UE' (matière principale), 'Nom EC' (cours spécifique). Les champs vides peuvent causer des erreurs d'importation." 
+        {
+          étape: "4",
+          instruction: "Respecter les champs obligatoires",
+          description: "Colonnes essentielles a remplir : 'Nom Configuration' (pour identifier la formation), 'Annee Academique' (periode), 'Nom Semestre' (pour nouveaux semestres), 'Nom UE' (matiere principale), 'Nom EC' (cours specifique). Les champs vides peuvent causer des erreurs d'importation."
         },
-        { 
-          étape: "5", 
-          instruction: "🔗 Comprendre les relations", 
-          description: "Les éléments avec le même ID sont liés : même ID UE = éléments de la même matière, même ID Semestre = éléments du même semestre, même ID Config = éléments de la même formation. Cette logique permet de regrouper automatiquement les données lors de l'importation." 
+        {
+          étape: "5",
+          instruction: "Comprendre les relations",
+          description: "Les elements avec le meme ID sont lies : meme ID UE = elements de la meme matiere, meme ID Semestre = elements du meme semestre, meme ID Config = elements de la meme formation. Cette logique permet de regrouper automatiquement les donnees lors de l'importation."
         },
-        { 
-          étape: "6", 
-          instruction: "📊 Gérer les crédits ECTS", 
-          description: "Les crédits UE sont essentiels pour les calculs de moyenne et validation de parcours. Utilisez des nombres entiers uniquement. La somme des crédits par semestre doit généralement être de 30. Vérifiez la cohérence avec votre système académique." 
+        {
+          étape: "6",
+          instruction: "Gerer les credits ECTS",
+          description: "Les credits UE sont essentiels pour les calculs de moyenne et validation de parcours. Utilisez des nombres entiers uniquement. La somme des credits par semestre doit generalement etre de 30. Verifiez la coherence avec votre systeme academique."
         },
-        { 
-          étape: "7", 
-          instruction: "📤 Procédure de réimportation", 
-          description: "Après modification : 1) Sauvegardez au format .xlsx, 2) Utilisez le bouton 'Importer' dans l'interface, 3) Vérifiez les messages de validation, 4) Contrôlez que toutes les données sont correctement importées. En cas d'erreur, vérifiez la structure et les champs obligatoires." 
+        {
+          étape: "7",
+          instruction: "Procedure de reimportation",
+          description: "Apres modification : 1) Sauvegardez au format .xlsx, 2) Utilisez le bouton 'Importer' dans l'interface, 3) Verifiez les messages de validation, 4) Controlez que toutes les donnees sont correctement importees. En cas d'erreur, verifiez la structure et les champs obligatoires."
         }
       ];
 
-      createAdvancedInstructionWorksheet(workbook, instructionsData, "📖 Instructions");
+      createAdvancedInstructionWorksheet(workbook, instructionsData, "Instructions");
 
       // Créer une feuille de résumé statistique
-      const summaryWorksheet = workbook.addWorksheet("📊 Résumé");
+      const summaryWorksheet = workbook.addWorksheet("Resume");
       const configStats = configs.map(config => ({
         'Nom Configuration': config.name,
         'Année': config.academicYear,
@@ -693,7 +693,7 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
       }));
 
       // Ajouter le titre du résumé
-      summaryWorksheet.addRow(['📊 RÉSUMÉ STATISTIQUE DES CONFIGURATIONS']);
+      summaryWorksheet.addRow(['RESUME STATISTIQUE DES CONFIGURATIONS']);
       summaryWorksheet.addRow(['']);
       summaryWorksheet.mergeCells('A1:H1');
       
@@ -764,7 +764,7 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
 
     } catch (error) {
       console.error("❌ Erreur lors de l'export:", error);
-      alert(`Erreur lors de l'export Excel : ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+      toast.error("Erreur lors de l'export Excel", error instanceof Error ? error.message : 'Erreur inconnue');
     }
   };
 
@@ -887,57 +887,57 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
       await createAdvancedStyledWorksheet(
         workbook,
         templateData,
-        "📋 MODÈLE DE CONFIGURATION ACADÉMIQUE",
-        "🚀 Template professionnel à personnaliser selon vos besoins | Exemples concrets inclus | Respectez la structure hiérarchique",
-        "📋 Modèle"
+        "MODELE DE CONFIGURATION ACADEMIQUE",
+        "Template professionnel a personnaliser selon vos besoins | Exemples concrets inclus | Respectez la structure hierarchique",
+        "Modele"
       );
 
       // Instructions spécialisées pour le template
       const templateInstructions = [
-        { 
-          étape: "1", 
-          instruction: "🎯 Utiliser ce modèle", 
+        {
+          étape: "1",
+          instruction: "Utiliser ce modele", 
           description: "Ce fichier contient des exemples concrets de configurations académiques. Remplacez les données d'exemple par vos propres informations en conservant la même structure. Chaque couleur représente un niveau hiérarchique différent." 
         },
-        { 
-          étape: "2", 
-          instruction: "🔄 Dupliquer les structures", 
-          description: "Pour créer une nouvelle configuration : 1) Copiez un bloc existant, 2) Changez l'ID Config, 3) Mettez à jour toutes les informations, 4) Conservez la logique de regroupement des IDs. Les lignes vides dans certaines colonnes sont normales et intentionnelles." 
+        {
+          étape: "2",
+          instruction: "Dupliquer les structures",
+          description: "Pour creer une nouvelle configuration : 1) Copiez un bloc existant, 2) Changez l'ID Config, 3) Mettez a jour toutes les informations, 4) Conservez la logique de regroupement des IDs. Les lignes vides dans certaines colonnes sont normales et intentionnelles."
         },
-        { 
-          étape: "3", 
-          instruction: "📝 Remplir les informations", 
-          description: "Informations obligatoires : Nom Configuration (première occurrence), Année Académique, Nom Semestre (première occurrence), Nom UE (première occurrence), Nom EC (toujours). Les autres champs peuvent être laissés vides sur les lignes de détail." 
+        {
+          étape: "3",
+          instruction: "Remplir les informations",
+          description: "Informations obligatoires : Nom Configuration (premiere occurrence), Annee Academique, Nom Semestre (premiere occurrence), Nom UE (premiere occurrence), Nom EC (toujours). Les autres champs peuvent etre laisses vides sur les lignes de detail."
         },
-        { 
-          étape: "4", 
-          instruction: "🔢 Gérer les identifiants", 
-          description: "Utilisez des IDs parlants et cohérents : LIC_INFO_2024 pour une licence, S1_LIC_INFO pour le semestre 1, UE_ALGO_PROG pour une UE d'algorithmique. Cette logique facilite la maintenance et la compréhension." 
+        {
+          étape: "4",
+          instruction: "Gerer les identifiants",
+          description: "Utilisez des IDs parlants et coherents : LIC_INFO_2024 pour une licence, S1_LIC_INFO pour le semestre 1, UE_ALGO_PROG pour une UE d'algorithmique. Cette logique facilite la maintenance et la comprehension."
         },
-        { 
-          étape: "5", 
-          instruction: "⚖️ Équilibrer les crédits", 
-          description: "Répartition typique : 30 crédits par semestre, 4-8 crédits par UE selon l'importance. Vérifiez que le total de crédits correspond aux exigences de votre institution. Les crédits sont essentiels pour les calculs de moyenne." 
+        {
+          étape: "5",
+          instruction: "Equilibrer les credits",
+          description: "Repartition typique : 30 credits par semestre, 4-8 credits par UE selon l'importance. Verifiez que le total de credits correspond aux exigences de votre institution. Les credits sont essentiels pour les calculs de moyenne."
         },
-        { 
-          étape: "6", 
-          instruction: "🔍 Vérifier avant import", 
-          description: "Avant l'importation : 1) Vérifiez l'orthographe des noms, 2) Contrôlez la cohérence des IDs, 3) Validez les totaux de crédits, 4) Assurez-vous que chaque UE a au moins un EC, 5) Testez avec un petit échantillon d'abord." 
+        {
+          étape: "6",
+          instruction: "Verifier avant import",
+          description: "Avant l'importation : 1) Verifiez l'orthographe des noms, 2) Controlez la coherence des IDs, 3) Validez les totaux de credits, 4) Assurez-vous que chaque UE a au moins un EC, 5) Testez avec un petit echantillon d'abord."
         },
-        { 
-          étape: "7", 
-          instruction: "📤 Importer les données", 
-          description: "Une fois votre fichier prêt : 1) Sauvegardez au format .xlsx, 2) Utilisez le bouton 'Importer', 3) Vérifiez les messages de confirmation, 4) Contrôlez que toutes vos configurations apparaissent correctement dans l'interface." 
+        {
+          étape: "7",
+          instruction: "Importer les donnees",
+          description: "Une fois votre fichier pret : 1) Sauvegardez au format .xlsx, 2) Utilisez le bouton 'Importer', 3) Verifiez les messages de confirmation, 4) Controlez que toutes vos configurations apparaissent correctement dans l'interface."
         }
       ];
 
-      createAdvancedInstructionWorksheet(workbook, templateInstructions, "📖 Guide Template");
+      createAdvancedInstructionWorksheet(workbook, templateInstructions, "Guide Template");
 
       // Feuille d'exemples détaillés avec explications
-      const examplesWorksheet = workbook.addWorksheet("💡 Exemples");
-      
+      const examplesWorksheet = workbook.addWorksheet("Exemples");
+
       // Titre des exemples
-      examplesWorksheet.addRow(['💡 EXEMPLES DÉTAILLÉS ET EXPLICATIONS']);
+      examplesWorksheet.addRow(['EXEMPLES DETAILLES ET EXPLICATIONS']);
       examplesWorksheet.addRow(['']);
       examplesWorksheet.mergeCells('A1:C1');
       
@@ -948,43 +948,43 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
       const examplesData = [
         {
           élément: "LIC_INFO_2024",
-          type: "🎓 ID Configuration",
-          explication: "Identifiant unique de la formation : LIC (Licence) + INFO (Informatique) + 2024 (année). Format recommandé pour faciliter l'identification et le tri."
+          type: "ID Configuration",
+          explication: "Identifiant unique de la formation : LIC (Licence) + INFO (Informatique) + 2024 (annee). Format recommande pour faciliter l'identification et le tri."
         },
         {
           élément: "Licence Informatique",
-          type: "📚 Nom Configuration",
-          explication: "Nom complet de la formation tel qu'il apparaîtra sur les documents officiels. Doit être précis et conforme à la nomenclature institutionnelle."
+          type: "Nom Configuration",
+          explication: "Nom complet de la formation tel qu'il apparaitra sur les documents officiels. Doit etre precis et conforme a la nomenclature institutionnelle."
         },
         {
           élément: "S1_LIC_INFO",
-          type: "📅 ID Semestre",
-          explication: "Identifiant du semestre : S1 (Semestre 1) + LIC_INFO (référence à la configuration parent). Permet de lier le semestre à sa formation."
+          type: "ID Semestre",
+          explication: "Identifiant du semestre : S1 (Semestre 1) + LIC_INFO (reference a la configuration parent). Permet de lier le semestre a sa formation."
         },
         {
           élément: "UE_ALGO_PROG",
-          type: "📖 ID Unité d'Enseignement",
-          explication: "Identifiant de l'UE : UE + ALGO_PROG (Algorithmes Programmation). Doit être unique au sein du semestre et refléter le contenu."
+          type: "ID Unite d'Enseignement",
+          explication: "Identifiant de l'UE : UE + ALGO_PROG (Algorithmes Programmation). Doit etre unique au sein du semestre et reflechir le contenu."
         },
         {
           élément: "INF1101",
-          type: "🔤 Code UE",
-          explication: "Code officiel de l'UE : INF (Informatique) + 1 (niveau 1) + 101 (numéro séquentiel). Format standardisé selon les règles institutionnelles."
+          type: "Code UE",
+          explication: "Code officiel de l'UE : INF (Informatique) + 1 (niveau 1) + 101 (numero sequentiel). Format standardise selon les regles institutionnelles."
         },
         {
           élément: "EC_INTRO_ALGO",
-          type: "📝 ID Élément Constitutif",
+          type: "ID Element Constitutif",
           explication: "Identifiant de l'EC : EC + INTRO_ALGO (Introduction Algorithmes). Chaque EC doit avoir un ID unique au sein de son UE parente."
         },
         {
           élément: "6",
-          type: "🎯 Crédits ECTS",
-          explication: "Nombre de crédits européens attribués à l'UE. Reflète la charge de travail : 1 crédit = 25-30h de travail étudiant. Total semestre typique = 30 crédits."
+          type: "Credits ECTS",
+          explication: "Nombre de credits europeens attribues a l'UE. Reflete la charge de travail : 1 credit = 25-30h de travail etudiant. Total semestre typique = 30 credits."
         },
         {
           élément: "Sciences et Technologies",
-          type: "🏷️ Filière",
-          explication: "Domaine disciplinaire principal de la formation. Utilisé pour les statistiques et le regroupement des formations par secteur d'activité."
+          type: "Filiere",
+          explication: "Domaine disciplinaire principal de la formation. Utilise pour les statistiques et le regroupement des formations par secteur d'activite."
         }
       ];
 
@@ -1038,7 +1038,7 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
 
     } catch (error) {
       console.error("❌ Erreur lors de l'export du template:", error);
-      alert(`Erreur lors de l'export du template : ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+      toast.error("Erreur lors de l'export du template", error instanceof Error ? error.message : 'Erreur inconnue');
     }
   };
 
@@ -1102,8 +1102,10 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
         headers[colIndex] = cellValue;
       });
 
-      // Extraire les données avec validation améliorée
+      // Extraire les données avec validation améliorée et propagation des valeurs
       let validRowsCount = 0;
+      let lastValidValues: any = {}; // Pour propager les valeurs de configuration/semestre/UE
+
       for (let rowIndex = headerRowIndex + 1; rowIndex <= worksheet.rowCount; rowIndex++) {
         const row = worksheet.getRow(rowIndex);
         const rowData: any = {};
@@ -1112,14 +1114,16 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
         row.eachCell((cell, colIndex) => {
           const header = headers[colIndex];
           const cellValue = cell.value;
-          
-          if (header && cellValue !== null && cellValue !== undefined) {
+
+          if (header) {
             // Mapper les en-têtes français vers les clés anglaises
             const keyMap: Record<string, string> = {
               'ID Config': 'configId',
               'Nom Configuration': 'configName',
-              'Année Académique': 'academicYear',
-              'Filière': 'filiere',
+              'Annee Academique': 'academicYear',
+              'Année Académique': 'academicYear', // Ancienne version pour compatibilité
+              'Filiere': 'filiere',
+              'Filière': 'filiere', // Ancienne version
               'Niveau': 'niveau',
               'Cycle': 'cycle',
               'Option': 'option',
@@ -1128,41 +1132,71 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
               'ID UE': 'ueId',
               'Code UE': 'ueCode',
               'Nom UE': 'ueName',
-              'Crédits UE': 'ueCredits',
+              'Credits UE': 'ueCredits',
+              'Crédits UE': 'ueCredits', // Ancienne version
               'ID EC': 'ecId',
               'Nom EC': 'ecName'
             };
 
             const cleanHeader = header.replace(/\n.*/, '').trim(); // Garder seulement la première ligne de l'en-tête
             const key = keyMap[cleanHeader] || (cleanHeader || '').toLowerCase().replace(/\s+/g, '');
-            
-            let processedValue = cellValue.toString().trim();
-            
-            // Traitement spécial pour les crédits
-            if (key === 'ueCredits') {
-              const numValue = parseInt(processedValue);
-              processedValue = isNaN(numValue) ? '' : numValue.toString();
-            }
-            
-            if (processedValue !== '') {
-              rowData[key] = processedValue;
-              hasValidData = true;
+
+            if (cellValue !== null && cellValue !== undefined) {
+              let processedValue = cellValue.toString().trim();
+
+              // Traitement spécial pour les crédits
+              if (key === 'ueCredits') {
+                const numValue = parseInt(processedValue);
+                processedValue = isNaN(numValue) ? '' : numValue.toString();
+              }
+
+              if (processedValue !== '') {
+                rowData[key] = processedValue;
+                hasValidData = true;
+
+                // Sauvegarder les valeurs importantes pour propagation
+                if (['configId', 'configName', 'academicYear', 'filiere', 'niveau', 'cycle', 'option',
+                     'semesterId', 'semesterName', 'ueId', 'ueCode', 'ueName', 'ueCredits'].includes(key)) {
+                  lastValidValues[key] = processedValue;
+                }
+              }
             }
           }
         });
 
-        // Validation de la ligne
-        const hasEssentialData = rowData.configName || rowData.ueName || 
-                                rowData.semesterName || rowData.ecName;
-        
-        if (hasValidData && hasEssentialData) {
-          jsonData.push(rowData);
-          validRowsCount++;
+        // Propager les valeurs manquantes depuis la dernière ligne valide
+        if (hasValidData) {
+          // Propager les valeurs de configuration si manquantes
+          const keysToPropagate = [
+            'configId', 'configName', 'academicYear', 'filiere', 'niveau', 'cycle', 'option',
+            'semesterId', 'semesterName', 'ueId', 'ueCode', 'ueName', 'ueCredits'
+          ];
+
+          keysToPropagate.forEach(key => {
+            if (!rowData[key] && lastValidValues[key]) {
+              rowData[key] = lastValidValues[key];
+            }
+          });
+
+          // Validation de la ligne
+          const hasEssentialData = rowData.configName || rowData.ueName ||
+                                  rowData.semesterName || rowData.ecName;
+
+          if (hasEssentialData) {
+            jsonData.push(rowData);
+            validRowsCount++;
+          }
         }
       }
 
       if (jsonData.length === 0) {
-        alert("❌ Aucune donnée valide trouvée dans le fichier.\n\nVérifiez que :\n• La feuille contient des données\n• Les en-têtes sont corrects\n• Au moins une ligne contient des informations valides");
+        toast.error(
+          "Aucune donnée valide trouvée",
+          "Vérifiez que la feuille contient des données, que les en-têtes sont corrects et qu'au moins une ligne contient des informations valides"
+        );
+        console.log("Debug - Headers found:", headers);
+        console.log("Debug - Header row index:", headerRowIndex);
+        console.log("Debug - Total rows in worksheet:", worksheet.rowCount);
         return;
       }
 
@@ -1171,87 +1205,114 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
       const importedConfigs = convertToConfigFormat(jsonData);
       
       if (importedConfigs.length === 0) {
-        alert("❌ Impossible de créer des configurations à partir des données importées.\n\nVérifiez la structure de vos données.");
+        toast.error("Impossible de créer des configurations", "Vérifiez la structure de vos données.");
         return;
       }
 
       onImport(importedConfigs);
-      
+
       // Réinitialiser l'input
       if (fileInputRef.current) fileInputRef.current.value = "";
 
       // Message de succès
-      alert(`✅ Import réussi !\n\n📊 Statistiques :\n• ${importedConfigs.length} configuration(s) importée(s)\n• ${validRowsCount} ligne(s) de données traitée(s)\n• Source : ${worksheet.name}`);
+      toast.success(
+        "Import réussi !",
+        `${importedConfigs.length} configuration(s) importée(s) • ${validRowsCount} ligne(s) traitée(s) • Source : ${worksheet.name}`
+      );
 
     } catch (error) {
       console.error("❌ Erreur lors de l'importation:", error);
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      alert(`❌ Erreur lors de l'importation du fichier Excel.\n\nDétails : ${errorMessage}\n\nVérifiez :\n• Le format du fichier (.xlsx)\n• La structure des données\n• Les droits d'accès au fichier`);
+      toast.error(
+        "Erreur lors de l'importation",
+        `${errorMessage} - Vérifiez le format du fichier (.xlsx), la structure des données et les droits d'accès`
+      );
     }
   };
 
   // Fonctions utilitaires optimisées
   const flattenConfig = (config: ClassConfig) => {
     const result: any[] = [];
-    
-    config.semesters.forEach(semester => {
-      semester.ues.forEach(ue => {
+    let isFirstConfigRow = true;
+
+    config.semesters.forEach((semester, semIndex) => {
+      let isFirstSemesterRow = true;
+
+      semester.ues.forEach((ue, ueIndex) => {
+        let isFirstUERow = true;
+
         if (ue.ecs.length > 0) {
-          ue.ecs.forEach(ec => {
+          ue.ecs.forEach((ec, ecIndex) => {
             result.push({
               configId: config.id,
-              configName: config.name,
-              academicYear: config.academicYear,
-              filiere: config.filiere || "",
-              niveau: config.niveau || "",
-              cycle: config.cycle || "",
-              option: config.option || "",
+              configName: isFirstConfigRow ? config.name : "",
+              academicYear: isFirstConfigRow ? config.academicYear : "",
+              filiere: isFirstConfigRow ? (config.filiere || "") : "",
+              niveau: isFirstConfigRow ? (config.niveau || "") : "",
+              cycle: isFirstConfigRow ? (config.cycle || "") : "",
+              option: isFirstConfigRow ? (config.option || "") : "",
               semesterId: semester.id,
-              semesterName: semester.name,
+              semesterName: isFirstSemesterRow ? semester.name : "",
               ueId: ue.id,
-              ueCode: ue.code || "",
-              ueName: ue.name,
-              ueCredits: ue.credits,
+              ueCode: isFirstUERow ? (ue.code || "") : "",
+              ueName: isFirstUERow ? ue.name : "",
+              ueCredits: isFirstUERow ? (ue.credits || "") : "",
               ecId: ec.id,
               ecName: ec.name
             });
+            isFirstConfigRow = false;
+            isFirstSemesterRow = false;
+            isFirstUERow = false;
           });
         } else {
+          // UE sans EC
           result.push({
             configId: config.id,
-            configName: config.name,
-            academicYear: config.academicYear,
-            filiere: config.filiere || "",
-            niveau: config.niveau || "",
-            cycle: config.cycle || "",
-            option: config.option || "",
+            configName: isFirstConfigRow ? config.name : "",
+            academicYear: isFirstConfigRow ? config.academicYear : "",
+            filiere: isFirstConfigRow ? (config.filiere || "") : "",
+            niveau: isFirstConfigRow ? (config.niveau || "") : "",
+            cycle: isFirstConfigRow ? (config.cycle || "") : "",
+            option: isFirstConfigRow ? (config.option || "") : "",
             semesterId: semester.id,
-            semesterName: semester.name,
+            semesterName: isFirstSemesterRow ? semester.name : "",
             ueId: ue.id,
             ueCode: ue.code || "",
             ueName: ue.name,
-            ueCredits: ue.credits,
+            ueCredits: ue.credits || "",
             ecId: "",
             ecName: ""
           });
+          isFirstConfigRow = false;
+          isFirstSemesterRow = false;
         }
       });
     });
-    
+
     return result;
   };
 
   const convertToConfigFormat = (data: any[]): ClassConfig[] => {
     const configsMap = new Map<string, ClassConfig>();
-    
+    const configIdMapping = new Map<string, string>(); // Mappage ancien ID -> nouvel ID
+    const semesterIdMapping = new Map<string, string>(); // Mappage ancien semestre ID -> nouvel ID
+    const ueIdMapping = new Map<string, string>(); // Mappage ancien UE ID -> nouvel ID
+
     data.forEach((row, index) => {
       try {
-        const configId = row.configId || `config_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-        
-        if (!configsMap.has(configId)) {
-          configsMap.set(configId, {
-            id: configId,
-            name: row.configName || `Configuration ${configId}`,
+        const originalConfigId = row.configId || `config_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+        // Générer un nouvel ID unique pour éviter les conflits lors de l'import
+        let newConfigId = configIdMapping.get(originalConfigId);
+        if (!newConfigId) {
+          newConfigId = `imported_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+          configIdMapping.set(originalConfigId, newConfigId);
+        }
+
+        if (!configsMap.has(newConfigId)) {
+          configsMap.set(newConfigId, {
+            id: newConfigId,
+            name: row.configName || `Configuration ${originalConfigId}`,
             academicYear: row.academicYear || "",
             filiere: row.filiere || "",
             niveau: row.niveau || "",
@@ -1260,36 +1321,53 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
             semesters: []
           });
         }
-        
-        const config = configsMap.get(configId)!;
-        
-        const semesterId = row.semesterId || `semester_${Date.now()}_${index}`;
-        let semester = config.semesters.find(s => s.id === semesterId);
+
+        const config = configsMap.get(newConfigId)!;
+
+        // Gérer les semestres par leur ID d'origine
+        const originalSemesterId = row.semesterId || `semester_${index}`;
+        let newSemesterId = semesterIdMapping.get(originalSemesterId);
+
+        if (!newSemesterId) {
+          newSemesterId = `semester_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+          semesterIdMapping.set(originalSemesterId, newSemesterId);
+        }
+
+        let semester = config.semesters.find(s => s.id === newSemesterId);
         if (!semester) {
           semester = {
-            id: semesterId,
-            name: row.semesterName || `Semestre ${semesterId}`,
+            id: newSemesterId,
+            name: row.semesterName || `Semestre ${config.semesters.length + 1}`,
             ues: []
           };
           config.semesters.push(semester);
         }
-        
-        const ueId = row.ueId || `ue_${Date.now()}_${index}`;
-        let ue = semester.ues.find(u => u.id === ueId);
+
+        // Gérer les UEs par leur ID d'origine
+        const originalUeId = row.ueId || `ue_${index}`;
+        let newUeId = ueIdMapping.get(originalUeId);
+
+        if (!newUeId) {
+          newUeId = `ue_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+          ueIdMapping.set(originalUeId, newUeId);
+        }
+
+        let ue = semester.ues.find(u => u.id === newUeId);
         if (!ue) {
           ue = {
-            id: ueId,
-            name: row.ueName || `UE ${ueId}`,
+            id: newUeId,
+            name: row.ueName || `UE ${semester.ues.length + 1}`,
             code: row.ueCode || "",
             credits: parseInt(row.ueCredits) || 0,
             ecs: []
           };
           semester.ues.push(ue);
         }
-        
+
+        // Ajouter l'EC s'il existe
         if (row.ecName && row.ecName.trim() !== '') {
-          const ecId = row.ecId || `ec_${Date.now()}_${index}`;
-          const ecExists = ue.ecs.some(e => e.id === ecId);
+          const ecId = `ec_${Date.now()}_${index}_${Math.floor(Math.random() * 10000)}`;
+          const ecExists = ue.ecs.some(e => e.name === row.ecName.trim());
           if (!ecExists) {
             const ec: EC = {
               id: ecId,
@@ -1302,7 +1380,7 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
         console.warn(`⚠️ Erreur ligne ${index + 1}:`, error);
       }
     });
-    
+
     return Array.from(configsMap.values());
   };
 
@@ -1314,48 +1392,51 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
   };
 
   return (
-    <div className="flex gap-2 flex-wrap">
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={handleExportAll}
-        className="text-green-600 hover:text-green-700 hover:bg-green-50 whitespace-nowrap transition-colors duration-200"
-        title="Exporter toutes les configurations vers Excel avec styles avancés"
-      >
-        <Download className="h-4 w-4 mr-2" />
-        Exporter
-      </Button>
-      
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={handleExportTemplate}
-        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 whitespace-nowrap transition-colors duration-200"
-        title="Télécharger un modèle Excel pré-formaté avec exemples"
-      >
-        <FileDown className="h-4 w-4 mr-2" />
-        Télécharger Modèle
-      </Button>
-      
-      <div className="relative">
-        <Button 
-          variant="outline" 
+    <>
+      <ToastContainer toasts={toasts} onClose={removeToast} position="top-right" />
+      <div className="flex gap-2 flex-wrap">
+        <Button
+          variant="outline"
           size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 whitespace-nowrap transition-colors duration-200"
-          title="Importer des configurations depuis un fichier Excel"
+          onClick={handleExportAll}
+          className="text-green-600 hover:text-green-700 hover:bg-green-50 whitespace-nowrap transition-colors duration-200"
+          title="Exporter toutes les configurations vers Excel avec styles avancés"
         >
-          <Upload className="h-4 w-4 mr-2" />
-          Importer
+          <Download className="h-4 w-4 mr-2" />
+          Exporter
         </Button>
-        <input 
-          ref={fileInputRef}
-          type="file" 
-          accept=".xlsx,.xls" 
-          onChange={handleImport}
-          className="hidden"
-        />
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExportTemplate}
+          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 whitespace-nowrap transition-colors duration-200"
+          title="Télécharger un modèle Excel pré-formaté avec exemples"
+        >
+          <FileDown className="h-4 w-4 mr-2" />
+          Télécharger Modèle
+        </Button>
+
+        <div className="relative">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 whitespace-nowrap transition-colors duration-200"
+            title="Importer des configurations depuis un fichier Excel"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Importer
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleImport}
+            className="hidden"
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 };

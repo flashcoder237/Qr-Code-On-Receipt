@@ -11,6 +11,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, Weight, Calculator, Eye, Save, RotateCcw, Info, Link, Unlink, Plus, X, Layers, Clock } from "lucide-react";
 import { ClassConfig, EC, UE, MergedSemesterConfig } from "./types";
+import { useToast } from "@/hooks/use-toast";
+import { ToastContainer } from "@/components/ui/toast";
 
 interface ECConfigEditorProps {
   config: ClassConfig;
@@ -21,6 +23,7 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
   config,
   onConfigUpdate,
 }) => {
+  const { toasts, toast, removeToast } = useToast();
   const [showDialog, setShowDialog] = useState(false);
   const [selectedSemesterId, setSelectedSemesterId] = useState<string>("");
   const [selectedUEId, setSelectedUEId] = useState<string>("");
@@ -62,12 +65,12 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
     const displayBase = parseFloat(tempDisplayBase) || 20;
 
     if (weight <= 0) {
-      alert("Le poids doit être supérieur à 0");
+      toast.error("Poids invalide", "Le poids doit être supérieur à 0");
       return;
     }
 
     if (noteBase <= 0 || displayBase <= 0) {
-      alert("Les bases de notation doivent être supérieures à 0");
+      toast.error("Bases de notation invalides", "Les bases de notation doivent être supérieures à 0");
       return;
     }
 
@@ -168,13 +171,13 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
   // Fonction pour créer un semestre fusionné
   const createMergedSemester = () => {
     if (!tempMergedName.trim() || tempSelectedSemesters.length < 2) {
-      alert("Veuillez saisir un nom et sélectionner au moins 2 semestres");
+      toast.error("Informations manquantes", "Veuillez saisir un nom et sélectionner au moins 2 semestres");
       return;
     }
 
     const creditsRequired = parseInt(tempMergedCredits) || 60;
     if (creditsRequired <= 0) {
-      alert("Le nombre de crédits requis doit être supérieur à 0");
+      toast.error("Crédits invalides", "Le nombre de crédits requis doit être supérieur à 0");
       return;
     }
 
@@ -251,7 +254,7 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
   // Fonction pour créer un semestre composite
   const createCompositeSemester = () => {
     if (!tempCompositeName.trim()) {
-      alert("Veuillez saisir un nom pour le semestre composite");
+      toast.error("Nom manquant", "Veuillez saisir un nom pour le semestre composite");
       return;
     }
 
@@ -259,12 +262,12 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
     const equivalent = parseInt(tempCompositeEquivalent) || 2;
 
     if (creditsRequired <= 0) {
-      alert("Le nombre de crédits requis doit être supérieur à 0");
+      toast.error("Crédits invalides", "Le nombre de crédits requis doit être supérieur à 0");
       return;
     }
 
     if (equivalent < 1) {
-      alert("L'équivalent en semestres doit être au moins 1");
+      toast.error("Équivalent invalide", "L'équivalent en semestres doit être au moins 1");
       return;
     }
 
@@ -367,14 +370,16 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
   const emptyCompositeSemesters = config.semesters.filter(s => s.isComposite && s.ues.length === 0);
 
   return (
-    <div className="space-y-6">
-      {/* Messages de succès */}
-      {success && (
-        <Alert className="bg-green-50 border-green-200">
-          <Save className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">{success}</AlertDescription>
-        </Alert>
-      )}
+    <>
+      <ToastContainer toasts={toasts} onClose={removeToast} position="top-right" />
+      <div className="space-y-6">
+        {/* Messages de succès */}
+        {success && (
+          <Alert className="bg-green-50 border-green-200">
+            <Save className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">{success}</AlertDescription>
+          </Alert>
+        )}
 
       {/* Alerte pour les semestres composites vides */}
       {emptyCompositeSemesters.length > 0 && (
@@ -1098,5 +1103,6 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
         </DialogContent>
       </Dialog>
     </div>
+    </>
   );
 };

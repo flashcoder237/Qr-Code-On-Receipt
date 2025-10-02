@@ -22,6 +22,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Edit, Save, X, Eye, Building, GraduationCap, Type, Lock, Unlock, Edit3, Download, Upload as UploadIcon, RotateCcw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { ToastContainer } from "@/components/ui/toast";
 import {
   TranscriptSettingsPayload,
   TranscriptsettingsSchema,
@@ -41,6 +43,7 @@ import { ThemeEditor } from "../theme-editor";
 import { AdvancedTranscriptThemeEditor } from "../theme-editor/AdvancedTranscriptThemeEditor";
 
 const SettingForm: React.FC = () => {
+  const { toasts, toast, removeToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
   const [activeTab, setActiveTab] = useState<"general" | "appearance" | "advanced">("general");
@@ -200,7 +203,7 @@ const SettingForm: React.FC = () => {
         setActionType('import');
         setShowCodePrompt(true);
       } catch (error) {
-        alert("Fichier JSON invalide ou erreur de lecture");
+        toast.error("Fichier invalide", "Fichier JSON invalide ou erreur de lecture");
       }
     };
     reader.readAsText(file);
@@ -283,7 +286,7 @@ const SettingForm: React.FC = () => {
   // Fonction pour prévisualiser le relevé avec le thème actuel
   const previewTranscript = () => {
     setShowPreview(true);
-    alert("Fonctionnalité d'aperçu à implémenter. Cette alerte sera remplacée par un aperçu réel.");
+    toast.info("Aperçu", "Fonctionnalité d'aperçu à implémenter");
     setShowPreview(false);
   };
 
@@ -387,10 +390,12 @@ const SettingForm: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
-      {renderCodePrompt()}
-      <Card className="w-full max-w-6xl mx-auto my-10">
-        <CardHeader>
+    <>
+      <ToastContainer toasts={toasts} onClose={removeToast} position="top-right" />
+      <div className="space-y-8">
+        {renderCodePrompt()}
+        <Card className="w-full max-w-6xl mx-auto my-10">
+          <CardHeader>
           <div className="flex justify-between items-start">
             <div className="flex-1">
               <div className="flex items-center justify-between mb-2">
@@ -928,6 +933,7 @@ const SettingForm: React.FC = () => {
         )}
       </Card>
     </div>
+    </>
   );
 };
 
