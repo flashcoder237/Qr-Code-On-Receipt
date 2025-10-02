@@ -8,20 +8,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useDropzone } from "react-dropzone";
 import * as XLSX from 'xlsx';
-import { 
-  Upload, 
-  FileText, 
+import {
+  Upload,
+  FileText,
   FileSpreadsheet,
-  AlertCircle, 
+  AlertCircle,
   CheckCircle,
   Info,
   Eye,
   Settings,
   Link,
-  File
+  File,
+  X
 } from "lucide-react";
+import { DocumentMappingTable } from "./DocumentMappingTable";
 
 interface ExcelQRProcessorProps {
   onDocumentUpload: (file: File) => void;
@@ -30,8 +33,14 @@ interface ExcelQRProcessorProps {
     excelData: any[];
     selectedColumns: string[];
     matchingColumn: string;
+    columnFormats: { [column: string]: ColumnFormat };
     documentMappings: DocumentMapping[];
   }) => void;
+}
+
+export interface ColumnFormat {
+  type: 'text' | 'date' | 'number';
+  dateFormat?: string;
 }
 
 interface ExcelData {
@@ -39,12 +48,14 @@ interface ExcelData {
   rows: any[];
   selectedColumns: string[];
   matchingColumn: string;
+  columnFormats: { [column: string]: ColumnFormat };
 }
 
 interface DocumentMapping {
   file: File;
   matchingValue: string;
   status: 'pending' | 'matched' | 'unmatched';
+  excelRow?: any;
 }
 
 export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
@@ -58,6 +69,8 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
   const [documentFiles, setDocumentFiles] = useState<File[]>([]);
   const [documentMappings, setDocumentMappings] = useState<DocumentMapping[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   // Excel upload dropzone
   const excelDropzone = useDropzone({
@@ -89,10 +102,12 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
 
     try {
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
+      const workbook = XLSX.read(data, { cellDates: false, cellNF: false, cellText: false });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      // Get raw data with header
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
 
       if (jsonData.length < 2) {
         throw new Error("Le fichier Excel doit contenir au moins une ligne d'en-têtes et une ligne de données");
@@ -102,16 +117,58 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
       const rows = jsonData.slice(1).map((row: any[]) => {
         const obj: any = {};
         columns.forEach((col, index) => {
-          obj[col] = row[index] || '';
+          // Store raw value (including Excel date numbers)
+          obj[col] = row[index] !== undefined ? row[index] : '';
         });
         return obj;
+      });
+
+      console.log('Excel data loaded:', { columns, sampleRow: rows[0] });
+
+      // Initialize column formats with smart auto-detection
+      const columnFormats: { [column: string]: ColumnFormat } = {};
+      const dateKeywords = [
+        'date', 'naissance', 'birth', 'né', 'née', 'jour', 'day',
+        'année', 'year', 'mois', 'month', 'jury', 'soutenance',
+        'début', 'fin', 'start', 'end', 'delivery', 'livraison'
+      ];
+
+      columns.forEach(col => {
+        const sampleValue = rows[0]?.[col];
+        const columnNameLower = col.toLowerCase().trim();
+
+        // Check if column name contains date-related keywords
+        const hasDateKeyword = dateKeywords.some(keyword =>
+          columnNameLower.includes(keyword.toLowerCase())
+        );
+
+        if (typeof sampleValue === 'number') {
+          // Only auto-detect as date if:
+          // 1. Column name suggests it's a date
+          // 2. AND value is in typical Excel date range (> 1000 for dates after ~1902)
+          if (hasDateKeyword && sampleValue > 1000 && sampleValue < 100000) {
+            columnFormats[col] = { type: 'date', dateFormat: 'DD/MM/YYYY' };
+            console.log(`Auto-detected column "${col}" as date (value: ${sampleValue}, keyword: ${hasDateKeyword})`);
+          } else if (sampleValue >= 0 && sampleValue <= 20) {
+            // Small numbers are likely grades/scores, not dates
+            columnFormats[col] = { type: 'number' };
+            console.log(`Column "${col}" detected as number (value: ${sampleValue}, likely a score/grade)`);
+          } else {
+            // For large numbers without date keywords, still default to number
+            columnFormats[col] = { type: 'number' };
+            console.log(`Column "${col}" detected as number (value: ${sampleValue}, no date keyword)`);
+          }
+        } else {
+          columnFormats[col] = { type: 'text' };
+        }
       });
 
       setExcelData({
         columns,
         rows,
         selectedColumns: [],
-        matchingColumn: ''
+        matchingColumn: '',
+        columnFormats
       });
 
       setActiveTab("documents");
@@ -153,17 +210,94 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
     return nameWithoutExt.replace(/[_-]/g, ' ').trim();
   }
 
+  // Format value based on column type
+  const formatValue = useCallback((value: any, column: string): string => {
+    if (value === null || value === undefined || value === '') return '';
+
+    const format = excelData?.columnFormats?.[column];
+    if (!format) return String(value);
+
+    console.log(`Formatting value for column "${column}":`, { value, type: typeof value, format });
+
+    switch (format.type) {
+      case 'date':
+        // Excel stores dates as numbers (days since 1900-01-01)
+        if (typeof value === 'number') {
+          // Excel date serial number conversion
+          const excelEpoch = new Date(1899, 11, 30); // Excel epoch is Dec 30, 1899
+          const date = new Date(excelEpoch.getTime() + value * 24 * 60 * 60 * 1000);
+          const dateFormat = format.dateFormat || 'DD/MM/YYYY';
+
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = date.getFullYear();
+
+          const formatted = dateFormat
+            .replace('DD', day)
+            .replace('MM', month)
+            .replace('YYYY', String(year));
+
+          console.log(`  Date formatted: ${value} -> ${formatted}`);
+          return formatted;
+        } else if (value instanceof Date) {
+          const dateFormat = format.dateFormat || 'DD/MM/YYYY';
+          const day = String(value.getDate()).padStart(2, '0');
+          const month = String(value.getMonth() + 1).padStart(2, '0');
+          const year = value.getFullYear();
+
+          return dateFormat
+            .replace('DD', day)
+            .replace('MM', month)
+            .replace('YYYY', String(year));
+        }
+        console.log(`  Date not a number or Date object: ${typeof value}`);
+        return String(value);
+
+      case 'number':
+        if (typeof value === 'number') {
+          // Format intelligently: show decimals only if needed
+          if (Number.isInteger(value)) {
+            return String(value); // No decimals for integers
+          } else {
+            // Show up to 2 decimals, remove trailing zeros
+            return Number(value.toFixed(2)).toString();
+          }
+        }
+        return String(value);
+
+      case 'text':
+      default:
+        return String(value);
+    }
+  }, [excelData]);
+
   // Handle column selection for QR data
   const handleColumnSelection = useCallback((column: string, checked: boolean) => {
     if (!excelData) return;
-    
+
     setExcelData(prev => {
       if (!prev) return prev;
       return {
         ...prev,
-        selectedColumns: checked 
+        selectedColumns: checked
           ? [...prev.selectedColumns, column]
           : prev.selectedColumns.filter(col => col !== column)
+      };
+    });
+  }, [excelData]);
+
+  // Handle column format change
+  const handleColumnFormatChange = useCallback((column: string, formatType: 'text' | 'date' | 'number', dateFormat?: string) => {
+    if (!excelData) return;
+
+    setExcelData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        columnFormats: {
+          ...prev.columnFormats,
+          [column]: { type: formatType, dateFormat }
+        }
       };
     });
   }, [excelData]);
@@ -186,40 +320,102 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
 
   // Update document matching status
   const updateDocumentMatching = useCallback((matchingColumn: string) => {
-    if (!excelData) return;
+    if (!excelData || !matchingColumn) {
+      console.log('Cannot update matching - missing excelData or matchingColumn');
+      return;
+    }
 
-    setDocumentMappings(prev => prev.map(mapping => {
-      const matchExists = excelData.rows.some(row => 
-        String(row[matchingColumn]).toLowerCase().includes(mapping.matchingValue.toLowerCase()) ||
-        mapping.matchingValue.toLowerCase().includes(String(row[matchingColumn]).toLowerCase())
-      );
-      
-      return {
-        ...mapping,
-        status: matchExists ? 'matched' : 'unmatched'
-      };
-    }));
+    console.log('=== Updating document matching ===');
+    console.log('Matching column:', matchingColumn);
+    console.log('Excel rows count:', excelData.rows.length);
+    console.log('Sample Excel row values for column:', excelData.rows.slice(0, 3).map(r => r[matchingColumn]));
+
+    setDocumentMappings(prev => {
+      console.log('Current mappings count:', prev.length);
+
+      return prev.map(mapping => {
+        // Normalize both values for comparison
+        const normalizedMappingValue = String(mapping.matchingValue).toLowerCase().trim();
+
+        console.log(`\nChecking mapping for file: ${mapping.file.name}`);
+        console.log(`  Matching value: "${normalizedMappingValue}"`);
+
+        // Check if any row has a matching value
+        const matchedRow = excelData.rows.find(row => {
+          const rowValue = String(row[matchingColumn] || '').toLowerCase().trim();
+
+          // Exact match
+          if (rowValue === normalizedMappingValue) {
+            console.log(`  ✓ Exact match: "${rowValue}" === "${normalizedMappingValue}"`);
+            return true;
+          }
+
+          // Partial match (contains)
+          if (rowValue && normalizedMappingValue && (
+            rowValue.includes(normalizedMappingValue) ||
+            normalizedMappingValue.includes(rowValue)
+          )) {
+            console.log(`  ✓ Partial match: "${rowValue}" ~ "${normalizedMappingValue}"`);
+            return true;
+          }
+
+          return false;
+        });
+
+        if (!matchedRow) {
+          console.log(`  ✗ No match found for: "${normalizedMappingValue}"`);
+        }
+
+        return {
+          ...mapping,
+          excelRow: matchedRow,
+          status: matchedRow ? 'matched' as const : 'unmatched' as const
+        };
+      });
+    });
   }, [excelData]);
 
   // Handle manual matching value change
   const handleMatchingValueChange = useCallback((fileIndex: number, newValue: string) => {
-    setDocumentMappings(prev => prev.map((mapping, index) => 
-      index === fileIndex 
+    setDocumentMappings(prev => prev.map((mapping, index) =>
+      index === fileIndex
         ? { ...mapping, matchingValue: newValue }
         : mapping
     ));
-  }, []);
+
+    // Re-check matching after manual change
+    if (excelData?.matchingColumn) {
+      setTimeout(() => updateDocumentMatching(excelData.matchingColumn), 100);
+    }
+  }, [excelData, updateDocumentMatching]);
+
+  // Auto-update matching when matching column changes
+  useEffect(() => {
+    if (excelData?.matchingColumn) {
+      console.log('Auto-updating matching due to matching column change');
+      updateDocumentMatching(excelData.matchingColumn);
+    }
+  }, [excelData?.matchingColumn, updateDocumentMatching]);
+
+  // Also update matching when document mappings are added
+  useEffect(() => {
+    if (excelData?.matchingColumn && documentMappings.length > 0) {
+      console.log('Auto-updating matching due to new documents');
+      updateDocumentMatching(excelData.matchingColumn);
+    }
+  }, [documentMappings.length, excelData?.matchingColumn, updateDocumentMatching]);
 
   // Generate QR data for a specific row
   const generateQRDataForRow = useCallback((row: any): string => {
     if (!excelData) return '';
-    
-    const selectedData = excelData.selectedColumns.map(column => 
-      `${column}: ${row[column]}`
-    ).join('\n');
-    
+
+    const selectedData = excelData.selectedColumns.map(column => {
+      const formattedValue = formatValue(row[column], column);
+      return `${column}: ${formattedValue}`;
+    }).join('\n');
+
     return selectedData;
-  }, [excelData]);
+  }, [excelData, formatValue]);
 
   // Get data preview
   const getDataPreview = useCallback(() => {
@@ -232,14 +428,46 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
   // Handle batch processing request
   const handleBatchProcessRequest = useCallback(() => {
     if (!excelData || !onBatchProcess) return;
-    
+
     onBatchProcess({
       excelData: excelData.rows,
       selectedColumns: excelData.selectedColumns,
       matchingColumn: excelData.matchingColumn,
+      columnFormats: excelData.columnFormats,
       documentMappings
     });
   }, [excelData, documentMappings, onBatchProcess]);
+
+  // Handle document preview
+  const handleViewDocument = useCallback((file: File) => {
+    setPreviewFile(file);
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+  }, []);
+
+  // Handle close preview
+  const handleClosePreview = useCallback(() => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewFile(null);
+    setPreviewUrl(null);
+  }, [previewUrl]);
+
+  // Handle remove mapping
+  const handleRemoveMapping = useCallback((index: number) => {
+    setDocumentMappings(prev => prev.filter((_, i) => i !== index));
+    setDocumentFiles(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   return (
     <div className="space-y-6">
@@ -318,21 +546,71 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
                         <p className="text-sm text-gray-600">
                           Choisissez les colonnes dont les données seront incluses dans le QR code :
                         </p>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {excelData.columns.map((column) => (
-                            <div key={column} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`column-${column}`}
-                                checked={excelData.selectedColumns.includes(column)}
-                                onCheckedChange={(checked) => handleColumnSelection(column, checked as boolean)}
-                              />
-                              <Label htmlFor={`column-${column}`} className="text-sm">
-                                {column}
-                              </Label>
-                            </div>
-                          ))}
+                        <div className="space-y-3">
+                          {excelData.columns.map((column) => {
+                            const sampleValue = excelData.rows[0]?.[column];
+                            const formattedValue = formatValue(sampleValue, column);
+
+                            return (
+                              <div key={column} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`column-${column}`}
+                                    checked={excelData.selectedColumns.includes(column)}
+                                    onCheckedChange={(checked) => handleColumnSelection(column, checked as boolean)}
+                                  />
+                                  <Label htmlFor={`column-${column}`} className="text-sm font-medium min-w-[150px]">
+                                    {column}
+                                  </Label>
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-1">
+                                  <Label className="text-xs text-gray-600">Type:</Label>
+                                  <Select
+                                    value={excelData.columnFormats[column]?.type || 'text'}
+                                    onValueChange={(value) => handleColumnFormatChange(column, value as any)}
+                                  >
+                                    <SelectTrigger className="w-[120px] h-8 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="text">Texte</SelectItem>
+                                      <SelectItem value="number">Nombre</SelectItem>
+                                      <SelectItem value="date">Date</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+
+                                  {excelData.columnFormats[column]?.type === 'date' && (
+                                    <>
+                                      <Label className="text-xs text-gray-600">Format:</Label>
+                                      <Select
+                                        value={excelData.columnFormats[column]?.dateFormat || 'DD/MM/YYYY'}
+                                        onValueChange={(value) => handleColumnFormatChange(column, 'date', value)}
+                                      >
+                                        <SelectTrigger className="w-[140px] h-8 text-xs">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="DD/MM/YYYY">JJ/MM/AAAA</SelectItem>
+                                          <SelectItem value="MM/DD/YYYY">MM/JJ/AAAA</SelectItem>
+                                          <SelectItem value="YYYY-MM-DD">AAAA-MM-JJ</SelectItem>
+                                          <SelectItem value="DD-MM-YYYY">JJ-MM-AAAA</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </>
+                                  )}
+
+                                  <div className="ml-auto text-xs text-gray-500">
+                                    Brut: <code className="bg-white px-1 py-0.5 rounded">{String(sampleValue)}</code>
+                                    {' → '}
+                                    <code className="bg-blue-50 px-1 py-0.5 rounded">{formattedValue}</code>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        
+
                         {excelData.selectedColumns.length > 0 && (
                           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                             <p className="text-sm font-medium text-blue-800 mb-2">Aperçu du contenu QR :</p>
@@ -451,75 +729,91 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
 
         {/* Mapping Tab */}
         <TabsContent value="mapping">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Link className="h-5 w-5" />
-                Correspondance Documents-Données
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {documentMappings.length === 0 ? (
+          {documentMappings.length === 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link className="h-5 w-5" />
+                  Correspondance Documents-Données
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertDescription>
                     Chargez des documents et configurez un fichier Excel pour voir la correspondance.
                   </AlertDescription>
                 </Alert>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4 text-sm font-medium text-gray-600 pb-2 border-b">
-                    <span>Document</span>
-                    <span>Valeur de correspondance</span>
-                    <span>Statut</span>
-                  </div>
-                  
-                  {documentMappings.map((mapping, index) => (
-                    <div key={index} className="grid grid-cols-3 gap-4 items-center">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm truncate">{mapping.file.name}</span>
-                      </div>
-                      <input
-                        type="text"
-                        value={mapping.matchingValue}
-                        onChange={(e) => handleMatchingValueChange(index, e.target.value)}
-                        className="px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Valeur de correspondance"
-                      />
-                      <Badge
-                        variant={mapping.status === 'matched' ? 'default' : 'destructive'}
-                        className={mapping.status === 'matched' ? 'bg-green-100 text-green-800' : ''}
-                      >
-                        {mapping.status === 'matched' ? 'Correspondance trouvée' : 'Aucune correspondance'}
-                      </Badge>
-                    </div>
-                  ))}
-                  
-                  <div className="pt-4 border-t">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-gray-600">
-                        {documentMappings.filter(m => m.status === 'matched').length} / {documentMappings.length} documents appariés
-                      </div>
-                      {excelData && excelData.selectedColumns.length > 0 && (
-                        <Button 
-                          variant="default" 
-                          size="sm"
-                          disabled={documentMappings.filter(m => m.status === 'matched').length === 0}
-                          onClick={handleBatchProcessRequest}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Traitement en Lot
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              <DocumentMappingTable
+                mappings={documentMappings.map(m => ({
+                  ...m,
+                  excelRow: m.excelRow
+                }))}
+                onRemoveMapping={handleRemoveMapping}
+                onViewDocument={handleViewDocument}
+                onEditMatchingValue={handleMatchingValueChange}
+              />
+
+              <div className="flex items-center justify-between">
+                {excelData && excelData.selectedColumns.length > 0 && (
+                  <Button
+                    variant="default"
+                    size="lg"
+                    disabled={documentMappings.filter(m => m.status === 'matched').length === 0}
+                    onClick={handleBatchProcessRequest}
+                    className="w-full"
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Lancer le Traitement en Lot ({documentMappings.filter(m => m.status === 'matched').length} documents)
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
+
+      {/* Preview Dialog */}
+      <Dialog open={!!previewFile} onOpenChange={(open) => !open && handleClosePreview()}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Prévisualisation : {previewFile?.name}</span>
+              <Button variant="ghost" size="sm" onClick={handleClosePreview}>
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            {previewUrl && previewFile && (
+              <div className="border rounded-lg overflow-hidden bg-gray-50">
+                {previewFile.type === 'application/pdf' ? (
+                  <iframe
+                    src={previewUrl}
+                    className="w-full h-[70vh]"
+                    title="PDF Preview"
+                  />
+                ) : previewFile.type.startsWith('image/') ? (
+                  <img
+                    src={previewUrl}
+                    alt={previewFile.name}
+                    className="w-full h-auto max-h-[70vh] object-contain"
+                  />
+                ) : (
+                  <div className="p-8 text-center text-gray-500">
+                    <FileText className="h-16 w-16 mx-auto mb-4" />
+                    <p>Prévisualisation non disponible pour ce type de fichier</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

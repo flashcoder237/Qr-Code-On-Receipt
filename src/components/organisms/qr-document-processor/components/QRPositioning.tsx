@@ -163,20 +163,20 @@ export const QRPositioning: React.FC<QRPositioningProps> = ({
       const container = canvasRef.current.parentElement;
       if (container) {
         const containerRect = container.getBoundingClientRect();
-        const maxWidth = containerRect.width - 40; // padding
-        const maxHeight = 500; // max height for the preview
-        
+        const maxWidth = Math.min(containerRect.width - 40, 1200); // Increased max width
+        const maxHeight = 800; // Increased max height for larger preview
+
         let canvasWidth = docPreview.width;
         let canvasHeight = docPreview.height;
-        
+
         // Scale to fit container while maintaining aspect ratio
         const scaleX = maxWidth / canvasWidth;
         const scaleY = maxHeight / canvasHeight;
-        const scale = Math.min(scaleX, scaleY, 1); // Don't scale up
-        
+        const scale = Math.min(scaleX, scaleY, 1.2); // Allow slight scale up for better visibility
+
         canvasWidth *= scale;
         canvasHeight *= scale;
-        
+
         setCanvasSize({ width: canvasWidth, height: canvasHeight });
       }
     }
@@ -269,20 +269,21 @@ export const QRPositioning: React.FC<QRPositioningProps> = ({
                   </Alert>
                 )}
                 
-                <div className="flex justify-center">
-                  <div 
+                <div className="flex justify-center w-full">
+                  <div
                     ref={canvasRef}
-                    className={`relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden cursor-crosshair ${showGrid ? 'bg-grid' : ''} ${isLoadingPreview ? 'animate-pulse' : ''}`}
+                    className={`relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden cursor-crosshair shadow-lg ${showGrid ? 'bg-grid' : ''} ${isLoadingPreview ? 'animate-pulse' : ''}`}
                     onClick={handleCanvasClick}
                     style={{
-                      width: canvasSize.width || 400,
-                      height: canvasSize.height || 600,
+                      width: canvasSize.width || 600,
+                      height: canvasSize.height || 800,
+                      maxWidth: '100%',
                       backgroundImage: docPreview ? `url(${docPreview.dataUrl})` : undefined,
-                      backgroundSize: 'cover',
+                      backgroundSize: 'contain',
                       backgroundRepeat: 'no-repeat',
                       backgroundPosition: 'center',
                       backgroundColor: docPreview ? 'white' : '#f8f9fa',
-                      minHeight: '300px'
+                      minHeight: '500px'
                     }}
                   >
                   {/* Fallback placeholder when preview fails */}

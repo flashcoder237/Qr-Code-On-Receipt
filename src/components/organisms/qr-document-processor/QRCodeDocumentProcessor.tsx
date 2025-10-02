@@ -72,6 +72,7 @@ export const QRCodeDocumentProcessor: React.FC = () => {
     excelData: any[];
     selectedColumns: string[];
     matchingColumn: string;
+    columnFormats: { [column: string]: any };
     documentMappings: any[];
   } | null>(null);
 
@@ -114,12 +115,26 @@ export const QRCodeDocumentProcessor: React.FC = () => {
     excelData: any[];
     selectedColumns: string[];
     matchingColumn: string;
+    columnFormats: { [column: string]: any };
     documentMappings: any[];
   }) => {
     setExcelBatchData(data);
-    setActiveTab("preview");
+
+    // Use the first matched document for positioning preview
+    const firstMatchedMapping = data.documentMappings.find(m => m.status === 'matched');
+    if (firstMatchedMapping && !uploadedDocument) {
+      setUploadedDocument(firstMatchedMapping.file);
+
+      // Create preview
+      if (firstMatchedMapping.file.type.includes('pdf') || firstMatchedMapping.file.type.includes('image')) {
+        const url = URL.createObjectURL(firstMatchedMapping.file);
+        setDocumentPreview(url);
+      }
+    }
+
+    setActiveTab("positioning");
     notifyInfo("Données configurées", "Configuration prête pour le traitement en lot");
-  }, [notifyInfo]);
+  }, [notifyInfo, uploadedDocument]);
 
   const handleProcessDocument = useCallback(async () => {
     if (processingMode.mode === "manual") {
@@ -186,7 +201,8 @@ export const QRCodeDocumentProcessor: React.FC = () => {
           excelBatchData.selectedColumns,
           excelBatchData.matchingColumn,
           excelBatchData.documentMappings,
-          qrSettings
+          qrSettings,
+          excelBatchData.columnFormats
         );
         
         const successCount = results.filter(r => r.success).length;
@@ -371,7 +387,16 @@ export const QRCodeDocumentProcessor: React.FC = () => {
 
               {/* Positioning Tab */}
               <TabsContent value="positioning" className="space-y-6">
-                <QRPositioning 
+                {processingMode.mode === "excel" && excelBatchData && (
+                  <Alert className="mb-4">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Mode traitement par lot : Le positionnement du QR code sera appliqué à tous les documents.
+                      La prévisualisation utilise le premier document apparié.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <QRPositioning
                   document={uploadedDocument}
                   documentPreview={documentPreview}
                   settings={qrSettings}

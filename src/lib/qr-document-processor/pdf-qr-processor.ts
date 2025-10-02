@@ -126,6 +126,49 @@ export async function processPDFWithQRCode(
 }
 
 /**
+ * Format value based on column type
+ */
+function formatValue(value: any, column: string, columnFormats?: { [column: string]: { type: 'text' | 'date' | 'number'; dateFormat?: string } }): string {
+  if (value === null || value === undefined || value === '') return '';
+
+  const format = columnFormats?.[column];
+  if (!format) return String(value);
+
+  switch (format.type) {
+    case 'date':
+      if (typeof value === 'number') {
+        const excelEpoch = new Date(1899, 11, 30);
+        const date = new Date(excelEpoch.getTime() + value * 24 * 60 * 60 * 1000);
+        const dateFormat = format.dateFormat || 'DD/MM/YYYY';
+
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+
+        return dateFormat
+          .replace('DD', day)
+          .replace('MM', month)
+          .replace('YYYY', String(year));
+      }
+      return String(value);
+
+    case 'number':
+      if (typeof value === 'number') {
+        if (Number.isInteger(value)) {
+          return String(value);
+        } else {
+          return Number(value.toFixed(2)).toString();
+        }
+      }
+      return String(value);
+
+    case 'text':
+    default:
+      return String(value);
+  }
+}
+
+/**
  * Process multiple documents in batch mode with Excel data
  */
 export async function processBatchDocuments(
@@ -134,10 +177,11 @@ export async function processBatchDocuments(
   selectedColumns: string[],
   matchingColumn: string,
   documentMappings: { file: File; matchingValue: string; status: string }[],
-  settings: QRProcessingSettings
+  settings: QRProcessingSettings,
+  columnFormats?: { [column: string]: { type: 'text' | 'date' | 'number'; dateFormat?: string } }
 ): Promise<ProcessingResult[]> {
   const results: ProcessingResult[] = [];
-  
+
   for (const mapping of documentMappings) {
     if (mapping.status !== 'matched') {
       results.push({
@@ -147,13 +191,13 @@ export async function processBatchDocuments(
       });
       continue;
     }
-    
+
     // Find matching row in Excel data
-    const matchingRow = excelData.find(row => 
+    const matchingRow = excelData.find(row =>
       String(row[matchingColumn]).toLowerCase().includes(mapping.matchingValue.toLowerCase()) ||
       mapping.matchingValue.toLowerCase().includes(String(row[matchingColumn]).toLowerCase())
     );
-    
+
     if (!matchingRow) {
       results.push({
         success: false,
@@ -162,10 +206,14 @@ export async function processBatchDocuments(
       });
       continue;
     }
-    
-    // Generate QR content from selected columns
+
+    // Generate QR content from selected columns with formatting
     const qrContent = selectedColumns
-      .map(column => `${column}: ${matchingRow[column] || ''}`)
+      .map(column => {
+        const rawValue = matchingRow[column];
+        const formattedValue = formatValue(rawValue, column, columnFormats);
+        return `${column}: ${formattedValue}`;
+      })
       .filter(line => !line.endsWith(': '))
       .join('\n');
     
