@@ -144,6 +144,7 @@ Lieu de naissance: ${student["LIEU DE NAISSANCE"]}`;
 Niveau: ${student.NIVEAU}${displaySessions ? `
 Semestre: ${student.SEMESTRE}` : ''}
 Filière: ${student.FILIERE}
+Option: ${student.OPTION}
 Cycle: ${student.CYCLE}`;
       break;
     case 'attestation':

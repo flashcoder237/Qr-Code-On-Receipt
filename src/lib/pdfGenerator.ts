@@ -574,7 +574,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
     const mgp = calculateMGP(semesterAverage);
     const grade = getGradeFromAverage(semesterAverage);
     const isEnoughCredits = totalCreditsValidated >= (totalCredits * 0.7);
-    const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
+    const decision = isEnoughCredits ? "VALIDÉ" : "NON VALIDÉ";
 
     return {
       totalCreditsValidated,
@@ -633,15 +633,28 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
         "DATE DE NAISSANCE": student["DATE DE NAISSANCE"] || 'N/D',
         "LIEU DE NAISSANCE": student["LIEU DE NAISSANCE"] || 'N/D',
         NIVEAU: student.NIVEAU || 'N/D',
-        ...(config?.hideSemesterColumn !== true && { SEMESTRE: student.SEMESTRE.split(' ')[1] || ' ' }), // Inclure SEMESTRE seulement si pas masqué
         CYCLE: student.CYCLE || 'N/D',
         FILIERE: student.FILIERE || 'N/D',
-        ...(student.OPTION && student.OPTION !== 'N/D' && student.OPTION.trim() !== '' && { OPTION: student.OPTION }), // Inclure OPTION seulement si pas vide et pas 'N/D'
         "ANNEE ACADEMIQUE": student["ANNEE ACADÉMIQUE"] || 'N/D',
         MOYENNE: formatFrenchNumber(semesterAverage, 2), // Format français avec 2 décimales
         GRADE: grade,
         MENTION: getMention(semesterAverage)
       };
+
+      // Ajouter conditionnellement SEMESTRE si pas masqué
+      if (config?.hideSemesterColumn !== true && student.SEMESTRE) {
+        const semesterValue = student.SEMESTRE.includes(' ') ?
+          student.SEMESTRE.split(' ')[1] :
+          student.SEMESTRE;
+        studentForQR.SEMESTRE = semesterValue;
+        console.log(`📊 SEMESTRE ajouté au QR: ${semesterValue}`);
+      }
+
+      // Ajouter conditionnellement OPTION si elle existe et n'est pas vide
+      if (student.OPTION && student.OPTION !== 'N/D' && student.OPTION.trim() !== '') {
+        studentForQR.OPTION = student.OPTION;
+        console.log(`🎯 OPTION ajoutée au QR: ${student.OPTION}`);
+      }
       console.log(studentForQR);
       console.log("je suis ici sans erreurs");
       
@@ -649,9 +662,10 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
 
       // Sanitiser les données
       const sanitizedStudent = sanitizeStudentData(studentForQR);
+      console.log(sanitizedStudent);
       
       // Générer le QR code avec chiffrement compact
-      qrCodeDataUrl = await generateQrCodeBase64(sanitizedStudent, 'releve', encryptionEnabled, displaySessions);
+      qrCodeDataUrl = await generateQrCodeBase64(sanitizedStudent, 'releve', encryptionEnabled, !config?.hideSemesterColumn);
       
       if (encryptionEnabled) {
         console.log('✅ QR Code avec chiffrement compact généré pour le relevé');
@@ -677,12 +691,15 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
       ];
       
       // Inclure le semestre seulement si la colonne n'est pas masquée
-      if (config?.hideSemesterColumn !== true) {
-        qrDataParts.push(`Semestre: ${student.SEMESTRE ? student.SEMESTRE.split(" ")[1] || 'N/D' : 'N/D'}`);
+      if (config?.hideSemesterColumn !== true && student.SEMESTRE) {
+        const semesterValue = student.SEMESTRE.includes(' ') ?
+          student.SEMESTRE.split(' ')[1] :
+          student.SEMESTRE;
+        qrDataParts.push(`Semestre: ${semesterValue}`);
       }
 
       // Inclure l'option seulement si elle n'est pas vide et différente de 'N/D'
-      if (student.OPTION && student.OPTION !== 'N/D' && student.OPTION !== '') {
+      if (student.OPTION && student.OPTION !== 'N/D' && student.OPTION.trim() !== '') {
         qrDataParts.push(`Option: ${student.OPTION}`);
       }
       
@@ -1125,7 +1142,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                         </tr>
                         <tr class="table-footer">
                             <td class="summary-label">RELEVE NIVEAU</td>
-                            ${(config?.hideSemesterColumn !== true) ? '<td class="summary-label">' + (isCompositeSemester ? (config?.semesters?.find(s => s.isComposite && s.showSemesterSeparation) ? 'SEMESTRE(S)' : 'SEMESTRE') : 'SEMESTRE') + '</td>' : ''}
+                            ${config?.hideSemesterColumn !== true ? (isCompositeSemester ? ((config?.semesters?.find(s => s.isComposite && s.showSemesterSeparation)) ? '<td colspan="2" class="summary-label"> ITEMS </td>' : '<td class="summary-label"> SEMESTRE </td>') : '<td class="summary-label"> SEMESTRE </td>') : ''}
                             <td class="summary-label">${isCompositeSemester ? (config?.semesters?.find(s => s.isComposite && s.showSemesterSeparation) ? 'TOTAL CREDIT' : 'TOTAL CREDIT ANNUEL') : 'TOTAL CREDIT'}</td>
                             <td colspan="2" class="summary-label">${isCompositeSemester ? (config?.semesters?.find(s => s.isComposite && s.showSemesterSeparation) ? 'MOYENNE / 20' : 'MOYENNE ANNUELLE / 20') : 'MOYENNE SEMESTRIELLE / 20'}</td>
                             <td class="summary-label">MGP</td>
@@ -1187,7 +1204,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                               html += `
                                 <tr class="table-footer-values">
                                   ${index === 0 ? `<td rowspan="${totalRows}" class="summary-value"><strong>${student.NIVEAU || "1"}</strong></td>` : ''}
-                                  ${(config?.hideSemesterColumn !== true) ? '<td class="summary-value"><strong>' + semesterNumber + '</strong></td>' : ''}
+                                  ${(config?.hideSemesterColumn !== true) ? '<td colspan="2" class="summary-value"><strong>SEMESTRE ' + semesterNumber + '</strong></td>' : ''}
                                   <td class="summary-value"><strong>${stats.totalCreditsValidated}</strong></td>
                                   <td colspan="2" class="summary-value"><strong>${formatFrenchNumber(stats.semesterAverage)}</strong></td>
                                   <td class="summary-value"><strong>${formatFrenchNumber(stats.mgp, 1)}</strong></td>
@@ -1200,12 +1217,12 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                             // Ajouter la ligne de total/moyenne générale (sans cellule niveau car fusionnée)
                             html += `
                               <tr class="table-footer-values" style="border-top: 2px solid black; font-weight: bold;">
-                                 ${(config?.hideSemesterColumn !== true) ? '<td class="summary-value"><strong>' + (student.SEMESTRE ? (student.SEMESTRE.split(" ")[1] || "1") : "1") + '</strong></td>' : ''}
+                                 ${(config?.hideSemesterColumn !== true) ? '<td colspan="2" class="summary-value"><strong>ANNÉE</strong></td>' : ''}
                                 <td class="summary-value"><strong>${totalCreditsValidated}</strong></td>
                                 <td colspan="2" class="summary-value"><strong>${formatFrenchNumber(semesterAverage)}</strong></td>
                                 <td class="summary-value"><strong>${formatFrenchNumber(mgp, 1)}</strong></td>
                                 <td class="summary-value"><strong>${grade}</strong></td>
-                                <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-value ${totalCreditsValidated == (totalSemesterCredits) ? "validated" : "not-validated"}"><strong>${totalCreditsValidated == (totalSemesterCredits) ? "SEMESTRES VALIDES" : "SEMESTRES NON VALIDES"}</strong></td>
+                                <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-value ${totalCreditsValidated == (totalSemesterCredits) ? "validated" : "not-validated"}"><strong>${totalCreditsValidated == (totalSemesterCredits) ? "VALIDÉE" : "NON VALIDÉE"}</strong></td>
                               </tr>
                             `;
 
