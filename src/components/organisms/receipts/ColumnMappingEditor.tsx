@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Save, FileDown, Upload, BookmarkPlus, Bookmark, Trash, List, CheckCircle, Clock } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
+import { useNotifications } from "@/components/ui/notification-system";
 
 interface EC {
   id: string;
@@ -50,9 +51,11 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
   onSessionMappingChange,
   onLoadMapping
 }) => {
+  const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotifications();
+
   // État pour gérer les mappings sauvegardés
   const [savedMappings, setSavedMappings] = useLocalStorage<SavedMapping[]>(
-    "saved-column-mappings", 
+    "saved-column-mappings",
     []
   );
   const [newMappingName, setNewMappingName] = useState("");
@@ -254,7 +257,7 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
     );
     
     if (mappingsToExport.length === 0) {
-      alert("Aucun mapping à exporter pour cette configuration");
+      notifyWarning("Aucun mapping", "Aucun mapping à exporter pour cette configuration");
       return;
     }
     
@@ -288,7 +291,7 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
         );
         
         if (validMappings.length === 0) {
-          alert("Aucun mapping valide trouvé dans le fichier");
+          notifyWarning("Aucun mapping valide", "Aucun mapping valide trouvé dans le fichier");
           return;
         }
         
@@ -314,10 +317,10 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
         });
         
         setSavedMappings(newMappings);
-        alert(`${added} nouveau(x) mapping(s) importé(s)`);
-        
+        notifySuccess("Import réussi", `${added} nouveau(x) mapping(s) importé(s)`);
+
       } catch (error) {
-        alert("Erreur lors de l'importation : format de fichier invalide");
+        notifyError("Erreur d'importation", "Format de fichier invalide");
         console.error("Import error:", error);
       }
     };
@@ -475,6 +478,9 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Enregistrer la correspondance</DialogTitle>
+            <DialogDescription>
+              Donnez un nom à cette correspondance pour la réutiliser ultérieurement
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Label htmlFor="mapping-name" className="mb-2 block">Nom de la correspondance</Label>
@@ -503,6 +509,9 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Charger une correspondance sauvegardée</DialogTitle>
+            <DialogDescription>
+              Sélectionnez une correspondance précédemment enregistrée pour cette configuration
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4 max-h-96 overflow-y-auto">
             {availableMappings.length === 0 ? (

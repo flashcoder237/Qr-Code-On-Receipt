@@ -15,6 +15,7 @@ import { AttestationThemeSettingsPayload, defaultAttestationTheme, getAdvancedAt
 import { AttestationThemePreview } from "./AttestationThemePreview";
 import { ThemePresetSelector } from "./ThemePresetSelector";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNotifications } from "@/components/ui/notification-system";
 
 interface AttestationThemeEditorProps {
   theme: AttestationThemeSettingsPayload;
@@ -29,6 +30,7 @@ export const AttestationThemeEditor: React.FC<AttestationThemeEditorProps> = ({
   onSave,
   onPreview
 }) => {
+  const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotifications();
   const [activeTab, setActiveTab] = useState("colors");
   const [isModified, setIsModified] = useState(false);
   const [showPresetSelector, setShowPresetSelector] = useState(false);
@@ -691,8 +693,9 @@ export const AttestationThemeEditor: React.FC<AttestationThemeEditorProps> = ({
                     const json = JSON.parse(event.target?.result as string);
                     onThemeChange(json);
                     setIsModified(true);
+                    notifySuccess("Configuration importée", "La configuration du thème a été importée avec succès");
                   } catch (error) {
-                    alert("Fichier JSON invalide ou erreur de lecture");
+                    notifyError("Erreur d'importation", "Fichier JSON invalide ou erreur de lecture");
                   }
                 };
                 reader.readAsText(file);

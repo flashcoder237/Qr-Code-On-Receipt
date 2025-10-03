@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Eye, Palette, Check, Sparkles, FileText, Minimize2, Crown } from "lucide-react";
 import { AttestationThemeSettingsPayload } from "@/lib/form-schemas/attestation-theme-settings";
 import { AttestationThemePreset, attestationThemePresets, getPresetsByCategory } from "@/lib/form-schemas/attestation-presets";
@@ -232,6 +232,9 @@ export const ThemePresetSelector: React.FC<ThemePresetSelectorProps> = ({
                 {previewPreset && getCategoryIcon(previewPreset.category)}
                 Aperçu: {previewPreset?.name}
               </DialogTitle>
+              <DialogDescription>
+                Prévisualisation du thème avec ses paramètres et style d'affichage
+              </DialogDescription>
             </DialogHeader>
             
             {previewPreset && (

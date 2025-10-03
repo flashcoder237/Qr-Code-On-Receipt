@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -688,6 +688,9 @@ export const DocumentHistoryManager: React.FC = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirmer la suppression</DialogTitle>
+            <DialogDescription>
+              Cette action supprimera définitivement les enregistrements sélectionnés de l'historique
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Alert>
@@ -718,6 +721,9 @@ export const DocumentHistoryManager: React.FC = () => {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Détails du document</DialogTitle>
+            <DialogDescription>
+              Informations complètes sur le document généré
+            </DialogDescription>
           </DialogHeader>
           {selectedRecord && (
             <div className="space-y-4">

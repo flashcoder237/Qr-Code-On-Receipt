@@ -10,12 +10,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useLocalStorage } from "usehooks-ts";
 import { useDropzone } from "react-dropzone";
 import { Upload, Save, RotateCcw, Building, GraduationCap, Lock, Download, Upload as UploadIcon, Edit3, Unlock } from "lucide-react";
+import { useNotifications } from "@/components/ui/notification-system";
 
 interface AttestationSettingsProps {
   onSettingsUpdated?: () => void;
 }
 
 export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSettingsUpdated }) => {
+  const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotifications();
+
   // État des paramètres stockés dans localStorage
   const [settings, setSettings] = useLocalStorage("settings", {
     establishmentType: "ipes", // Valeur par défaut
@@ -153,7 +156,7 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
         setActionType('import');
         setShowCodePrompt(true);
       } catch (error) {
-        alert("Fichier JSON invalide ou erreur de lecture");
+        notifyError("Erreur d'importation", "Fichier JSON invalide ou erreur de lecture");
       }
     };
     reader.readAsText(file);
@@ -169,7 +172,7 @@ export const AttestationSettings: React.FC<AttestationSettingsProps> = ({ onSett
       
       // Vérifier la taille du fichier
       if (file.size > MAX_FILE_SIZE) {
-        alert(`Le fichier est trop volumineux. Taille maximale: 1MB. Taille actuelle: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+        notifyError("Fichier trop volumineux", `Taille maximale: 1MB. Taille actuelle: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
         return;
       }
       

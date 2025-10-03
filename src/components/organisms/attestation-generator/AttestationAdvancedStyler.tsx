@@ -10,6 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { useNotifications } from "@/components/ui/notification-system";
 import { 
   Settings, 
   Table2, 
@@ -69,6 +70,7 @@ export const AttestationAdvancedStyler: React.FC<AttestationAdvancedStylerProps>
   standardTheme,
   onStandardThemeChange
 }) => {
+  const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotifications();
   const [activeTab, setActiveTab] = useState<string>('spacing');
   const [selectedPreset, setSelectedPreset] = useState<string>('classic');
 
@@ -318,11 +320,10 @@ export const AttestationAdvancedStyler: React.FC<AttestationAdvancedStylerProps>
   const saveConfig = () => {
     try {
       localStorage.setItem('attestation-advanced-config', JSON.stringify(config));
-      // Vous pouvez ajouter une notification de succès ici si vous avez un système de notifications
-      alert('Configuration avancée sauvegardée avec succès !');
+      notifySuccess('Configuration sauvegardée', 'Configuration avancée sauvegardée avec succès');
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
-      alert('Erreur lors de la sauvegarde de la configuration');
+      notifyError('Erreur de sauvegarde', 'Erreur lors de la sauvegarde de la configuration');
     }
   };
 
@@ -332,7 +333,7 @@ export const AttestationAdvancedStyler: React.FC<AttestationAdvancedStylerProps>
       const dataStr = JSON.stringify(config, null, 2);
       const blob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      
+
       const link = document.createElement('a');
       link.href = url;
       const timestamp = new Date().toISOString().split('T')[0];
@@ -340,12 +341,12 @@ export const AttestationAdvancedStyler: React.FC<AttestationAdvancedStylerProps>
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       URL.revokeObjectURL(url);
-      alert('Configuration exportée avec succès !');
+      notifySuccess('Configuration exportée', 'Configuration exportée avec succès');
     } catch (error) {
       console.error('Erreur lors de l\'export:', error);
-      alert('Erreur lors de l\'export de la configuration');
+      notifyError('Erreur d\'exportation', 'Erreur lors de l\'export de la configuration');
     }
   };
 
@@ -358,23 +359,23 @@ export const AttestationAdvancedStyler: React.FC<AttestationAdvancedStylerProps>
     reader.onload = (e) => {
       try {
         const importedConfig = JSON.parse(e.target?.result as string);
-        
+
         // Valider la structure de base de la configuration
         if (typeof importedConfig === 'object' && importedConfig !== null) {
           onChange({
             ...config,
             ...importedConfig
           });
-          alert('Configuration importée avec succès !');
+          notifySuccess('Configuration importée', 'Configuration importée avec succès');
         } else {
           throw new Error('Format de fichier invalide');
         }
       } catch (error) {
         console.error('Erreur lors de l\'import:', error);
-        alert('Erreur lors de l\'import : fichier JSON invalide');
+        notifyError('Erreur d\'importation', 'Fichier JSON invalide');
       }
     };
-    
+
     reader.readAsText(file);
     // Reset input value pour permettre de réimporter le même fichier
     event.target.value = '';

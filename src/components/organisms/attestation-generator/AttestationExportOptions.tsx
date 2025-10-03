@@ -9,6 +9,7 @@ import { Download, Archive, FileText, Settings, Zap } from "lucide-react";
 import ExcelJS from 'exceljs';
 import { StudentExcelRecord } from "@/lib/helpers/qrcode";
 import { AttestationThemeSettingsPayload } from "@/lib/form-schemas/attestation-theme-settings";
+import { useNotifications } from "@/components/ui/notification-system";
 
 interface AttestationExportOptionsProps {
   selectedStudents: StudentExcelRecord[];
@@ -41,6 +42,7 @@ export const AttestationExportOptions: React.FC<AttestationExportOptionsProps> =
   onExportPDF,
   isLoading
 }) => {
+  const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotifications();
 
   const handleExportStudentData = async () => {
     try {
@@ -55,7 +57,7 @@ export const AttestationExportOptions: React.FC<AttestationExportOptionsProps> =
       workbook.keywords = 'attestation, étudiant, export, excel';
 
       if (!selectedStudents || selectedStudents.length === 0) {
-        alert("Aucun étudiant sélectionné pour l'export. Veuillez d'abord sélectionner des étudiants.");
+        notifyWarning("Aucune sélection", "Aucun étudiant sélectionné pour l'export. Veuillez d'abord sélectionner des étudiants.");
         return;
       }
 
@@ -78,7 +80,7 @@ export const AttestationExportOptions: React.FC<AttestationExportOptionsProps> =
         });
         
         if (missingEnFields.length > 0) {
-          alert(`⚠️ Champs de traduction anglaise manquants (requis pour les établissements Faculty):\n\n${missingEnFields.join('\n')}\n\nNote: OPTION_EN est optionnelle, MENTION_EN se calcule automatiquement\n\nVeuillez compléter ces champs avant l'export.`);
+          notifyError("Champs manquants", `Champs de traduction anglaise manquants (requis pour les établissements Faculty): ${missingEnFields.join(', ')}. Note: OPTION_EN est optionnelle, MENTION_EN se calcule automatiquement. Veuillez compléter ces champs avant l'export.`);
           return;
         }
       }
@@ -122,7 +124,7 @@ export const AttestationExportOptions: React.FC<AttestationExportOptionsProps> =
 
     } catch (error) {
       console.error("❌ Erreur lors de l'export:", error);
-      alert(`Erreur lors de l'export Excel : ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+      notifyError("Erreur d'export", `Erreur lors de l'export Excel : ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     }
   };
 
@@ -218,7 +220,7 @@ export const AttestationExportOptions: React.FC<AttestationExportOptionsProps> =
 
     } catch (error) {
       console.error("❌ Erreur lors de l'export du template:", error);
-      alert(`Erreur lors de l'export du template : ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+      notifyError("Erreur d'export", `Erreur lors de l'export du template : ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     }
   };
 

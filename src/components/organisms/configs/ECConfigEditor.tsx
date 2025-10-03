@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -869,6 +869,9 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
               <Layers className="h-5 w-5 text-amber-600" />
               Créer un semestre composite
             </DialogTitle>
+            <DialogDescription>
+              Un semestre composite combine plusieurs semestres académiques en une seule période
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -946,6 +949,9 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Créer un semestre fusionné</DialogTitle>
+            <DialogDescription>
+              Combinez plusieurs semestres existants pour générer un relevé unique
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -1031,6 +1037,9 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Configurer {selectedEC?.name}</DialogTitle>
+            <DialogDescription>
+              Définissez le poids, la base de notation et la base d'affichage pour cet élément constitutif
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">

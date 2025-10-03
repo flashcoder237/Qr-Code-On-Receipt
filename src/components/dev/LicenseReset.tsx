@@ -8,15 +8,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Trash2, RefreshCw, Key, AlertTriangle, Shield, Eye, EyeOff, Plus, CheckCircle, Copy } from 'lucide-react';
 import LicenseDB from '@/lib/licence/database';
-import { 
-  validateLicenseFormat, 
-  generateLicenseExample, 
+import {
+  validateLicenseFormat,
+  generateLicenseExample,
   getExpectedLicenseFormat,
   extractLicenseYear,
-  isLicenseExpired 
+  isLicenseExpired
 } from '@/lib/licence/license-validator';
+import { useNotifications } from "@/components/ui/notification-system";
 
 export const LicenseReset: React.FC = () => {
+  const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotifications();
+
   const [licenseStatus, setLicenseStatus] = React.useState<string>('Vérification...');
   const [demoStatus, setDemoStatus] = React.useState<string>('Vérification...');
   const [isLoading, setIsLoading] = React.useState(false);
@@ -107,12 +110,13 @@ export const LicenseReset: React.FC = () => {
   // Injecter une licence de test
   const injectTestLicense = async () => {
     if (!testLicenseKey.trim()) return;
-    
+
     setIsLoading(true);
     try {
       const validation = validateLicenseFormat(testLicenseKey);
       if (!validation.isValid) {
-        alert(`Format invalide: ${validation.error}`);
+        notifyError('Format invalide', validation.error || 'Le format de la licence est incorrect');
+        setIsLoading(false);
         return;
       }
       
@@ -152,9 +156,10 @@ export const LicenseReset: React.FC = () => {
   const copyExample = async () => {
     try {
       await navigator.clipboard.writeText(exampleLicense);
-      alert('Exemple copié dans le presse-papier!');
+      notifySuccess('Copié', 'Exemple copié dans le presse-papier');
     } catch (error) {
       console.error('Erreur lors de la copie:', error);
+      notifyError('Erreur de copie', 'Impossible de copier dans le presse-papier');
     }
   };
 

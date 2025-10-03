@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import Draggable, { DraggableData, DraggableEvent } from "react-draggable";
 import * as pdfjsLib from "pdfjs-dist"; // Bibliothèque pour manipuler les PDF
 import "pdfjs-dist/build/pdf.worker.mjs"; // Nécessaire pour charger le worker PDF.js
@@ -74,6 +74,12 @@ export const A4PositionPicker = ({
         </Button>
       </SheetTrigger>
       <SheetContent className="min-w-[70vw] max-h-screen py-4 overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Positionnement du QR Code</SheetTitle>
+          <SheetDescription>
+            Faites glisser le carré bleu pour positionner le QR code sur votre document
+          </SheetDescription>
+        </SheetHeader>
         <div
           style={{
             width: (orientation==="portrait" ? "210mm" : "297mm"), // A4 width

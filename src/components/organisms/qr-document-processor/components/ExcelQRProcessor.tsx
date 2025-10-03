@@ -8,9 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useDropzone } from "react-dropzone";
 import * as XLSX from 'xlsx';
+import { useNotifications } from "@/components/ui/notification-system";
 import {
   Upload,
   FileText,
@@ -63,6 +64,9 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
   uploadedDocument,
   onBatchProcess
 }) => {
+  // Notifications
+  const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotifications();
+
   // State
   const [activeTab, setActiveTab] = useState<"excel" | "documents" | "mapping">("excel");
   const [excelData, setExcelData] = useState<ExcelData | null>(null);
@@ -174,7 +178,10 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
       setActiveTab("documents");
     } catch (error) {
       console.error('Error processing Excel file:', error);
-      alert('Erreur lors du traitement du fichier Excel: ' + (error instanceof Error ? error.message : 'Erreur inconnue'));
+      notifyError(
+        'Erreur de traitement Excel',
+        error instanceof Error ? error.message : 'Erreur inconnue lors du traitement du fichier'
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -420,10 +427,53 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
   // Get data preview
   const getDataPreview = useCallback(() => {
     if (!excelData || excelData.rows.length === 0) return null;
-    
+
     const sampleRow = excelData.rows[0];
     return generateQRDataForRow(sampleRow);
   }, [excelData, generateQRDataForRow]);
+
+  // Check for missing important columns based on document type
+  const getMissingColumns = useCallback(() => {
+    if (!excelData || !documentMappings.length) return [];
+
+    // Detect document type from first document
+    const firstDoc = documentMappings[0]?.file;
+    if (!firstDoc) return [];
+
+    const fileName = firstDoc.name.toLowerCase();
+    const missingColumns: string[] = [];
+
+    // Define recommended columns for different document types
+    const recommendedColumns: { [key: string]: string[] } = {
+      attestation: ['NOM', 'PRENOM', 'DATE DE NAISSANCE', 'LIEU DE NAISSANCE'],
+      diplome: ['NOM', 'PRENOM', 'DATE DE NAISSANCE', 'DIPLOME', 'MENTION'],
+      releve: ['NOM', 'PRENOM', 'MATRICULE', 'MOYENNE'],
+      certificat: ['NOM', 'PRENOM', 'DATE'],
+    };
+
+    // Detect document type
+    let docType: string | null = null;
+    if (fileName.includes('attestation')) docType = 'attestation';
+    else if (fileName.includes('diplome') || fileName.includes('diplôme')) docType = 'diplome';
+    else if (fileName.includes('releve') || fileName.includes('relevé')) docType = 'releve';
+    else if (fileName.includes('certificat')) docType = 'certificat';
+
+    if (docType && recommendedColumns[docType]) {
+      const required = recommendedColumns[docType];
+      const availableColumns = excelData.columns.map(c => c.toUpperCase());
+
+      required.forEach(col => {
+        const found = availableColumns.some(avail =>
+          avail.includes(col) || col.includes(avail)
+        );
+        if (!found) {
+          missingColumns.push(col);
+        }
+      });
+    }
+
+    return missingColumns;
+  }, [excelData, documentMappings]);
 
   // Handle batch processing request
   const handleBatchProcessRequest = useCallback(() => {
@@ -748,6 +798,24 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
             </Card>
           ) : (
             <div className="space-y-4">
+              {(() => {
+                const missingCols = getMissingColumns();
+                return missingCols.length > 0 && (
+                  <Alert variant="warning" className="border-orange-200 bg-orange-50">
+                    <AlertCircle className="h-4 w-4 text-orange-600" />
+                    <AlertDescription>
+                      <p className="font-medium text-orange-900">Colonnes recommandées manquantes :</p>
+                      <p className="text-sm text-orange-700 mt-1">
+                        {missingCols.join(', ')}
+                      </p>
+                      <p className="text-xs text-orange-600 mt-2">
+                        Ces colonnes sont généralement nécessaires pour ce type de document. Assurez-vous que votre fichier Excel les contient.
+                      </p>
+                    </AlertDescription>
+                  </Alert>
+                );
+              })()}
+
               <DocumentMappingTable
                 mappings={documentMappings.map(m => ({
                   ...m,
@@ -781,12 +849,12 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
       <Dialog open={!!previewFile} onOpenChange={(open) => !open && handleClosePreview()}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>Prévisualisation : {previewFile?.name}</span>
-              <Button variant="ghost" size="sm" onClick={handleClosePreview}>
-                <X className="h-4 w-4" />
-              </Button>
+            <DialogTitle>
+              Prévisualisation : {previewFile?.name}
             </DialogTitle>
+            <DialogDescription>
+              Aperçu du document avant traitement
+            </DialogDescription>
           </DialogHeader>
           <div className="mt-4">
             {previewUrl && previewFile && (

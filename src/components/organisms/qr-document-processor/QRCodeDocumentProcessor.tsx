@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   QrCode, 
   FileText, 
@@ -79,6 +80,7 @@ export const QRCodeDocumentProcessor: React.FC = () => {
   // Document data
   const [uploadedDocument, setUploadedDocument] = useState<File | null>(null);
   const [documentPreview, setDocumentPreview] = useState<string | null>(null);
+  const [previewDocumentIndex, setPreviewDocumentIndex] = useState<number>(0);
 
   // Notifications
   const { notifySuccess, notifyError, notifyInfo, notifyWarning } = useNotifications();
@@ -121,20 +123,46 @@ export const QRCodeDocumentProcessor: React.FC = () => {
     setExcelBatchData(data);
 
     // Use the first matched document for positioning preview
-    const firstMatchedMapping = data.documentMappings.find(m => m.status === 'matched');
-    if (firstMatchedMapping && !uploadedDocument) {
-      setUploadedDocument(firstMatchedMapping.file);
+    const matchedMappings = data.documentMappings.filter(m => m.status === 'matched');
+    if (matchedMappings.length > 0) {
+      const firstMatched = matchedMappings[0];
+      setUploadedDocument(firstMatched.file);
+      setPreviewDocumentIndex(0);
 
       // Create preview
-      if (firstMatchedMapping.file.type.includes('pdf') || firstMatchedMapping.file.type.includes('image')) {
-        const url = URL.createObjectURL(firstMatchedMapping.file);
+      if (firstMatched.file.type.includes('pdf') || firstMatched.file.type.includes('image')) {
+        const url = URL.createObjectURL(firstMatched.file);
         setDocumentPreview(url);
       }
     }
 
     setActiveTab("positioning");
     notifyInfo("Données configurées", "Configuration prête pour le traitement en lot");
-  }, [notifyInfo, uploadedDocument]);
+  }, [notifyInfo]);
+
+  // Handle preview document change in batch mode
+  const handlePreviewDocumentChange = useCallback((index: number) => {
+    if (!excelBatchData) return;
+
+    const matchedMappings = excelBatchData.documentMappings.filter(m => m.status === 'matched');
+    if (index >= 0 && index < matchedMappings.length) {
+      const mapping = matchedMappings[index];
+      setPreviewDocumentIndex(index);
+
+      // Clean up old preview URL
+      if (documentPreview) {
+        URL.revokeObjectURL(documentPreview);
+      }
+
+      setUploadedDocument(mapping.file);
+
+      // Create new preview
+      if (mapping.file.type.includes('pdf') || mapping.file.type.includes('image')) {
+        const url = URL.createObjectURL(mapping.file);
+        setDocumentPreview(url);
+      }
+    }
+  }, [excelBatchData, documentPreview]);
 
   const handleProcessDocument = useCallback(async () => {
     if (processingMode.mode === "manual") {
@@ -388,14 +416,48 @@ export const QRCodeDocumentProcessor: React.FC = () => {
               {/* Positioning Tab */}
               <TabsContent value="positioning" className="space-y-6">
                 {processingMode.mode === "excel" && excelBatchData && (
-                  <Alert className="mb-4">
-                    <Info className="h-4 w-4" />
-                    <AlertDescription>
-                      Mode traitement par lot : Le positionnement du QR code sera appliqué à tous les documents.
-                      La prévisualisation utilise le premier document apparié.
-                    </AlertDescription>
-                  </Alert>
+                  <>
+                    <Alert className="mb-4">
+                      <Info className="h-4 w-4" />
+                      <AlertDescription>
+                        Mode traitement par lot : Le positionnement du QR code sera appliqué à tous les documents.
+                      </AlertDescription>
+                    </Alert>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Document de prévisualisation</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1">
+                            <Select
+                              value={String(previewDocumentIndex)}
+                              onValueChange={(value) => handlePreviewDocumentChange(Number(value))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {excelBatchData.documentMappings
+                                  .filter(m => m.status === 'matched')
+                                  .map((mapping, index) => (
+                                    <SelectItem key={index} value={String(index)}>
+                                      {mapping.file.name}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Badge variant="secondary">
+                            {previewDocumentIndex + 1} / {excelBatchData.documentMappings.filter(m => m.status === 'matched').length}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
                 )}
+
                 <QRPositioning
                   document={uploadedDocument}
                   documentPreview={documentPreview}
