@@ -58,6 +58,33 @@ export const ThemeSettingsSchema = z.object({
   showQRCode: z.boolean(),
   showGradeScale: z.boolean(),
   highlightValidatedUE: z.boolean(),
+
+  // NOUVEAU: Configuration avancée des tableaux
+  // Largeurs des colonnes (en pourcentage de la largeur totale du tableau)
+  tableColumnWidths: z.object({
+    codeColumn: z.number().min(5).max(30).optional(), // Colonne "Code UE"
+    ueColumn: z.number().min(10).max(50).optional(), // Colonne "Intitulé UE"
+    ecColumn: z.number().min(10).max(50).optional(), // Colonne "EC"
+    sessionColumn: z.number().min(5).max(20).optional(), // Colonne "Session"
+    noteColumn: z.number().min(5).max(20).optional(), // Colonne "Note"
+    averageColumn: z.number().min(5).max(20).optional(), // Colonne "Moyenne UE"
+    creditColumn: z.number().min(5).max(20).optional(), // Colonne "Crédits"
+  }).optional(),
+
+  // Taille d'affichage du tableau (échelle globale en pourcentage)
+  tableScale: z.number().min(50).max(150).optional(), // 100 = taille normale
+
+  // Largeur du tableau (en pourcentage de la page)
+  tableWidth: z.number().min(50).max(100).optional(), // 100 = pleine largeur
+
+  // NOUVEAU: Options de typographie avancées
+  titleFontWeight: z.enum(["normal", "bold", "100", "200", "300", "400", "500", "600", "700", "800", "900"]).optional(),
+  headerFontWeight: z.enum(["normal", "bold", "100", "200", "300", "400", "500", "600", "700", "800", "900"]).optional(),
+  tableHeaderFontWeight: z.enum(["normal", "bold", "100", "200", "300", "400", "500", "600", "700", "800", "900"]).optional(),
+
+  // NOUVEAU: Espacement du tableau
+  tableRowSpacing: z.number().min(0).max(20).optional(), // Espacement entre les lignes
+  tableSectionSpacing: z.number().min(0).max(50).optional(), // Espacement entre les sections
 });
 
 export type ThemeSettingsPayload = z.infer<typeof ThemeSettingsSchema>;
@@ -87,9 +114,31 @@ export const defaultTheme: ThemeSettingsPayload = {
   
   headerLayout: "standard", // Disposition de l'en-tête
   studentInfoLayout: "grille", // Disposition des informations sur l'étudiant
-  
+
   showWatermark: true, // Afficher le filigrane
   showQRCode: true, // Afficher le code QR
   showGradeScale: true, // Afficher l'échelle de notation
   highlightValidatedUE: false, // Mettre en évidence les UE validées
+
+  // Configuration des tableaux (valeurs par défaut)
+  tableColumnWidths: {
+    codeColumn: 8, // 8% pour le code UE
+    ueColumn: 25, // 25% pour l'intitulé UE
+    ecColumn: 25, // 25% pour l'EC
+    sessionColumn: 10, // 10% pour la session
+    noteColumn: 10, // 10% pour la note
+    averageColumn: 12, // 12% pour la moyenne UE
+    creditColumn: 10, // 10% pour les crédits
+  },
+  tableScale: 100, // Taille normale (100%)
+  tableWidth: 100, // Pleine largeur (100%)
+
+  // Typographie avancée
+  titleFontWeight: "bold",
+  headerFontWeight: "normal",
+  tableHeaderFontWeight: "bold",
+
+  // Espacement
+  tableRowSpacing: 0,
+  tableSectionSpacing: 10,
 };

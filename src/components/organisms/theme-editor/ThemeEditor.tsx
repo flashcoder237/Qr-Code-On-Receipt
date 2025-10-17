@@ -16,10 +16,11 @@ interface ThemeEditorProps {
   settings: TranscriptSettingsPayload;
   onSave: (settings: TranscriptSettingsPayload) => void;
   onPreview: () => void;
+  showTableCustomization?: boolean; // NOUVEAU: Afficher l'onglet de personnalisation du tableau
 }
 
-const ThemeEditor: React.FC<ThemeEditorProps> = ({ settings, onSave, onPreview }) => {
-  const [activeTab, setActiveTab] = useState("colors");
+const ThemeEditor: React.FC<ThemeEditorProps> = ({ settings, onSave, onPreview, showTableCustomization = false }) => {
+  const [activeTab, setActiveTab] = useState(showTableCustomization ? "table" : "colors");
   const [currentTheme, setCurrentTheme] = useState<ThemeSettingsPayload>(
     getCompleteTheme(settings)
   );
@@ -97,7 +98,7 @@ const ThemeEditor: React.FC<ThemeEditorProps> = ({ settings, onSave, onPreview }
     { value: "souligné", label: "Souligné" },
   ];
 
-  const ColorPicker = ({ label, value, onChange }) => (
+  const ColorPicker = ({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) => (
     <div className="flex flex-col gap-2">
       <Label>{label}</Label>
       <div className="flex gap-2">
@@ -128,12 +129,19 @@ const ThemeEditor: React.FC<ThemeEditorProps> = ({ settings, onSave, onPreview }
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-5 mb-6">
-            <TabsTrigger value="colors">Couleurs</TabsTrigger>
-            <TabsTrigger value="typography">Typographie</TabsTrigger>
-            <TabsTrigger value="layout">Mise en page</TabsTrigger>
-            <TabsTrigger value="borders">Bordures</TabsTrigger>
-            <TabsTrigger value="options">Options</TabsTrigger>
+          <TabsList className={`grid ${showTableCustomization ? 'grid-cols-1' : 'grid-cols-5'} mb-6`}>
+            {!showTableCustomization && (
+              <>
+                <TabsTrigger value="colors">Couleurs</TabsTrigger>
+                <TabsTrigger value="typography">Typographie</TabsTrigger>
+                <TabsTrigger value="layout">Mise en page</TabsTrigger>
+                <TabsTrigger value="borders">Bordures</TabsTrigger>
+                <TabsTrigger value="options">Options</TabsTrigger>
+              </>
+            )}
+            {showTableCustomization && (
+              <TabsTrigger value="table">Personnalisation du tableau</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="colors" className="space-y-4">
@@ -421,6 +429,268 @@ const ThemeEditor: React.FC<ThemeEditorProps> = ({ settings, onSave, onPreview }
                     <Eye className="mr-2 h-4 w-4" />
                     Aperçu complet
                   </Button>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* NOUVEAU: Onglet de personnalisation du tableau */}
+          <TabsContent value="table" className="space-y-6">
+            <div className="space-y-6">
+              {/* Section: Taille globale du tableau */}
+              <div className="border rounded-lg p-4 space-y-4">
+                <h3 className="font-semibold text-lg">Taille et échelle du tableau</h3>
+
+                <div className="space-y-2">
+                  <Label>Échelle du tableau: {currentTheme.tableScale || 100}%</Label>
+                  <Slider
+                    value={[currentTheme.tableScale || 100]}
+                    min={50}
+                    max={150}
+                    step={5}
+                    onValueChange={(value) => updateTheme('tableScale', value[0])}
+                  />
+                  <p className="text-sm text-gray-500">Ajuste la taille globale du tableau (50% - 150%)</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Largeur du tableau: {currentTheme.tableWidth || 100}%</Label>
+                  <Slider
+                    value={[currentTheme.tableWidth || 100]}
+                    min={50}
+                    max={100}
+                    step={5}
+                    onValueChange={(value) => updateTheme('tableWidth', value[0])}
+                  />
+                  <p className="text-sm text-gray-500">Largeur du tableau par rapport à la page (50% - 100%)</p>
+                </div>
+              </div>
+
+              {/* Section: Largeur des colonnes */}
+              <div className="border rounded-lg p-4 space-y-4">
+                <h3 className="font-semibold text-lg">Largeur des colonnes (%)</h3>
+                <p className="text-sm text-gray-500 mb-4">Ajustez la largeur de chaque colonne. Le total devrait être proche de 100%.</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Code UE: {currentTheme.tableColumnWidths?.codeColumn || 8}%</Label>
+                    <Slider
+                      value={[currentTheme.tableColumnWidths?.codeColumn || 8]}
+                      min={5}
+                      max={30}
+                      step={1}
+                      onValueChange={(value) => updateTheme('tableColumnWidths', {
+                        ...currentTheme.tableColumnWidths,
+                        codeColumn: value[0]
+                      })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Intitulé UE: {currentTheme.tableColumnWidths?.ueColumn || 25}%</Label>
+                    <Slider
+                      value={[currentTheme.tableColumnWidths?.ueColumn || 25]}
+                      min={10}
+                      max={50}
+                      step={1}
+                      onValueChange={(value) => updateTheme('tableColumnWidths', {
+                        ...currentTheme.tableColumnWidths,
+                        ueColumn: value[0]
+                      })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>EC: {currentTheme.tableColumnWidths?.ecColumn || 25}%</Label>
+                    <Slider
+                      value={[currentTheme.tableColumnWidths?.ecColumn || 25]}
+                      min={10}
+                      max={50}
+                      step={1}
+                      onValueChange={(value) => updateTheme('tableColumnWidths', {
+                        ...currentTheme.tableColumnWidths,
+                        ecColumn: value[0]
+                      })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Session: {currentTheme.tableColumnWidths?.sessionColumn || 10}%</Label>
+                    <Slider
+                      value={[currentTheme.tableColumnWidths?.sessionColumn || 10]}
+                      min={5}
+                      max={20}
+                      step={1}
+                      onValueChange={(value) => updateTheme('tableColumnWidths', {
+                        ...currentTheme.tableColumnWidths,
+                        sessionColumn: value[0]
+                      })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Note: {currentTheme.tableColumnWidths?.noteColumn || 10}%</Label>
+                    <Slider
+                      value={[currentTheme.tableColumnWidths?.noteColumn || 10]}
+                      min={5}
+                      max={20}
+                      step={1}
+                      onValueChange={(value) => updateTheme('tableColumnWidths', {
+                        ...currentTheme.tableColumnWidths,
+                        noteColumn: value[0]
+                      })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Moyenne UE: {currentTheme.tableColumnWidths?.averageColumn || 12}%</Label>
+                    <Slider
+                      value={[currentTheme.tableColumnWidths?.averageColumn || 12]}
+                      min={5}
+                      max={20}
+                      step={1}
+                      onValueChange={(value) => updateTheme('tableColumnWidths', {
+                        ...currentTheme.tableColumnWidths,
+                        averageColumn: value[0]
+                      })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Crédits: {currentTheme.tableColumnWidths?.creditColumn || 10}%</Label>
+                    <Slider
+                      value={[currentTheme.tableColumnWidths?.creditColumn || 10]}
+                      min={5}
+                      max={20}
+                      step={1}
+                      onValueChange={(value) => updateTheme('tableColumnWidths', {
+                        ...currentTheme.tableColumnWidths,
+                        creditColumn: value[0]
+                      })}
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded p-3 mt-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>Total actuel:</strong> {
+                      (currentTheme.tableColumnWidths?.codeColumn || 8) +
+                      (currentTheme.tableColumnWidths?.ueColumn || 25) +
+                      (currentTheme.tableColumnWidths?.ecColumn || 25) +
+                      (currentTheme.tableColumnWidths?.sessionColumn || 10) +
+                      (currentTheme.tableColumnWidths?.noteColumn || 10) +
+                      (currentTheme.tableColumnWidths?.averageColumn || 12) +
+                      (currentTheme.tableColumnWidths?.creditColumn || 10)
+                    }%
+                  </p>
+                </div>
+              </div>
+
+              {/* Section: Espacement */}
+              <div className="border rounded-lg p-4 space-y-4">
+                <h3 className="font-semibold text-lg">Espacement</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Espacement entre les lignes: {currentTheme.tableRowSpacing || 0}px</Label>
+                    <Slider
+                      value={[currentTheme.tableRowSpacing || 0]}
+                      min={0}
+                      max={20}
+                      step={1}
+                      onValueChange={(value) => updateTheme('tableRowSpacing', value[0])}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Espacement entre les sections: {currentTheme.tableSectionSpacing || 10}px</Label>
+                    <Slider
+                      value={[currentTheme.tableSectionSpacing || 10]}
+                      min={0}
+                      max={50}
+                      step={2}
+                      onValueChange={(value) => updateTheme('tableSectionSpacing', value[0])}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section: Poids de police */}
+              <div className="border rounded-lg p-4 space-y-4">
+                <h3 className="font-semibold text-lg">Poids de police</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Poids des titres</Label>
+                    <Select
+                      value={currentTheme.titleFontWeight || "bold"}
+                      onValueChange={(value) => updateTheme('titleFontWeight', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="bold">Gras</SelectItem>
+                        <SelectItem value="100">100 (Fin)</SelectItem>
+                        <SelectItem value="300">300 (Léger)</SelectItem>
+                        <SelectItem value="400">400 (Normal)</SelectItem>
+                        <SelectItem value="500">500 (Moyen)</SelectItem>
+                        <SelectItem value="600">600 (Semi-gras)</SelectItem>
+                        <SelectItem value="700">700 (Gras)</SelectItem>
+                        <SelectItem value="800">800 (Extra-gras)</SelectItem>
+                        <SelectItem value="900">900 (Noir)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Poids des en-têtes</Label>
+                    <Select
+                      value={currentTheme.headerFontWeight || "normal"}
+                      onValueChange={(value) => updateTheme('headerFontWeight', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="bold">Gras</SelectItem>
+                        <SelectItem value="100">100 (Fin)</SelectItem>
+                        <SelectItem value="300">300 (Léger)</SelectItem>
+                        <SelectItem value="400">400 (Normal)</SelectItem>
+                        <SelectItem value="500">500 (Moyen)</SelectItem>
+                        <SelectItem value="600">600 (Semi-gras)</SelectItem>
+                        <SelectItem value="700">700 (Gras)</SelectItem>
+                        <SelectItem value="800">800 (Extra-gras)</SelectItem>
+                        <SelectItem value="900">900 (Noir)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Poids des en-têtes de tableau</Label>
+                    <Select
+                      value={currentTheme.tableHeaderFontWeight || "bold"}
+                      onValueChange={(value) => updateTheme('tableHeaderFontWeight', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="bold">Gras</SelectItem>
+                        <SelectItem value="100">100 (Fin)</SelectItem>
+                        <SelectItem value="300">300 (Léger)</SelectItem>
+                        <SelectItem value="400">400 (Normal)</SelectItem>
+                        <SelectItem value="500">500 (Moyen)</SelectItem>
+                        <SelectItem value="600">600 (Semi-gras)</SelectItem>
+                        <SelectItem value="700">700 (Gras)</SelectItem>
+                        <SelectItem value="800">800 (Extra-gras)</SelectItem>
+                        <SelectItem value="900">900 (Noir)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>

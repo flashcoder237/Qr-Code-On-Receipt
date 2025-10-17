@@ -4,9 +4,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { ipcMain } from 'electron';
 import QRCode from 'qrcode';
-import { getCompleteTheme, getAdvancedTranscriptConfig } from './form-schemas/settings';
+import { getCompleteTheme } from './form-schemas/settings';
 import { ThemeSettingsPayload } from './form-schemas/theme-settings';
-import { generateAdvancedTranscriptCSS, combineStyles } from '../utils/advanced-css-generator';
 
 // Importer directement depuis html-to-pdf.ts
 import { generateAttestationPDF } from './attestation-generator/html-to-pdf';
@@ -56,8 +55,7 @@ interface GenerateAttestationParams {
 // Génère les styles CSS basés sur les paramètres du thème
 function generateThemeStyles(params: GeneratePDFParams): string {
   const theme = getCompleteTheme(params.settings);
-  const advancedConfig = getAdvancedTranscriptConfig(params.settings);
-  
+
   // CORRECTION: Récupérer le mode démo depuis les paramètres au lieu de localStorage
   const isDemoMode = params.settings.demoMode === true;
 
@@ -413,11 +411,77 @@ function generateThemeStyles(params: GeneratePDFParams): string {
     .not-validated {
       color: #cc0000;
     }
+
+    /* NOUVEAU: Styles pour la personnalisation du tableau */
+    ${theme.tableScale && theme.tableScale !== 100 ? `
+    table {
+      font-size: ${(theme.contentFontSize * theme.tableScale) / 100}px !important;
+    }
+    ` : ''}
+
+    ${theme.tableWidth && theme.tableWidth !== 100 ? `
+    table {
+      width: ${theme.tableWidth}% !important;
+    }
+    ` : ''}
+
+    ${theme.tableColumnWidths ? `
+    /* Largeurs des colonnes personnalisées */
+    .table-code {
+      width: ${theme.tableColumnWidths.codeColumn || 8}%;
+    }
+    .table-ue {
+      width: ${theme.tableColumnWidths.ueColumn || 25}%;
+    }
+    .table-ec {
+      width: ${theme.tableColumnWidths.ecColumn || 25}%;
+    }
+    .table-session {
+      width: ${theme.tableColumnWidths.sessionColumn || 10}%;
+    }
+    .table-note {
+      width: ${theme.tableColumnWidths.noteColumn || 10}%;
+    }
+    .table-average {
+      width: ${theme.tableColumnWidths.averageColumn || 12}%;
+    }
+    .table-credit {
+      width: ${theme.tableColumnWidths.creditColumn || 10}%;
+    }
+    ` : ''}
+
+    ${theme.tableRowSpacing ? `
+    table tbody tr {
+      border-bottom: ${theme.tableRowSpacing}px solid transparent;
+    }
+    ` : ''}
+
+    ${theme.tableSectionSpacing ? `
+    .table {
+      margin-bottom: ${theme.tableSectionSpacing}px;
+    }
+    ` : ''}
+
+    ${theme.titleFontWeight ? `
+    .header-row2 h1 {
+      font-weight: ${theme.titleFontWeight} !important;
+    }
+    ` : ''}
+
+    ${theme.headerFontWeight ? `
+    .header {
+      font-weight: ${theme.headerFontWeight} !important;
+    }
+    ` : ''}
+
+    ${theme.tableHeaderFontWeight ? `
+    .table-head th {
+      font-weight: ${theme.tableHeaderFontWeight} !important;
+    }
+    ` : ''}
   `;
 
-  const advancedCSS = generateAdvancedTranscriptCSS(advancedConfig);
-
-  return combineStyles(baseCSS, advancedCSS);
+  return baseCSS;
 }
 
 // Fonction helper pour extraire les numéros de semestre depuis un nom de semestre composite

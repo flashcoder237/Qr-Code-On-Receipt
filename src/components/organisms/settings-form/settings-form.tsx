@@ -28,10 +28,8 @@ import {
   TranscriptSettingsPayload,
   TranscriptsettingsSchema,
   getCompleteTheme,
-  getAdvancedTranscriptConfig,
 } from "@/lib/form-schemas/settings";
 import { defaultTheme } from "@/lib/form-schemas/theme-settings";
-import { defaultAdvancedTranscriptConfig } from "@/lib/form-schemas/advanced-typography";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
@@ -40,7 +38,6 @@ import { useLocalStorage } from "usehooks-ts";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeEditor } from "../theme-editor";
-import { AdvancedTranscriptThemeEditor } from "../theme-editor/AdvancedTranscriptThemeEditor";
 
 const SettingForm: React.FC = () => {
   const { toasts, toast, removeToast } = useToast();
@@ -71,11 +68,6 @@ const SettingForm: React.FC = () => {
       themeColor: "#000000",
       themeFont: "Times New Roman, serif",
       theme: defaultTheme,
-      advancedTranscriptConfig: getAdvancedTranscriptConfig({
-        themeColor: "#000000",
-        themeFont: "Times New Roman, serif",
-        theme: defaultTheme,
-      }),
     });
 
   const form = useForm<TranscriptSettingsPayload>({
@@ -102,11 +94,6 @@ const SettingForm: React.FC = () => {
       themeColor: "#000000",
       themeFont: "Times New Roman, serif",
       theme: defaultTheme,
-      advancedTranscriptConfig: getAdvancedTranscriptConfig({
-        themeColor: "#000000",
-        themeFont: "Times New Roman, serif",
-        theme: defaultTheme,
-      }),
     };
     form.reset(defaultSettings);
   };
@@ -298,25 +285,6 @@ const SettingForm: React.FC = () => {
     saveChanges();
   };
 
-  // Gestionnaire pour mettre à jour la configuration avancée
-  const handleAdvancedConfigUpdate = (advancedConfig: any) => {
-    form.setValue("advancedTranscriptConfig", advancedConfig);
-    setStoredFormData({
-      ...storedFormData,
-      advancedTranscriptConfig: advancedConfig
-    });
-    setSaveStatus("success");
-    setTimeout(() => setSaveStatus("idle"), 3000);
-  };
-
-  // Gestionnaire pour sauvegarder la configuration avancée
-  const handleAdvancedConfigSave = () => {
-    const currentData = form.getValues();
-    setStoredFormData(currentData);
-    setSaveStatus("success");
-    setTimeout(() => setSaveStatus("idle"), 3000);
-  };
-
   // Fonction pour obtenir le message d'action selon le type
   const getActionMessage = () => {
     switch (actionType) {
@@ -426,7 +394,7 @@ const SettingForm: React.FC = () => {
                 <TabsTrigger value="appearance">Apparence</TabsTrigger>
                 <TabsTrigger value="advanced" className="flex items-center gap-1">
                   <Type className="h-3 w-3" />
-                  Typographie
+                  Tableau
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -900,19 +868,19 @@ const SettingForm: React.FC = () => {
                   </div>
                 </TabsContent>
                 <TabsContent value="appearance" className="mt-0">
-                  <ThemeEditor 
-                    settings={form.getValues()} 
+                  <ThemeEditor
+                    settings={form.getValues()}
                     onSave={handleThemeUpdate}
                     onPreview={previewTranscript}
                   />
                 </TabsContent>
-                {/* Onglet de configuration typographique avancée */}
+                {/* Onglet de configuration avancée du tableau */}
                 <TabsContent value="advanced" className="mt-0">
-                  <AdvancedTranscriptThemeEditor
-                    config={getAdvancedTranscriptConfig(form.getValues())}
-                    onChange={handleAdvancedConfigUpdate}
-                    onSave={handleAdvancedConfigSave}
+                  <ThemeEditor
+                    settings={form.getValues()}
+                    onSave={handleThemeUpdate}
                     onPreview={previewTranscript}
+                    showTableCustomization={true}
                   />
                 </TabsContent>
               </Tabs>
