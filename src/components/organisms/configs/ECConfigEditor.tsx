@@ -359,10 +359,26 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
     setTimeout(() => setSuccess(null), 3000);
   };
 
+  // Fonction pour obtenir le thème global actuel depuis les paramètres
+  const getGlobalTheme = () => {
+    try {
+      const storedSettings = localStorage.getItem('settings');
+      if (storedSettings) {
+        const settings = JSON.parse(storedSettings);
+        // Utiliser getCompleteTheme pour obtenir le thème complet
+        return getCompleteTheme(settings);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération du thème global:', error);
+    }
+    // Fallback vers le thème par défaut
+    return { ...defaultTheme };
+  };
+
   // Fonction pour copier le thème global vers la configuration de classe
   const copyGlobalTheme = () => {
     const updatedConfig = { ...config };
-    updatedConfig.theme = { ...defaultTheme };
+    updatedConfig.theme = getGlobalTheme();
     onConfigUpdate(updatedConfig);
     setShowThemeDialog(true);
     setSuccess("Thème global copié vers cette configuration de classe");
@@ -378,13 +394,22 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
     setTimeout(() => setSuccess(null), 3000);
   };
 
-  // Fonction pour réinitialiser le thème (utiliser le thème global)
+  // Fonction pour réinitialiser le thème avec le thème global actuel (dans le Dialog)
   const resetTheme = () => {
+    const updatedConfig = { ...config };
+    updatedConfig.theme = getGlobalTheme();
+    onConfigUpdate(updatedConfig);
+    setSuccess("Thème réinitialisé avec le thème global actuel");
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  // Fonction pour supprimer complètement le thème personnalisé
+  const removeCustomTheme = () => {
     const updatedConfig = { ...config };
     delete updatedConfig.theme;
     onConfigUpdate(updatedConfig);
     setShowThemeDialog(false);
-    setSuccess("Thème réinitialisé - utilisation du thème global");
+    setSuccess("Thème personnalisé supprimé - utilisation directe du thème global");
     setTimeout(() => setSuccess(null), 3000);
   };
 
@@ -480,10 +505,11 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={resetTheme}
+                    onClick={removeCustomTheme}
+                    title="Supprimer le thème personnalisé et utiliser directement le thème global"
                   >
                     <RotateCcw className="h-4 w-4 mr-1" />
-                    Réinitialiser
+                    Utiliser le thème global
                   </Button>
                 </>
               ) : (
@@ -501,10 +527,11 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
                     size="sm"
                     onClick={() => {
                       const updatedConfig = { ...config };
-                      updatedConfig.theme = { ...defaultTheme };
+                      updatedConfig.theme = getGlobalTheme();
                       onConfigUpdate(updatedConfig);
                       setShowThemeDialog(true);
                     }}
+                    title="Créer un thème personnalisé basé sur le thème global actuel"
                   >
                     <Palette className="h-4 w-4 mr-1" />
                     Créer un thème
@@ -520,12 +547,21 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
               <>
                 Cette configuration de classe utilise un <strong>thème personnalisé</strong>.
                 Les relevés générés pour cette classe utiliseront ce thème au lieu du thème global.
+                <br />
+                <span className="text-xs text-indigo-600 mt-1 block">
+                  Cliquez sur "Utiliser le thème global" pour supprimer le thème personnalisé et utiliser directement le thème global.
+                </span>
               </>
             ) : (
               <>
-                Cette configuration de classe utilise le <strong>thème global</strong>.
+                Cette configuration de classe utilise le <strong>thème global</strong> actuellement défini dans les paramètres.
+                <br />
                 Vous pouvez créer un thème personnalisé pour cette classe afin de personnaliser l'apparence
                 de ses relevés de notes (couleurs, polices, tableaux, etc.).
+                <br />
+                <span className="text-xs text-indigo-600 mt-1 block">
+                  Le thème créé sera basé sur le thème global actuel, que vous pourrez ensuite modifier.
+                </span>
               </>
             )}
           </p>
@@ -1193,7 +1229,7 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
                 settings={{ theme: config.theme }}
                 onSave={handleThemeUpdate}
                 onPreview={() => {}}
-                showTableCustomization={false}
+                showAllTabs={true}
               />
             )}
           </div>
@@ -1202,9 +1238,10 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
               variant="ghost"
               size="sm"
               onClick={resetTheme}
+              title="Charger le thème global actuel (vous pouvez ensuite le modifier)"
             >
               <RotateCcw className="h-4 w-4 mr-1" />
-              Utiliser le thème global
+              Charger le thème global
             </Button>
             <Button onClick={() => setShowThemeDialog(false)}>
               Fermer

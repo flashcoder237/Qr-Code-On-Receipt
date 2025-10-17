@@ -16,11 +16,12 @@ interface ThemeEditorProps {
   settings: TranscriptSettingsPayload;
   onSave: (settings: TranscriptSettingsPayload) => void;
   onPreview: () => void;
-  showTableCustomization?: boolean; // NOUVEAU: Afficher l'onglet de personnalisation du tableau
+  showTableCustomization?: boolean; // Afficher UNIQUEMENT l'onglet de personnalisation du tableau
+  showAllTabs?: boolean; // NOUVEAU: Afficher TOUS les onglets y compris le tableau
 }
 
-const ThemeEditor: React.FC<ThemeEditorProps> = ({ settings, onSave, onPreview, showTableCustomization = false }) => {
-  const [activeTab, setActiveTab] = useState(showTableCustomization ? "table" : "colors");
+const ThemeEditor: React.FC<ThemeEditorProps> = ({ settings, onSave, onPreview, showTableCustomization = false, showAllTabs = false }) => {
+  const [activeTab, setActiveTab] = useState(showAllTabs ? "colors" : (showTableCustomization ? "table" : "colors"));
   const [currentTheme, setCurrentTheme] = useState<ThemeSettingsPayload>(
     getCompleteTheme(settings)
   );
@@ -129,8 +130,12 @@ const ThemeEditor: React.FC<ThemeEditorProps> = ({ settings, onSave, onPreview, 
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className={`grid ${showTableCustomization ? 'grid-cols-1' : 'grid-cols-5'} mb-6`}>
-            {!showTableCustomization && (
+          <TabsList className={`grid ${
+            showAllTabs ? 'grid-cols-6' :
+            showTableCustomization ? 'grid-cols-1' :
+            'grid-cols-5'
+          } mb-6`}>
+            {(showAllTabs || !showTableCustomization) && (
               <>
                 <TabsTrigger value="colors">Couleurs</TabsTrigger>
                 <TabsTrigger value="typography">Typographie</TabsTrigger>
@@ -139,8 +144,8 @@ const ThemeEditor: React.FC<ThemeEditorProps> = ({ settings, onSave, onPreview, 
                 <TabsTrigger value="options">Options</TabsTrigger>
               </>
             )}
-            {showTableCustomization && (
-              <TabsTrigger value="table">Personnalisation du tableau</TabsTrigger>
+            {(showAllTabs || showTableCustomization) && (
+              <TabsTrigger value="table">Tableau</TabsTrigger>
             )}
           </TabsList>
 
@@ -613,34 +618,12 @@ const ThemeEditor: React.FC<ThemeEditorProps> = ({ settings, onSave, onPreview, 
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* Section: Taille de police */}
-              <div className="border rounded-lg p-4 space-y-4">
-                <h3 className="font-semibold text-lg">Taille de police du tableau</h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Taille des en-têtes de tableau: {currentTheme.headerFontSize}px</Label>
-                    <Slider
-                      value={[currentTheme.headerFontSize]}
-                      min={6}
-                      max={16}
-                      step={1}
-                      onValueChange={(value) => updateTheme('headerFontSize', value[0])}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Taille du contenu du tableau: {currentTheme.contentFontSize}px</Label>
-                    <Slider
-                      value={[currentTheme.contentFontSize]}
-                      min={6}
-                      max={14}
-                      step={1}
-                      onValueChange={(value) => updateTheme('contentFontSize', value[0])}
-                    />
-                  </div>
+                <div className="bg-blue-50 border border-blue-200 rounded p-3 mt-4">
+                  <p className="text-sm text-blue-800">
+                    💡 <strong>Astuce :</strong> Pour ajuster les tailles de police du tableau, utilisez l'onglet <strong>"Typographie"</strong>
+                    ou ajustez l'<strong>"Échelle du tableau"</strong> ci-dessus pour un ajustement global.
+                  </p>
                 </div>
               </div>
 
