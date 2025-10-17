@@ -167,7 +167,7 @@ export async function generateAttestationHTML(
   const isFacultyEstablishment = settings.establishmentType?.toLowerCase().includes('faculty') || 
                                   settings.establishmentType?.toLowerCase().includes('faculté');
   const useEnglishTranslations = isFacultyEstablishment && theme.primaryLanguage === 'english';
-  const useBilingualDisplay = isFacultyEstablishment; // Toujours bilingue pour Faculty
+  const useBilingualDisplay = true; // Toujours bilingue pour Faculty
   
   // Valeurs principales (français ou anglais selon primaryLanguage)
   const fieldOfStudy = useEnglishTranslations && sanitizedStudent.DOMAINE_EN ? 
@@ -201,7 +201,7 @@ export async function generateAttestationHTML(
       console.log(`❌ MENTION Excel ignorée (chiffre/invalide: "${mentionValue}"), mention calculée: "${baseMention}"`);
     }
   } else {
-    // Si pas de MENTION, calculer
+    // Si pas de MENTION, calculer 
     baseMention = calculateMention(numericAverage, sanitizedStudent.PARCOURS, sanitizedStudent.NIVEAU, sanitizedStudent.FINALITE) || 'Passable';
     console.log(`📊 Aucune MENTION Excel, mention calculée: "${baseMention}"`);
   }
@@ -355,24 +355,24 @@ export async function generateAttestationHTML(
       case "LICENCE":
         return "OF BACHELOR'S DEGREE";
       case "N/D":
-        return "OF STUDIES";
+        return "OF XXXX";
       default:
-        return "OF STUDIES";
+        return "OF XXXX";
     }
   };
 
   const getCycleTranslateFr = (cycle : string) => {
     switch (cycle.toUpperCase()) {
       case "DOCTORAT":
-        return "DE DOCTORAT";
+        return "AU DIPLÔME DE DOCTORAT";
       case "MASTER":
-        return "DE MASTER";
+        return "AU DIPLÔME DE MASTER";
       case "LICENCE":
-        return "DE LICENCE";
+        return "AU DIPLÔME DE LICENCE";
       case "N/D":
-        return "";
+        return "AU DIPLÔME DE XXXXX";
       default:
-        return "";
+        return "AU DIPLÔME DE XXXXX";
     }
   };
 
@@ -930,7 +930,7 @@ export async function generateAttestationHTML(
         
         <div class="content">
             <div class="list-nomination-header">
-              <p style="font-size: ${theme.contentFontSize-1}px;" id="to-hidden">${settings.convTextFr}<br>
+              <p style="font-size: ${theme.contentFontSize-4}px;" id="to-hidden">${settings.convTextFr}<br>
               <em>${theme.showBilingualText ? settings.convTextEn : ''}</em></p>
               
               <p id="to-hidden"><strong>Nous soussignés,</strong><br>
@@ -960,32 +960,37 @@ export async function generateAttestationHTML(
                 <p>Né(e) le: <strong>${birthDate}</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;à&nbsp;<strong>${birthPlace}</strong><br>
                 ${theme.showBilingualText ? '<em>Born on: <strong style="opacity:0">' + birthDate + '</strong></em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>at:</em>' : ''}</p>
                 
-                <p id="to-hidden">Inscrit(e) à <strong>${settings.nameFrench}</strong> sous le matricule: <strong>${matricule}</strong><br>
-                ${theme.showBilingualText ? `<em>Registered <strong>${settings.nameEnglish}</strong> under the matricule number:</em>` : ''}</p>
+                <p id="to-hidden">Inscrit(e) à <strong>L'${settings.nameAbreviation}</strong> sous le matricule: <strong>${matricule}</strong><br>
+                ${theme.showBilingualText ? `<em>Registered at the <strong>${settings.nameAbreviation}</strong> under the matricule number:</em>` : ''}</p>
 
-                <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase()}</strong> en <strong>${specialization.toUpperCase()}</strong> ${settings.establishmentType === "ipes" ? (option && option !== 'N/D' && typeof option === 'string' ? `option <strong>${option.toUpperCase()}</strong>` : '') : ""}<br>
+                <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase()}</strong> en <strong>${course.toUpperCase()}</strong><br>
                 ${theme.showBilingualText ? '<em>Having successfully fufilled the requirements qualifying for the :</em>' : ''}</p>
           
             </div>
             
-            ${theme.showDomainTable ? `
-            <div class="table-container">
-                <table class="academic-table">
-                    <tr>
-                        <th>Domaine<br>${theme.showBilingualText ? '<em style="font-weight: normal">Domain of the study</em>' : ''}</th>
-                        <th>Parcours<br>${theme.showBilingualText ? '<em style="font-weight: normal">Course</em>' : ''}</th>
-                        <th>Spécialité<br>${theme.showBilingualText ? '<em style="font-weight: normal">Specialization</em>' : ''}</th>
-                        <th>Option<br>${theme.showBilingualText ? '<em style="font-weight: normal">Learning option</em>' : ''}</th>
-                    </tr>
-                    <tr style="border-top: 1px solid ${theme.tableBorderColor}; background-color:${theme.tableHeaderBgColor}">
-                        <td><strong>${fieldOfStudy}${useBilingualDisplay ? `<br><em style="font-weight: normal">${fieldOfStudyEN}</em>` : ''}</strong></td>
-                        <td><strong>${course}${useBilingualDisplay ? `<br><em style="font-weight: normal">${courseEN}</em>` : ''}</strong></td>
-                        <td><strong>${specialization}${useBilingualDisplay ? `<br><em style="font-weight: normal">${specializationEN}</em>` : ''}</strong></td>
-                        <td><strong>${option || 'N/D'}${useBilingualDisplay ? `<br><em style="font-weight: normal">${optionEN}</em>` : ''}</strong></td>
-                    </tr>
-                </table>
-            </div>
-            ` : ''}
+           ${theme.showDomainTable ? `
+    <div class="table-container">
+        <table class="academic-table">
+            <tr>
+                <th>Domaine<br>${theme.showBilingualText ? '<em style="font-weight: normal">Domain of the study</em>' : ''}</th>
+                <th>Parcours<br>${theme.showBilingualText ? '<em style="font-weight: normal">Course</em>' : ''}</th>
+                <th>Spécialité<br>${theme.showBilingualText ? '<em style="font-weight: normal">Specialization</em>' : ''}</th>
+                ${option && option.trim().toUpperCase() !== 'N/D' && option != mention ? `
+                    <th>Option<br>${theme.showBilingualText ? '<em style="font-weight: normal">Learning option</em>' : ''}</th>
+                ` : ''}
+            </tr>
+            <tr style="border-top: 1px solid ${theme.tableBorderColor}; background-color:${theme.tableHeaderBgColor}">
+                <td><strong>${fieldOfStudy}${useBilingualDisplay ? `<br><em style="font-weight: normal">${fieldOfStudyEN}</em>` : ''}</strong></td>
+                <td><strong>${course}${useBilingualDisplay ? `<br><em style="font-weight: normal">${courseEN}</em>` : ''}</strong></td>
+                <td><strong>${specialization}${useBilingualDisplay ? `<br><em style="font-weight: normal">${specializationEN}</em>` : ''}</strong></td>
+                ${option && option.trim().toUpperCase() !== 'N/D' && option != mention ? `
+                    <td><strong>${option}${useBilingualDisplay ? `<br><em style="font-weight: normal">${optionEN}</em>` : ''}</strong></td>
+                ` : ''}
+            </tr>
+        </table>
+    </div>
+` : ''}
+
             
             ${theme.showAcademicDetails ? `
             <div class="table-container">

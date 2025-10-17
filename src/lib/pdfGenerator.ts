@@ -171,7 +171,7 @@ function generateThemeStyles(params: GeneratePDFParams): string {
     
     .watermark {
       position: absolute;
-      top: 25%;
+      top: 10px;
       left: 0;
       width: 100%;
       height: 100%;
@@ -519,7 +519,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
 
 
   const ueAverage = course.UE_AVERAGE || 0;
-  const hasFailingEC = ecNotes.some(ec => ec.NOTE <= (ec.NOTE_BASE * 0.35));
+  const hasFailingEC = ecNotes.some(ec => ec.NOTE < (ec.NOTE_BASE * 0.35));
   const isUEValidated = ueAverage >= 10 && !hasFailingEC;
 
   // Stocker si l'UE est validée ou non et ses informations
@@ -1260,19 +1260,19 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                             </tr>
                             <tr>
                                 <td><strong>A+</strong></td>
-                                <td><strong>4.0</strong></td>
+                                <td><strong>4,0</strong></td>
                                 <td><strong>Excellent</strong></td>
                                 <td><strong>[18-20]</strong></td>
                             </tr>
                             <tr>
                                 <td><strong>A</strong></td>
-                                <td><strong>3.7</strong></td>
+                                <td><strong>3,7</strong></td>
                                 <td><strong>Très Bien</strong></td>
                                 <td><strong>[16-18[</strong></td>
                             </tr>
                             <tr>
                                 <td><strong>B+</strong></td>
-                                <td><strong>3.3</strong></td>
+                                <td><strong>3,3</strong></td>
                                 <td><strong>Bien</strong></td>
                                 <td><strong>[14-16[</strong></td>
                             </tr>
@@ -1284,43 +1284,43 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                             </tr>
                             <tr>
                                 <td><strong>B-</strong></td>
-                                <td><strong>2.7</strong></td>
+                                <td><strong>2,7</strong></td>
                                 <td><strong>Assez Bien</strong></td>
                                 <td><strong>[12-13[</strong></td>
                             </tr>
                             <tr>
                                 <td><strong>C+</strong></td>
-                                <td><strong>2.3</strong></td>
+                                <td><strong>2,3</strong></td>
                                 <td><strong>Passable</strong></td>
                                 <td><strong>[11-12[</strong></td>
                             </tr>
                             <tr>
                                 <td><strong>C</strong></td>
-                                <td><strong>2.0</strong></td>
+                                <td><strong>2,0</strong></td>
                                 <td><strong>Passable</strong></td>
                                 <td><strong>[10-11[</strong></td>
                             </tr>
                             <tr>
                                 <td><strong>C-</strong></td>
-                                <td><strong>1.7</strong></td>
+                                <td><strong>1,7</strong></td>
                                 <td><strong>Insuffisant</strong></td>
                                 <td><strong>[09-10[</strong></td>
                             </tr>
                             <tr>
                                 <td><strong>D</strong></td>
-                                <td><strong>1.3</strong></td>
+                                <td><strong>1,3</strong></td>
                                 <td><strong>Faible</strong></td>
                                 <td><strong>[08-09[</strong></td>
                             </tr>
                             <tr>
                                 <td><strong>E</strong></td>
-                                <td><strong>1.0</strong></td>
+                                <td><strong>1,0</strong></td>
                                 <td><strong>Très Faible</strong></td>
                                 <td><strong>[06-08[</strong></td>
                             </tr>
                             <tr>
                                 <td><strong>F</strong></td>
-                                <td><strong>0.0</strong></td>
+                                <td><strong>0,0</strong></td>
                                 <td><strong>Nul</strong></td>
                                 <td><strong>[00-06[</strong></td>
                             </tr>
