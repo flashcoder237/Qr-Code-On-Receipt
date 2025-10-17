@@ -615,6 +615,35 @@ const ThemeEditor: React.FC<ThemeEditorProps> = ({ settings, onSave, onPreview, 
                 </div>
               </div>
 
+              {/* Section: Taille de police */}
+              <div className="border rounded-lg p-4 space-y-4">
+                <h3 className="font-semibold text-lg">Taille de police du tableau</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Taille des en-têtes de tableau: {currentTheme.headerFontSize}px</Label>
+                    <Slider
+                      value={[currentTheme.headerFontSize]}
+                      min={6}
+                      max={16}
+                      step={1}
+                      onValueChange={(value) => updateTheme('headerFontSize', value[0])}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Taille du contenu du tableau: {currentTheme.contentFontSize}px</Label>
+                    <Slider
+                      value={[currentTheme.contentFontSize]}
+                      min={6}
+                      max={14}
+                      step={1}
+                      onValueChange={(value) => updateTheme('contentFontSize', value[0])}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Section: Poids de police */}
               <div className="border rounded-lg p-4 space-y-4">
                 <h3 className="font-semibold text-lg">Poids de police</h3>

@@ -1,3 +1,5 @@
+import { ThemeSettingsPayload } from '@/lib/form-schemas/theme-settings';
+
 export interface EC {
   id: string;
   name: string;
@@ -49,4 +51,5 @@ export interface ClassConfig {
   displaySessions?: boolean; // Afficher les sessions sur les relevés (défaut: true)
   sessionDisplayFormat?: 'short' | 'full'; // Format d'affichage des sessions (défaut: 'short')
   hideSemesterColumn?: boolean; // Masquer la colonne semestre dans les décisions (défaut: false)
+  theme?: ThemeSettingsPayload; // NOUVEAU: Thème personnalisé pour cette configuration de classe
 }

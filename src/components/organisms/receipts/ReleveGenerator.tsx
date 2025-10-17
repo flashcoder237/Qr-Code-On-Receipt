@@ -681,14 +681,18 @@ export const ReleveGenerator: React.FC = () => {
       }
       
       try {
-        // NOUVEAU: Passer l'option de chiffrement aux paramètres
-        const renderParams = { 
-          student: preparedStudent, 
-          settings: {
-            ...settings,
-            demoMode: isDemoMode,
-            encryptionEnabled: encryptionEnabled // Ajouter l'option de chiffrement
-          },
+        // NOUVEAU: Fusionner le thème de la configuration de classe avec les paramètres globaux
+        const effectiveSettings = {
+          ...settings,
+          demoMode: isDemoMode,
+          encryptionEnabled: encryptionEnabled,
+          // Si la configuration de classe a un thème personnalisé, l'utiliser
+          ...(currentConfig?.theme && { theme: currentConfig.theme })
+        };
+
+        const renderParams = {
+          student: preparedStudent,
+          settings: effectiveSettings,
           config: currentConfig // NOUVEAU: Passer la configuration de classe pour les options d'affichage
         };
         
@@ -772,14 +776,18 @@ export const ReleveGenerator: React.FC = () => {
             throw new Error(`Erreur lors de la préparation des données pour l'étudiant ${student.MATRICULE}`);
           }
           
-          // NOUVEAU: Inclure l'option de chiffrement dans les paramètres
-          preparedData.push({ 
-            student: prepared, 
-            settings: {
-              ...settings,
-              demoMode: isDemoMode,
-              encryptionEnabled: encryptionEnabled
-            },
+          // NOUVEAU: Fusionner le thème de la configuration de classe avec les paramètres globaux
+          const effectiveSettings = {
+            ...settings,
+            demoMode: isDemoMode,
+            encryptionEnabled: encryptionEnabled,
+            // Si la configuration de classe a un thème personnalisé, l'utiliser
+            ...(currentConfig?.theme && { theme: currentConfig.theme })
+          };
+
+          preparedData.push({
+            student: prepared,
+            settings: effectiveSettings,
             config: currentConfig // NOUVEAU: Passer la configuration de classe pour les options d'affichage
           });
         } catch (prepError) {

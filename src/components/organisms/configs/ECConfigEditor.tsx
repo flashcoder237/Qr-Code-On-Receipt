@@ -9,10 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Weight, Calculator, Eye, Save, RotateCcw, Info, Link, Unlink, Plus, X, Layers, Clock } from "lucide-react";
+import { Settings, Weight, Calculator, Eye, Save, RotateCcw, Info, Link, Unlink, Plus, X, Layers, Clock, Palette, Copy } from "lucide-react";
 import { ClassConfig, EC, UE, MergedSemesterConfig } from "./types";
 import { useToast } from "@/hooks/use-toast";
 import { ToastContainer } from "@/components/ui/toast";
+import { ThemeEditor } from "../theme-editor";
+import { getCompleteTheme } from "@/lib/form-schemas/settings";
+import { defaultTheme } from "@/lib/form-schemas/theme-settings";
 
 interface ECConfigEditorProps {
   config: ClassConfig;
@@ -44,6 +47,9 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
   const [tempCompositeName, setTempCompositeName] = useState<string>("");
   const [tempCompositeCredits, setTempCompositeCredits] = useState<string>("60");
   const [tempCompositeEquivalent, setTempCompositeEquivalent] = useState<string>("2");
+
+  // États pour la gestion du thème personnalisé
+  const [showThemeDialog, setShowThemeDialog] = useState(false);
 
   // Fonction pour ouvrir l'éditeur d'un EC spécifique
   const editEC = (semesterId: string, ueId: string, ec: EC) => {
@@ -353,6 +359,35 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
     setTimeout(() => setSuccess(null), 3000);
   };
 
+  // Fonction pour copier le thème global vers la configuration de classe
+  const copyGlobalTheme = () => {
+    const updatedConfig = { ...config };
+    updatedConfig.theme = { ...defaultTheme };
+    onConfigUpdate(updatedConfig);
+    setShowThemeDialog(true);
+    setSuccess("Thème global copié vers cette configuration de classe");
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  // Fonction pour mettre à jour le thème personnalisé
+  const handleThemeUpdate = (settings: any) => {
+    const updatedConfig = { ...config };
+    updatedConfig.theme = settings.theme;
+    onConfigUpdate(updatedConfig);
+    setSuccess("Thème personnalisé mis à jour");
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  // Fonction pour réinitialiser le thème (utiliser le thème global)
+  const resetTheme = () => {
+    const updatedConfig = { ...config };
+    delete updatedConfig.theme;
+    onConfigUpdate(updatedConfig);
+    setShowThemeDialog(false);
+    setSuccess("Thème réinitialisé - utilisation du thème global");
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
   if (!config.semesters.length) {
     return (
       <Card>
@@ -420,6 +455,113 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
               <strong>Base d'affichage:</strong> Sur combien la note doit apparaître dans les relevés (défaut: 20)
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Thème personnalisé */}
+      <Card className="bg-indigo-50 border-indigo-200">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-indigo-900 text-lg flex items-center gap-2">
+              <Palette className="h-5 w-5" />
+              Thème personnalisé
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {config.theme ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowThemeDialog(true)}
+                  >
+                    <Settings className="h-4 w-4 mr-1" />
+                    Modifier le thème
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetTheme}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-1" />
+                    Réinitialiser
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copyGlobalTheme}
+                  >
+                    <Copy className="h-4 w-4 mr-1" />
+                    Copier le thème global
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => {
+                      const updatedConfig = { ...config };
+                      updatedConfig.theme = { ...defaultTheme };
+                      onConfigUpdate(updatedConfig);
+                      setShowThemeDialog(true);
+                    }}
+                  >
+                    <Palette className="h-4 w-4 mr-1" />
+                    Créer un thème
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-indigo-800 text-sm">
+            {config.theme ? (
+              <>
+                Cette configuration de classe utilise un <strong>thème personnalisé</strong>.
+                Les relevés générés pour cette classe utiliseront ce thème au lieu du thème global.
+              </>
+            ) : (
+              <>
+                Cette configuration de classe utilise le <strong>thème global</strong>.
+                Vous pouvez créer un thème personnalisé pour cette classe afin de personnaliser l'apparence
+                de ses relevés de notes (couleurs, polices, tableaux, etc.).
+              </>
+            )}
+          </p>
+
+          {config.theme && (
+            <div className="bg-white border rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Info className="h-4 w-4 text-indigo-600" />
+                <span className="text-sm font-medium text-indigo-900">Aperçu du thème</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-4 h-4 rounded border"
+                    style={{ backgroundColor: config.theme.primaryColor }}
+                  />
+                  <span className="text-gray-600">Couleur primaire</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-4 h-4 rounded border"
+                    style={{ backgroundColor: config.theme.secondaryColor }}
+                  />
+                  <span className="text-gray-600">Couleur secondaire</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{config.theme.fontFamily}</span>
+                  <span className="text-gray-600">Police</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{config.theme.contentFontSize}px</span>
+                  <span className="text-gray-600">Taille du contenu</span>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -1027,6 +1169,45 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
             >
               <Plus className="h-4 w-4 mr-2" />
               Créer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de personnalisation du thème */}
+      <Dialog open={showThemeDialog} onOpenChange={setShowThemeDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Palette className="h-5 w-5 text-indigo-600" />
+              Personnaliser le thème de la classe
+            </DialogTitle>
+            <DialogDescription>
+              Configurez l'apparence des relevés de notes pour cette classe. Les modifications seront
+              automatiquement enregistrées et appliquées uniquement aux relevés de cette classe.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {config.theme && (
+              <ThemeEditor
+                settings={{ theme: config.theme }}
+                onSave={handleThemeUpdate}
+                onPreview={() => {}}
+                showTableCustomization={false}
+              />
+            )}
+          </div>
+          <DialogFooter className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetTheme}
+            >
+              <RotateCcw className="h-4 w-4 mr-1" />
+              Utiliser le thème global
+            </Button>
+            <Button onClick={() => setShowThemeDialog(false)}>
+              Fermer
             </Button>
           </DialogFooter>
         </DialogContent>
