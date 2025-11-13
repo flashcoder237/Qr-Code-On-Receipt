@@ -37,16 +37,33 @@ export const TranscriptsettingsSchema = z.object({
 export type TranscriptSettingsPayload = z.infer<typeof TranscriptsettingsSchema>;
 
 // Fonction pour obtenir le thème complet
-export function getCompleteTheme(settings: TranscriptSettingsPayload): typeof defaultTheme {
-  if (settings.theme) {
+export function getCompleteTheme(settings?: TranscriptSettingsPayload): typeof defaultTheme {
+  if (!settings) {
+    // Si pas de settings, charger depuis localStorage
+    const storedSettings = typeof window !== 'undefined'
+      ? localStorage.getItem('settings')
+      : null;
+
+    if (storedSettings) {
+      try {
+        settings = JSON.parse(storedSettings);
+      } catch (e) {
+        return defaultTheme;
+      }
+    } else {
+      return defaultTheme;
+    }
+  }
+
+  if (settings?.theme) {
     return settings.theme;
   }
 
   // Si pas de thème complet, utiliser le thème par défaut avec les anciennes propriétés
   return {
     ...defaultTheme,
-    primaryColor: settings.themeColor || defaultTheme.primaryColor,
-    mainFont: settings.themeFont as typeof defaultTheme.mainFont || defaultTheme.mainFont,
-    headerFont: settings.themeFont as typeof defaultTheme.headerFont || defaultTheme.headerFont,
+    primaryColor: settings?.themeColor || defaultTheme.primaryColor,
+    mainFont: settings?.themeFont as typeof defaultTheme.mainFont || defaultTheme.mainFont,
+    headerFont: settings?.themeFont as typeof defaultTheme.headerFont || defaultTheme.headerFont,
   };
 }

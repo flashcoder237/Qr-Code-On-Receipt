@@ -15,6 +15,7 @@ import { useLicense } from "@/hooks/use-license";
 import { LicenseForm } from "@/components/organisms/license-form/LicenseForm";
 import { Spinner } from "@/components/ui/LoadingSpinner";
 import { NotificationProvider } from "./components/ui/notification-system";
+import { useAutoBackup } from "@/hooks/useAutoBackup";
 
 // Contexte pour la gestion d'état globale
 import { createContext, useContext } from "react";
@@ -54,6 +55,10 @@ const AppContent: React.FC = () => {
   } = useLicense();
   
   const [currentPath, setCurrentPath] = useLocalStorage<string>("current_path", (isDemoMode ? "settings" : "receipts"));
+
+  // Activer les sauvegardes automatiques
+  useAutoBackup();
+
   // Initialisation de l'application
   useEffect(() => {
     const initializeApp = async () => {
@@ -128,6 +133,8 @@ const AppContent: React.FC = () => {
           onEnterDemo={enterDemoMode}
           error={licenseError}
           isLoading={licenseLoading}
+          expectedFormat="XXXX-XXXX-XXXX-XXXX"
+          licenseExample="ABCD-1234-EFGH-5678"
         />
       </div>
     );

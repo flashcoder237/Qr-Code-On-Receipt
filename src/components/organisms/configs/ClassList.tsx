@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "../../ui/card";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
-import { BookOpen, GraduationCap, Trash2, MoreVertical, Calendar, Users, Layers, Copy } from "lucide-react";
+import { BookOpen, GraduationCap, Trash2, MoreVertical, Calendar, Users, Layers, Copy, ArrowUp, ArrowDown } from "lucide-react";
 import { ScrollArea } from "../../ui/scroll-area";
 import { ClassConfig } from "./types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,6 +20,8 @@ interface ClassListProps {
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
+  onMoveUp?: (id: string) => void;
+  onMoveDown?: (id: string) => void;
 }
 
 export const ClassList: React.FC<ClassListProps> = ({
@@ -28,6 +30,8 @@ export const ClassList: React.FC<ClassListProps> = ({
   onSelect,
   onDelete,
   onDuplicate,
+  onMoveUp,
+  onMoveDown,
 }) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -137,6 +141,30 @@ export const ClassList: React.FC<ClassListProps> = ({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              {onMoveUp && index > 0 && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onMoveUp(config.id);
+                                  }}
+                                  className="text-gray-700 focus:text-gray-700"
+                                >
+                                  <ArrowUp className="h-4 w-4 mr-2" />
+                                  Déplacer vers le haut
+                                </DropdownMenuItem>
+                              )}
+                              {onMoveDown && index < configs.length - 1 && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onMoveDown(config.id);
+                                  }}
+                                  className="text-gray-700 focus:text-gray-700"
+                                >
+                                  <ArrowDown className="h-4 w-4 mr-2" />
+                                  Déplacer vers le bas
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();

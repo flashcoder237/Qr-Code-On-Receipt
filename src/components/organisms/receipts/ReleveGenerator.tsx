@@ -1101,11 +1101,14 @@ export const ReleveGenerator: React.FC = () => {
             studentRecord.COURSES.push(...courses);
           });
 
+          // Utiliser le thème du semestre s'il existe, sinon le thème de la classe, sinon le thème global
+          const semesterTheme = semester.theme || currentConfig?.theme;
+
           const effectiveSettings = {
             ...settings,
             demoMode: isDemoMode,
             encryptionEnabled: encryptionEnabled,
-            ...(currentConfig?.theme && { theme: currentConfig.theme })
+            ...(semesterTheme && { theme: semesterTheme })
           };
 
           const renderParams = {
@@ -1174,11 +1177,14 @@ export const ReleveGenerator: React.FC = () => {
         throw new Error("Impossible de communiquer avec le processus de rendu HTML");
       }
 
+      // Utiliser le thème du semestre s'il existe, sinon le thème de la classe, sinon le thème global
+      const semesterTheme = currentSemester?.theme || currentConfig?.theme;
+
       const effectiveSettings = {
         ...settings,
         demoMode: isDemoMode,
         encryptionEnabled: encryptionEnabled,
-        ...(currentConfig?.theme && { theme: currentConfig.theme })
+        ...(semesterTheme && { theme: semesterTheme })
       };
 
       const renderParams = {
@@ -1266,12 +1272,15 @@ export const ReleveGenerator: React.FC = () => {
           }
           
           // NOUVEAU: Fusionner le thème de la configuration de classe avec les paramètres globaux
+          // Utiliser le thème du semestre s'il existe, sinon le thème de la classe, sinon le thème global
+          const semesterTheme = currentSemester?.theme || currentConfig?.theme;
+
           const effectiveSettings = {
             ...settings,
             demoMode: isDemoMode,
             encryptionEnabled: encryptionEnabled,
-            // Si la configuration de classe a un thème personnalisé, l'utiliser
-            ...(currentConfig?.theme && { theme: currentConfig.theme })
+            // Si la configuration de classe ou le semestre a un thème personnalisé, l'utiliser
+            ...(semesterTheme && { theme: semesterTheme })
           };
 
           preparedData.push({
@@ -1439,11 +1448,14 @@ export const ReleveGenerator: React.FC = () => {
             const prepared = prepareStudentData(student);
             if (!prepared) continue;
 
+            // Utiliser le thème du semestre s'il existe, sinon le thème de la classe, sinon le thème global
+            const semesterTheme = semester.theme || currentConfig?.theme;
+
             const effectiveSettings = {
               ...settings,
               demoMode: isDemoMode,
               encryptionEnabled: encryptionEnabled,
-              ...(currentConfig?.theme && { theme: currentConfig.theme })
+              ...(semesterTheme && { theme: semesterTheme })
             };
 
             preparedData.push({

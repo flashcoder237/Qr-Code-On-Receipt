@@ -107,6 +107,7 @@ export interface DocumentRecord {
   generatedAt: Date;
   fileName: string;
   status: 'generated' | 'downloaded' | 'printed';
+  additionalInfo?: string;
   filePath?: string;
 }
 

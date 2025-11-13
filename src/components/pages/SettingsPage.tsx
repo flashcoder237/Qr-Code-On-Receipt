@@ -4,24 +4,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Settings, 
-  User, 
-  Shield, 
-  AlertTriangle, 
+import {
+  Settings,
+  User,
+  Shield,
+  AlertTriangle,
   Key,
   Building,
-  Palette
+  Palette,
+  Database
 } from 'lucide-react';
 import { DemoModeManager } from '@/components/organisms/demo-mode-manager/DemoModeManager';
-
-// Import des autres composants de paramètres (à adapter selon votre structure)
-// import { UserSettings } from '@/components/organisms/user-settings/UserSettings';
-// import { SecuritySettings } from '@/components/organisms/security-settings/SecuritySettings';
-// import { AppearanceSettings } from '@/components/organisms/appearance-settings/AppearanceSettings';
+import { UserProfile } from '@/components/organisms/settings/UserProfile';
+import { DataBackup } from '@/components/organisms/settings/DataBackup';
 
 export const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState('profile');
   
   // Détection du mode démo
   const isDemoMode = localStorage.getItem('demo_mode') === 'true';
@@ -30,9 +28,9 @@ export const SettingsPage: React.FC = () => {
   // Configuration des onglets selon le mode
   const tabs = [
     {
-      id: 'general',
-      label: 'Général',
-      icon: Settings,
+      id: 'profile',
+      label: 'Profil',
+      icon: User,
       available: true
     },
     {
@@ -45,6 +43,12 @@ export const SettingsPage: React.FC = () => {
       id: 'appearance',
       label: 'Apparence',
       icon: Palette,
+      available: true
+    },
+    {
+      id: 'backup',
+      label: 'Sauvegarde',
+      icon: Database,
       available: true
     },
     {
@@ -100,7 +104,7 @@ export const SettingsPage: React.FC = () => {
 
       {/* Interface des paramètres */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
           {tabs.map((tab) => (
             <TabsTrigger 
               key={tab.id} 
@@ -117,56 +121,9 @@ export const SettingsPage: React.FC = () => {
         </TabsList>
 
         {/* Contenu des onglets */}
-        <TabsContent value="general" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Paramètres généraux
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">
-                      Langue de l'interface
-                    </label>
-                    <select 
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                      disabled={isDemoMode}
-                    >
-                      <option>Français</option>
-                      <option>English</option>
-                    </select>
-                    {isDemoMode && (
-                      <p className="text-xs text-orange-600 mt-1">
-                        Limité en mode démo
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">
-                      Fuseau horaire
-                    </label>
-                    <select 
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                      disabled={isDemoMode}
-                    >
-                      <option>Africa/Douala</option>
-                      <option>UTC</option>
-                    </select>
-                    {isDemoMode && (
-                      <p className="text-xs text-orange-600 mt-1">
-                        Limité en mode démo
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Onglet Profil Utilisateur */}
+        <TabsContent value="profile" className="space-y-4">
+          <UserProfile />
         </TabsContent>
 
         <TabsContent value="institution" className="space-y-4">
@@ -242,7 +199,7 @@ export const SettingsPage: React.FC = () => {
                       <option>Automatique</option>
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="text-sm font-medium text-gray-700">
                       Densité d'affichage
@@ -257,6 +214,11 @@ export const SettingsPage: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Onglet Sauvegarde */}
+        <TabsContent value="backup" className="space-y-4">
+          <DataBackup />
         </TabsContent>
 
         {/* Onglet Licence/Mode Démo */}

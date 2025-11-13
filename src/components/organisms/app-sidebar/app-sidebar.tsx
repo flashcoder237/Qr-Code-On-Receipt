@@ -45,10 +45,10 @@ export function AppSidebar() {
   // Calcul des statistiques pour les indicateurs
   const statistics = useMemo(() => {
     const totalConfigs = configs.length;
-    const hasSettings = settings.nameFrench && settings.nameEnglish;
-    const completionRate = hasSettings && totalConfigs > 0 ? 100 : 
+    const hasSettings = (settings as any).nameFrench && (settings as any).nameEnglish;
+    const completionRate = hasSettings && totalConfigs > 0 ? 100 :
                           hasSettings || totalConfigs > 0 ? 50 : 0;
-    
+
     return {
       totalConfigs,
       hasSettings,
@@ -93,7 +93,7 @@ export function AppSidebar() {
     }
   };
 
-  const getMenuItemTooltip = (url: string, status: string) => {
+  const getMenuItemTooltip = (_url: string, status: string) => {
     if (status === "demo-restricted") {
       return "Fonctionnalité non disponible en mode démo";
     }
@@ -249,55 +249,55 @@ export function AppSidebar() {
 
         {/* Section de statut rapide */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+          <SidebarGroupLabel className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
             Statut
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <div className="space-y-2 px-2">
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Configurations</span>
-                <div className="flex items-center gap-2">
-                  <Badge variant={statistics.totalConfigs > 0 ? "default" : "secondary"} className="text-xs">
+            <div className="space-y-1 px-2">
+              <div className="flex items-center justify-between py-1">
+                <span className="text-xs text-gray-600 dark:text-gray-400">Configs</span>
+                <div className="flex items-center gap-1">
+                  <Badge variant={statistics.totalConfigs > 0 ? "default" : "secondary"} className="text-xs px-1.5 py-0">
                     {statistics.totalConfigs}
                   </Badge>
                   {statistics.totalConfigs > 0 ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <CheckCircle2 className="h-3 w-3 text-green-500" />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-gray-400" />
+                    <AlertCircle className="h-3 w-3 text-gray-400" />
                   )}
                 </div>
               </div>
-              
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Paramètres</span>
-                <div className="flex items-center gap-2">
+
+              <div className="flex items-center justify-between py-1">
+                <span className="text-xs text-gray-600 dark:text-gray-400">Paramètres</span>
+                <div className="flex items-center gap-1">
                   {statistics.hasSettings ? (
                     <>
-                      <Badge variant="default" className="text-xs">OK</Badge>
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <Badge variant="default" className="text-xs px-1.5 py-0">OK</Badge>
+                      <CheckCircle2 className="h-3 w-3 text-green-500" />
                     </>
                   ) : (
                     <>
-                      <Badge variant="secondary" className="text-xs">-</Badge>
-                      <AlertCircle className="h-4 w-4 text-gray-400" />
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0">-</Badge>
+                      <AlertCircle className="h-3 w-3 text-gray-400" />
                     </>
                   )}
                 </div>
               </div>
 
               {/* Statut licence */}
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Licence</span>
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between py-1">
+                <span className="text-xs text-gray-600 dark:text-gray-400">Licence</span>
+                <div className="flex items-center gap-1">
                   {isDemoMode ? (
                     <>
-                      <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800">DÉMO</Badge>
-                      <AlertTriangle className="h-4 w-4 text-orange-500" />
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0 bg-orange-100 text-orange-800">DÉMO</Badge>
+                      <AlertTriangle className="h-3 w-3 text-orange-500" />
                     </>
                   ) : (
                     <>
-                      <Badge variant="default" className="text-xs bg-green-100 text-green-800">FULL</Badge>
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <Badge variant="default" className="text-xs px-1.5 py-0 bg-green-100 text-green-800">FULL</Badge>
+                      <CheckCircle2 className="h-3 w-3 text-green-500" />
                     </>
                   )}
                 </div>

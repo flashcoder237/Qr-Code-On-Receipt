@@ -8,13 +8,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
+import {
   PlusCircle, AlertCircle, Search, Filter, BookOpen, 
-  Users, Calendar, GraduationCap, ChevronRight, 
-  BarChart3, TrendingUp, Database, Settings2 
+  Users, Calendar, GraduationCap, ChevronRight,
+  BarChart3, TrendingUp, Database, Settings2
 } from "lucide-react";
 import { ClassList } from "@/components/organisms/configs/ClassList";
 import { ClassDetail } from "@/components/organisms/configs/ClassDetail";
+import { BatchActions } from "@/components/organisms/configs/BatchActions";
 import { ClassConfig, Semester, UE, EC } from "@/components/organisms/configs/types";
 import { LOCAL_STORAGE_KEY, getDefaultAcademicYear, isConfigDuplicate } from "@/components/organisms/configs/utils";
 import { ImportExportExcel } from "@/components/organisms/configs/import-export";
@@ -457,7 +458,67 @@ export const AcademicConfigManager: React.FC = () => {
     }
   };
 
-  const StatCard = ({ icon: Icon, title, value, subtitle, color = "default" }) => (
+  // Actions groupées
+  const handleDeleteMultiple = (ids: string[]) => {
+    setConfigs(configs.filter(cfg => !ids.includes(cfg.id)));
+    setSuccess(`${ids.length} configuration(s) supprimée(s) avec succès.`);
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  const handleDuplicateMultiple = (ids: string[]) => {
+    const toDuplicate = configs.filter(cfg => ids.includes(cfg.id));
+    const duplicates = toDuplicate.map(cfg => ({
+      ...cfg,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      name: `${cfg.name} (Copie)`,
+    }));
+    setConfigs([...configs, ...duplicates]);
+    setSuccess(`${duplicates.length} configuration(s) dupliquée(s) avec succès.`);
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  const handleExportMultiple = (ids: string[]) => {
+    const toExport = configs.filter(cfg => ids.includes(cfg.id));
+    const dataStr = JSON.stringify(toExport, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `configurations_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setSuccess(`${toExport.length} configuration(s) exportée(s) avec succès.`);
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  // Fonctions de réorganisation
+  const moveConfigUp = (id: string) => {
+    const index = configs.findIndex(cfg => cfg.id === id);
+    if (index <= 0) return; // Déjà en première position
+
+    const newConfigs = [...configs];
+    [newConfigs[index - 1], newConfigs[index]] = [newConfigs[index], newConfigs[index - 1]];
+    setConfigs(newConfigs);
+  };
+
+  const moveConfigDown = (id: string) => {
+    const index = configs.findIndex(cfg => cfg.id === id);
+    if (index === -1 || index >= configs.length - 1) return; // Déjà en dernière position
+
+    const newConfigs = [...configs];
+    [newConfigs[index], newConfigs[index + 1]] = [newConfigs[index + 1], newConfigs[index]];
+    setConfigs(newConfigs);
+  };
+
+  const StatCard = ({ icon: Icon, title, value, subtitle, color = "default" }: {
+    icon: React.ComponentType<{ className?: string }>;
+    title: string;
+    value: string | number;
+    subtitle?: string;
+    color?: string;
+  }) => (
     <motion.div
       whileHover={{ scale: 1.02 }}
       className="relative overflow-hidden"
@@ -537,7 +598,7 @@ export const AcademicConfigManager: React.FC = () => {
           </AnimatePresence>
 
           {/* Onglets principaux */}
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={(value: "overview" | "configuration") => setActiveTab(value)}>
             <TabsList className="grid w-full grid-cols-2 max-w-md">
               <TabsTrigger value="overview" className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
@@ -725,15 +786,27 @@ export const AcademicConfigManager: React.FC = () => {
                 </CardContent>
               </Card>
 
+              {/* Actions groupées */}
+              {configs.length > 0 && (
+                <BatchActions
+                  configs={configs}
+                  onDeleteMultiple={handleDeleteMultiple}
+                  onDuplicateMultiple={handleDuplicateMultiple}
+                  onExportMultiple={handleExportMultiple}
+                />
+              )}
+
               <div className="grid grid-cols-1 xl:grid-cols-7 gap-6">
                 {/* Liste des configurations */}
                 <div className="xl:col-span-2">
-                  <ClassList 
+                  <ClassList
                     configs={filteredConfigs}
                     selectedConfigId={selectedConfigId}
                     onSelect={handleSelectConfig}
                     onDelete={deleteConfig}
                     onDuplicate={duplicateConfig}
+                    onMoveUp={moveConfigUp}
+                    onMoveDown={moveConfigDown}
                   />
                 </div>
 

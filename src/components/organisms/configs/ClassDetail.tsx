@@ -6,6 +6,8 @@ import { Input } from "../../ui/input";
 import { Alert } from "../../ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { ScrollArea } from "../../ui/scroll-area";
+import { Badge } from "../../ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../ui/dialog";
 import {
   PlusCircle,
   Save,
@@ -19,9 +21,18 @@ import {
   ArrowDown,
   ChevronsUp,
   ChevronsDown,
+  Palette,
+  Copy,
+  Download,
+  Upload,
+  X,
 } from "lucide-react";
 import { ClassConfig, Semester, UE, EC } from "./types";
 import { ECConfigEditor } from "./ECConfigEditor";
+import { ThemeEditor } from "../theme-editor";
+import { getCompleteTheme } from "@/lib/form-schemas/settings";
+import { useToast } from "@/hooks/use-toast";
+import { ToastContainer } from "@/components/ui/toast";
 
 interface ClassDetailProps {
   config: ClassConfig | undefined;
@@ -71,6 +82,7 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
   onDeleteEC,
   onAddNewConfig,
 }) => {
+  const { toasts, toast, removeToast } = useToast();
   const [expandedUEs, setExpandedUEs] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<string>("0");
   const [mainTab, setMainTab] = useState<string>("semesters");
@@ -82,6 +94,10 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
     cycle: "",
     option: "",
   });
+
+  // États pour la gestion du thème personnalisé par semestre
+  const [showSemesterThemeDialog, setShowSemesterThemeDialog] = useState(false);
+  const [selectedSemesterForTheme, setSelectedSemesterForTheme] = useState<string | null>(null);
 
   // Fonction pour déplacer une UE vers le haut
   const moveUEUp = useCallback((semesterId: string, ueId: string) => {
@@ -229,6 +245,104 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
       return next;
     });
   }, []);
+
+  // Fonctions de gestion du thème par semestre
+  const getGlobalTheme = () => {
+    return getCompleteTheme();
+  };
+
+  const openSemesterThemeDialog = (semesterId: string) => {
+    setSelectedSemesterForTheme(semesterId);
+    setShowSemesterThemeDialog(true);
+  };
+
+  const saveSemesterTheme = (semesterId: string, theme: any) => {
+    onUpdateSemester(semesterId, { theme });
+  };
+
+  const copySemesterThemeFromClass = (semesterId: string) => {
+    if (!config?.theme) {
+      toast.error("Aucun thème de classe", "La classe n'a pas de thème personnalisé à copier");
+      return;
+    }
+    onUpdateSemester(semesterId, { theme: config.theme });
+    toast.success("Thème copié", "Le thème de la classe a été copié vers ce semestre");
+  };
+
+  const copySemesterThemeFromGlobal = (semesterId: string) => {
+    const globalTheme = getGlobalTheme();
+    onUpdateSemester(semesterId, { theme: globalTheme });
+    toast.success("Thème copié", "Le thème global a été copié vers ce semestre");
+  };
+
+  const removeSemesterTheme = (semesterId: string) => {
+    const semester = config?.semesters.find(s => s.id === semesterId);
+    if (!semester) return;
+
+    const updatedSemester = { ...semester };
+    delete updatedSemester.theme;
+    onUpdateSemester(semesterId, updatedSemester);
+    setShowSemesterThemeDialog(false);
+    toast.success("Thème supprimé", "Le semestre utilisera le thème de la classe ou le thème global");
+  };
+
+  const exportSemesterTheme = (semesterId: string) => {
+    const semester = config?.semesters.find(s => s.id === semesterId);
+    if (!semester?.theme) {
+      toast.error("Erreur", "Aucun thème personnalisé à exporter");
+      return;
+    }
+
+    try {
+      const themeData = {
+        version: "1.0",
+        exportDate: new Date().toISOString(),
+        className: config?.name,
+        semesterName: semester.name,
+        theme: semester.theme
+      };
+
+      const dataStr = JSON.stringify(themeData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `theme_${semester.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success("Thème exporté", "Le thème du semestre a été exporté avec succès");
+    } catch (error) {
+      console.error("Erreur lors de l'export du thème:", error);
+      toast.error("Erreur", "Impossible d'exporter le thème");
+    }
+  };
+
+  const importSemesterTheme = async (semesterId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const themeData = JSON.parse(text);
+
+      if (!themeData.theme || !themeData.version) {
+        toast.error("Format invalide", "Le fichier ne contient pas un thème valide");
+        return;
+      }
+
+      onUpdateSemester(semesterId, { theme: themeData.theme });
+      toast.success("Thème importé", `Thème importé avec succès${themeData.semesterName ? ` (depuis ${themeData.semesterName})` : ''}`);
+
+      event.target.value = '';
+    } catch (error) {
+      console.error("Erreur lors de l'import du thème:", error);
+      toast.error("Erreur", "Impossible d'importer le thème - fichier invalide");
+    }
+  };
 
   if (!config) {
     return (
@@ -470,6 +584,131 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                   value={semesterIndex.toString()}
                   className="space-y-4 mt-0"
                 >
+                  {/* Section thème du semestre */}
+                  <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Palette className="h-5 w-5 text-indigo-600" />
+                          <CardTitle className="text-indigo-900 text-base">
+                            Thème du semestre
+                          </CardTitle>
+                          {semester.theme && (
+                            <Badge variant="default" className="bg-indigo-100 text-indigo-800 border-indigo-300">
+                              Personnalisé
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {semester.theme ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openSemesterThemeDialog(semester.id)}
+                                title="Modifier le thème du semestre"
+                              >
+                                <Palette className="h-4 w-4 mr-1" />
+                                Modifier
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => exportSemesterTheme(semester.id)}
+                                title="Exporter le thème vers un fichier JSON"
+                              >
+                                <Download className="h-4 w-4 mr-1" />
+                                Exporter
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeSemesterTheme(semester.id)}
+                                title="Supprimer le thème personnalisé"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <input
+                                type="file"
+                                accept=".json"
+                                id={`semester-theme-import-${semester.id}`}
+                                className="hidden"
+                                onChange={(e) => importSemesterTheme(semester.id, e)}
+                              />
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => copySemesterThemeFromGlobal(semester.id)}
+                                title="Copier le thème global"
+                              >
+                                <Copy className="h-4 w-4 mr-1" />
+                                Copier global
+                              </Button>
+                              {config.theme && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => copySemesterThemeFromClass(semester.id)}
+                                  title="Copier le thème de la classe"
+                                >
+                                  <Copy className="h-4 w-4 mr-1" />
+                                  Copier classe
+                                </Button>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => document.getElementById(`semester-theme-import-${semester.id}`)?.click()}
+                                title="Importer un thème depuis un fichier JSON"
+                              >
+                                <Upload className="h-4 w-4 mr-1" />
+                                Importer
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-indigo-800 text-sm">
+                        {semester.theme ? (
+                          <>
+                            Ce semestre utilise un <strong>thème personnalisé</strong>.
+                            Les relevés générés pour ce semestre utiliseront ce thème spécifique.
+                          </>
+                        ) : (
+                          <>
+                            Ce semestre utilise le {config.theme ? <strong>thème de la classe</strong> : <strong>thème global</strong>}.
+                            Créez un thème personnalisé pour ce semestre afin de le distinguer visuellement.
+                          </>
+                        )}
+                      </p>
+                      {semester.theme && (
+                        <div className="mt-3 bg-white border rounded-lg p-3">
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-4 h-4 rounded border"
+                                style={{ backgroundColor: semester.theme.primaryColor }}
+                              />
+                              <span className="text-gray-600">Couleur primaire</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-4 h-4 rounded border"
+                                style={{ backgroundColor: semester.theme.secondaryColor }}
+                              />
+                              <span className="text-gray-600">Couleur secondaire</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
                   <AnimatePresence initial={false}>
                     {semester.ues.map((ue) => (
                       <motion.div
@@ -709,6 +948,34 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
           </TabsContent>
         </Tabs>
       </CardContent>
+
+      {/* Dialog pour éditer le thème du semestre */}
+      {selectedSemesterForTheme && config && (
+        <Dialog open={showSemesterThemeDialog} onOpenChange={setShowSemesterThemeDialog}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Personnaliser le thème du semestre: {config.semesters.find(s => s.id === selectedSemesterForTheme)?.name}
+              </DialogTitle>
+              <DialogDescription>
+                Modifiez les paramètres visuels pour ce semestre spécifique. Ces paramètres seront utilisés uniquement pour les relevés de ce semestre.
+              </DialogDescription>
+            </DialogHeader>
+            <ThemeEditor
+              initialTheme={config.semesters.find(s => s.id === selectedSemesterForTheme)?.theme || getGlobalTheme()}
+              onThemeChange={(theme) => saveSemesterTheme(selectedSemesterForTheme, theme)}
+            />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowSemesterThemeDialog(false)}>
+                Fermer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Toast notifications */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </Card>
   );
 };
