@@ -950,8 +950,8 @@ export async function generateAttestationHTML(
                 </div>
               </div>
               
-              <p><strong>Vu le procès-verbal du jury N°0001 en date du ${juryDate} <span id="to-nothidden">atteste</span><span id="to-hidden">attestons</span> que,</strong><br>
-              ${theme.showBilingualText ? `<em>Considering the jury's decision N° 0001 dated ${juryDate} Certify that,</em>` : ''}</p>
+              <p><strong>Vu le procès-verbal du jury N° 003 en date du ${juryDate} <span id="to-nothidden">atteste</span><span id="to-hidden">attestons</span> que,</strong><br>
+              ${theme.showBilingualText ? `<em>Considering the jury's decision N° 003 dated ${juryDate} Certify that,</em>` : ''}</p>
             </div> 
             <div class="student-info">
                 <p>M./Mme/Mlle <strong>${studentFullName}</strong><br>

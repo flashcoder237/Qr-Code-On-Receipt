@@ -15,6 +15,10 @@ import {
   ChevronRight,
   Calendar,
   Settings,
+  ArrowUp,
+  ArrowDown,
+  ChevronsUp,
+  ChevronsDown,
 } from "lucide-react";
 import { ClassConfig, Semester, UE, EC } from "./types";
 import { ECConfigEditor } from "./ECConfigEditor";
@@ -41,6 +45,14 @@ interface ClassDetailProps {
   onDeleteEC: (semesterId: string, ueId: string, ecId: string) => void;
   onAddNewConfig: () => void;
 }
+
+// Fonction pour déplacer un élément dans un tableau
+const moveItemInArray = <T,>(array: T[], fromIndex: number, toIndex: number): T[] => {
+  const newArray = [...array];
+  const [movedItem] = newArray.splice(fromIndex, 1);
+  newArray.splice(toIndex, 0, movedItem);
+  return newArray;
+};
 
 export const ClassDetail: React.FC<ClassDetailProps> = ({
   config,
@@ -70,6 +82,90 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
     cycle: "",
     option: "",
   });
+
+  // Fonction pour déplacer une UE vers le haut
+  const moveUEUp = useCallback((semesterId: string, ueId: string) => {
+    if (!config) return;
+
+    const semester = config.semesters.find(s => s.id === semesterId);
+    if (!semester) return;
+
+    const ueIndex = semester.ues.findIndex(u => u.id === ueId);
+    if (ueIndex <= 0) return; // Déjà en première position
+
+    const reorderedUEs = moveItemInArray(semester.ues, ueIndex, ueIndex - 1);
+
+    // Mettre à jour les ordres
+    const updatedUEs = reorderedUEs.map((ue, index) => ({
+      ...ue,
+      order: index
+    }));
+
+    onUpdateSemester(semesterId, { ues: updatedUEs });
+  }, [config, onUpdateSemester]);
+
+  // Fonction pour déplacer une UE vers le bas
+  const moveUEDown = useCallback((semesterId: string, ueId: string) => {
+    if (!config) return;
+
+    const semester = config.semesters.find(s => s.id === semesterId);
+    if (!semester) return;
+
+    const ueIndex = semester.ues.findIndex(u => u.id === ueId);
+    if (ueIndex === -1 || ueIndex >= semester.ues.length - 1) return; // Déjà en dernière position
+
+    const reorderedUEs = moveItemInArray(semester.ues, ueIndex, ueIndex + 1);
+
+    // Mettre à jour les ordres
+    const updatedUEs = reorderedUEs.map((ue, index) => ({
+      ...ue,
+      order: index
+    }));
+
+    onUpdateSemester(semesterId, { ues: updatedUEs });
+  }, [config, onUpdateSemester]);
+
+  // Fonction pour déplacer une UE en première position
+  const moveUEToTop = useCallback((semesterId: string, ueId: string) => {
+    if (!config) return;
+
+    const semester = config.semesters.find(s => s.id === semesterId);
+    if (!semester) return;
+
+    const ueIndex = semester.ues.findIndex(u => u.id === ueId);
+    if (ueIndex <= 0) return; // Déjà en première position
+
+    const reorderedUEs = moveItemInArray(semester.ues, ueIndex, 0);
+
+    // Mettre à jour les ordres
+    const updatedUEs = reorderedUEs.map((ue, index) => ({
+      ...ue,
+      order: index
+    }));
+
+    onUpdateSemester(semesterId, { ues: updatedUEs });
+  }, [config, onUpdateSemester]);
+
+  // Fonction pour déplacer une UE en dernière position
+  const moveUEToBottom = useCallback((semesterId: string, ueId: string) => {
+    if (!config) return;
+
+    const semester = config.semesters.find(s => s.id === semesterId);
+    if (!semester) return;
+
+    const ueIndex = semester.ues.findIndex(u => u.id === ueId);
+    if (ueIndex === -1 || ueIndex >= semester.ues.length - 1) return; // Déjà en dernière position
+
+    const reorderedUEs = moveItemInArray(semester.ues, ueIndex, semester.ues.length - 1);
+
+    // Mettre à jour les ordres
+    const updatedUEs = reorderedUEs.map((ue, index) => ({
+      ...ue,
+      order: index
+    }));
+
+    onUpdateSemester(semesterId, { ues: updatedUEs });
+  }, [config, onUpdateSemester]);
 
   // Initialize local state when config changes
   useEffect(() => {
@@ -408,7 +504,7 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                                       className="mb-1"
                                       placeholder="Nom de l'UE"
                                     />
-                                    <Input 
+                                    <Input
                                       value={ue.code || `UE${ue.id.slice(0,4)}`}
                                       onChange={(e) =>
                                         onUpdateUE(semester.id, ue.id, {
@@ -427,6 +523,63 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                                 )}
                               </div>
                               <div className="flex items-center space-x-2">
+                                {/* Actions de réorganisation */}
+                                {isEditing && semester.ues.length > 1 && (
+                                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        moveUEToTop(semester.id, ue.id);
+                                      }}
+                                      disabled={semesterIndex === 0 && semester.ues.findIndex(u => u.id === ue.id) === 0}
+                                      className="h-8 w-8 p-0"
+                                      title="Déplacer en première position"
+                                    >
+                                      <ChevronsUp className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        moveUEUp(semester.id, ue.id);
+                                      }}
+                                      disabled={semester.ues.findIndex(u => u.id === ue.id) === 0}
+                                      className="h-8 w-8 p-0"
+                                      title="Déplacer vers le haut"
+                                    >
+                                      <ArrowUp className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        moveUEDown(semester.id, ue.id);
+                                      }}
+                                      disabled={semester.ues.findIndex(u => u.id === ue.id) === semester.ues.length - 1}
+                                      className="h-8 w-8 p-0"
+                                      title="Déplacer vers le bas"
+                                    >
+                                      <ArrowDown className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        moveUEToBottom(semester.id, ue.id);
+                                      }}
+                                      disabled={semester.ues.findIndex(u => u.id === ue.id) === semester.ues.length - 1}
+                                      className="h-8 w-8 p-0"
+                                      title="Déplacer en dernière position"
+                                    >
+                                      <ChevronsDown className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
                                 {isEditing && (
                                   <Input
                                     type="number"
@@ -545,13 +698,12 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
           </TabsContent>
 
           <TabsContent value="advanced" className="space-y-6 mt-6">
-            <ECConfigEditor 
-              config={config} 
+            <ECConfigEditor
+              config={config}
               onConfigUpdate={(updatedConfig) => {
-                // Mise à jour de la configuration complète
-                Object.keys(updatedConfig).forEach(key => {
-                  onUpdate({ [key]: (updatedConfig as any)[key] });
-                });
+                // Passer directement la configuration complète au parent
+                // pour éviter les appels multiples qui peuvent causer des pertes de données
+                onUpdate(updatedConfig);
               }}
             />
           </TabsContent>

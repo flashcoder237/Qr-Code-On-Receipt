@@ -16,7 +16,7 @@ import {
 } from '@/lib/validators/excel-columns';
 
 interface FileUploaderProps {
-  onFileLoaded: (data: any[], columns: string[], mapping?: { [key: string]: string }) => void;
+  onFileLoaded: (data: any[], columns: string[], mapping?: { [key: string]: string }, fileName?: string) => void;
   onError: (error: string) => void;
   onValidationResult?: (result: ValidationResult) => void;
   isLoading: boolean;
@@ -138,6 +138,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     data: any[];
     columns: string[];
     mapping: { [key: string]: string };
+    fileName: string;
   } | null>(null);
   const [showValidationDetails, setShowValidationDetails] = useState(false);
   
@@ -145,10 +146,11 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   const [availableSheets, setAvailableSheets] = useState<string[]>([]);
   const [selectedSheet, setSelectedSheet] = useState<string>('');
   const [pendingWorkbook, setPendingWorkbook] = useState<XLSX.WorkBook | null>(null);
+  const [pendingFileName, setPendingFileName] = useState<string>('');
   const [showSheetSelector, setShowSheetSelector] = useState(false);
 
   // Fonction pour traiter une feuille spécifique
-  const processSheet = (workbook: XLSX.WorkBook, sheetName: string) => {
+  const processSheet = (workbook: XLSX.WorkBook, sheetName: string, fileName: string) => {
     try {
       console.log('📄 Traitement de la feuille:', sheetName);
       
@@ -183,9 +185,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           const mappedRow = applyColumnMapping(row, automaticMapping);
           return sanitizeExcelRow(mappedRow, documentType);
         });
-        
+
         console.log('📊 Données traitées:', processedData.length, 'lignes');
-        onFileLoaded(processedData, columns, automaticMapping);
+        onFileLoaded(processedData, columns, automaticMapping, fileName);
         setPendingData(null);
         
       } else if (allowPartialImport && validation.missingRequired.length === 0) {
@@ -196,17 +198,18 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           const mappedRow = applyColumnMapping(row, automaticMapping);
           return sanitizeExcelRow(mappedRow, documentType);
         });
-        
-        onFileLoaded(processedData, columns, automaticMapping);
+
+        onFileLoaded(processedData, columns, automaticMapping, fileName);
         setPendingData(null);
-        
+
       } else {
         // Des colonnes requises manquent
         console.log('❌ Validation échouée - Colonnes requises manquantes');
-        setPendingData({ 
-          data: jsonData, 
-          columns, 
-          mapping: automaticMapping 
+        setPendingData({
+          data: jsonData,
+          columns,
+          mapping: automaticMapping,
+          fileName: fileName
         });
         
         if (!allowPartialImport) {
@@ -238,14 +241,15 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         console.log('📋 Plusieurs feuilles détectées:', workbook.SheetNames);
         setAvailableSheets(workbook.SheetNames);
         setPendingWorkbook(workbook);
+        setPendingFileName(file.name);
         setSelectedSheet(workbook.SheetNames[0]); // Sélectionner la première par défaut
         setShowSheetSelector(true);
         return;
       }
-      
+
       // Une seule feuille, traiter directement
       const sheetName = workbook.SheetNames[0];
-      processSheet(workbook, sheetName);
+      processSheet(workbook, sheetName, file.name);
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Erreur lors du chargement du fichier";
@@ -256,6 +260,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       // Réinitialiser les états de sélection de feuille
       setShowSheetSelector(false);
       setPendingWorkbook(null);
+      setPendingFileName('');
       setAvailableSheets([]);
       setSelectedSheet('');
     }
@@ -263,8 +268,8 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
   // Fonction pour traiter la feuille sélectionnée
   const handleSheetSelection = () => {
-    if (pendingWorkbook && selectedSheet) {
-      processSheet(pendingWorkbook, selectedSheet);
+    if (pendingWorkbook && selectedSheet && pendingFileName) {
+      processSheet(pendingWorkbook, selectedSheet, pendingFileName);
     }
   };
 
@@ -298,8 +303,8 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         const mappedRow = applyColumnMapping(row, pendingData.mapping);
         return sanitizeExcelRow(mappedRow, documentType);
       });
-      
-      onFileLoaded(processedData, pendingData.columns, pendingData.mapping);
+
+      onFileLoaded(processedData, pendingData.columns, pendingData.mapping, pendingData.fileName);
       setPendingData(null);
       setValidationResult(null);
       setShowValidationDetails(false);

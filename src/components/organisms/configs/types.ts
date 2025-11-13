@@ -16,6 +16,7 @@ export interface UE {
   ecs: EC[];
   displayBase?: number; // Sur combien la moyenne de l'UE est affichée (défaut: 20)
   semesterNumber?: number; // Pour les semestres composites: 1, 2, etc. Indique à quel semestre cette UE appartient
+  order?: number; // Ordre d'affichage de l'UE dans le semestre (pour tri personnalisé)
 }
 
 export interface Semester {
@@ -45,11 +46,18 @@ export interface ClassConfig {
   niveau: string;
   cycle: string;
   option: string;
-  establishmentType: 'ipes' | 'faculty';
+  establishmentType?: 'ipes' | 'faculty';
   semesters: Semester[];
   mergedSemesters?: MergedSemesterConfig[]; // Configurations de semestres fusionnés
   displaySessions?: boolean; // Afficher les sessions sur les relevés (défaut: true)
   sessionDisplayFormat?: 'short' | 'full'; // Format d'affichage des sessions (défaut: 'short')
   hideSemesterColumn?: boolean; // Masquer la colonne semestre dans les décisions (défaut: false)
-  theme?: ThemeSettingsPayload; // NOUVEAU: Thème personnalisé pour cette configuration de classe
+  theme?: ThemeSettingsPayload; // Thème personnalisé pour cette configuration de classe
+  lastUsedExcelFile?: {
+    fileName: string;
+    filePath?: string;
+    lastUsed: string;
+    columnMapping?: { [key: string]: string }; // Mapping des colonnes sauvegardé
+    sessionMapping?: { [key: string]: string }; // Mapping des sessions sauvegardé
+  }; // NOUVEAU: Mémorisation du dernier fichier Excel utilisé
 }

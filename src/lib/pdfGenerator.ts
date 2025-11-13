@@ -169,7 +169,7 @@ function generateThemeStyles(params: GeneratePDFParams): string {
     
     .watermark {
       position: absolute;
-      top: 10px;
+      top: 120px;
       left: 0;
       width: 100%;
       height: 100%;
@@ -1101,8 +1101,8 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                             '<div style="height: 50px; border: 1px solid black; margin: 5px;"> Faculty Logo</div>'}
                         </div>
                         <div id="to-hidden">
-                          ${settings.logo ? `<img src="${settings.logo}" alt="IPES Logo" height="50">` : 
-                            '<div style="height: 50px; border: 1px solid black;"> IPES Logo</div>'}
+                          ${settings.logo ? `<img src="${settings.logo}" alt="IPES Logo" height="70">` : 
+                            '<div style="height: 70px; border: 1px solid black;"> IPES Logo</div>'}
                         </div>
                     </div>
                     <div class="header-content">
@@ -1111,7 +1111,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                         ********************<br>
                         MINISTRY OF HIGHER EDUCATION<br>
                         ********************<br>
-                        <strong>THE UNIVERSITY OF DOUALA</strong><br>
+                        <strong>UNIVERSITY OF DOUALA</strong><br>
                         <span id="to-hidden">********************<br>
                         <strong>FACULTY OF MEDICINE AND<br>PHARMACEUTICAL SCIENCES</strong><br>
                         ********************<br>
@@ -1405,8 +1405,10 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                     <div><strong>Douala, le</strong> 
                     <br/><i>Douala, the</i></div><br/>
 
-                    <div><strong>LE CHEF D'ÉTABLISSEMENT</strong>
+                    <div id="to-nothidden"><strong>LE CHEF D'ÉTABLISSEMENT</strong>
                     <br/><i>The Dean of the Faculty</i></div>
+                    <div id="to-hidden"><strong>Le DOYEN FMSP</strong>
+                    <br/><i>The DEAN FMSP</i></div>
                 </div>
             </div>
 

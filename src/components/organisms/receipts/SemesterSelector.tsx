@@ -57,6 +57,22 @@ export const SemesterSelector: React.FC<SemesterSelectorProps> = ({
           <SelectValue placeholder="Sélectionnez un semestre" />
         </SelectTrigger>
         <SelectContent>
+          {/* NOUVEAU: Option "Tous les semestres" */}
+          {semesters.length > 1 && (
+            <>
+              <SelectItem value="all-semesters">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-3 w-3 text-blue-600" />
+                  <span className="font-semibold">Tous les semestres</span>
+                  <Badge variant="default" className="text-xs bg-blue-100 text-blue-800">
+                    {semesters.length} sem.
+                  </Badge>
+                </div>
+              </SelectItem>
+              <div className="border-t border-gray-200 my-1"></div>
+            </>
+          )}
+
           {/* Afficher les semestres fusionnés en premier s'ils existent */}
           {mergedSemesters.length > 0 && (
             <>
@@ -64,8 +80,8 @@ export const SemesterSelector: React.FC<SemesterSelectorProps> = ({
                 Semestres fusionnés
               </div>
               {mergedSemesters.map((merged) => (
-                <SelectItem 
-                  key={`merged-${merged.id}`} 
+                <SelectItem
+                  key={`merged-${merged.id}`}
                   value={`merged-${merged.id}`}
                   className={merged.isActive ? "bg-purple-50 border-l-2 border-purple-400" : ""}
                 >
@@ -89,7 +105,7 @@ export const SemesterSelector: React.FC<SemesterSelectorProps> = ({
               </div>
             </>
           )}
-          
+
           {semesters.map((sem) => (
             <SelectItem key={sem.id} value={sem.id}>
               <div className="flex items-center gap-2">

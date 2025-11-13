@@ -92,33 +92,38 @@ export const AcademicConfigManager: React.FC = () => {
     setActiveTab("configuration");
   };
 
-  const updateConfig = (id: string, updated: Partial<ClassConfig>) => {
-    if (updated.name !== undefined && updated.name.trim() === "") {
+  const updateConfig = (id: string, updated: Partial<ClassConfig> | ClassConfig) => {
+    // Récupérer la configuration actuelle
+    const currentConfig = configs.find(cfg => cfg.id === id);
+    if (!currentConfig) return;
+
+    // Créer la nouvelle configuration en fusionnant les changements
+    const newConfig = { ...currentConfig, ...updated };
+
+    // Valider le nom
+    if (newConfig.name !== undefined && newConfig.name.trim() === "") {
       setError("Le nom de la classe est obligatoire");
       return;
     }
-    
-    if (updated.academicYear !== undefined && updated.academicYear.trim() === "") {
+
+    // Valider l'année académique
+    if (newConfig.academicYear !== undefined && newConfig.academicYear.trim() === "") {
       setError("L'année académique est obligatoire");
       return;
     }
 
-    if ((updated.name !== undefined || updated.academicYear !== undefined)) {
-      const currentConfig = configs.find(cfg => cfg.id === id);
-      if (!currentConfig) return;
-      
-      const newName = updated.name !== undefined ? updated.name : currentConfig.name;
-      const newYear = updated.academicYear !== undefined ? updated.academicYear : currentConfig.academicYear;
-      
-      if (isConfigDuplicate(configs, newName, newYear, id)) {
+    // Vérifier les doublons seulement si le nom ou l'année ont changé
+    if (updated.name !== undefined || updated.academicYear !== undefined) {
+      if (isConfigDuplicate(configs, newConfig.name, newConfig.academicYear, id)) {
         setError("Une configuration avec ce nom et cette année académique existe déjà");
         return;
       }
     }
 
     setError(null);
+    // Remplacer la configuration entière pour éviter les pertes de données
     setConfigs(
-      configs.map((cfg) => (cfg.id === id ? { ...cfg, ...updated } : cfg))
+      configs.map((cfg) => (cfg.id === id ? newConfig : cfg))
     );
   };
 

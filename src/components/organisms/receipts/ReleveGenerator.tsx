@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useHotkeys } from "react-hotkeys-hook";
-import { Eye, Download, AlertCircle, CheckCircle, Users, RefreshCw, AlertTriangle, Shield, ShieldCheck, Info, Clock, Archive, FileText, Files, Settings } from "lucide-react";
+import { Eye, Download, AlertCircle, Layers, CheckCircle, Users, RefreshCw, AlertTriangle, Shield, ShieldCheck, Info, Clock, Archive, FileText, Files, Settings } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { useNotifications } from "@/components/ui/notification-system";
 import { useDocumentHistory } from "@/components/organisms/document-history/DocumentHistoryManager";
@@ -22,6 +22,7 @@ import { ColumnMappingEditor } from "./ColumnMappingEditor";
 import { TranscriptPreview } from "./TranscriptPreview";
 import { SemesterSelector } from "./SemesterSelector";
 import { StudentSelector } from "../student-selector";
+import { MultiSemesterGenerator } from "./MultiSemesterGenerator";
 
 // Hooks
 import { useConfiguration } from "./hooks/useConfiguration";
@@ -64,6 +65,11 @@ export const ReleveGenerator: React.FC = () => {
 
   // NOUVEAU: État pour le mapping des sessions
   const [sessionMapping, setSessionMapping] = useState<{ [ecId: string]: string }>({});
+
+  // NOUVEAU: État pour la génération multi-semestres
+  const [showMultiSemester, setShowMultiSemester] = useState(false);
+  const [currentFileName, setCurrentFileName] = useState<string | null>(null);
+  const [selectedMultiSemesterIds, setSelectedMultiSemesterIds] = useState<string[]>([]);
 
   // NOUVEAU: Option pour activer/désactiver le chiffrement compact pour les relevés
   const [encryptionEnabled, setEncryptionEnabled] = useLocalStorage("releve-encryption-enabled", true);
@@ -182,9 +188,24 @@ export const ReleveGenerator: React.FC = () => {
     onSemesterChange: (semesterId) => {
       const config = configs.find(c => c.id === selectedConfigId);
       if (config) {
-        const semester = config.semesters.find(s => s.id === semesterId);
-        if (semester) {
-          notifySuccess("Semestre", `Semestre "${semester.name}" sélectionné`);
+        // NOUVEAU: Gérer l'option "Tous les semestres"
+        if (semesterId === 'all-semesters') {
+          const allSemesterIds = config.semesters.map(s => s.id);
+          setSelectedMultiSemesterIds(allSemesterIds);
+          // Sauvegarder la sélection dans localStorage pour le MultiSemesterGenerator
+          localStorage.setItem(`multi-semester-selection-${config.id}`, JSON.stringify(allSemesterIds));
+          notifySuccess("Semestre", `Tous les semestres sélectionnés (${allSemesterIds.length})`);
+        } else {
+          const semester = config.semesters.find(s => s.id === semesterId);
+          if (semester) {
+            notifySuccess("Semestre", `Semestre "${semester.name}" sélectionné`);
+          }
+          // Réinitialiser la sélection multi-semestre
+          setSelectedMultiSemesterIds([]);
+          // Nettoyer le localStorage
+          if (config) {
+            localStorage.removeItem(`multi-semester-selection-${config.id}`);
+          }
         }
       }
       setPreviewStudent(null);
@@ -224,22 +245,150 @@ export const ReleveGenerator: React.FC = () => {
     return { currentConfig: config, currentSemester: semester };
   }, [configs, selectedConfigId, selectedSemesterId]);
 
-  // Get available ECs for mapping
-  const getAvailableECs = useCallback(() => {
-    if (!currentConfig || !currentSemester) return [];
+  // NOUVEAU: Préparer les données étudiants pour l'affichage avec calcul des moyennes
+  const preparedStudentsForDisplay = useMemo(() => {
+    if (!currentConfig || !excelData || excelData.length === 0) return [];
+    if (!mappingComplete) return excelData; // Retourner brut si pas de mapping
 
-    const ecs: Array<{ id: string; fullName: string }> = [];
-    currentSemester.ues.forEach((ue: any) => {
-      ue.ecs.forEach((ec: any) => {
-        ecs.push({
-          id: ec.id,
-          fullName: `${currentSemester.name} - ${ue.name} - ${ec.name}`,
+    return excelData.map(student => {
+      try {
+        // Calculer la moyenne pour cet étudiant
+        let totalGrade = 0;
+        let totalCredits = 0;
+        let hasGrades = false;
+
+        // Déterminer quels semestres utiliser
+        const semestersToUse = selectedMultiSemesterIds.length > 0
+          ? currentConfig.semesters.filter(s => selectedMultiSemesterIds.includes(s.id))
+          : (currentSemester ? [currentSemester] : []);
+
+        semestersToUse.forEach(semester => {
+          semester.ues.forEach((ue: any) => {
+            let ueGradeSum = 0;
+            let ueWeightSum = 0;
+
+            ue.ecs.forEach((ec: any) => {
+              const columnName = columnMapping[ec.id];
+              if (columnName && student[columnName] !== undefined) {
+                const grade = parseFloat(student[columnName]);
+                if (!isNaN(grade)) {
+                  hasGrades = true;
+                  const weight = ec.weight || 1;
+                  const noteBase = ec.noteBase || 20;
+                  const normalizedGrade = (grade / noteBase) * 20;
+                  ueGradeSum += normalizedGrade * weight;
+                  ueWeightSum += weight;
+                }
+              }
+            });
+
+            if (ueWeightSum > 0) {
+              const ueAverage = ueGradeSum / ueWeightSum;
+              const ueCredits = ue.credits || 0;
+              totalGrade += ueAverage * ueCredits;
+              totalCredits += ueCredits;
+            }
+          });
+        });
+
+        const moyenne = hasGrades && totalCredits > 0 ? totalGrade / totalCredits : 0;
+
+        // Déterminer grade et mention
+        let grade = "";
+        let mention = "";
+        if (moyenne >= 16) {
+          grade = "Très Bien";
+          mention = "Très Bien";
+        } else if (moyenne >= 14) {
+          grade = "Bien";
+          mention = "Bien";
+        } else if (moyenne >= 12) {
+          grade = "Assez Bien";
+          mention = "Assez Bien";
+        } else if (moyenne >= 10) {
+          grade = "Passable";
+          mention = "Passable";
+        } else {
+          grade = "Ajourné";
+          mention = "Ajourné";
+        }
+
+        return {
+          ...student,
+          NIVEAU: currentConfig.niveau || student.NIVEAU || "N/D",
+          SEMESTRE: selectedMultiSemesterIds.length > 0
+            ? `${selectedMultiSemesterIds.length} semestres`
+            : (currentSemester?.name || student.SEMESTRE || "N/D"),
+          MOYENNE: hasGrades ? parseFloat(moyenne.toFixed(2)) : 0,
+          GRADE: grade,
+          MENTION: mention
+        };
+      } catch (error) {
+        console.error('Erreur préparation étudiant:', error);
+        return student;
+      }
+    });
+  }, [excelData, currentConfig, currentSemester, selectedMultiSemesterIds, columnMapping, mappingComplete]);
+
+  // NOUVEAU: Restaurer la sélection multi-semestres au changement de config
+  useEffect(() => {
+    if (selectedConfigId) {
+      const savedSelection = localStorage.getItem(`multi-semester-selection-${selectedConfigId}`);
+      if (savedSelection) {
+        try {
+          const parsed = JSON.parse(savedSelection);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSelectedMultiSemesterIds(parsed);
+          }
+        } catch (e) {
+          console.error('Erreur restauration sélection multi-semestres:', e);
+        }
+      } else {
+        // Pas de sélection sauvegardée, réinitialiser seulement si pas vide
+        if (selectedMultiSemesterIds.length > 0) {
+          setSelectedMultiSemesterIds([]);
+        }
+      }
+    }
+  }, [selectedConfigId]);
+
+  // Get available ECs for mapping - MODIFIÉ pour supporter multi-semestre
+  const getAvailableECs = useCallback(() => {
+    if (!currentConfig) return [];
+
+    const ecs: Array<{ id: string; fullName: string; semesterName?: string }> = [];
+
+    // Si multi-semestre est activé et des semestres sont sélectionnés
+    if (selectedMultiSemesterIds.length > 0) {
+      selectedMultiSemesterIds.forEach(semesterId => {
+        const semester = currentConfig.semesters.find(s => s.id === semesterId);
+        if (semester) {
+          semester.ues.forEach((ue: any) => {
+            ue.ecs.forEach((ec: any) => {
+              ecs.push({
+                id: ec.id,
+                fullName: `${semester.name} - ${ue.name} - ${ec.name}`,
+                semesterName: semester.name
+              });
+            });
+          });
+        }
+      });
+    } else if (currentSemester) {
+      // Mode normal - un seul semestre
+      currentSemester.ues.forEach((ue: any) => {
+        ue.ecs.forEach((ec: any) => {
+          ecs.push({
+            id: ec.id,
+            fullName: `${currentSemester.name} - ${ue.name} - ${ec.name}`,
+            semesterName: currentSemester.name
+          });
         });
       });
-    });
+    }
 
     return ecs;
-  }, [currentConfig, currentSemester]);
+  }, [currentConfig, currentSemester, selectedMultiSemesterIds]);
 
   // NOUVEAU: Fonction pour tester le chiffrement compact sur un étudiant
   const testStudentEncryptionCompactForReleve = (student: any) => {
@@ -291,25 +440,220 @@ export const ReleveGenerator: React.FC = () => {
     }
   };
 
+  // NOUVEAU: Fonction pour sauvegarder les informations du fichier Excel utilisé
+  const saveExcelFileInfo = useCallback((fileName: string, columnMappingData: Record<string, string>, sessionMappingData: Record<string, string>) => {
+    if (!selectedConfigId) return;
+
+    try {
+      const updatedConfigs = configs.map(config => {
+        if (config.id === selectedConfigId) {
+          return {
+            ...config,
+            lastUsedExcelFile: {
+              fileName: fileName,
+              lastUsed: new Date().toISOString(),
+              columnMapping: columnMappingData,
+              sessionMapping: sessionMappingData
+            }
+          };
+        }
+        return config;
+      });
+
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedConfigs));
+      setConfigs(updatedConfigs);
+
+      notifySuccess("Mémorisation", `Fichier "${fileName}" mémorisé pour cette configuration`);
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde des infos du fichier:", error);
+    }
+  }, [selectedConfigId, configs, notifySuccess]);
+
+  // NOUVEAU: Fonction pour restaurer le mapping depuis le fichier mémorisé
+  const restoreSavedMapping = useCallback((fileName: string) => {
+    if (!selectedConfigId || !currentConfig?.lastUsedExcelFile) return false;
+
+    const savedFile = currentConfig.lastUsedExcelFile;
+
+    // Vérifier si c'est le même fichier
+    if (savedFile.fileName === fileName && savedFile.columnMapping) {
+      // Restaurer le mapping des colonnes
+      Object.entries(savedFile.columnMapping).forEach(([ecId, columnName]) => {
+        handleMappingChange(ecId, columnName);
+      });
+
+      // Restaurer le mapping des sessions si disponible
+      if (savedFile.sessionMapping) {
+        setSessionMapping(savedFile.sessionMapping);
+      }
+
+      notifyInfo(
+        "Mapping restauré",
+        `Correspondances chargées depuis le dernier import de "${fileName}"`,
+        { duration: 5000 }
+      );
+
+      return true;
+    }
+
+    return false;
+  }, [selectedConfigId, currentConfig, handleMappingChange, notifyInfo]);
+
+  // NOUVEAU: Fonction pour faire une correspondance automatique par nom d'EC
+  const autoMapByECName = useCallback((columns: string[]) => {
+    if (!currentConfig) {
+      console.log('⚠️ AutoMap: Pas de config');
+      return 0;
+    }
+
+    console.log('🔄 AutoMap: Démarrage avec', columns.length, 'colonnes');
+    console.log('📊 Colonnes disponibles:', columns);
+
+    // Utiliser directement la fonction au lieu de l'appeler depuis le callback
+    const ecs: Array<{ id: string; fullName: string; ecName: string; semesterName?: string }> = [];
+
+    // Si multi-semestre est activé et des semestres sont sélectionnés
+    if (selectedMultiSemesterIds.length > 0) {
+      console.log('📚 Mode multi-semestres:', selectedMultiSemesterIds.length, 'semestres');
+      selectedMultiSemesterIds.forEach(semesterId => {
+        const semester = currentConfig.semesters.find(s => s.id === semesterId);
+        if (semester) {
+          semester.ues.forEach((ue: any) => {
+            ue.ecs.forEach((ec: any) => {
+              ecs.push({
+                id: ec.id,
+                fullName: `${semester.name} - ${ue.name} - ${ec.name}`,
+                ecName: ec.name,
+                semesterName: semester.name
+              });
+            });
+          });
+        }
+      });
+    } else if (currentSemester) {
+      console.log('📘 Mode semestre unique:', currentSemester.name);
+      // Mode normal - un seul semestre
+      currentSemester.ues.forEach((ue: any) => {
+        ue.ecs.forEach((ec: any) => {
+          ecs.push({
+            id: ec.id,
+            fullName: `${currentSemester.name} - ${ue.name} - ${ec.name}`,
+            ecName: ec.name,
+            semesterName: currentSemester.name
+          });
+        });
+      });
+    } else {
+      console.log('⚠️ AutoMap: Pas de semestre sélectionné');
+    }
+
+    console.log('📝 ECs trouvés:', ecs.length);
+    console.log('🔍 ECs détails:', ecs.map(e => e.ecName));
+
+    let mappedCount = 0;
+
+    ecs.forEach(ec => {
+      // Vérifier si déjà mappé dans le state actuel (pas dans columnMapping car il peut être vide au début)
+      const existingMapping = Object.entries(columnMapping).find(([key]) => key === ec.id);
+      if (existingMapping && existingMapping[1]) {
+        console.log(`⏭️ EC "${ec.ecName}" déjà mappé à "${existingMapping[1]}"`);
+        return;
+      }
+
+      // Chercher une colonne qui correspond exactement au nom de l'EC
+      const matchingColumn = columns.find(col => {
+        // Correspondance exacte (insensible à la casse)
+        const match = col.toLowerCase().trim() === ec.ecName.toLowerCase().trim();
+        if (match) {
+          console.log(`✅ Match trouvé: "${ec.ecName}" ← "${col}"`);
+        }
+        return match;
+      });
+
+      if (matchingColumn) {
+        console.log(`🎯 Mapping: ${ec.id} → ${matchingColumn}`);
+        handleMappingChange(ec.id, matchingColumn);
+        mappedCount++;
+
+        // Chercher aussi la colonne de session correspondante
+        const sessionColumn = columns.find(col => col === `S/${matchingColumn}`);
+        if (sessionColumn) {
+          console.log(`📅 Session trouvée: ${sessionColumn}`);
+          handleSessionMappingChange(ec.id, sessionColumn);
+        }
+      } else {
+        console.log(`❌ Pas de match pour: "${ec.ecName}"`);
+      }
+    });
+
+    console.log(`📊 Résultat: ${mappedCount}/${ecs.length} ECs mappés`);
+
+    if (mappedCount > 0) {
+      notifySuccess(
+        "Correspondance automatique",
+        `${mappedCount} EC(s) mappé(s) automatiquement par nom`,
+        { duration: 5000 }
+      );
+    }
+
+    return mappedCount;
+  }, [currentConfig, currentSemester, selectedMultiSemesterIds, columnMapping, handleMappingChange, handleSessionMappingChange, notifySuccess]);
+
   // Handle file loading with validation and automatic mapping
-  const handleFileLoadedWithMapping = useCallback((data: any[], columns: string[], mapping?: { [key: string]: string }) => {
+  const handleFileLoadedWithMapping = useCallback((data: any[], columns: string[], mapping?: { [key: string]: string }, fileName?: string) => {
     handleDataLoaded(data, columns);
-    
-    if (mapping) {
+
+    // Sauvegarder le nom du fichier
+    if (fileName) {
+      setCurrentFileName(fileName);
+
+      // Essayer de restaurer le mapping sauvegardé
+      const restored = restoreSavedMapping(fileName);
+
+      if (!restored) {
+        // Pas de mapping restauré, essayer la correspondance automatique
+        if (mapping) {
+          // Appliquer le mapping automatique fourni
+          Object.entries(mapping).forEach(([ecId, columnName]) => {
+            if (columnName && columns.includes(columnName)) {
+              handleMappingChange(ecId, columnName);
+            }
+          });
+        }
+
+        // NOUVEAU: Essayer la correspondance automatique par nom d'EC
+        const mappedCount = autoMapByECName(columns);
+
+        if (mappedCount === 0 && !mapping) {
+          notifyInfo(
+            "Correspondance manuelle nécessaire",
+            "Aucune correspondance automatique trouvée. Veuillez configurer manuellement."
+          );
+        }
+      }
+    } else if (mapping) {
       // Appliquer le mapping automatique si fourni
       Object.entries(mapping).forEach(([ecId, columnName]) => {
         if (columnName && columns.includes(columnName)) {
           handleMappingChange(ecId, columnName);
         }
       });
+
+      // NOUVEAU: Essayer aussi la correspondance par nom
+      autoMapByECName(columns);
+    } else {
+      // NOUVEAU: Pas de mapping fourni, essayer la correspondance par nom
+      autoMapByECName(columns);
     }
 
-    // NOUVEAU: Réinitialiser le mapping des sessions
-    setSessionMapping({});
+    // Réinitialiser le mapping des sessions si pas restauré
+    if (!currentConfig?.lastUsedExcelFile?.sessionMapping) {
+      setSessionMapping({});
+    }
 
     setError(null);
     setForceShowMapping(false);
-  }, [handleDataLoaded, handleMappingChange]);
+  }, [handleDataLoaded, handleMappingChange, restoreSavedMapping, currentConfig, autoMapByECName, notifyInfo]);
 
   // Handle validation results
   const handleValidationResult = useCallback((result: ValidationResult) => {
@@ -632,11 +976,165 @@ export const ReleveGenerator: React.FC = () => {
     return studentRecord;
   }, [currentConfig, currentSemester, columnMapping, sessionMapping, extractSessionFromColumn]);
 
+  // NOUVEAU: Prévisualisation multi-semestres
   const handlePreviewReleve = useCallback(async (student?: any) => {
-    if (!currentConfig || !currentSemester) {
-      const message = "Veuillez sélectionner une configuration et un semestre";
+    if (!currentConfig) {
+      const message = "Veuillez sélectionner une configuration";
       setError(message);
       notifyWarning("Configuration manquante", message);
+      return;
+    }
+
+    // Mode multi-semestres
+    if (selectedMultiSemesterIds.length > 0) {
+      if (excelData.length === 0) {
+        const message = "Veuillez charger des données";
+        setError(message);
+        notifyWarning("Données manquantes", message);
+        return;
+      }
+
+      if (!mappingComplete) {
+        const message = "Veuillez compléter la correspondance des colonnes avant de prévisualiser";
+        setError(message);
+        notifyWarning("Correspondance incomplète", message);
+        setActiveTab("mapping");
+        return;
+      }
+
+      const studentToPreview = student ||
+        (selectedStudentMatricules.length > 0
+          ? excelData.find(s => s.MATRICULE === selectedStudentMatricules[0])
+          : excelData[0]);
+
+      if (!studentToPreview) {
+        notifyError("Erreur", "Aucun étudiant trouvé pour la prévisualisation");
+        return;
+      }
+
+      // Prévisualiser pour chaque semestre sélectionné
+      notifyInfo("Prévisualisation", `Génération de ${selectedMultiSemesterIds.length} prévisualisations...`);
+
+      for (const semesterId of selectedMultiSemesterIds) {
+        const semester = currentConfig.semesters.find(s => s.id === semesterId);
+        if (!semester) continue;
+
+        try {
+          // Préparer les données avec le contexte du semestre actuel
+          const tempCurrentSemester = semester;
+
+          // Créer un contexte temporaire pour ce semestre
+          const studentRecord: any = {
+            NOM: studentToPreview.NOM || "",
+            PRENOM: studentToPreview.PRENOM || "",
+            MATRICULE: studentToPreview.MATRICULE || "",
+            "DATE DE NAISSANCE": studentToPreview["DATE DE NAISSANCE"] || "",
+            "LIEU DE NAISSANCE": studentToPreview["LIEU DE NAISSANCE"] || "",
+            CYCLE: currentConfig.cycle || "",
+            "ANNEE ACADÉMIQUE": currentConfig.academicYear || "",
+            FILIERE: currentConfig.filiere || "",
+            NIVEAU: currentConfig.niveau || "",
+            SEMESTRE: semester.name,
+            OPTION: currentConfig.option || "",
+            COURSES: [],
+            TOTAL_CREDITS: semester.creditsRequired || 30,
+            DISPLAY_SESSIONS: currentConfig.displaySessions !== false,
+            SESSION_FORMAT: currentConfig.sessionDisplayFormat || 'short'
+          };
+
+          // Ajouter les cours de ce semestre avec calcul des moyennes par UE
+          const coursesByUE = new Map<string, any[]>();
+
+          semester.ues.forEach((ue: any) => {
+            const ueCourses: any[] = [];
+
+            ue.ecs.forEach((ec: any) => {
+              const columnName = columnMapping[ec.id];
+              if (columnName && studentToPreview[columnName] !== undefined) {
+                const grade = parseFloat(studentToPreview[columnName]);
+                if (!isNaN(grade)) {
+                  // Récupérer la session si elle existe
+                  const sessionColumnName = sessionMapping[ec.id];
+                  let session = null;
+                  if (sessionColumnName && studentToPreview[sessionColumnName]) {
+                    session = extractSessionFromColumn(studentToPreview[sessionColumnName]);
+                  }
+
+                  ueCourses.push({
+                    CODE: ue.code || `UE ${ue.name}`,
+                    INTITULE: ue.name,
+                    EC_TITRE: ec.name,
+                    NOTE: grade,
+                    WEIGHT: ec.weight || 1,
+                    UE_CREDIT: ue.credits || 0,
+                    UE_ID: ue.id,
+                    UE_AVERAGE: 0,
+                    SESSION: session,
+                    NOTE_BASE: ec.noteBase || 20,
+                    DISPLAY_BASE: ec.displayBase || ue.displayBase || 20
+                  });
+                }
+              }
+            });
+
+            if (ueCourses.length > 0) {
+              // Calculer la moyenne de l'UE
+              const totalWeight = ueCourses.reduce((sum, course) => sum + course.WEIGHT, 0);
+              const weightedSum = ueCourses.reduce((sum, course) => {
+                // Convertir la note à la base 20 si nécessaire
+                const normalizedGrade = (course.NOTE / course.NOTE_BASE) * 20;
+                return sum + (normalizedGrade * course.WEIGHT);
+              }, 0);
+              const ueAverage = totalWeight > 0 ? weightedSum / totalWeight : 0;
+
+              // Appliquer l'UE average à tous les cours de cette UE
+              ueCourses.forEach(course => {
+                course.UE_AVERAGE = ueAverage;
+              });
+
+              coursesByUE.set(ue.id, ueCourses);
+            }
+          });
+
+          // Ajouter tous les cours à studentRecord
+          coursesByUE.forEach(courses => {
+            studentRecord.COURSES.push(...courses);
+          });
+
+          const effectiveSettings = {
+            ...settings,
+            demoMode: isDemoMode,
+            encryptionEnabled: encryptionEnabled,
+            ...(currentConfig?.theme && { theme: currentConfig.theme })
+          };
+
+          const renderParams = {
+            student: studentRecord,
+            settings: effectiveSettings,
+            config: currentConfig
+          };
+
+          const htmlContent = await window.transcriptRenderer.renderHTML(renderParams);
+
+          if (htmlContent) {
+            await window.ipcRenderer.invoke('show-preview', htmlContent,
+              `Prévisualisation ${semester.name} - ${studentRecord.NOM} ${studentRecord.PRENOM} ${encryptionEnabled ? '🔐' : ''}`);
+          }
+        } catch (error) {
+          console.error(`Erreur prévisualisation ${semester.name}:`, error);
+          notifyError("Erreur", `Erreur lors de la prévisualisation de ${semester.name}`);
+        }
+      }
+
+      notifySuccess("Prévisualisation", `${selectedMultiSemesterIds.length} prévisualisation(s) générée(s)`);
+      return;
+    }
+
+    // Mode normal - un seul semestre
+    if (!currentSemester) {
+      const message = "Veuillez sélectionner un semestre";
+      setError(message);
+      notifyWarning("Semestre manquant", message);
       return;
     }
 
@@ -656,8 +1154,8 @@ export const ReleveGenerator: React.FC = () => {
     }
 
     try {
-      const studentToPreview = student || 
-        (selectedStudentMatricules.length > 0 
+      const studentToPreview = student ||
+        (selectedStudentMatricules.length > 0
           ? excelData.find(s => s.MATRICULE === selectedStudentMatricules[0])
           : excelData[0]);
 
@@ -670,62 +1168,48 @@ export const ReleveGenerator: React.FC = () => {
         throw new Error("Erreur lors de la préparation des données");
       }
 
-      console.log("Données étudiant préparées:", preparedStudent);
-      console.log("Paramètres:", settings);
-      console.log("🔐 Chiffrement activé pour relevé:", encryptionEnabled);
-
       setPreviewStudent(preparedStudent);
-      
+
       if (!window.transcriptRenderer) {
         throw new Error("Impossible de communiquer avec le processus de rendu HTML");
       }
-      
-      try {
-        // NOUVEAU: Fusionner le thème de la configuration de classe avec les paramètres globaux
-        const effectiveSettings = {
-          ...settings,
-          demoMode: isDemoMode,
-          encryptionEnabled: encryptionEnabled,
-          // Si la configuration de classe a un thème personnalisé, l'utiliser
-          ...(currentConfig?.theme && { theme: currentConfig.theme })
-        };
 
-        const renderParams = {
-          student: preparedStudent,
-          settings: effectiveSettings,
-          config: currentConfig // NOUVEAU: Passer la configuration de classe pour les options d'affichage
-        };
-        
-        const htmlContent = await window.transcriptRenderer.renderHTML(renderParams);
-        console.log("Contenu HTML reçu:", htmlContent ? "Oui" : "Non", "Longueur:", htmlContent?.length);
-        
-        if (!htmlContent) {
-          throw new Error("Aucun contenu HTML reçu");
-        }
-        
-        const success = await window.ipcRenderer.invoke('show-preview', htmlContent, 
-          `Prévisualisation du relevé - ${preparedStudent.NOM} ${preparedStudent.PRENOM} ${encryptionEnabled ? '🔐' : ''}`);
-        
-        if (!success) {
-          throw new Error("Impossible d'ouvrir la fenêtre de prévisualisation");
-        }
-        
-        setError(null);
-        const encryptionStatus = encryptionEnabled ? " (avec chiffrement compact)" : " (sans chiffrement)";
-        notifySuccess("Prévisualisation", `Aperçu généré pour ${preparedStudent.NOM} ${preparedStudent.PRENOM}${encryptionStatus}`);
-      } catch (err) {
-        console.error("Erreur pendant le rendu HTML:", err);
-        const message = `Erreur de communication avec le processus de rendu: ${err.message || 'Erreur inconnue'}`;
-        setError(message);
-        notifyError("Erreur de rendu", message);
+      const effectiveSettings = {
+        ...settings,
+        demoMode: isDemoMode,
+        encryptionEnabled: encryptionEnabled,
+        ...(currentConfig?.theme && { theme: currentConfig.theme })
+      };
+
+      const renderParams = {
+        student: preparedStudent,
+        settings: effectiveSettings,
+        config: currentConfig
+      };
+
+      const htmlContent = await window.transcriptRenderer.renderHTML(renderParams);
+
+      if (!htmlContent) {
+        throw new Error("Aucun contenu HTML reçu");
       }
+
+      const success = await window.ipcRenderer.invoke('show-preview', htmlContent,
+        `Prévisualisation du relevé - ${preparedStudent.NOM} ${preparedStudent.PRENOM} ${encryptionEnabled ? '🔐' : ''}`);
+
+      if (!success) {
+        throw new Error("Impossible d'ouvrir la fenêtre de prévisualisation");
+      }
+
+      setError(null);
+      const encryptionStatus = encryptionEnabled ? " (avec chiffrement compact)" : " (sans chiffrement)";
+      notifySuccess("Prévisualisation", `Aperçu généré pour ${preparedStudent.NOM} ${preparedStudent.PRENOM}${encryptionStatus}`);
     } catch (error) {
       console.error('Erreur de prévisualisation:', error);
       const message = `Erreur lors de la génération de la prévisualisation: ${error.message || 'Erreur inconnue'}`;
       setError(message);
       notifyError("Erreur", message);
     }
-  }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, settings, selectedStudentMatricules, encryptionEnabled, notifySuccess, notifyError, notifyWarning]);
+  }, [currentConfig, currentSemester, selectedMultiSemesterIds, excelData, mappingComplete, prepareStudentData, settings, selectedStudentMatricules, encryptionEnabled, columnMapping, isDemoMode, notifySuccess, notifyError, notifyWarning, notifyInfo]);
   
   const handleGenerateSelected = useCallback(async (studentsToGenerate?: any[]) => {
     if (!currentConfig || !currentSemester) {
@@ -764,6 +1248,11 @@ export const ReleveGenerator: React.FC = () => {
 
     const encryptionMessage = encryptionEnabled ? "avec chiffrement compact" : "sans chiffrement";
     notifySuccess("Génération", `Début de la génération de ${dataToProcess.length} relevé(s) ${encryptionMessage}`);
+
+    // NOUVEAU: Sauvegarder les informations du fichier Excel
+    if (currentFileName) {
+      saveExcelFileInfo(currentFileName, columnMapping, sessionMapping);
+    }
 
     try {
       const preparedData = [];
@@ -910,6 +1399,135 @@ export const ReleveGenerator: React.FC = () => {
     }
   }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, processBatch, generateZipFile, settings, selectedStudentMatricules, encryptionEnabled, notifySuccess, notifyError, notifyWarning, addDocumentRecord]);
 
+  // NOUVEAU: Fonction pour générer les relevés de plusieurs semestres
+  const handleGenerateMultipleSemesters = useCallback(async (semesterIds: string[]) => {
+    if (!currentConfig) {
+      notifyError("Erreur", "Aucune configuration sélectionnée");
+      return;
+    }
+
+    if (excelData.length === 0) {
+      notifyError("Erreur", "Veuillez charger des données Excel");
+      return;
+    }
+
+    if (!mappingComplete) {
+      notifyError("Erreur", "Veuillez compléter la correspondance des colonnes");
+      return;
+    }
+
+    try {
+      notifyInfo(
+        "Génération multi-semestres",
+        `Génération de ${semesterIds.length} semestre(s) pour ${excelData.length} étudiant(s)...`
+      );
+
+      const allResults = new Map<string, { blob: Blob; fileName: string; semesterName: string }>();
+
+      // Pour chaque semestre sélectionné
+      for (const semesterId of semesterIds) {
+        const semester = currentConfig.semesters.find(s => s.id === semesterId);
+        if (!semester) continue;
+
+        notifyInfo("Génération", `Traitement du semestre: ${semester.name}...`);
+
+        // Préparer les données pour ce semestre
+        const preparedData = [];
+        for (const student of excelData) {
+          try {
+            // Utiliser prepareStudentData avec le semestre actuel
+            const prepared = prepareStudentData(student);
+            if (!prepared) continue;
+
+            const effectiveSettings = {
+              ...settings,
+              demoMode: isDemoMode,
+              encryptionEnabled: encryptionEnabled,
+              ...(currentConfig?.theme && { theme: currentConfig.theme })
+            };
+
+            preparedData.push({
+              student: prepared,
+              settings: effectiveSettings,
+              config: currentConfig
+            });
+          } catch (error) {
+            console.error(`Erreur pour l'étudiant ${student.MATRICULE}:`, error);
+          }
+        }
+
+        // Générer les PDFs pour ce semestre
+        const results = await processBatch(
+          preparedData,
+          (data) => window.ipcRenderer.invoke('generate-transcript-pdf', data)
+        );
+
+        // Ajouter les résultats avec le nom du semestre
+        results.forEach((blob, fileName) => {
+          allResults.set(
+            `${semester.name}/${fileName}`,
+            {
+              blob,
+              fileName,
+              semesterName: semester.name
+            }
+          );
+        });
+
+        notifySuccess("Génération", `Semestre "${semester.name}" terminé (${results.size} relevés)`);
+      }
+
+      // Créer une archive ZIP avec organisation par semestre
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      // Organiser par semestre
+      const semesterFolders = new Map<string, any>();
+
+      allResults.forEach((data, path) => {
+        const semesterName = data.semesterName;
+
+        if (!semesterFolders.has(semesterName)) {
+          semesterFolders.set(semesterName, zip.folder(semesterName));
+        }
+
+        const folder = semesterFolders.get(semesterName);
+        folder.file(data.fileName, data.blob);
+      });
+
+      // Générer le ZIP final
+      const zipBlob = await zip.generateAsync({
+        type: 'blob',
+        compression: useCompression ? 'DEFLATE' : 'STORE',
+        compressionOptions: { level: 6 }
+      });
+
+      // Télécharger
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      const timestamp = new Date().toISOString().split('T')[0];
+      const encryptionSuffix = encryptionEnabled ? '_compact' : '';
+      link.download = `releves_multi_semestres_${timestamp}${encryptionSuffix}.zip`;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      // Sauvegarder les infos du fichier
+      if (currentFileName) {
+        saveExcelFileInfo(currentFileName, columnMapping, sessionMapping);
+      }
+
+      notifySuccess(
+        "Génération terminée",
+        `${allResults.size} relevé(s) générés pour ${semesterIds.length} semestre(s)`
+      );
+
+    } catch (error) {
+      console.error("Erreur lors de la génération multi-semestres:", error);
+      notifyError("Erreur", `Erreur lors de la génération: ${error.message}`);
+    }
+  }, [currentConfig, excelData, mappingComplete, prepareStudentData, settings, isDemoMode, encryptionEnabled, processBatch, useCompression, currentFileName, columnMapping, sessionMapping, saveExcelFileInfo, notifyInfo, notifySuccess, notifyError]);
+
   // Keyboard shortcuts
   useHotkeys('ctrl+p', () => handlePreviewReleve(), [handlePreviewReleve]);
   useHotkeys('ctrl+g', () => handleGenerateSelected(), [handleGenerateSelected]);
@@ -918,13 +1536,13 @@ export const ReleveGenerator: React.FC = () => {
   // Fonction pour vérifier si les boutons doivent être activés
   const areButtonsEnabled = useCallback(() => {
     return (
-      !processingState.isLoading && 
-      selectedConfigId && 
-      selectedSemesterId && 
-      mappingComplete && 
+      !processingState.isLoading &&
+      selectedConfigId &&
+      (selectedSemesterId || selectedMultiSemesterIds.length > 0) &&
+      mappingComplete &&
       excelData.length > 0
     );
-  }, [processingState.isLoading, selectedConfigId, selectedSemesterId, mappingComplete, excelData.length]); 
+  }, [processingState.isLoading, selectedConfigId, selectedSemesterId, selectedMultiSemesterIds.length, mappingComplete, excelData.length]); 
 
   // Fonction pour gérer la sélection des étudiants
   const handleStudentSelectionChange = useCallback((matricules: string[]) => {
@@ -963,12 +1581,19 @@ export const ReleveGenerator: React.FC = () => {
   return (
     <div className="container mx-auto">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
-          <TabsTrigger value="mapping" disabled={!selectedConfigId || !selectedSemesterId}>
+          <TabsTrigger value="mapping" disabled={!selectedConfigId || (!selectedSemesterId && selectedMultiSemesterIds.length === 0)}>
             Correspondance
             {validationResult && !validationResult.isValid && (
               <AlertTriangle className="ml-2 h-4 w-4 text-red-500" />
+            )}
+            {/* NOUVEAU: Indicateur multi-semestre */}
+            {selectedMultiSemesterIds.length > 0 && (
+              <Badge variant="default" className="ml-2 text-xs bg-purple-600">
+                <Layers className="h-3 w-3 mr-1" />
+                {selectedMultiSemesterIds.length} sem.
+              </Badge>
             )}
             {/* NOUVEAU: Indicateur de sessions */}
             {sessionStats.totalSessionColumns > 0 && (
@@ -980,6 +1605,15 @@ export const ReleveGenerator: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="selection" disabled={!mappingComplete || excelData.length === 0}>
             Sélection ({selectedStudentMatricules.length})
+          </TabsTrigger>
+          <TabsTrigger value="multi-semester" disabled={selectedMultiSemesterIds.length === 0}>
+            <Layers className="h-4 w-4 mr-1" />
+            Multi-semestres
+            {selectedMultiSemesterIds.length > 0 && (
+              <Badge variant="default" className="ml-2 text-xs bg-blue-600">
+                {selectedMultiSemesterIds.length}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="preview" disabled={!previewContentUrl}>
             Prévisualisation
@@ -1214,6 +1848,30 @@ export const ReleveGenerator: React.FC = () => {
                     />
                   )}
 
+                  {/* Indicateur de fichier mémorisé */}
+                  {currentConfig?.lastUsedExcelFile && (
+                    <Alert className="bg-blue-50 border-blue-200">
+                      <FileText className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-blue-800">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <strong>Fichier mémorisé :</strong> {currentConfig.lastUsedExcelFile.fileName}
+                            <div className="text-xs text-blue-600 mt-1">
+                              Dernière utilisation : {new Date(currentConfig.lastUsedExcelFile.lastUsed).toLocaleString('fr-FR')}
+                              {currentConfig.lastUsedExcelFile.columnMapping && (
+                                <span className="ml-2">• Mapping sauvegardé : {Object.keys(currentConfig.lastUsedExcelFile.columnMapping).length} EC(s)</span>
+                              )}
+                            </div>
+                          </div>
+                          <Badge variant="secondary" className="bg-blue-100">
+                            <Info className="h-3 w-3 mr-1" />
+                            Auto-mapping activé
+                          </Badge>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   <FileUploader
                     onFileLoaded={handleFileLoadedWithMapping}
                     onError={(error) => {
@@ -1326,14 +1984,17 @@ export const ReleveGenerator: React.FC = () => {
                               Sélectionner les étudiants
                             </Button>
 
-                            <Button 
+                            <Button
                               onClick={() => handlePreviewReleve()}
                               variant="secondary"
                               disabled={!areButtonsEnabled()}
                             >
                               <Eye className="mr-2 h-4 w-4" />
                               {encryptionEnabled && <ShieldCheck className="mr-1 h-3 w-3" />}
-                              Prévisualiser
+                              {selectedMultiSemesterIds.length > 0
+                                ? `Prévisualiser les relevés de chaque semestre`
+                                : 'Prévisualiser'
+                              }
                             </Button>
 
                             <Button
@@ -1342,9 +2003,12 @@ export const ReleveGenerator: React.FC = () => {
                             >
                               <Download className="mr-2 h-4 w-4" />
                               {encryptionEnabled && <ShieldCheck className="mr-1 h-3 w-3" />}
-                              {selectedStudentMatricules.length > 0 
-                                ? `Générer (${selectedStudentMatricules.length})` 
-                                : 'Générer tous les relevés'
+                              {selectedMultiSemesterIds.length > 0
+                                ? `Générer les relevés de tous les semestres`
+                                : (selectedStudentMatricules.length > 0
+                                  ? `Générer (${selectedStudentMatricules.length})`
+                                  : 'Générer tous les relevés'
+                                )
                               }
                             </Button>
                           </>
@@ -1359,10 +2023,17 @@ export const ReleveGenerator: React.FC = () => {
             <TabsContent value="mapping">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 flex-wrap">
                     Correspondance des colonnes
                     {validationResult && !validationResult.isValid && (
                       <AlertTriangle className="h-5 w-5 text-orange-500" />
+                    )}
+                    {/* NOUVEAU: Indicateur multi-semestre dans le titre */}
+                    {selectedMultiSemesterIds.length > 0 && (
+                      <Badge variant="default" className="bg-purple-600">
+                        <Layers className="h-4 w-4 mr-1" />
+                        Mode multi-semestres ({selectedMultiSemesterIds.length} semestres)
+                      </Badge>
                     )}
                     {/* NOUVEAU: Indicateur de sessions dans le titre */}
                     {sessionStats.totalSessionColumns > 0 && (
@@ -1372,8 +2043,17 @@ export const ReleveGenerator: React.FC = () => {
                       </Badge>
                     )}
                   </CardTitle>
+                  {selectedMultiSemesterIds.length > 0 && (
+                    <Alert className="bg-purple-50 border-purple-200 mt-2">
+                      <Info className="h-4 w-4 text-purple-600" />
+                      <AlertDescription className="text-purple-800 text-sm">
+                        <strong>Mode multi-semestres activé :</strong> Vous configurez la correspondance pour {selectedMultiSemesterIds.length} semestre(s).
+                        Les ECs de tous les semestres sélectionnés sont affichés ci-dessous.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   {validationResult && !validationResult.isValid && (
-                    <div className="text-sm text-orange-600">
+                    <div className="text-sm text-orange-600 mt-2">
                       Des colonnes sont manquantes. Configurez la correspondance ou corrigez votre fichier Excel.
                     </div>
                   )}
@@ -1396,7 +2076,7 @@ export const ReleveGenerator: React.FC = () => {
 
             <TabsContent value="selection">
               <StudentSelector
-                students={excelData}
+                students={preparedStudentsForDisplay}
                 selectedStudents={selectedStudentMatricules}
                 onSelectionChange={handleStudentSelectionChange}
                 onPreview={handlePreviewStudent}
@@ -1405,6 +2085,41 @@ export const ReleveGenerator: React.FC = () => {
                 isLoading={processingState.isLoading}
                 additionalInfo={`${encryptionEnabled ? "Chiffrement compact activé" : "Sans chiffrement"}${sessionStats.totalSessionColumns > 0 ? ` • ${sessionStats.totalSessionColumns} session(s)` : ''}`}
               />
+            </TabsContent>
+
+            <TabsContent value="multi-semester">
+              <div className="space-y-4">
+                {/* Alert pour indiquer d'aller à la correspondance */}
+                {selectedMultiSemesterIds.length > 0 && !mappingComplete && (
+                  <Alert className="bg-orange-50 border-orange-200">
+                    <AlertCircle className="h-4 w-4 text-orange-600" />
+                    <AlertDescription className="text-orange-800">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <strong>Correspondance requise :</strong> Vous avez sélectionné {selectedMultiSemesterIds.length} semestre(s).
+                          <br />
+                          Veuillez configurer la correspondance des colonnes pour tous les ECs.
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActiveTab("mapping")}
+                          className="border-orange-300"
+                        >
+                          Aller à la correspondance
+                        </Button>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <MultiSemesterGenerator
+                  config={currentConfig}
+                  onGenerateMultiple={handleGenerateMultipleSemesters}
+                  onSemesterSelectionChange={setSelectedMultiSemesterIds}
+                  isLoading={processingState.isLoading}
+                />
+              </div>
             </TabsContent>
 
             <TabsContent value="preview">

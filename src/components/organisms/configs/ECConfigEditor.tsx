@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Weight, Calculator, Eye, Save, RotateCcw, Info, Link, Unlink, Plus, X, Layers, Clock, Palette, Copy } from "lucide-react";
+import { Settings, Weight, Calculator, Eye, Save, RotateCcw, Info, Link, Unlink, Plus, X, Layers, Clock, Palette, Copy, FileText, Download, Upload } from "lucide-react";
 import { ClassConfig, EC, UE, MergedSemesterConfig } from "./types";
 import { useToast } from "@/hooks/use-toast";
 import { ToastContainer } from "@/components/ui/toast";
@@ -387,8 +387,12 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
 
   // Fonction pour mettre à jour le thème personnalisé
   const handleThemeUpdate = (settings: any) => {
-    const updatedConfig = { ...config };
-    updatedConfig.theme = settings.theme;
+    // Créer une copie complète de la configuration avec le thème mis à jour
+    const updatedConfig: ClassConfig = {
+      ...config,
+      theme: settings.theme
+    };
+    // Passer la configuration complète pour éviter les pertes de données
     onConfigUpdate(updatedConfig);
     setSuccess("Thème personnalisé mis à jour");
     setTimeout(() => setSuccess(null), 3000);
@@ -411,6 +415,260 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
     setShowThemeDialog(false);
     setSuccess("Thème personnalisé supprimé - utilisation directe du thème global");
     setTimeout(() => setSuccess(null), 3000);
+  };
+
+  // NOUVEAU: Fonction pour exporter le thème personnalisé vers un fichier JSON
+  const exportTheme = () => {
+    if (!config.theme) {
+      toast.error("Erreur", "Aucun thème personnalisé à exporter");
+      return;
+    }
+
+    try {
+      const themeData = {
+        version: "1.0",
+        exportDate: new Date().toISOString(),
+        className: config.name,
+        theme: config.theme
+      };
+
+      const dataStr = JSON.stringify(themeData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `theme_${config.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setSuccess("Thème exporté avec succès");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (error) {
+      console.error("Erreur lors de l'export du thème:", error);
+      toast.error("Erreur", "Impossible d'exporter le thème");
+    }
+  };
+
+  // NOUVEAU: Fonction pour importer un thème depuis un fichier JSON
+  const importTheme = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const themeData = JSON.parse(text);
+
+      // Validation basique
+      if (!themeData.theme || !themeData.version) {
+        toast.error("Format invalide", "Le fichier ne contient pas un thème valide");
+        return;
+      }
+
+      // Appliquer le thème importé
+      const updatedConfig = { ...config };
+      updatedConfig.theme = themeData.theme;
+      onConfigUpdate(updatedConfig);
+
+      setSuccess(`Thème importé avec succès${themeData.className ? ` (depuis ${themeData.className})` : ''}`);
+      setTimeout(() => setSuccess(null), 3000);
+
+      // Réinitialiser l'input file
+      event.target.value = '';
+    } catch (error) {
+      console.error("Erreur lors de l'import du thème:", error);
+      toast.error("Erreur", "Impossible d'importer le thème - fichier invalide");
+    }
+  };
+
+  // NOUVEAU: Fonction pour générer des fake datas basées sur la structure de la classe
+  const generateFakeStudentData = () => {
+    const fakeFirstNames = ["Jean", "Marie", "Pierre", "Sophie", "Luc", "Emma", "Thomas", "Chloé"];
+    const fakeLastNames = ["Dupont", "Martin", "Bernard", "Dubois", "Laurent", "Simon", "Michel", "Lefebvre"];
+    const randomFirstName = fakeFirstNames[Math.floor(Math.random() * fakeFirstNames.length)];
+    const randomLastName = fakeLastNames[Math.floor(Math.random() * fakeLastNames.length)];
+
+    // Utiliser le premier semestre ou un semestre composite/fusionné
+    let selectedSemester = config.semesters[0];
+    const activeMergedSemester = config.mergedSemesters?.find(ms => ms.isActive);
+
+    // Préparer les cours basés sur la structure réelle de la classe
+    const courses: any[] = [];
+
+    if (activeMergedSemester) {
+      // Traiter les semestres fusionnés
+      activeMergedSemester.semesterIds.forEach(semesterId => {
+        const semester = config.semesters.find(s => s.id === semesterId);
+        if (semester) {
+          semester.ues.forEach(ue => {
+            ue.ecs.forEach(ec => {
+              const noteBase = ec.noteBase || 20;
+              const displayBase = ec.displayBase || 20;
+              const fakeGrade = 10 + Math.random() * 10; // Entre 10 et 20
+              const displayGrade = (fakeGrade * displayBase) / noteBase;
+
+              courses.push({
+                CODE: ue.code || `UE-${ue.id.slice(0,4)}`,
+                INTITULE: ue.name,
+                EC_TITRE: ec.name,
+                NOTE: displayGrade,
+                NOTE_ORIGINAL: fakeGrade,
+                NOTE_BASE: noteBase,
+                DISPLAY_BASE: displayBase,
+                WEIGHT: ec.weight || 1,
+                UE_CREDIT: ue.credits || 0,
+                UE_ID: ue.id,
+                UE_AVERAGE: 0,
+                UE_DISPLAY_BASE: ue.displayBase || 20,
+                SESSION: config.sessionDisplayFormat === 'full' ? 'Normale 2024' : 'N/2024',
+                SHOW_SESSION: config.displaySessions !== false
+              });
+            });
+          });
+        }
+      });
+    } else if (selectedSemester) {
+      // Traiter un semestre simple
+      selectedSemester.ues.forEach(ue => {
+        ue.ecs.forEach(ec => {
+          const noteBase = ec.noteBase || 20;
+          const displayBase = ec.displayBase || 20;
+          const fakeGrade = 10 + Math.random() * 10; // Entre 10 et 20
+          const displayGrade = (fakeGrade * displayBase) / noteBase;
+
+          courses.push({
+            CODE: ue.code || `UE-${ue.id.slice(0,4)}`,
+            INTITULE: ue.name,
+            EC_TITRE: ec.name,
+            NOTE: displayGrade,
+            NOTE_ORIGINAL: fakeGrade,
+            NOTE_BASE: noteBase,
+            DISPLAY_BASE: displayBase,
+            WEIGHT: ec.weight || 1,
+            UE_CREDIT: ue.credits || 0,
+            UE_ID: ue.id,
+            UE_AVERAGE: 0,
+            UE_DISPLAY_BASE: ue.displayBase || 20,
+            SESSION: config.sessionDisplayFormat === 'full' ? 'Normale 2024' : 'N/2024',
+            SHOW_SESSION: config.displaySessions !== false
+          });
+        });
+      });
+    }
+
+    // Calculer les moyennes UE avec pondération
+    const ueMap = new Map();
+    courses.forEach(course => {
+      if (!ueMap.has(course.UE_ID)) {
+        const ueCourses = courses.filter(c => c.UE_ID === course.UE_ID);
+        let totalWeightedPoints = 0;
+        let totalWeights = 0;
+
+        ueCourses.forEach(c => {
+          const normalizedGrade = (c.NOTE_ORIGINAL * 20) / c.NOTE_BASE;
+          totalWeightedPoints += normalizedGrade * c.WEIGHT;
+          totalWeights += c.WEIGHT;
+        });
+
+        const ueAverage = totalWeights > 0 ? totalWeightedPoints / totalWeights : 0;
+        const displayAverage = (ueAverage * course.UE_DISPLAY_BASE) / 20;
+
+        ueMap.set(course.UE_ID, displayAverage);
+      }
+    });
+
+    // Assigner les moyennes UE
+    courses.forEach(course => {
+      course.UE_AVERAGE = ueMap.get(course.UE_ID) || 0;
+    });
+
+    const totalCredits = activeMergedSemester ? activeMergedSemester.creditsRequired : (selectedSemester?.creditsRequired || 30);
+    const semesterName = activeMergedSemester ? activeMergedSemester.name : (selectedSemester?.name || "Semestre 1");
+
+    return {
+      NOM: randomLastName.toUpperCase(),
+      PRENOM: randomFirstName,
+      MATRICULE: `DEMO${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+      "DATE DE NAISSANCE": "01/01/2000",
+      "LIEU DE NAISSANCE": "Paris",
+      CYCLE: config.cycle || "Licence",
+      "ANNEE ACADÉMIQUE": config.academicYear || "2024-2025",
+      FILIERE: config.filiere || "Informatique",
+      NIVEAU: config.niveau || "1",
+      SEMESTRE: semesterName,
+      OPTION: config.option || "",
+      COURSES: courses,
+      TOTAL_CREDITS: totalCredits,
+      DISPLAY_SESSIONS: config.displaySessions !== false,
+      SESSION_FORMAT: config.sessionDisplayFormat || 'short'
+    };
+  };
+
+  // NOUVEAU: Fonction pour prévisualiser le thème avec fake datas
+  const handlePreviewTheme = async () => {
+    try {
+      if (!config.theme) {
+        toast.error("Erreur", "Aucun thème personnalisé à prévisualiser");
+        return;
+      }
+
+      if (!config.semesters || config.semesters.length === 0) {
+        toast.error("Erreur", "Aucun semestre configuré. Ajoutez d'abord des semestres, UEs et ECs.");
+        return;
+      }
+
+      // Vérifier qu'il y a au moins une UE avec des ECs
+      const hasECs = config.semesters.some(s => s.ues.some(ue => ue.ecs.length > 0));
+      if (!hasECs) {
+        toast.error("Erreur", "Aucun EC configuré. Ajoutez des ECs aux UEs pour générer une prévisualisation.");
+        return;
+      }
+
+      const fakeStudent = generateFakeStudentData();
+
+      if (!window.transcriptRenderer) {
+        throw new Error("Impossible de communiquer avec le processus de rendu HTML");
+      }
+
+      // Récupérer les paramètres globaux et fusionner avec le thème personnalisé
+      const storedSettings = localStorage.getItem('settings');
+      const globalSettings = storedSettings ? JSON.parse(storedSettings) : {};
+
+      const isDemoMode = localStorage.getItem('demo_mode') === 'true';
+
+      const effectiveSettings = {
+        ...globalSettings,
+        theme: config.theme,
+        demoMode: isDemoMode,
+        encryptionEnabled: false // Pas de chiffrement pour la prévisualisation
+      };
+
+      const renderParams = {
+        student: fakeStudent,
+        settings: effectiveSettings,
+        config: config
+      };
+
+      const htmlContent = await window.transcriptRenderer.renderHTML(renderParams);
+
+      if (!htmlContent) {
+        throw new Error("Aucun contenu HTML reçu");
+      }
+
+      const success = await window.ipcRenderer.invoke('show-preview', htmlContent,
+        `Prévisualisation du thème - ${fakeStudent.NOM} ${fakeStudent.PRENOM} (Données fictives)`);
+
+      if (!success) {
+        throw new Error("Impossible d'ouvrir la fenêtre de prévisualisation");
+      }
+
+      toast.success("Prévisualisation", "Aperçu du thème généré avec des données fictives");
+    } catch (error) {
+      console.error('Erreur de prévisualisation du thème:', error);
+      toast.error("Erreur", `Erreur lors de la prévisualisation: ${error.message || 'Erreur inconnue'}`);
+    }
   };
 
   if (!config.semesters.length) {
@@ -491,7 +749,7 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
               <Palette className="h-5 w-5" />
               Thème personnalisé
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {config.theme ? (
                 <>
                   <Button
@@ -501,6 +759,15 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
                   >
                     <Settings className="h-4 w-4 mr-1" />
                     Modifier le thème
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={exportTheme}
+                    title="Exporter le thème personnalisé vers un fichier JSON"
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Exporter
                   </Button>
                   <Button
                     variant="ghost"
@@ -522,6 +789,24 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
                     <Copy className="h-4 w-4 mr-1" />
                     Copier le thème global
                   </Button>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={importTheme}
+                      className="hidden"
+                      id="theme-import-input"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById('theme-import-input')?.click()}
+                      title="Importer un thème depuis un fichier JSON"
+                    >
+                      <Upload className="h-4 w-4 mr-1" />
+                      Importer
+                    </Button>
+                  </div>
                   <Button
                     variant="default"
                     size="sm"
@@ -1228,21 +1513,32 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
               <ThemeEditor
                 settings={{ theme: config.theme }}
                 onSave={handleThemeUpdate}
-                onPreview={() => {}}
+                onPreview={handlePreviewTheme}
                 showAllTabs={true}
               />
             )}
           </div>
           <DialogFooter className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={resetTheme}
-              title="Charger le thème global actuel (vous pouvez ensuite le modifier)"
-            >
-              <RotateCcw className="h-4 w-4 mr-1" />
-              Charger le thème global
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetTheme}
+                title="Charger le thème global actuel (vous pouvez ensuite le modifier)"
+              >
+                <RotateCcw className="h-4 w-4 mr-1" />
+                Charger le thème global
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePreviewTheme}
+                title="Prévisualiser le thème avec des données fictives basées sur votre classe"
+              >
+                <FileText className="h-4 w-4 mr-1" />
+                Prévisualiser
+              </Button>
+            </div>
             <Button onClick={() => setShowThemeDialog(false)}>
               Fermer
             </Button>
