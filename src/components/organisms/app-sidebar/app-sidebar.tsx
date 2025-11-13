@@ -336,7 +336,7 @@ export function AppSidebar() {
       </span>
     </div>
     <div className="mt-2 text-xs text-gray-400 dark:text-gray-500">
-      Version 1.0.0 {isDemoMode && "- DÉMO"}
+      Version 2.0.1 By Cédric TEFOYE{isDemoMode && "- DÉMO"}
     </div>
   </div>
 </SidebarFooter>

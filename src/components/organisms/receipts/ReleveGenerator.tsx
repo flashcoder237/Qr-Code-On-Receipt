@@ -8,6 +8,7 @@ import { Button } from "../../ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { useHotkeys } from "react-hotkeys-hook";
 import { Eye, Download, AlertCircle, Layers, CheckCircle, Users, RefreshCw, AlertTriangle, Shield, ShieldCheck, Info, Clock, Archive, FileText, Files, Settings } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
@@ -70,6 +71,11 @@ export const ReleveGenerator: React.FC = () => {
   const [showMultiSemester, setShowMultiSemester] = useState(false);
   const [currentFileName, setCurrentFileName] = useState<string | null>(null);
   const [selectedMultiSemesterIds, setSelectedMultiSemesterIds] = useState<string[]>([]);
+
+  // NOUVEAU: États pour gérer le workbook Excel chargé et les feuilles disponibles
+  const [loadedWorkbook, setLoadedWorkbook] = useState<any>(null);
+  const [availableExcelSheets, setAvailableExcelSheets] = useState<string[]>([]);
+  const [currentExcelFileName, setCurrentExcelFileName] = useState<string>('');
 
   // NOUVEAU: Option pour activer/désactiver le chiffrement compact pour les relevés
   const [encryptionEnabled, setEncryptionEnabled] = useLocalStorage("releve-encryption-enabled", true);
@@ -1682,164 +1688,107 @@ export const ReleveGenerator: React.FC = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* NOUVEAU: Option de chiffrement compact pour les relevés */}
-                  <Card className="bg-blue-50 border-blue-200">
-                    <CardContent className="p-4">
+                  {/* Sécurité et Export - Fusionnés */}
+                  <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-orange-50">
+                    <CardContent className="p-3 space-y-3">
+                      {/* Ligne 1: Chiffrement */}
                       <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium text-blue-900 mb-1">Sécurité des QR Codes pour Relevés (Compact)</h4>
-                          <p className="text-sm text-blue-700">
-                            Chiffrement compact basé uniquement sur le matricule - QR codes plus petits et plus lisibles pour les relevés
-                          </p>
-                          <p className="text-xs text-blue-600 mt-1">
-                            🔑 Clé de chiffrement: matricule • 📊 Taille: 50-80 caractères chiffrés
-                          </p>
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-blue-600" />
+                          <div>
+                            <Label htmlFor="encryption-toggle-releve" className="text-sm font-medium text-blue-900">
+                              Chiffrement QR Compact
+                            </Label>
+                            <p className="text-xs text-blue-700">Basé sur le matricule (50-80 car.)</p>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <Label htmlFor="encryption-toggle-releve" className="text-sm font-medium">
-                            Chiffrement
+                        <Switch
+                          id="encryption-toggle-releve"
+                          checked={encryptionEnabled}
+                          onCheckedChange={(checked) => {
+                            setEncryptionEnabled(checked);
+                            notifySuccess("Sécurité", checked ? "Chiffrement compact activé" : "Chiffrement désactivé");
+                            if (excelData.length > 0) setTimeout(() => analyzeQRCodeSizesForReleve(excelData[0]), 500);
+                          }}
+                        />
+                      </div>
+
+                      <Separator />
+
+                      {/* Ligne 2: Format d'export + Nommage */}
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-1">
+                          <Settings className="h-3 w-3 text-orange-600" />
+                          <Label className="text-xs font-medium text-orange-800">Format:</Label>
+                          <div className="flex gap-1">
+                            <Button
+                              variant={exportFormat === 'zip' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setExportFormat('zip')}
+                              className="h-6 px-1.5 text-xs"
+                              title="Archive ZIP"
+                            >
+                              <Archive className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant={exportFormat === 'individual' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setExportFormat('individual')}
+                              className="h-6 px-1.5 text-xs"
+                              title="Fichiers séparés"
+                            >
+                              <Files className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant={exportFormat === 'single' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setExportFormat('single')}
+                              className="h-6 px-1.5 text-xs"
+                              title="PDF unique"
+                            >
+                              <FileText className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <Label className="text-xs font-medium text-orange-800">Noms:</Label>
+                          <div className="flex gap-1">
+                            <Button
+                              variant={nameFormat === 'default' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setNameFormat('default')}
+                              className="h-6 px-2 text-xs"
+                            >
+                              Standard
+                            </Button>
+                            <Button
+                              variant={nameFormat === 'detailed' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setNameFormat('detailed')}
+                              className="h-6 px-2 text-xs"
+                            >
+                              Détaillé
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Ligne 3: Compression ZIP (conditionnel) */}
+                      {exportFormat === 'zip' && (
+                        <div className="flex items-center justify-between bg-orange-100 px-2 py-1 rounded">
+                          <Label htmlFor="compression-toggle" className="text-xs font-medium text-orange-900 flex items-center gap-1">
+                            <Archive className="h-3 w-3" />
+                            Compression ZIP
                           </Label>
                           <Switch
-                            id="encryption-toggle-releve"
-                            checked={encryptionEnabled}
-                            onCheckedChange={(checked) => {
-                              setEncryptionEnabled(checked);
-                              const message = checked ? "Chiffrement compact activé pour les relevés" : "Chiffrement désactivé pour les relevés";
-                              notifySuccess("Sécurité", message);
-                              
-                              // Analyser l'impact sur la taille si des données sont déjà chargées
-                              if (excelData.length > 0) {
-                                setTimeout(() => analyzeQRCodeSizesForReleve(excelData[0]), 500);
-                              }
-                            }}
+                            id="compression-toggle"
+                            checked={useCompression}
+                            onCheckedChange={setUseCompression}
+                            className="scale-75"
                           />
                         </div>
-                      </div>
-                      {encryptionEnabled && (
-                        <div className="mt-3 text-xs text-blue-600">
-                          <Shield className="h-3 w-3 inline mr-1" />
-                          QR codes compacts avec chiffrement AES-128-ECB basé sur le matricule
-                        </div>
                       )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Options d'Export - Version compacte */}
-                  <Card className="border-orange-200 bg-orange-50">
-                    <CardContent className="p-3">
-                      <div className="space-y-3">
-                        {/* En-tête avec icône */}
-                        <div className="flex items-center gap-2">
-                          <Settings className="h-4 w-4 text-orange-600" />
-                          <h4 className="font-medium text-orange-900 text-sm">Options d'Export</h4>
-                        </div>
-
-                        {/* Format d'export + Nommage en une ligne */}
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-1">
-                            <Label className="text-xs font-medium text-orange-800 min-w-0">Format:</Label>
-                            <div className="flex gap-1">
-                              <Button
-                                variant={exportFormat === 'zip' ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setExportFormat('zip')}
-                                className="h-7 px-2 text-xs"
-                                title="Archive ZIP"
-                              >
-                                <Archive className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant={exportFormat === 'individual' ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setExportFormat('individual')}
-                                className="h-7 px-2 text-xs"
-                                title="Fichiers séparés"
-                              >
-                                <Files className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant={exportFormat === 'single' ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setExportFormat('single')}
-                                className="h-7 px-2 text-xs"
-                                title="PDF unique"
-                              >
-                                <FileText className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <Label className="text-xs font-medium text-orange-800 min-w-0">Noms:</Label>
-                            <div className="flex gap-1">
-                              <Button
-                                variant={nameFormat === 'default' ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setNameFormat('default')}
-                                className="h-7 px-2 text-xs"
-                                title="Standard: NOM_PRENOM_MATRICULE"
-                              >
-                                Standard
-                              </Button>
-                              <Button
-                                variant={nameFormat === 'detailed' ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setNameFormat('detailed')}
-                                className="h-7 px-2 text-xs"
-                                title="Détaillé: NOM_PRENOM_MATRICULE_NIVEAU_SEMESTRE_FILIERE"
-                              >
-                                Détaillé
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Compression ZIP (uniquement si ZIP sélectionné) */}
-                        {exportFormat === 'zip' && (
-                          <div className="flex items-center justify-between bg-orange-100 px-2 py-1 rounded text-xs">
-                            <Label htmlFor="compression-toggle" className="text-orange-900 font-medium flex items-center gap-1">
-                              <Archive className="h-3 w-3" />
-                              Compression ZIP
-                            </Label>
-                            <Switch
-                              id="compression-toggle"
-                              checked={useCompression}
-                              onCheckedChange={setUseCompression}
-                              className="scale-75"
-                            />
-                          </div>
-                        )}
-
-                        {/* Aperçu compact avec badges */}
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="text-orange-700 font-medium">Aperçu:</span>
-                          <div className="flex items-center gap-1">
-                            {exportFormat === 'zip' && (
-                              <>
-                                <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                                  <Archive className="h-2.5 w-2.5 mr-1" />
-                                  ZIP {useCompression ? '' : '(non compressé)'}
-                                </Badge>
-                              </>
-                            )}
-                            {exportFormat === 'individual' && (
-                              <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                                <Files className="h-2.5 w-2.5 mr-1" />
-                                Fichiers séparés
-                              </Badge>
-                            )}
-                            {exportFormat === 'single' && (
-                              <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                                <FileText className="h-2.5 w-2.5 mr-1" />
-                                PDF combiné
-                              </Badge>
-                            )}
-                            <Badge variant="outline" className="h-5 px-1.5 text-xs">
-                              {nameFormat === 'detailed' ? 'Noms détaillés' : 'Noms standards'}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
                     </CardContent>
                   </Card>
 
@@ -1894,6 +1843,14 @@ export const ReleveGenerator: React.FC = () => {
                     isLoading={processingState.isLoading}
                     documentType="releve"
                     allowPartialImport={true}
+                    externalWorkbook={loadedWorkbook}
+                    externalSheets={availableExcelSheets}
+                    externalFileName={currentExcelFileName}
+                    onWorkbookLoaded={(wb, sheets, fileName) => {
+                      setLoadedWorkbook(wb);
+                      setAvailableExcelSheets(sheets);
+                      setCurrentExcelFileName(fileName);
+                    }}
                   />
 
                   {error && (
@@ -2147,125 +2104,7 @@ export const ReleveGenerator: React.FC = () => {
         </AnimatePresence>
       </Tabs>
 
-      {/* Informations sur le chiffrement compact en mode développement */}
-      {process.env.NODE_ENV === 'development' && excelData.length > 0 && (
-        <Card className="border-dashed border-gray-300 mt-6">
-          <CardContent className="p-4">
-            <h4 className="font-medium mb-2">🧪 Outils de développement - Chiffrement Compact (Relevés)</h4>
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const testStudent = sanitizeStudentData(excelData[0]);
-                  console.log('🧹 Données sanitisées pour relevé:', testStudent);
-                }}
-              >
-                Test sanitisation
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => testStudentEncryptionCompactForReleve(excelData[0])}
-              >
-                Test chiffrement compact
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  try {
-                    const testStudent = sanitizeStudentData(excelData[0]);
-                    const qrCode = await generateQrCodeBase64(testStudent, 'releve', encryptionEnabled);
-                    console.log('📱 QR Code relevé généré:', qrCode.substring(0, 50) + '...');
-                    
-                    // Analyser la taille
-                    const sizeAnalysis = getQRCodeSizeEstimate(testStudent, 'releve', encryptionEnabled);
-                    console.log('📊 Analyse de taille pour relevé:', sizeAnalysis);
-                    
-                    notifySuccess("Test", `QR Code relevé généré avec succès (${sizeAnalysis.totalContentLength} caractères)`);
-                  } catch (error) {
-                    console.error('❌ Erreur QR relevé:', error);
-                    notifyError("Test", "Erreur lors de la génération du QR Code pour relevé");
-                  }
-                }}
-              >
-                Test QR Code compact
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (excelData.length > 0) {
-                    const sizeAnalysis = getQRCodeSizeEstimate(excelData[0], 'releve', encryptionEnabled);
-                    console.log('📊 Analyse complète de taille pour relevé:', sizeAnalysis);
-                    
-                    console.log('📊 État actuel du système (Relevés):');
-                    console.log('- Données Excel:', excelData.length, 'étudiants');
-                    console.log('- Chiffrement compact:', encryptionEnabled);
-                    console.log('- Type de document: Relevé');
-                    console.log('- Taille QR estimée:', sizeAnalysis.estimatedQRSize);
-                    console.log('- Longueur contenu:', sizeAnalysis.totalContentLength, 'caractères');
-                    console.log('- Configuration:', selectedConfigId);
-                    console.log('- Semestre:', selectedSemesterId);
-                    console.log('- Sessions détectées:', sessionStats.totalSessionColumns);
-                    console.log('- Sessions mappées:', sessionStats.mappedSessions);
-                  }
-                }}
-              >
-                Analyse de taille
-              </Button>
-              {/* NOUVEAU: Bouton de test pour les sessions */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  console.log('🧪 Test du système de sessions:');
-                  console.log('- Colonnes de session détectées:', excelColumns.filter(col => col.startsWith('S/')));
-                  console.log('- Mapping des sessions:', sessionMapping);
-                  console.log('- Statistiques:', sessionStats);
-                  
-                  // Tester l'extraction de session sur le premier étudiant
-                  if (excelData.length > 0) {
-                    const testStudent = excelData[0];
-                    console.log('- Test extraction session pour:', testStudent.NOM, testStudent.PRENOM);
-                    
-                    Object.entries(sessionMapping).forEach(([ecId, sessionCol]) => {
-                      if (sessionCol && sessionCol !== "null") {
-                        const sessionValue = testStudent[sessionCol];
-                        console.log(`  EC ${ecId} -> ${sessionCol} = ${sessionValue}`);
-                        
-                        const sessionInfo = extractSessionFromColumn(testStudent, sessionCol);
-                        console.log(`  Session extraite:`, sessionInfo);
-                      }
-                    });
-                  }
-                }}
-              >
-                Test sessions
-              </Button>
-            </div>
-            
-            {encryptionEnabled && excelData.length > 0 && (
-              <div className="mt-3 p-3 bg-green-50 rounded-md border border-green-200">
-                <h5 className="text-sm font-medium text-green-800 mb-2">🔐 Chiffrement Compact Activé (Relevés)</h5>
-                <div className="text-xs text-green-700 space-y-1">
-                  <p>• Clé basée uniquement sur le matricule de l'étudiant</p>
-                  <p>• Algorithme: AES-128-ECB (optimisé pour la compacité)</p>
-                  <p>• Taille chiffrée estimée: 50-80 caractères</p>
-                  <p>• QR codes plus petits et plus lisibles pour les relevés</p>
-                  <p>• Déchiffrement possible avec juste le matricule</p>
-                  <p>• Compatible avec l'application mobile de vérification</p>
-                  {sessionStats.totalSessionColumns > 0 && (
-                    <p>• Sessions détectées: {sessionStats.totalSessionColumns} (mappées: {sessionStats.mappedSessions})</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
+     
       {/* Indicateur de performance du chiffrement pour relevés */}
       {excelData.length > 0 && (
         <Card className="bg-gray-50 mt-4">

@@ -18,6 +18,12 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { toasts, toast, removeToast } = useToast();
 
+  // État pour stocker le workbook et permettre de changer de feuille
+  const [loadedWorkbook, setLoadedWorkbook] = React.useState<ExcelJS.Workbook | null>(null);
+  const [availableSheets, setAvailableSheets] = React.useState<string[]>([]);
+  const [selectedSheetIndex, setSelectedSheetIndex] = React.useState<number>(0);
+  const [uploadedFileName, setUploadedFileName] = React.useState<string>('');
+
   // Styles avancés avec gestion du texte améliorée
   const styles = {
     headerInfo: {
@@ -1042,7 +1048,8 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
     }
   };
 
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Fonction pour charger le fichier sans le traiter
+  const handleFileLoad = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -1051,21 +1058,60 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
       const buffer = await file.arrayBuffer();
       await workbook.xlsx.load(buffer);
 
-      // Trouver la feuille principale avec une logique améliorée
-      let worksheet = workbook.worksheets[0];
+      // Sauvegarder le workbook et lister les feuilles
+      setLoadedWorkbook(workbook);
+      setUploadedFileName(file.name);
+      const sheetNames = workbook.worksheets.map(ws => ws.name);
+      setAvailableSheets(sheetNames);
+
+      // Trouver la feuille principale par défaut
+      let defaultSheetIndex = 0;
       const priorityNames = ['config', 'modèle', 'template', 'données'];
-      
-      for (const ws of workbook.worksheets) {
+
+      for (let i = 0; i < workbook.worksheets.length; i++) {
+        const ws = workbook.worksheets[i];
         const wsNameLower = (ws.name || '').toLowerCase();
-        if (priorityNames.some(name => wsNameLower.includes(name)) && 
-            !wsNameLower.includes('instruction') && 
+        if (priorityNames.some(name => wsNameLower.includes(name)) &&
+            !wsNameLower.includes('instruction') &&
             !wsNameLower.includes('guide') &&
             !wsNameLower.includes('exemple') &&
             !wsNameLower.includes('résumé')) {
-          worksheet = ws;
+          defaultSheetIndex = i;
           break;
         }
       }
+
+      setSelectedSheetIndex(defaultSheetIndex);
+
+      console.log("✅ Fichier chargé:", file.name);
+      console.log("📋 Feuilles disponibles:", sheetNames);
+      console.log("🎯 État loadedWorkbook:", workbook ? "OK" : "NULL");
+      console.log("🎯 État availableSheets:", sheetNames);
+
+      toast.success(
+        "Fichier chargé",
+        `${sheetNames.length} feuille(s) trouvée(s). Sélectionnez la feuille à importer.`
+      );
+
+    } catch (error) {
+      console.error("❌ Erreur lors du chargement:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      toast.error(
+        "Erreur lors du chargement",
+        `${errorMessage} - Vérifiez le format du fichier (.xlsx)`
+      );
+    }
+  };
+
+  // Fonction pour traiter une feuille spécifique
+  const processSheet = async (sheetIndex: number) => {
+    if (!loadedWorkbook) {
+      toast.error("Aucun fichier chargé", "Veuillez d'abord charger un fichier Excel");
+      return;
+    }
+
+    try {
+      const worksheet = loadedWorkbook.worksheets[sheetIndex];
 
       const jsonData: any[] = [];
       const headers: string[] = [];
@@ -1211,9 +1257,6 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
 
       onImport(importedConfigs);
 
-      // Réinitialiser l'input
-      if (fileInputRef.current) fileInputRef.current.value = "";
-
       // Message de succès
       toast.success(
         "Import réussi !",
@@ -1225,9 +1268,18 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       toast.error(
         "Erreur lors de l'importation",
-        `${errorMessage} - Vérifiez le format du fichier (.xlsx), la structure des données et les droits d'accès`
+        `${errorMessage} - Vérifiez la structure des données`
       );
     }
+  };
+
+  // Fonction pour réinitialiser le chargement
+  const resetFileLoad = () => {
+    setLoadedWorkbook(null);
+    setAvailableSheets([]);
+    setSelectedSheetIndex(0);
+    setUploadedFileName('');
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // Fonctions utilitaires optimisées
@@ -1394,48 +1446,98 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
   return (
     <>
       <ToastContainer toasts={toasts} onClose={removeToast} position="top-right" />
-      <div className="flex gap-2 flex-wrap">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExportAll}
-          className="text-green-600 hover:text-green-700 hover:bg-green-50 whitespace-nowrap transition-colors duration-200"
-          title="Exporter toutes les configurations vers Excel avec styles avancés"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Exporter
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExportTemplate}
-          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 whitespace-nowrap transition-colors duration-200"
-          title="Télécharger un modèle Excel pré-formaté avec exemples"
-        >
-          <FileDown className="h-4 w-4 mr-2" />
-          Télécharger Modèle
-        </Button>
-
-        <div className="relative">
+      <div className="space-y-4">
+        <div className="flex gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 whitespace-nowrap transition-colors duration-200"
-            title="Importer des configurations depuis un fichier Excel"
+            onClick={handleExportAll}
+            className="text-green-600 hover:text-green-700 hover:bg-green-50 whitespace-nowrap transition-colors duration-200"
+            title="Exporter toutes les configurations vers Excel avec styles avancés"
           >
-            <Upload className="h-4 w-4 mr-2" />
-            Importer
+            <Download className="h-4 w-4 mr-2" />
+            Exporter
           </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={handleImport}
-            className="hidden"
-          />
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportTemplate}
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 whitespace-nowrap transition-colors duration-200"
+            title="Télécharger un modèle Excel pré-formaté avec exemples"
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Télécharger Modèle
+          </Button>
+
+          <div className="relative">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 whitespace-nowrap transition-colors duration-200"
+              title="Charger un fichier Excel"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              {loadedWorkbook ? "Changer de fichier" : "Charger un fichier"}
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileLoad}
+              className="hidden"
+            />
+          </div>
         </div>
+
+        {/* Interface de sélection de feuille */}
+        {loadedWorkbook && availableSheets.length > 0 && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileDown className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-900">
+                  Fichier chargé: {uploadedFileName}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetFileLoad}
+                className="text-xs text-gray-600 hover:text-gray-900"
+              >
+                ✕ Fermer
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Sélectionnez la feuille à importer ({availableSheets.length} feuille{availableSheets.length > 1 ? 's' : ''} disponible{availableSheets.length > 1 ? 's' : ''})
+              </label>
+              <select
+                value={selectedSheetIndex}
+                onChange={(e) => setSelectedSheetIndex(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                {availableSheets.map((sheetName, index) => (
+                  <option key={index} value={index}>
+                    {index + 1}. {sheetName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <Button
+              onClick={() => processSheet(selectedSheetIndex)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              size="sm"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Importer la feuille "{availableSheets[selectedSheetIndex]}"
+            </Button>
+          </div>
+        )}
       </div>
     </>
   );

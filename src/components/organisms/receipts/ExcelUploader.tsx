@@ -23,6 +23,11 @@ interface FileUploaderProps {
   documentType: 'releve' | 'attestation';
   allowPartialImport?: boolean;
   establishmentType?: string;
+  // NOUVEAU: Props pour gérer le workbook au niveau parent
+  externalWorkbook?: XLSX.WorkBook | null;
+  externalSheets?: string[];
+  externalFileName?: string;
+  onWorkbookLoaded?: (workbook: XLSX.WorkBook, sheets: string[], fileName: string) => void;
 }
 
 /**
@@ -131,7 +136,11 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   isLoading,
   documentType,
   allowPartialImport = false,
-  establishmentType
+  establishmentType,
+  externalWorkbook,
+  externalSheets,
+  externalFileName,
+  onWorkbookLoaded
 }) => {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [pendingData, setPendingData] = useState<{
@@ -141,13 +150,26 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     fileName: string;
   } | null>(null);
   const [showValidationDetails, setShowValidationDetails] = useState(false);
-  
-  // Nouveaux états pour la gestion des feuilles Excel
-  const [availableSheets, setAvailableSheets] = useState<string[]>([]);
+
+  // Utiliser les états externes si fournis, sinon utiliser les états locaux
+  const workbook = externalWorkbook !== undefined ? externalWorkbook : null;
+  const sheets = externalSheets !== undefined ? externalSheets : [];
+  const fileName = externalFileName !== undefined ? externalFileName : '';
+
+  // États locaux (utilisés seulement si pas de props externes)
+  const [localAvailableSheets, setLocalAvailableSheets] = useState<string[]>([]);
+  const [localPendingWorkbook, setLocalPendingWorkbook] = useState<XLSX.WorkBook | null>(null);
+  const [localPendingFileName, setLocalPendingFileName] = useState<string>('');
+
+  // Utiliser les valeurs appropriées
+  const availableSheets = externalSheets || localAvailableSheets;
+  const pendingWorkbook = externalWorkbook || localPendingWorkbook;
+  const pendingFileName = externalFileName || localPendingFileName;
+
   const [selectedSheet, setSelectedSheet] = useState<string>('');
-  const [pendingWorkbook, setPendingWorkbook] = useState<XLSX.WorkBook | null>(null);
-  const [pendingFileName, setPendingFileName] = useState<string>('');
-  const [showSheetSelector, setShowSheetSelector] = useState(false);
+
+  // Afficher le sélecteur si on a des feuilles disponibles (externes ou locales)
+  const showSheetSelector = (externalSheets && externalSheets.length > 0) || localAvailableSheets.length > 0;
 
   // Fonction pour traiter une feuille spécifique
   const processSheet = (workbook: XLSX.WorkBook, sheetName: string, fileName: string) => {
@@ -216,13 +238,14 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           onError(formatValidationErrorMessage(validation));
         }
       }
-      
-      // Réinitialiser la sélection de feuille
-      setShowSheetSelector(false);
-      setPendingWorkbook(null);
-      setAvailableSheets([]);
-      setSelectedSheet('');
-      
+
+      // Ne PAS réinitialiser le workbook et les feuilles - garder tout pour permettre le changement
+      // Garder showSheetSelector à true pour que le sélecteur reste visible
+      // setShowSheetSelector(false); // DÉSACTIVÉ
+      // setPendingWorkbook(null); // DÉSACTIVÉ
+      // setAvailableSheets([]; // DÉSACTIVÉ
+      // setSelectedSheet(''); // DÉSACTIVÉ
+
     } catch (error) {
       console.error('❌ Erreur lors du traitement de la feuille:', error);
       onError(`Erreur lors du traitement de la feuille: ${error instanceof Error ? error.message : String(error)}`);
@@ -239,11 +262,18 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       // Vérifier s'il y a plusieurs feuilles
       if (workbook.SheetNames.length > 1) {
         console.log('📋 Plusieurs feuilles détectées:', workbook.SheetNames);
-        setAvailableSheets(workbook.SheetNames);
-        setPendingWorkbook(workbook);
-        setPendingFileName(file.name);
+
+        // Si onWorkbookLoaded est fourni, envoyer le workbook au parent
+        if (onWorkbookLoaded) {
+          onWorkbookLoaded(workbook, workbook.SheetNames, file.name);
+        } else {
+          // Sinon utiliser les états locaux
+          setLocalAvailableSheets(workbook.SheetNames);
+          setLocalPendingWorkbook(workbook);
+          setLocalPendingFileName(file.name);
+        }
+
         setSelectedSheet(workbook.SheetNames[0]); // Sélectionner la première par défaut
-        setShowSheetSelector(true);
         return;
       }
 
@@ -257,11 +287,12 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       onError(errorMessage);
       setValidationResult(null);
       setPendingData(null);
-      // Réinitialiser les états de sélection de feuille
-      setShowSheetSelector(false);
-      setPendingWorkbook(null);
-      setPendingFileName('');
-      setAvailableSheets([]);
+      // Réinitialiser les états de sélection de feuille (seulement les locaux)
+      if (!onWorkbookLoaded) {
+        setLocalPendingWorkbook(null);
+        setLocalPendingFileName('');
+        setLocalAvailableSheets([]);
+      }
       setSelectedSheet('');
     }
   };
@@ -275,9 +306,12 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
   // Fonction pour annuler la sélection de feuille
   const cancelSheetSelection = () => {
-    setShowSheetSelector(false);
-    setPendingWorkbook(null);
-    setAvailableSheets([]);
+    if (!onWorkbookLoaded) {
+      // Mode local uniquement
+      setLocalPendingWorkbook(null);
+      setLocalAvailableSheets([]);
+      setLocalPendingFileName('');
+    }
     setSelectedSheet('');
   };
 
@@ -401,7 +435,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
               </label>
               <Select value={selectedSheet} onValueChange={setSelectedSheet}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Choisissez une feuille..." />
+                  <SelectValue placeholder="Choisissez une autre feuille..." />
                 </SelectTrigger>
                 <SelectContent>
                   {availableSheets.map((sheetName, index) => (
