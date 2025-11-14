@@ -212,6 +212,7 @@ export const MultiSemesterGenerator: React.FC<MultiSemesterGeneratorProps> = ({
                   <li>{selectedSemesters.length} semestre{selectedSemesters.length > 1 ? 's' : ''} sélectionné{selectedSemesters.length > 1 ? 's' : ''}</li>
                   <li>Les relevés seront regroupés par semestre dans des dossiers séparés</li>
                   <li>Une archive ZIP globale sera créée avec tous les relevés</li>
+                  <li className="text-xs mt-1 text-blue-600">Les options d'exportation configurées (compression, nommage) seront appliquées</li>
                 </ul>
               </AlertDescription>
             </Alert>

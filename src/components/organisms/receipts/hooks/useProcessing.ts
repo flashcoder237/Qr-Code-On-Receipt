@@ -142,17 +142,41 @@ export const useProcessing = (options: UseProcessingOptions = {}) => {
 
         const batch = items.slice(i, i + batchSize);
         await Promise.all(
-          batch.map(async (item) => {
+          batch.map(async (item, batchIndex) => {
             try {
+              console.log(`⚙️ [BATCH] Traitement item ${i + batchIndex + 1}/${items.length}`);
               const result = await processWithRetry(() => processItem(item));
-              results.set(JSON.stringify(item), result);
+
+              // CORRECTION CRITIQUE : Ne PAS utiliser JSON.stringify sur l'objet complet
+              // Stocker seulement les infos essentielles pour le nom de fichier
+              const student = (item as any).student || item;
+              const matricule = student.MATRICULE || 'UNKNOWN';
+              const nom = student.NOM || 'Unknown';
+              const prenom = student.PRENOM || 'Unknown';
+              const semestre = student.SEMESTRE || 'S1';
+              const niveau = student.NIVEAU || 'L1';
+              const filiere = student.FILIERE || 'UNKNOWN';
+
+              // Clé légère avec SEULEMENT les infos nécessaires (pas l'objet student complet !)
+              const itemKey = JSON.stringify({
+                MATRICULE: matricule,
+                NOM: nom,
+                PRENOM: prenom,
+                SEMESTRE: semestre,
+                NIVEAU: niveau,
+                FILIERE: filiere
+              });
+              results.set(itemKey, result);
+              console.log(`✅ [BATCH] Item ${i + batchIndex + 1} traité avec succès (${matricule})`);
+
               setState(prev => ({
                 ...prev,
                 processedCount: prev.processedCount + 1,
                 progress: ((prev.processedCount + 1) / prev.totalCount) * 100
               }));
             } catch (error) {
-              failedItems.push(JSON.stringify(item));
+              console.error(`❌ [BATCH] Erreur item ${i + batchIndex + 1}:`, error);
+              failedItems.push(`item_${i + batchIndex}`);
             }
           })
         );

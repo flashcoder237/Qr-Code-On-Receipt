@@ -9,6 +9,7 @@ import { ThemeSettingsPayload } from './form-schemas/theme-settings';
 
 // Importer directement depuis html-to-pdf.ts
 import { generateAttestationPDF } from './attestation-generator/html-to-pdf';
+import { generateAttestationHTML } from './attestation-generator/html-generator';
 
 // NOUVEAU: Importer les fonctions de chiffrement compact pour les relevés
 import { sanitizeStudentData, generateQrCodeBase64 } from './helpers/qrcode-selective';
@@ -1434,76 +1435,94 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
  * Generate a PDF transcript using Electron's built-in PDF generation capabilities
  */
 export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<Uint8Array> {
+  const startTime = Date.now();
+  const studentIdLog = `${params.student.NOM}_${params.student.PRENOM}_${params.student.MATRICULE}`;
+  console.log(`🖨️ [PDF-GEN] START génération PDF pour: ${studentIdLog}`);
+
   return new Promise(async (resolve, reject) => {
     try {
-      
-      
-      
+
+
+
       // Create a temporary HTML file with the transcript content
+      console.log(`📝 [PDF-GEN] ${studentIdLog}: Création HTML...`);
       const html = await createTranscriptHTML(params);
+      console.log(`✅ [PDF-GEN] ${studentIdLog}: HTML créé (${html.length} caractères)`);
       const tempDir = app.getPath('temp');
       const timestamp = Date.now();
       const studentId = `${params.student.NOM}_${params.student.PRENOM}_${params.student.MATRICULE}`.replace(/[^a-zA-Z0-9]/g, '_');
       const htmlPath = path.join(tempDir, `transcript-${studentId}-${timestamp}.html`);
-      
+
       // Write HTML to temp file
       fs.writeFileSync(htmlPath, html);
-      
-      
-      // Create a hidden browser window
-      const win = new BrowserWindow({
-        width: 595, // A4 width in pixels at 72 DPI
-        height: 842, // A4 height in pixels at 72 DPI
-        show: false, // Keep window hidden
-        webPreferences: {
-          nodeIntegration: false,
-          contextIsolation: true
-        }
-      });
-      
-      // Load the HTML file
-      await win.loadFile(htmlPath);
-      
-      // Wait for content to load completely
-      // Plus de temps pour les QR codes chiffrés et le mode démo
-      const loadingDelay = params.settings.encryptionEnabled || params.settings.demoMode ? 2000 : 1000;
-      await new Promise(resolve => setTimeout(resolve, loadingDelay));
-      
-      
-      // Generate PDF
-      
-      const pdfData = await win.webContents.printToPDF({
-        printBackground: true,
-        pageSize: 'A4',
-        pageRanges: '1-1',
-        margins: {
-          top: 0.4,
-          bottom: 0.4,
-          left: 0.4,
-          right: 0.4
-        }
-      });
-      
-      // Close the window
-      win.close();
-      
-      // Clean up temp HTML file
-      try {
-        fs.unlinkSync(htmlPath);
-        
-      } catch (cleanupError) {
-        console.warn('Failed to clean up temporary HTML file:', cleanupError);
-        // Continue execution even if cleanup fails
-      }
 
-      const resultData = Buffer.from(pdfData);
-      
-      
-      
-      
-      
-      // Resolve with the PDF data
-      resolve(resultData);
+
+      // CORRECTION: Create a hidden browser window avec try-finally pour garantir la fermeture
+      let win: BrowserWindow | null = null;
+      try {
+        win = new BrowserWindow({
+          width: 595, // A4 width in pixels at 72 DPI
+          height: 842, // A4 height in pixels at 72 DPI
+          show: false, // Keep window hidden
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true
+          }
+        });
+
+        // Load the HTML file
+        await win.loadFile(htmlPath);
+
+        // Wait for content to load completely
+        // CORRECTION: Réduire le délai pour éviter l'accumulation de fenêtres
+        const loadingDelay = params.settings.encryptionEnabled || params.settings.demoMode ? 1000 : 500;
+        await new Promise(resolve => setTimeout(resolve, loadingDelay));
+
+
+        // Generate PDF
+
+        const pdfData = await win.webContents.printToPDF({
+          printBackground: true,
+          pageSize: 'A4',
+          pageRanges: '1-1',
+          margins: {
+            top: 0.4,
+            bottom: 0.4,
+            left: 0.4,
+            right: 0.4
+          }
+        });
+
+        const resultData = Buffer.from(pdfData);
+        const duration = Date.now() - startTime;
+        console.log(`✅ [PDF-GEN] ${studentIdLog}: PDF généré avec succès en ${duration}ms (${resultData.length} bytes)`);
+
+
+
+
+
+        // Resolve with the PDF data
+        resolve(resultData);
+
+      } finally {
+        console.log(`🧹 [PDF-GEN] ${studentIdLog}: Nettoyage des ressources...`);
+
+        // CORRECTION: Fermer et détruire la fenêtre dans finally pour garantir la libération
+        if (win && !win.isDestroyed()) {
+          win.close();
+          win.destroy();  // Force la destruction immédiate
+          win = null;     // Libérer la référence
+        }
+
+        // Clean up temp HTML file
+        try {
+          fs.unlinkSync(htmlPath);
+
+        } catch (cleanupError) {
+          console.warn('Failed to clean up temporary HTML file:', cleanupError);
+          // Continue execution even if cleanup fails
+        }
+      }
       
     } catch (error) {
       console.error('❌ Erreur lors de la génération du PDF de relevé:', error);
@@ -1539,14 +1558,11 @@ export function setupPDFGenerationHandlers() {
 
  ipcMain.handle('render-attestation-html', async (_, params) => {
   try {
-    
-    
-    // Au lieu d'utiliser require, qui peut causer des problèmes,
-    // importons le module de manière dynamique avec la syntaxe import()
-    const attestationModule = await import('./attestation-generator/html-generator');
-    const html = await attestationModule.generateAttestationHTML(
-      params.student, 
-      params.settings, 
+
+
+    const html = await generateAttestationHTML(
+      params.student,
+      params.settings,
       params.options
     );
     return html;

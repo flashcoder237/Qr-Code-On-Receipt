@@ -20,6 +20,10 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
+    /* Performance optimizations */
+    "incremental": true,
+    "assumeChangesOnlyAffectDirectDependencies": true,
+
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

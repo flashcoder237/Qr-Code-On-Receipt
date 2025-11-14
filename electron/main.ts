@@ -33,6 +33,9 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 let win: BrowserWindow | null;
 
 function createWindow() {
+  // CORRECTION: Augmenter la limite mémoire pour le processus de rendu
+  app.commandLine.appendSwitch('js-flags', '--max-old-space-size=8192');
+
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, "logo.ico"),
     width: 1200,

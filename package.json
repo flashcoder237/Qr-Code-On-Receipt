@@ -6,10 +6,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "cross-env NODE_OPTIONS='--unhandled-rejections=throw' vite",
-    "build": "cross-env NODE_OPTIONS='--unhandled-rejections=throw' tsc && vite build && electron-builder",
+    "dev": "cross-env NODE_OPTIONS='--unhandled-rejections=throw --max-old-space-size=8192' vite",
+    "build": "cross-env NODE_OPTIONS='--unhandled-rejections=throw --max-old-space-size=8192' tsc && vite build && electron-builder",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "build:win": "cross-env NODE_OPTIONS='--unhandled-rejections=throw' vite build && electron-builder --windows",
+    "build:win": "cross-env NODE_OPTIONS='--unhandled-rejections=throw --max-old-space-size=8192' vite build && electron-builder --windows",
     "preview": "vite preview"
   },
   "dependencies": {

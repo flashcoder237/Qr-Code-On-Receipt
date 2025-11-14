@@ -72,10 +72,11 @@ export const ReleveGenerator: React.FC = () => {
   const [currentFileName, setCurrentFileName] = useState<string | null>(null);
   const [selectedMultiSemesterIds, setSelectedMultiSemesterIds] = useState<string[]>([]);
 
-  // NOUVEAU: États pour gérer le workbook Excel chargé et les feuilles disponibles
-  const [loadedWorkbook, setLoadedWorkbook] = useState<any>(null);
-  const [availableExcelSheets, setAvailableExcelSheets] = useState<string[]>([]);
-  const [currentExcelFileName, setCurrentExcelFileName] = useState<string>('');
+  // SUPPRIMÉ: Ne plus stocker le workbook en mémoire pour éviter les fuites
+  // Le workbook sera géré localement dans FileUploader et libéré après extraction
+  // const [loadedWorkbook, setLoadedWorkbook] = useState<any>(null);
+  // const [availableExcelSheets, setAvailableExcelSheets] = useState<string[]>([]);
+  // const [currentExcelFileName, setCurrentExcelFileName] = useState<string>('');
 
   // NOUVEAU: Option pour activer/désactiver le chiffrement compact pour les relevés
   const [encryptionEnabled, setEncryptionEnabled] = useLocalStorage("releve-encryption-enabled", true);
@@ -783,12 +784,13 @@ export const ReleveGenerator: React.FC = () => {
   }, []);
 
   // Prepare student data for PDF generation - VERSION AVEC NOUVEAUX PARAMETRES
-  const prepareStudentData = useCallback((rawStudent: any): StudentRecord => {
-    if (!currentConfig || !currentSemester) return null;
+  const prepareStudentData = useCallback((rawStudent: any, semester?: any): StudentRecord => {
+    const semesterToUse = semester || currentSemester;
+    if (!currentConfig || !semesterToUse) return null;
   
     // Vérifications de sécurité supplémentaires
-    if (!currentConfig.semesters || !currentSemester.ues) {
-      console.error("Configuration incomplète:", { currentConfig, currentSemester });
+    if (!currentConfig.semesters || !semesterToUse.ues) {
+      console.error("Configuration incomplète:", { currentConfig, semesterToUse });
       throw new Error("Configuration incomplète - semestres ou UEs manquants");
     }
 
@@ -811,9 +813,23 @@ export const ReleveGenerator: React.FC = () => {
             return;
           }
 
-          const columnName = columnMapping[ec.id];
-          const sessionColumnName = sessionMapping[ec.id];
-          
+          // Chercher le mapping par ID d'abord, sinon par nom d'EC
+          let columnName = columnMapping[ec.id];
+          let sessionColumnName = sessionMapping[ec.id];
+
+          // Fallback : si pas de mapping par ID, chercher une colonne Excel avec le même nom que l'EC
+          if (!columnName && ec.name && rawStudent[ec.name] !== undefined) {
+            columnName = ec.name;
+            console.log(`Utilisation du nom de l'EC comme fallback: ${ec.name}`);
+
+            // Chercher aussi la colonne de session correspondante (format: S/NomEC)
+            const potentialSessionColumn = `S/${ec.name}`;
+            if (rawStudent[potentialSessionColumn] !== undefined) {
+              sessionColumnName = potentialSessionColumn;
+              console.log(`Utilisation de la colonne session fallback: ${potentialSessionColumn}`);
+            }
+          }
+
           if (columnName && rawStudent[columnName] !== undefined && rawStudent[columnName] !== null && rawStudent[columnName] !== '') {
             const gradeValue = rawStudent[columnName];
             const grade = parseFloat(gradeValue);
@@ -919,7 +935,7 @@ export const ReleveGenerator: React.FC = () => {
       });
     } else {
       // Traiter seulement le semestre sélectionné
-      processSemester(currentSemester);
+      processSemester(semesterToUse);
     }
     
     // Deuxième étape : assigner les moyennes UE aux cours
@@ -939,11 +955,11 @@ export const ReleveGenerator: React.FC = () => {
     if (activeMergedSemester) {
       totalCreditsRequired = activeMergedSemester.creditsRequired;
     } else {
-      totalCreditsRequired = currentSemester.creditsRequired || 30;
+      totalCreditsRequired = semesterToUse.creditsRequired || 30;
     }
 
     // NOUVEAU: Gérer le nom du semestre pour les semestres fusionnés
-    let semesterName = currentSemester.name || "";
+    let semesterName = semesterToUse.name || "";
     if (activeMergedSemester) {
       semesterName = activeMergedSemester.name;
     }
@@ -1222,10 +1238,25 @@ export const ReleveGenerator: React.FC = () => {
   }, [currentConfig, currentSemester, selectedMultiSemesterIds, excelData, mappingComplete, prepareStudentData, settings, selectedStudentMatricules, encryptionEnabled, columnMapping, isDemoMode, notifySuccess, notifyError, notifyWarning, notifyInfo]);
   
   const handleGenerateSelected = useCallback(async (studentsToGenerate?: any[]) => {
-    if (!currentConfig || !currentSemester) {
-      const message = "Veuillez sélectionner une configuration et un semestre";
+    // Vérifier la configuration
+    if (!currentConfig) {
+      const message = "Veuillez sélectionner une configuration";
       setError(message);
       notifyWarning("Configuration manquante", message);
+      return;
+    }
+
+    // Vérifier qu'un semestre est sélectionné OU que le mode multi-semestres est actif
+    if (!currentSemester && selectedMultiSemesterIds.length === 0) {
+      const message = "Veuillez sélectionner un semestre ou activer le mode multi-semestres";
+      setError(message);
+      notifyWarning("Semestre manquant", message);
+      return;
+    }
+
+    // Si mode multi-semestres, utiliser la fonction dédiée
+    if (selectedMultiSemesterIds.length > 0) {
+      await handleGenerateMultipleSemesters(selectedMultiSemesterIds);
       return;
     }
 
@@ -1412,8 +1443,14 @@ export const ReleveGenerator: React.FC = () => {
     }
   }, [currentConfig, currentSemester, excelData, mappingComplete, prepareStudentData, processBatch, generateZipFile, settings, selectedStudentMatricules, encryptionEnabled, notifySuccess, notifyError, notifyWarning, addDocumentRecord]);
 
-  // NOUVEAU: Fonction pour générer les relevés de plusieurs semestres
+  // NOUVEAU: Fonction pour générer les relevés de plusieurs semestres avec gestion optimisée de la mémoire
   const handleGenerateMultipleSemesters = useCallback(async (semesterIds: string[]) => {
+    console.log('🚀 [MULTI-SEM] Début handleGenerateMultipleSemesters', {
+      semesterIds,
+      excelDataLength: excelData.length,
+      timestamp: new Date().toISOString()
+    });
+
     if (!currentConfig) {
       notifyError("Erreur", "Aucune configuration sélectionnée");
       return;
@@ -1430,92 +1467,150 @@ export const ReleveGenerator: React.FC = () => {
     }
 
     try {
+      console.log('📊 [MULTI-SEM] Configuration validée, début du traitement');
       notifyInfo(
         "Génération multi-semestres",
         `Génération de ${semesterIds.length} semestre(s) pour ${excelData.length} étudiant(s)...`
       );
 
-      const allResults = new Map<string, { blob: Blob; fileName: string; semesterName: string }>();
-
-      // Pour chaque semestre sélectionné
-      for (const semesterId of semesterIds) {
-        const semester = currentConfig.semesters.find(s => s.id === semesterId);
-        if (!semester) continue;
-
-        notifyInfo("Génération", `Traitement du semestre: ${semester.name}...`);
-
-        // Préparer les données pour ce semestre
-        const preparedData = [];
-        for (const student of excelData) {
-          try {
-            // Utiliser prepareStudentData avec le semestre actuel
-            const prepared = prepareStudentData(student);
-            if (!prepared) continue;
-
-            // Utiliser le thème du semestre s'il existe, sinon le thème de la classe, sinon le thème global
-            const semesterTheme = semester.theme || currentConfig?.theme;
-
-            const effectiveSettings = {
-              ...settings,
-              demoMode: isDemoMode,
-              encryptionEnabled: encryptionEnabled,
-              ...(semesterTheme && { theme: semesterTheme })
-            };
-
-            preparedData.push({
-              student: prepared,
-              settings: effectiveSettings,
-              config: currentConfig
-            });
-          } catch (error) {
-            console.error(`Erreur pour l'étudiant ${student.MATRICULE}:`, error);
-          }
-        }
-
-        // Générer les PDFs pour ce semestre
-        const results = await processBatch(
-          preparedData,
-          (data) => window.ipcRenderer.invoke('generate-transcript-pdf', data)
-        );
-
-        // Ajouter les résultats avec le nom du semestre
-        results.forEach((blob, fileName) => {
-          allResults.set(
-            `${semester.name}/${fileName}`,
-            {
-              blob,
-              fileName,
-              semesterName: semester.name
-            }
-          );
-        });
-
-        notifySuccess("Génération", `Semestre "${semester.name}" terminé (${results.size} relevés)`);
-      }
-
-      // Créer une archive ZIP avec organisation par semestre
+      // CORRECTION: Créer le ZIP dès le début pour éviter l'accumulation en mémoire
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
-
-      // Organiser par semestre
       const semesterFolders = new Map<string, any>();
 
-      allResults.forEach((data, path) => {
-        const semesterName = data.semesterName;
+      let totalGenerated = 0;
 
-        if (!semesterFolders.has(semesterName)) {
-          semesterFolders.set(semesterName, zip.folder(semesterName));
+      // Pour chaque semestre sélectionné
+      console.log(`🔄 [MULTI-SEM] Début boucle semestres, total: ${semesterIds.length}`);
+      for (let semIndex = 0; semIndex < semesterIds.length; semIndex++) {
+        const semesterId = semesterIds[semIndex];
+        console.log(`📝 [MULTI-SEM] Traitement semestre ${semIndex + 1}/${semesterIds.length}: ${semesterId}`);
+
+        const semester = currentConfig.semesters.find(s => s.id === semesterId);
+        if (!semester) {
+          console.warn(`⚠️ [MULTI-SEM] Semestre non trouvé: ${semesterId}`);
+          continue;
         }
 
-        const folder = semesterFolders.get(semesterName);
-        folder.file(data.fileName, data.blob);
-      });
+        console.log(`✅ [MULTI-SEM] Semestre trouvé: ${semester.name}`);
+        notifyInfo("Génération", `Traitement du semestre: ${semester.name}...`);
 
-      // Générer le ZIP final
+        // Créer le dossier pour ce semestre
+        const semesterFolder = zip.folder(semester.name);
+        semesterFolders.set(semester.name, semesterFolder);
+
+        // CORRECTION: Traiter par lots plus petits pour éviter l'accumulation de BrowserWindow
+        // Chaque BrowserWindow consomme ~100-200 MB de RAM, donc limiter le parallélisme
+        const BATCH_SIZE = 10;  // Réduit de 50 à 10 pour limiter les BrowserWindow simultanées
+        const totalStudents = excelData.length;
+        let processedInSemester = 0;
+
+        console.log(`👥 [MULTI-SEM] ${semester.name}: ${totalStudents} étudiants à traiter, BATCH_SIZE=${BATCH_SIZE}`);
+
+        for (let i = 0; i < totalStudents; i += BATCH_SIZE) {
+          const batchStudents = excelData.slice(i, Math.min(i + BATCH_SIZE, totalStudents));
+          console.log(`📦 [MULTI-SEM] ${semester.name}: Lot ${Math.floor(i / BATCH_SIZE) + 1}, étudiants ${i} à ${i + batchStudents.length}`);
+
+          // Préparer les données pour ce lot
+          const preparedData = [];
+          for (const student of batchStudents) {
+            console.log(`🔍 [MULTI-SEM] Préparation étudiant: ${student.MATRICULE || 'NO_MATRICULE'}`);
+
+            try {
+              // Utiliser prepareStudentData avec le semestre spécifique
+              const prepared = prepareStudentData(student, semester);
+              if (!prepared) continue;
+
+              // Utiliser le thème du semestre s'il existe, sinon le thème de la classe
+              const semesterTheme = semester.theme || currentConfig?.theme;
+
+              const effectiveSettings = {
+                ...settings,
+                demoMode: isDemoMode,
+                encryptionEnabled: encryptionEnabled,
+                ...(semesterTheme && { theme: semesterTheme })
+              };
+
+              preparedData.push({
+                student: prepared,
+                settings: effectiveSettings,
+                config: currentConfig
+              });
+            } catch (error) {
+              console.error(`Erreur pour l'étudiant ${student.MATRICULE}:`, error);
+            }
+          }
+
+          if (preparedData.length === 0) continue;
+
+          // Générer les PDFs pour ce lot
+          // CORRECTION: Utiliser batchSize=1 pour éviter les BrowserWindow simultanées
+          // Chaque BrowserWindow prend 1-2 secondes et consomme beaucoup de RAM
+          const results = await processBatch(
+            preparedData,
+            (data) => window.ipcRenderer.invoke('generate-transcript-pdf', data),
+            1  // batchSize = 1 pour éviter l'accumulation de BrowserWindow
+          );
+
+          // CORRECTION: Ajouter immédiatement les fichiers au ZIP et libérer les blobs
+          results.forEach((blob, key) => {
+            try {
+              // Parser la clé JSON pour récupérer les infos de l'étudiant
+              const studentInfo = JSON.parse(key);
+
+              // Générer le nom de fichier
+              const prefix = encryptionEnabled ? 'releve_compact' : 'releve';
+              const cleanNom = (studentInfo.NOM || 'Unknown').replace(/[^a-zA-Z0-9\-_]/g, '').toUpperCase();
+              const cleanPrenom = (studentInfo.PRENOM || 'Unknown').replace(/[^a-zA-Z0-9\-_]/g, '').toUpperCase();
+              const matricule = studentInfo.MATRICULE || 'UNKNOWN';
+
+              let fileName: string;
+              if (nameFormat === 'detailed') {
+                const niveau = studentInfo.NIVEAU || 'L1';
+                const semestre = studentInfo.SEMESTRE || 'S1';
+                const cleanFiliere = (studentInfo.FILIERE || 'UNKNOWN').replace(/[^a-zA-Z0-9\-_]/g, '').toUpperCase();
+                fileName = `${prefix}_${cleanNom}_${cleanPrenom}_${matricule}_${niveau}_${semestre}_${cleanFiliere}.pdf`;
+              } else {
+                fileName = `${prefix}_${cleanNom}_${cleanPrenom}_${matricule}.pdf`;
+              }
+
+              console.log(`📁 [MULTI-SEM] Ajout au ZIP: ${fileName}`);
+              semesterFolder.file(fileName, blob);
+              totalGenerated++;
+              processedInSemester++;
+            } catch (error) {
+              console.error('❌ [MULTI-SEM] Erreur lors de l\'ajout au ZIP:', error);
+            }
+          });
+
+          // CORRECTION: Libérer explicitement la mémoire
+          results.clear();
+          preparedData.length = 0;
+
+          // SUPPRIMÉ: global.gc() n'existe pas dans le renderer process (browser)
+          // Le garbage collector sera appelé automatiquement par V8
+
+          notifyInfo(
+            "Progression",
+            `${semester.name}: ${processedInSemester}/${totalStudents} traités`
+          );
+        }
+
+        notifySuccess("Génération", `Semestre "${semester.name}" terminé (${processedInSemester} relevés)`);
+      }
+
+      if (totalGenerated === 0) {
+        notifyError("Erreur", "Aucun relevé n'a été généré");
+        return;
+      }
+
+      notifyInfo("Finalisation", "Création de l'archive ZIP...");
+
+      // Générer le ZIP final avec les options de compression
       const zipBlob = await zip.generateAsync({
         type: 'blob',
         compression: useCompression ? 'DEFLATE' : 'STORE',
-        compressionOptions: { level: 6 }
+        compressionOptions: useCompression ? { level: 6 } : undefined
       });
 
       // Télécharger
@@ -1524,7 +1619,8 @@ export const ReleveGenerator: React.FC = () => {
       link.href = url;
       const timestamp = new Date().toISOString().split('T')[0];
       const encryptionSuffix = encryptionEnabled ? '_compact' : '';
-      link.download = `releves_multi_semestres_${timestamp}${encryptionSuffix}.zip`;
+      const compressionSuffix = useCompression ? '' : '_nocompress';
+      link.download = `releves_multi_semestres_${timestamp}${encryptionSuffix}${compressionSuffix}.zip`;
       link.click();
       URL.revokeObjectURL(url);
 
@@ -1535,14 +1631,14 @@ export const ReleveGenerator: React.FC = () => {
 
       notifySuccess(
         "Génération terminée",
-        `${allResults.size} relevé(s) générés pour ${semesterIds.length} semestre(s)`
+        `${totalGenerated} relevé(s) générés pour ${semesterIds.length} semestre(s)`
       );
 
     } catch (error) {
       console.error("Erreur lors de la génération multi-semestres:", error);
       notifyError("Erreur", `Erreur lors de la génération: ${error.message}`);
     }
-  }, [currentConfig, excelData, mappingComplete, prepareStudentData, settings, isDemoMode, encryptionEnabled, processBatch, useCompression, currentFileName, columnMapping, sessionMapping, saveExcelFileInfo, notifyInfo, notifySuccess, notifyError]);
+  }, [currentConfig, excelData, mappingComplete, prepareStudentData, settings, isDemoMode, encryptionEnabled, processBatch, useCompression, currentFileName, columnMapping, sessionMapping, saveExcelFileInfo, notifyInfo, notifySuccess, notifyError, notifyWarning]);
 
   // Keyboard shortcuts
   useHotkeys('ctrl+p', () => handlePreviewReleve(), [handlePreviewReleve]);
@@ -1841,14 +1937,15 @@ export const ReleveGenerator: React.FC = () => {
                     isLoading={processingState.isLoading}
                     documentType="releve"
                     allowPartialImport={true}
-                    externalWorkbook={loadedWorkbook}
-                    externalSheets={availableExcelSheets}
-                    externalFileName={currentExcelFileName}
-                    onWorkbookLoaded={(wb, sheets, fileName) => {
-                      setLoadedWorkbook(wb);
-                      setAvailableExcelSheets(sheets);
-                      setCurrentExcelFileName(fileName);
-                    }}
+                    // SUPPRIMÉ: Ne plus passer le workbook au parent pour économiser la mémoire
+                    // externalWorkbook={loadedWorkbook}
+                    // externalSheets={availableExcelSheets}
+                    // externalFileName={currentExcelFileName}
+                    // onWorkbookLoaded={(wb, sheets, fileName) => {
+                    //   setLoadedWorkbook(wb);
+                    //   setAvailableExcelSheets(sheets);
+                    //   setCurrentExcelFileName(fileName);
+                    // }}
                   />
 
                   {error && (

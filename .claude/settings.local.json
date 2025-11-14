@@ -6,7 +6,8 @@
       "Bash(npx tsc:*)",
       "Bash(rm:*)",
       "Bash(rg:*)",
-      "Bash(del test-mention-fix.js)"
+      "Bash(del test-mention-fix.js)",
+      "Bash(wmic logicaldisk get size,freespace,caption)"
     ],
     "deny": []
   }

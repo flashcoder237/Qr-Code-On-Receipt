@@ -190,7 +190,7 @@ export async function generateQrCodeBase64WithSelectiveEncryption(
     const qrCodeDataUrl = await QRCode.toDataURL(qrContent, {
       errorCorrectionLevel: 'H',
       margin: 2,
-      width: 800, // Augmenté de 300 à 800 pour une meilleure qualité
+      width: 400, // Augmenté de 300 à 800 pour une meilleure qualité
       color: {
         dark: '#000000',
         light: '#FFFFFF'
