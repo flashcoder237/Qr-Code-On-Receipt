@@ -98,6 +98,8 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
   // États pour la gestion du thème personnalisé par semestre
   const [showSemesterThemeDialog, setShowSemesterThemeDialog] = useState(false);
   const [selectedSemesterForTheme, setSelectedSemesterForTheme] = useState<string | null>(null);
+  const [semesterThemeSettings, setSemesterThemeSettings] = useState<any>(null);
+  const [expandedSemesterThemes, setExpandedSemesterThemes] = useState<Set<string>>(new Set());
 
   // Fonction pour déplacer une UE vers le haut
   const moveUEUp = useCallback((semesterId: string, ueId: string) => {
@@ -246,18 +248,163 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
     });
   }, []);
 
+  // Fonction pour basculer l'expansion de la section thème du semestre
+  const toggleSemesterThemeExpansion = (semesterId: string) => {
+    setExpandedSemesterThemes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(semesterId)) {
+        newSet.delete(semesterId);
+      } else {
+        newSet.add(semesterId);
+      }
+      return newSet;
+    });
+  };
+
   // Fonctions de gestion du thème par semestre
   const getGlobalTheme = () => {
     return getCompleteTheme();
   };
 
   const openSemesterThemeDialog = (semesterId: string) => {
+    const semester = config?.semesters.find(s => s.id === semesterId);
+    const globalSettings = typeof window !== 'undefined' ? localStorage.getItem('settings') : null;
+    const parsedGlobalSettings = globalSettings ? JSON.parse(globalSettings) : {};
+
+    // Créer les settings complets en fusionnant les settings globaux avec le thème du semestre
+    const completeSettings = {
+      ...parsedGlobalSettings,
+      theme: {
+        ...getCompleteTheme(parsedGlobalSettings),
+        ...(semester?.theme || {})
+      }
+    };
+
+    setSemesterThemeSettings(completeSettings);
     setSelectedSemesterForTheme(semesterId);
     setShowSemesterThemeDialog(true);
   };
 
   const saveSemesterTheme = (semesterId: string, theme: any) => {
     onUpdateSemester(semesterId, { theme });
+
+    // Mettre à jour les settings locaux pour éviter la réinitialisation
+    setSemesterThemeSettings((prev: any) => ({
+      ...prev,
+      theme: theme
+    }));
+
+    toast.success("Thème enregistré", "Le thème personnalisé du semestre a été enregistré avec succès");
+  };
+
+  const previewSemesterTheme = async () => {
+    if (!selectedSemesterForTheme || !config) {
+      toast.error("Erreur", "Impossible de générer l'aperçu");
+      return;
+    }
+
+    const semester = config.semesters.find(s => s.id === selectedSemesterForTheme);
+    if (!semester) return;
+
+    try {
+      // Créer un étudiant d'exemple avec TOUTES les configurations de la classe
+      const sampleStudent = {
+        NOM: "DUPONT",
+        PRENOM: "Jean",
+        MATRICULE: "2024001",
+        "DATE DE NAISSANCE": "01/01/2000",
+        "LIEU DE NAISSANCE": "Yaoundé",
+        CYCLE: config.cycle || "Licence",
+        "ANNEE ACADÉMIQUE": config.academicYear || "2024-2025",
+        FILIERE: config.filiere || "Informatique",
+        NIVEAU: config.niveau || "L1",
+        SEMESTRE: semester.name,
+        OPTION: config.option || "",
+        COURSES: [],
+        TOTAL_CREDITS: semester.creditsRequired || 30,
+        // IMPORTANT: Utiliser les configurations de la classe
+        DISPLAY_SESSIONS: config.displaySessions !== false, // Par défaut true
+        SESSION_FORMAT: config.sessionDisplayFormat || 'short'
+      };
+
+      // Ajouter des cours d'exemple
+      semester.ues.forEach((ue: any) => {
+        let ueGradeSum = 0;
+        let ueWeightSum = 0;
+        const ueCourses: any[] = [];
+
+        ue.ecs.forEach((ec: any) => {
+          const sampleGrade = 12 + Math.random() * 6; // Note entre 12 et 18
+          const weight = ec.weight || 1;
+          ueGradeSum += sampleGrade * weight;
+          ueWeightSum += weight;
+
+          // Formater la session selon la configuration de la classe
+          let sessionDisplay = '';
+          if (config.displaySessions !== false) {
+            const sessionFormat = config.sessionDisplayFormat || 'short';
+            if (sessionFormat === 'full') {
+              sessionDisplay = 'Normale 2024';
+            } else {
+              sessionDisplay = 'N/2024';
+            }
+          }
+
+          ueCourses.push({
+            CODE: ue.code || `UE${ue.name}`,
+            INTITULE: ue.name,
+            EC_TITRE: ec.name,
+            NOTE: parseFloat(sampleGrade.toFixed(2)),
+            NOTE_ORIGINAL: parseFloat(sampleGrade.toFixed(2)),
+            NOTE_BASE: ec.noteBase || 20,
+            DISPLAY_BASE: ec.displayBase || 20,
+            WEIGHT: weight,
+            UE_CREDIT: ue.credits || 0,
+            UE_ID: ue.id,
+            UE_AVERAGE: 0,
+            UE_DISPLAY_BASE: ue.displayBase || 20,
+            SESSION: sessionDisplay,
+            SHOW_SESSION: config.displaySessions !== false
+          });
+        });
+
+        const ueAverage = ueWeightSum > 0 ? ueGradeSum / ueWeightSum : 0;
+        ueCourses.forEach(course => {
+          course.UE_AVERAGE = parseFloat(ueAverage.toFixed(2));
+        });
+
+        sampleStudent.COURSES.push(...ueCourses);
+      });
+
+      // Charger les settings globaux
+      const globalSettings = typeof window !== 'undefined' ? localStorage.getItem('settings') : null;
+      const parsedGlobalSettings = globalSettings ? JSON.parse(globalSettings) : {};
+
+      // Fusionner avec le thème du semestre
+      const effectiveSettings = {
+        ...parsedGlobalSettings,
+        theme: semesterThemeSettings?.theme || semester.theme,
+        demoMode: false,
+        encryptionEnabled: false
+      };
+
+      const renderParams = {
+        student: sampleStudent,
+        settings: effectiveSettings,
+        config: config
+      };
+
+      const htmlContent = await (window as any).transcriptRenderer.renderHTML(renderParams);
+
+      if (htmlContent) {
+        await (window as any).ipcRenderer.invoke('show-preview', htmlContent,
+          `Aperçu du thème - ${semester.name}`);
+        toast.success("Aperçu", "Aperçu du relevé généré avec le thème du semestre");
+      }
+    } catch (error) {
+      console.error('Erreur génération aperçu:', error);
+      toast.error("Erreur", "Impossible de générer l'aperçu du relevé");
+    }
   };
 
   const copySemesterThemeFromClass = (semesterId: string) => {
@@ -586,9 +733,17 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                 >
                   {/* Section thème du semestre */}
                   <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
-                    <CardHeader>
+                    <CardHeader
+                      className="cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                      onClick={() => toggleSemesterThemeExpansion(semester.id)}
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
+                          {expandedSemesterThemes.has(semester.id) ? (
+                            <ChevronDown className="h-5 w-5 text-indigo-600" />
+                          ) : (
+                            <ChevronRight className="h-5 w-5 text-indigo-600" />
+                          )}
                           <Palette className="h-5 w-5 text-indigo-600" />
                           <CardTitle className="text-indigo-900 text-base">
                             Thème du semestre
@@ -599,7 +754,7 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           {semester.theme ? (
                             <>
                               <Button
@@ -672,8 +827,9 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <p className="text-indigo-800 text-sm">
+                    {expandedSemesterThemes.has(semester.id) && (
+                      <CardContent>
+                        <p className="text-indigo-800 text-sm">
                         {semester.theme ? (
                           <>
                             Ce semestre utilise un <strong>thème personnalisé</strong>.
@@ -706,7 +862,8 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                           </div>
                         </div>
                       )}
-                    </CardContent>
+                      </CardContent>
+                    )}
                   </Card>
 
                   <AnimatePresence initial={false}>
@@ -962,8 +1119,16 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
               </DialogDescription>
             </DialogHeader>
             <ThemeEditor
-              initialTheme={config.semesters.find(s => s.id === selectedSemesterForTheme)?.theme || getGlobalTheme()}
-              onThemeChange={(theme) => saveSemesterTheme(selectedSemesterForTheme, theme)}
+              settings={semesterThemeSettings || {}}
+              onSave={(updatedSettings) => {
+                if (selectedSemesterForTheme) {
+                  // Mettre à jour d'abord les settings locaux avec le nouveau thème
+                  setSemesterThemeSettings(updatedSettings);
+                  saveSemesterTheme(selectedSemesterForTheme, updatedSettings.theme);
+                }
+              }}
+              onPreview={previewSemesterTheme}
+              showAllTabs={true}
             />
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowSemesterThemeDialog(false)}>

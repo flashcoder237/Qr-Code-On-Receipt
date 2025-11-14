@@ -271,7 +271,7 @@ function generateThemeStyles(params: GeneratePDFParams): string {
       font-size: ${theme.contentFontSize}px;
     }
     th, td {
-      border: ${theme.borderWidth}px ${theme.borderStyle} ${theme.tableBorderColor};
+      border: ${theme.borderWidth/2}px ${theme.borderStyle} ${theme.tableBorderColor};
       padding: ${theme.tableCellPadding}px;
       text-align: left;
     }
@@ -1141,11 +1141,11 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
         
             <div class="student_block1">
                 <div>
-                    <p><strong><strong>NOM(S) ET PRENOM(S): </strong>${student.NOM.toUpperCase()} ${student.PRENOM !== "N/D" ? student.PRENOM.toUpperCase() : ""}</strong><br>
+                    <p><strong><strong>NOM(S) ET PRENOM(S): </strong>${(student.NOM || "").toString().toUpperCase()} ${student.PRENOM !== "N/D" ? (student.PRENOM || "").toString().toUpperCase() : ""}</strong><br>
                     <em>surname and name:</em></p>
                 </div>
                 <div>
-                    <p><strong>MATRICULE:</strong> <strong>${student.MATRICULE.toUpperCase()}</strong><br>
+                    <p><strong>MATRICULE:</strong> <strong>${(student.MATRICULE || "").toString().toUpperCase()}</strong><br>
                     <em>Registration N°:</em></p>
                 </div>
             </div>
@@ -1155,12 +1155,12 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                     <em>Born on:</em></p>
                 </div>
                 <div>
-                    <p><strong>A:</strong> <strong>${student["LIEU DE NAISSANCE"].toUpperCase() || ""}</strong><br>
+                    <p><strong>A:</strong> <strong>${(student["LIEU DE NAISSANCE"] || "").toString().toUpperCase()}</strong><br>
                     <em>At:</em></p>
                 </div>
                 <div></div>
                 <div>
-                    <p><strong>CYCLE:</strong> <strong>${student.CYCLE.toUpperCase() || "N/D"}</strong><br>
+                    <p><strong>CYCLE:</strong> <strong>${(student.CYCLE || "N/D").toString().toUpperCase()}</strong><br>
                     <em>Training cycle:</em></p>
                 </div>
                 <div>
@@ -1168,7 +1168,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                     <em>Academic Year:</em></p>
                 </div>
                 <div>
-                    <p><strong>FILIÈRE:</strong> <strong>${student.FILIERE.toUpperCase() || "N/D"}</strong><br>
+                    <p><strong>FILIÈRE:</strong> <strong>${(student.FILIERE || "N/D").toString().toUpperCase()}</strong><br>
                     <em>Field of Study:</em></p>
                 </div>
                 
@@ -1181,7 +1181,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                     <em>Semester:</em></p>
                 </div>
                 <div style="${(student.OPTION === 'N/D'|| student.OPTION === '') ? 'display:none' : ''}">
-                    <p><strong>OPTION:</strong> <strong>${student.OPTION.toUpperCase()}</strong><br>
+                    <p><strong>OPTION:</strong> <strong>${(student.OPTION || "").toString().toUpperCase()}</strong><br>
                     <em>Option:</em></p>
                 </div>
             </div>

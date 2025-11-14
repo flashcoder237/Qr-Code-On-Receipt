@@ -275,7 +275,7 @@ export async function generateQrCodeBase64(
     const qrCodeDataUrl = await QRCode.toDataURL(qrContent, {
       errorCorrectionLevel: 'M',
       margin: 1,
-      width: 300,
+      width: 800, // Augmenté de 300 à 800 pour une meilleure qualité
       color: {
         dark: '#000000',
         light: '#FFFFFF'
@@ -322,7 +322,7 @@ export async function generateQrCode(
     const qrCodeDataUrl = await QRCode.toDataURL(qrContent, {
       errorCorrectionLevel: 'M',
       margin: 1,
-      width: 300,
+      width: 800, // Augmenté de 300 à 800 pour une meilleure qualité
       color: {
         dark: '#000000',
         light: '#FFFFFF'
@@ -356,7 +356,7 @@ export async function generateQrCodeBlob(
     const qrCodeDataUrl = await QRCode.toDataURL(qrContent, {
       errorCorrectionLevel: 'M',
       margin: 1,
-      width: 300,
+      width: 800, // Augmenté de 300 à 800 pour une meilleure qualité
       color: {
         dark: '#000000',
         light: '#FFFFFF'
@@ -395,7 +395,7 @@ export async function generateQrCodeCanvas(
     await QRCode.toCanvas(canvas, qrContent, {
       errorCorrectionLevel: 'M',
       margin: 1,
-      width: 300,
+      width: 800, // Augmenté de 300 à 800 pour une meilleure qualité
       color: {
         dark: '#000000',
         light: '#FFFFFF'

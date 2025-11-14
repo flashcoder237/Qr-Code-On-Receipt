@@ -42,13 +42,13 @@ const menuItems: MenuItem[] = [
     component: <ReleveGenerator />,
   },
   {
-    title: "Générer les attestations",
+    title: "Générer les attesta...",
     url: "attestation",
     icon: GraduationCap,
     component: <AttestationGenerator />,
   },
   {
-    title: "Configurer les relevés",
+    title: "Config des rele...",
     url: "config",
     icon: Settings2,
     component: <AcademicConfigManager />,
@@ -60,7 +60,7 @@ const menuItems: MenuItem[] = [
     component: <SettingsForm />,
   },
   {
-    title: "Historique des documents",
+    title: "Historique des docs",
     url: "history",
     icon: History,
     component: <DocumentHistoryManager />,
@@ -73,7 +73,7 @@ const menuItems: MenuItem[] = [
     demoRestricted: true, // Cette fonctionnalité est restreinte en mode démo
   },
   {
-    title: "Placement QR sur Documents",
+    title: "Placement QR sur Doc..",
     url: "qr-document-processor",
     icon: QrCode,
     component: <QRCodeDocumentProcessor />,

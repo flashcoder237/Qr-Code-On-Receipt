@@ -109,7 +109,7 @@ export function AppSidebar() {
           </div>
           <div>
             <h2 className="font-semibold text-gray-900 dark:text-white">
-              Générateur de certifi...
+              Gestion des A&R
             </h2>
             <div className="flex items-center gap-2">
               <p className="text-xs text-gray-500 dark:text-gray-400">
