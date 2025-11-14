@@ -453,7 +453,7 @@ export function generateAdvancedAttestationCSS(config: AdvancedAttestationConfig
 
   // Protection: si pas de config ou config invalide, ne rien faire
   if (!config || typeof config !== 'object') {
-    console.log('⚠️ Pas de configuration avancée valide - aucun CSS généré');
+    
     return '';
   }
 
@@ -470,7 +470,7 @@ export function generateAdvancedAttestationCSS(config: AdvancedAttestationConfig
       }
       cssRules.push('/* Espacement avancé - Styles personnalisés appliqués */');
       cssRules.push(spacingCSS);
-      console.log('✨ CSS d\'espacement avancé généré');
+      
     }
   }
 
@@ -484,7 +484,7 @@ export function generateAdvancedAttestationCSS(config: AdvancedAttestationConfig
       }
       cssRules.push('/* Design de tableau avancé */');
       cssRules.push(tableCSS);
-      console.log('🎨 CSS de design de tableau généré');
+      
     }
   }
 
@@ -511,10 +511,10 @@ export function generateAdvancedAttestationCSS(config: AdvancedAttestationConfig
 
     if (fontRules.length > 0) {
       cssRules.push(...fontRules);
-      console.log('🔤 Typographie avancée appliquée - SEULEMENT les polices, PAS les couleurs');
+      
     }
   } else {
-    console.log('🔤 Typographie avancée DÉSACTIVÉE - polices du thème de base conservées');
+    
   }
 
   // CSS personnalisé
@@ -530,7 +530,7 @@ export function generateAdvancedAttestationCSS(config: AdvancedAttestationConfig
   const result = cssRules.filter(rule => rule.trim() !== '').join('\n\n');
   
   if (!result.trim()) {
-    console.log('🎨 Aucun style avancé à appliquer - thème de base conservé');
+    
   }
   
   return result;
@@ -542,13 +542,13 @@ export function generateAdvancedAttestationCSS(config: AdvancedAttestationConfig
  */
 export function combineStyles(baseCSS: string, advancedCSS: string): string {
   if (!advancedCSS || advancedCSS.trim() === '') {
-    console.log('🎨 Styles avancés: Aucun style avancé défini, utilisation des styles de base uniquement');
+    
     return baseCSS;
   }
 
-  console.log('🎨 Styles avancés: Combinaison des styles de base avec les styles avancés');
-  console.log(`📏 Longueur CSS de base: ${baseCSS.length} caractères`);
-  console.log(`📏 Longueur CSS avancé: ${advancedCSS.length} caractères`);
+  
+  
+  
 
   return `${baseCSS}
 

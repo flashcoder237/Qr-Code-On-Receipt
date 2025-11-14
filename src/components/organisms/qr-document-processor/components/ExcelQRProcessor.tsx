@@ -127,7 +127,7 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
         return obj;
       });
 
-      console.log('Excel data loaded:', { columns, sampleRow: rows[0] });
+      
 
       // Initialize column formats with smart auto-detection
       const columnFormats: { [column: string]: ColumnFormat } = {};
@@ -152,15 +152,15 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
           // 2. AND value is in typical Excel date range (> 1000 for dates after ~1902)
           if (hasDateKeyword && sampleValue > 1000 && sampleValue < 100000) {
             columnFormats[col] = { type: 'date', dateFormat: 'DD/MM/YYYY' };
-            console.log(`Auto-detected column "${col}" as date (value: ${sampleValue}, keyword: ${hasDateKeyword})`);
+            
           } else if (sampleValue >= 0 && sampleValue <= 20) {
             // Small numbers are likely grades/scores, not dates
             columnFormats[col] = { type: 'number' };
-            console.log(`Column "${col}" detected as number (value: ${sampleValue}, likely a score/grade)`);
+            
           } else {
             // For large numbers without date keywords, still default to number
             columnFormats[col] = { type: 'number' };
-            console.log(`Column "${col}" detected as number (value: ${sampleValue}, no date keyword)`);
+            
           }
         } else {
           columnFormats[col] = { type: 'text' };
@@ -224,7 +224,7 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
     const format = excelData?.columnFormats?.[column];
     if (!format) return String(value);
 
-    console.log(`Formatting value for column "${column}":`, { value, type: typeof value, format });
+    
 
     switch (format.type) {
       case 'date':
@@ -244,7 +244,7 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
             .replace('MM', month)
             .replace('YYYY', String(year));
 
-          console.log(`  Date formatted: ${value} -> ${formatted}`);
+          
           return formatted;
         } else if (value instanceof Date) {
           const dateFormat = format.dateFormat || 'DD/MM/YYYY';
@@ -257,7 +257,7 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
             .replace('MM', month)
             .replace('YYYY', String(year));
         }
-        console.log(`  Date not a number or Date object: ${typeof value}`);
+        
         return String(value);
 
       case 'number':
@@ -328,24 +328,24 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
   // Update document matching status
   const updateDocumentMatching = useCallback((matchingColumn: string) => {
     if (!excelData || !matchingColumn) {
-      console.log('Cannot update matching - missing excelData or matchingColumn');
+      
       return;
     }
 
-    console.log('=== Updating document matching ===');
-    console.log('Matching column:', matchingColumn);
-    console.log('Excel rows count:', excelData.rows.length);
-    console.log('Sample Excel row values for column:', excelData.rows.slice(0, 3).map(r => r[matchingColumn]));
+    
+    
+    
+    
 
     setDocumentMappings(prev => {
-      console.log('Current mappings count:', prev.length);
+      
 
       return prev.map(mapping => {
         // Normalize both values for comparison
         const normalizedMappingValue = String(mapping.matchingValue).toLowerCase().trim();
 
-        console.log(`\nChecking mapping for file: ${mapping.file.name}`);
-        console.log(`  Matching value: "${normalizedMappingValue}"`);
+        
+        
 
         // Check if any row has a matching value
         const matchedRow = excelData.rows.find(row => {
@@ -353,7 +353,7 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
 
           // Exact match
           if (rowValue === normalizedMappingValue) {
-            console.log(`  ✓ Exact match: "${rowValue}" === "${normalizedMappingValue}"`);
+            
             return true;
           }
 
@@ -362,16 +362,14 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
             rowValue.includes(normalizedMappingValue) ||
             normalizedMappingValue.includes(rowValue)
           )) {
-            console.log(`  ✓ Partial match: "${rowValue}" ~ "${normalizedMappingValue}"`);
+            
             return true;
           }
 
           return false;
         });
 
-        if (!matchedRow) {
-          console.log(`  ✗ No match found for: "${normalizedMappingValue}"`);
-        }
+        
 
         return {
           ...mapping,
@@ -399,7 +397,7 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
   // Auto-update matching when matching column changes
   useEffect(() => {
     if (excelData?.matchingColumn) {
-      console.log('Auto-updating matching due to matching column change');
+      
       updateDocumentMatching(excelData.matchingColumn);
     }
   }, [excelData?.matchingColumn, updateDocumentMatching]);
@@ -407,7 +405,7 @@ export const ExcelQRProcessor: React.FC<ExcelQRProcessorProps> = ({
   // Also update matching when document mappings are added
   useEffect(() => {
     if (excelData?.matchingColumn && documentMappings.length > 0) {
-      console.log('Auto-updating matching due to new documents');
+      
       updateDocumentMatching(excelData.matchingColumn);
     }
   }, [documentMappings.length, excelData?.matchingColumn, updateDocumentMatching]);

@@ -75,7 +75,7 @@ export function getQrCodePayloadWithSelectiveEncryption(
   displaySessions: boolean = true
 ): string {
   try {
-    console.log(`🔄 Génération contenu QR sélectif pour ${student.MATRICULE} (Chiffrement: ${encryptionEnabled})`);
+    
     
     // Sanitiser les données de l'étudiant
     const sanitizedStudent = sanitizeStudentData(student);
@@ -87,28 +87,28 @@ export function getQrCodePayloadWithSelectiveEncryption(
 
     if (!encryptionEnabled) {
       // Mode sans chiffrement - affichage traditionnel
-      console.log('📋 QR Code sans chiffrement généré');
+      
       return generateTraditionalQRContent(sanitizedStudent, documentType, displaySessions);
     }
 
     // Mode avec chiffrement sélectif
     try {
-      console.log('🔐 Début du processus de chiffrement sélectif...');
+      
       
       // Créer les données publiques et sensibles
       const { publicData, sensitiveData } = createSelectiveDataFromStudent(sanitizedStudent, documentType, displaySessions);
-      console.log('📋 Données séparées en publiques et sensibles');
-      console.log('📢 Données publiques:', Object.keys(publicData));
-      console.log('🔒 Données sensibles:', Object.keys(sensitiveData));
+      
+      
+      
       
       // Créer la structure QR avec chiffrement sélectif
       const qrData = createSelectiveQRCodeData(publicData, sensitiveData);
-      console.log('🔒 Structure QR avec chiffrement sélectif créée');
+      
       
       // Formater pour affichage
       const formattedContent = formatSelectiveQRCodeForDisplay(qrData, displaySessions);
       
-      console.log('✅ QR Code avec chiffrement sélectif généré');
+      
       return formattedContent;
     } catch (encryptionError) {
       console.error('❌ Erreur de chiffrement sélectif, utilisation du mode traditionnel:', encryptionError);
@@ -182,10 +182,10 @@ export async function generateQrCodeBase64WithSelectiveEncryption(
   displaySessions: boolean = true
 ): Promise<string> {
   try {
-    console.log(`🔄 Génération QR Code base64 sélectif pour ${student.MATRICULE}`);
+    
     
     const qrContent = getQrCodePayloadWithSelectiveEncryption(student, documentType, encryptionEnabled, displaySessions);
-    console.log('📋 Contenu QR sélectif généré, longueur:', qrContent.length);
+    
     
     const qrCodeDataUrl = await QRCode.toDataURL(qrContent, {
       errorCorrectionLevel: 'H',
@@ -197,7 +197,7 @@ export async function generateQrCodeBase64WithSelectiveEncryption(
       }
     });
     
-    console.log(`✅ QR Code base64 sélectif généré (${qrCodeDataUrl.length} caractères)`);
+    
     return qrCodeDataUrl;
   } catch (error) {
     console.error('❌ Erreur lors de la génération du QR code base64 sélectif:', error);
@@ -215,7 +215,7 @@ export async function generateQrCodeWithSelectiveEncryption(
   displaySessions: boolean = true
 ): Promise<ArrayBuffer> {
   try {
-    console.log(`🔄 Génération QR Code ArrayBuffer sélectif pour ${student.MATRICULE}`);
+    
     
     const qrContent = getQrCodePayloadWithSelectiveEncryption(student, documentType, encryptionEnabled, displaySessions);
     
@@ -229,7 +229,7 @@ export async function generateQrCodeWithSelectiveEncryption(
       }
     });
     
-    console.log(`✅ QR Code ArrayBuffer sélectif généré (${qrCodeBuffer.length} bytes)`);
+    
     return qrCodeBuffer.buffer.slice(
       qrCodeBuffer.byteOffset,
       qrCodeBuffer.byteOffset + qrCodeBuffer.byteLength
@@ -252,7 +252,7 @@ export const getQrCodePayloadWithEncryption = getQrCodePayloadWithSelectiveEncry
  */
 export function testSelectiveQRGeneration(student: StudentExcelRecord, documentType: 'releve' | 'attestation' | 'diplome', displaySessions: boolean = true): boolean {
   try {
-    console.log('🧪 Test de génération QR avec chiffrement sélectif...');
+    
     
     const sanitizedStudent = sanitizeStudentData(student);
     const { publicData, sensitiveData } = createSelectiveDataFromStudent(sanitizedStudent, documentType, displaySessions);
@@ -358,7 +358,7 @@ export function encryptSensitiveData(
   publicData: PublicData
 ): string {
   try {
-    console.log('🔐 Chiffrement des données sensibles uniquement...');
+    
     
     // Générer la clé basée sur les données publiques
     const encryptionKey = generateSelectiveKey(
@@ -388,7 +388,7 @@ export function encryptSensitiveData(
       padding: CryptoJS.pad.Pkcs7
     }).toString();
     
-    console.log('✅ Données sensibles chiffrées avec succès');
+    
     return encrypted;
   } catch (error) {
     console.error('❌ Erreur lors du chiffrement des données sensibles:', error);
@@ -404,7 +404,7 @@ export function decryptSensitiveData(
   publicData: PublicData
 ): SensitiveData | null {
   try {
-    console.log('🔓 Déchiffrement des données sensibles...');
+    
     
     // Générer la même clé basée sur les données publiques
     const decryptionKey = generateSelectiveKey(
@@ -435,7 +435,7 @@ export function decryptSensitiveData(
       return null;
     }
     
-    console.log('✅ Données sensibles déchiffrées avec succès');
+    
     return parsedData as SensitiveData;
   } catch (error) {
     console.error('❌ Erreur lors du déchiffrement des données sensibles:', error);
@@ -462,7 +462,7 @@ export function createSelectiveQRCodeData(
   sensitiveData: SensitiveData
 ): QRCodeData {
   try {
-    console.log('📋 Création du QR code avec chiffrement sélectif...');
+    
     
     // Chiffrer uniquement les données sensibles
     const encryptedSensitive = encryptSensitiveData(sensitiveData, publicData);
@@ -477,7 +477,7 @@ export function createSelectiveQRCodeData(
       version: '2.0_selective'
     };
     
-    console.log('✅ Structure QR code créée avec chiffrement sélectif');
+    
     return qrCodeData;
   } catch (error) {
     console.error('❌ Erreur lors de la création du QR code sélectif:', error);
@@ -525,7 +525,7 @@ export function validateSelectiveQRCode(
   expectedSensitiveData?: SensitiveData
 ): boolean {
   try {
-    console.log('🔍 Validation du QR code sélectif...');
+    
     
     // Vérifier la structure de base
     if (!qrData.public || !qrData.encrypted || !qrData.verification) {
@@ -555,7 +555,7 @@ export function validateSelectiveQRCode(
       }
     }
     
-    console.log('✅ QR code sélectif valide');
+    
     return true;
   } catch (error) {
     console.error('❌ Erreur lors de la validation du QR code sélectif:', error);
@@ -630,23 +630,23 @@ export function testSelectiveEncryption(
   sensitiveData: SensitiveData
 ): boolean {
   try {
-    console.log('🧪 Test du chiffrement sélectif...');
+    
     
     // Créer la structure QR
     const qrData = createSelectiveQRCodeData(publicData, sensitiveData);
-    console.log('✅ Structure QR créée');
+    
     
     // Tester le déchiffrement
     const decryptedSensitive = decryptSensitiveData(qrData.encrypted, publicData);
-    console.log('✅ Déchiffrement réussi');
+    
     
     // Valider l'intégrité
     const isValid = validateSelectiveQRCode(qrData, sensitiveData);
-    console.log('✅ Validation:', isValid ? 'Réussie' : 'Échouée');
+    
     
     // Tester le formatage pour affichage
     const displayFormat = formatSelectiveQRCodeForDisplay(qrData);
-    console.log('✅ Format d\'affichage généré');
+    
     
     return isValid;
   } catch (error) {

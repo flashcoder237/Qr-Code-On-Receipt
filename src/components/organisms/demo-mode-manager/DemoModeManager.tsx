@@ -34,7 +34,7 @@ export const DemoModeManager: React.FC<DemoModeManagerProps> = ({
       // Supprimer le mode démo du localStorage
       localStorage.removeItem('demo_mode');
       
-      console.log('✅ Mode démo désactivé');
+      
       
       // Callback optionnel
       if (onExitDemo) {

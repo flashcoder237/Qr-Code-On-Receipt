@@ -64,7 +64,7 @@ export const fetchLicenses = async (): Promise<Record<string, License>> => {
       }
     });
 
-    console.log(`Licences valides récupérées pour ${currentYear}:`, Object.keys(licenses).length);
+    
     return licenses;
   });
 };
@@ -131,7 +131,7 @@ export const updateAndDecrementLicense = async (licenseKey: string): Promise<boo
       throw new Error(`Erreur lors de la mise à jour: ${updateError.message}`);
     }
 
-    console.log(`✅ Licence activée avec succès: ${cleanLicenseKey} (${newNumberUser} utilisations restantes)`);
+    
     return true;
   });
 };

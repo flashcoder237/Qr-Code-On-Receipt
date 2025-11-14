@@ -247,23 +247,23 @@ export function createCryptoDataFromStudent(student: any, documentType: 'releve'
  */
 export function testEncryptionDecryption(studentData: StudentCryptoData): boolean {
   try {
-    console.log('🔐 Test de chiffrement/déchiffrement...');
+    
     
     // Chiffrer les données
     const encrypted = encryptStudentData(studentData, studentData.matricule);
-    console.log('✅ Chiffrement réussi, longueur:', encrypted.length);
+    
     
     // Déchiffrer les données
     const decrypted = decryptStudentData(encrypted, studentData.matricule, studentData.dateDeNaissance);
-    console.log('✅ Déchiffrement réussi');
+    
     
     // Valider l'intégrité
     const isValid = validateEncryptedData(encrypted, studentData);
-    console.log('✅ Validation:', isValid ? 'Réussie' : 'Échouée');
+    
     
     // Générer le hash de vérification
     const verificationHash = generateVerificationHash(studentData);
-    console.log('✅ Hash de vérification:', verificationHash);
+    
     
     return isValid;
   } catch (error) {

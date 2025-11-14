@@ -766,7 +766,7 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
       window.URL.revokeObjectURL(url);
 
       // Notification de succès
-      console.log(`✅ Export réussi : ${worksheetData.length} entrées exportées dans ${workbook.worksheets.length} feuilles`);
+      
 
     } catch (error) {
       console.error("❌ Erreur lors de l'export:", error);
@@ -1040,7 +1040,7 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      console.log("✅ Template exporté avec succès");
+      
 
     } catch (error) {
       console.error("❌ Erreur lors de l'export du template:", error);
@@ -1083,10 +1083,10 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
 
       setSelectedSheetIndex(defaultSheetIndex);
 
-      console.log("✅ Fichier chargé:", file.name);
-      console.log("📋 Feuilles disponibles:", sheetNames);
-      console.log("🎯 État loadedWorkbook:", workbook ? "OK" : "NULL");
-      console.log("🎯 État availableSheets:", sheetNames);
+      
+      
+      
+      
 
       toast.success(
         "Fichier chargé",
@@ -1240,13 +1240,13 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
           "Aucune donnée valide trouvée",
           "Vérifiez que la feuille contient des données, que les en-têtes sont corrects et qu'au moins une ligne contient des informations valides"
         );
-        console.log("Debug - Headers found:", headers);
-        console.log("Debug - Header row index:", headerRowIndex);
-        console.log("Debug - Total rows in worksheet:", worksheet.rowCount);
+        
+        
+        
         return;
       }
 
-      console.log(`📊 Import : ${validRowsCount} lignes valides trouvées`);
+      
 
       const importedConfigs = convertToConfigFormat(jsonData);
       

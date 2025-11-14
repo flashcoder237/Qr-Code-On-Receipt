@@ -28,12 +28,12 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   },
   
   send(channel: string, ...args: any[]) {
-    console.log(`IPC Send: ${channel}`, args.length > 0 ? args : '');
+    
     ipcRenderer.send(channel, ...args);
   },
   
   invoke(channel: string, ...args: any[]) {
-    console.log(`IPC Invoke: ${channel}`, args.length > 0 ? '(with params)' : '');
+    
     
     return ipcRenderer.invoke(channel, ...args)
       .then(result => {
@@ -84,7 +84,3 @@ contextBridge.exposeInMainWorld('fs', {
   }
 });
 
-// Notify the renderer process when preload script has finished loading
-window.addEventListener('DOMContentLoaded', () => {
-  console.log('Preload script loaded successfully');
-});

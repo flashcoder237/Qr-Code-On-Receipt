@@ -174,7 +174,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   // Fonction pour traiter une feuille spécifique
   const processSheet = (workbook: XLSX.WorkBook, sheetName: string, fileName: string) => {
     try {
-      console.log('📄 Traitement de la feuille:', sheetName);
+      
       
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
@@ -184,7 +184,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       }
 
       const columns = Object.keys(jsonData[0]);
-      console.log('📋 Colonnes détectées:', columns);
+      
       
       // Valider les colonnes avec le type d'établissement
       const validation = validateExcelColumns(columns, documentType, establishmentType);
@@ -196,11 +196,11 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
       // Générer le mapping automatique
       const automaticMapping = generateColumnMapping(columns, documentType);
-      console.log('🔄 Mapping automatique généré:', automaticMapping);
+      
 
       if (validation.isValid) {
         // Toutes les colonnes requises sont présentes
-        console.log('✅ Validation réussie - Application du mapping et sanitisation');
+        
         
         // Appliquer le mapping et sanitiser les données
         const processedData = jsonData.map(row => {
@@ -208,13 +208,13 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           return sanitizeExcelRow(mappedRow, documentType);
         });
 
-        console.log('📊 Données traitées:', processedData.length, 'lignes');
+        
         onFileLoaded(processedData, columns, automaticMapping, fileName);
         setPendingData(null);
         
       } else if (allowPartialImport && validation.missingRequired.length === 0) {
         // Seules des colonnes optionnelles manquent, on peut continuer
-        console.log('⚠️ Validation partielle - Application du mapping et sanitisation');
+        
         
         const processedData = jsonData.map(row => {
           const mappedRow = applyColumnMapping(row, automaticMapping);
@@ -226,7 +226,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
       } else {
         // Des colonnes requises manquent
-        console.log('❌ Validation échouée - Colonnes requises manquantes');
+        
         setPendingData({
           data: jsonData,
           columns,
@@ -254,14 +254,14 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
   const processFile = async (file: File) => {
     try {
-      console.log('📁 Traitement du fichier:', file.name);
+      
       
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: 'array' });
       
       // Vérifier s'il y a plusieurs feuilles
       if (workbook.SheetNames.length > 1) {
-        console.log('📋 Plusieurs feuilles détectées:', workbook.SheetNames);
+        
 
         // Si onWorkbookLoaded est fourni, envoyer le workbook au parent
         if (onWorkbookLoaded) {
@@ -330,7 +330,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
   const handleForceImport = () => {
     if (pendingData) {
-      console.log('🔄 Import forcé avec données partielles');
+      
       
       // Appliquer le mapping et sanitiser les données même avec des colonnes manquantes
       const processedData = pendingData.data.map(row => {

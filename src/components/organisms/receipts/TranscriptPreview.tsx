@@ -40,7 +40,7 @@ export const TranscriptPreview: React.FC<TranscriptPreviewProps> = ({
 
   useEffect(() => {
     // Log when previewContentUrl changes
-    console.log("Preview URL updated:", previewContentUrl);
+    
   }, [previewContentUrl]);
 
   const handleZoomIn = () => {

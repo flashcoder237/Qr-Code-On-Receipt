@@ -69,7 +69,7 @@ export function generateCompactKey(matricule: string): string {
  */
 export function encryptCompactData(sensitiveData: CompactSensitiveData): string {
   try {
-    console.log('🔐 Chiffrement compact des données sensibles...');
+    
     
     // Générer la clé basée uniquement sur le matricule
     const encryptionKey = generateCompactKey(sensitiveData.m);
@@ -98,7 +98,7 @@ export function encryptCompactData(sensitiveData: CompactSensitiveData): string 
       .replace(/\//g, '_')
       .replace(/=/g, '');
     
-    console.log('✅ Données chiffrées de manière compacte, longueur:', compressedEncrypted.length);
+    
     return compressedEncrypted;
   } catch (error) {
     console.error('❌ Erreur lors du chiffrement compact:', error);
@@ -111,7 +111,7 @@ export function encryptCompactData(sensitiveData: CompactSensitiveData): string 
  */
 export function decryptCompactData(encryptedData: string, matricule: string): CompactSensitiveData | null {
   try {
-    console.log('🔓 Déchiffrement compact des données sensibles...');
+    
     
     // Générer la même clé basée sur le matricule
     const decryptionKey = generateCompactKey(matricule);
@@ -148,7 +148,7 @@ export function decryptCompactData(encryptedData: string, matricule: string): Co
       return null;
     }
     
-    console.log('✅ Données sensibles déchiffrées avec succès');
+    
     return parsedData as CompactSensitiveData;
   } catch (error) {
     console.error('❌ Erreur lors du déchiffrement compact:', error);
@@ -164,7 +164,7 @@ export function createCompactQRCodeData(
   sensitiveData: CompactSensitiveData
 ): CompactQRCodeData {
   try {
-    console.log('📋 Création du QR code avec chiffrement compact...');
+    
     
     // Chiffrer uniquement les données sensibles
     const encryptedSensitive = encryptCompactData(sensitiveData);
@@ -175,8 +175,8 @@ export function createCompactQRCodeData(
       version: '3.0_compact'
     };
     
-    console.log('✅ Structure QR code créée avec chiffrement compact');
-    console.log('📊 Longueur du contenu chiffré:', encryptedSensitive.length, 'caractères');
+    
+    
     return qrCodeData;
   } catch (error) {
     console.error('❌ Erreur lors de la création du QR code compact:', error);
@@ -236,7 +236,7 @@ export function validateCompactQRCode(
   expectedSensitiveData?: CompactSensitiveData
 ): boolean {
   try {
-    console.log('🔍 Validation du QR code compact...');
+    
     
     // Vérifier la structure de base
     if (!qrData.public || !qrData.encrypted) {
@@ -259,7 +259,7 @@ export function validateCompactQRCode(
       }
     }
     
-    console.log('✅ QR code compact valide');
+    
     return true;
   } catch (error) {
     console.error('❌ Erreur lors de la validation du QR code compact:', error);
@@ -304,7 +304,7 @@ export function createCompactDataFromStudent(
     calculatedMention = calculateMention(moyenneNumber, student.PARCOURS, student.NIVEAU, student.FINALITE) || 'Passable';
   }
   
-  console.log(`🔄 QR Code Compact - Grade calculé: ${calculatedGrade}, Mention calculée: ${calculatedMention}`);
+  
 
   // Données publiques (non chiffrées) avec calculs cohérents
   const publicData: PublicData = {
@@ -361,25 +361,25 @@ export function testCompactEncryption(
   sensitiveData: CompactSensitiveData
 ): boolean {
   try {
-    console.log('🧪 Test du chiffrement compact...');
-    console.log('🔑 Clé basée uniquement sur le matricule:', sensitiveData.m);
+    
+    
     
     // Créer la structure QR
     const qrData = createCompactQRCodeData(publicData, sensitiveData);
-    console.log('✅ Structure QR créée');
-    console.log('📊 Longueur du contenu chiffré:', qrData.encrypted.length, 'caractères');
+    
+    
     
     // Tester le déchiffrement
     const decryptedSensitive = decryptCompactData(qrData.encrypted, sensitiveData.m);
-    console.log('✅ Déchiffrement réussi');
+    
     
     // Valider l'intégrité
     const isValid = validateCompactQRCode(qrData, sensitiveData);
-    console.log('✅ Validation:', isValid ? 'Réussie' : 'Échouée');
+    
     
     // Tester le formatage pour affichage
     const displayFormat = formatCompactQRCodeForDisplay(qrData, 'attestation');
-    console.log('✅ Format d\'affichage généré, longueur totale:', displayFormat.length);
+    
     
     return isValid;
   } catch (error) {

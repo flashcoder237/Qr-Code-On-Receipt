@@ -370,7 +370,7 @@ export const HelpSupport: React.FC = () => {
                       className="w-full"
                       onClick={() => {
                         console.clear();
-                        console.log('🧹 Console cleared');
+                        
                       }}
                     >
                       Vider la console
@@ -387,7 +387,7 @@ export const HelpSupport: React.FC = () => {
                           userAgent: navigator.userAgent,
                           timestamp: new Date().toISOString()
                         };
-                        console.log('📊 État de l\'application:', data);
+                        
                       }}
                     >
                       Logger l'état de l'app

@@ -11,7 +11,7 @@ if (typeof window !== 'undefined') {
 
 // Initialize mock IPC if in development environment without Electron
 if (process.env.NODE_ENV === 'development' && !window.ipcRenderer) {
-  console.log('Running in development mode without Electron, initializing mock IPC');
+  
   initMockIpc();
 }
 

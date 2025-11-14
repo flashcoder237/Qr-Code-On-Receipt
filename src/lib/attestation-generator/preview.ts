@@ -39,15 +39,15 @@ export async function openAttestationPreview(
   options: PreviewOptions = {}
 ): Promise<boolean> {
   try {
-    console.log('🔄 Début de la prévisualisation avec chiffrement:', options.encryptionEnabled);
+    
     
     // Sanitiser les données de l'étudiant
     const sanitizedStudent = sanitizeStudentData(student);
-    console.log('🧹 Données étudiant sanitisées');
+    
     
     // Par défaut, le chiffrement est activé sauf indication contraire
     const encryptionEnabled = options.encryptionEnabled !== false;
-    console.log(`🔐 Chiffrement: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
+    
     
     // Vérification de sécurité pour la position du QR code
     const safeQrPosition = options.qrCodePosition && 
@@ -74,15 +74,15 @@ export async function openAttestationPreview(
     
     if (!qrCodeBase64 && (settings.theme?.showQRCode !== false)) {
       try {
-        console.log(`🔄 Génération QR Code pour prévisualisation (Chiffrement: ${encryptionEnabled})`);
+        
         
         // Utiliser la fonction generateQrCodeBase64 qui supporte le chiffrement
         qrCodeBase64 = await generateQrCodeBase64(sanitizedStudent, 'attestation', encryptionEnabled);
         
         if (encryptionEnabled) {
-          console.log('✅ QR Code avec chiffrement généré pour la prévisualisation');
+          
         } else {
-          console.log('📋 QR Code sans chiffrement généré pour la prévisualisation');
+          
         }
       } catch (qrError) {
         console.error("❌ Erreur lors de la génération du QR code pour la prévisualisation:", qrError);
@@ -96,7 +96,7 @@ export async function openAttestationPreview(
     // Approche hybride : essayer d'abord avec le renderer IPC, puis en fallback direct
     if (window.attestationRenderer) {
       try {
-        console.log('🔄 Utilisation du renderer IPC pour prévisualisation...');
+        
         htmlContent = await window.attestationRenderer.renderHTML({
           student: sanitizedStudent,
           settings,
@@ -107,7 +107,7 @@ export async function openAttestationPreview(
             encryptionEnabled: encryptionEnabled
           }
         });
-        console.log('✅ HTML généré via IPC pour prévisualisation');
+        
       } catch (ipcError) {
         console.warn("⚠️ Échec du rendu via IPC, utilisation du fallback direct:", ipcError);
         // Continuer avec le fallback
@@ -116,14 +116,14 @@ export async function openAttestationPreview(
     
     // Si htmlContent n'est pas défini, utiliser directement la fonction de génération HTML
     if (!htmlContent) {
-      console.log('🔄 Utilisation du générateur HTML direct pour prévisualisation...');
+      
       htmlContent = await generateAttestationHTML(sanitizedStudent, settings, {
         qrCodeImage: qrCodeBase64,
         qrCodePosition: safeQrPosition,
         theme: options.theme,
         encryptionEnabled: encryptionEnabled
       });
-      console.log('✅ HTML généré directement pour prévisualisation');
+      
     }
     
     if (!htmlContent) {
@@ -148,13 +148,13 @@ export async function openAttestationPreview(
     // Essayer d'abord l'API IPC
     if (window.ipcRenderer) {
       try {
-        console.log('🔄 Ouverture de la fenêtre de prévisualisation via IPC...');
+        
         success = await window.ipcRenderer.invoke(
           'show-preview', 
           htmlContent, 
           `Prévisualisation de l'attestation - ${sanitizedStudent.NOM} ${sanitizedStudent.PRENOM} ${encryptionEnabled ? '🔐' : ''}`
         );
-        console.log('✅ Fenêtre de prévisualisation ouverte via IPC');
+        
       } catch (showPreviewError) {
         console.warn("⚠️ Échec de l'ouverture via IPC, utilisation du fallback:", showPreviewError);
         // Continuer avec le fallback
@@ -163,22 +163,22 @@ export async function openAttestationPreview(
     
     // Si l'API IPC n'est pas disponible ou a échoué, essayer d'ouvrir une nouvelle fenêtre
     if (!success) {
-      console.log('🔄 Ouverture de la fenêtre de prévisualisation en fallback...');
+      
       const previewWindow = window.open('', '_blank');
       if (previewWindow) {
         previewWindow.document.write(htmlContent);
         previewWindow.document.title = `Prévisualisation de l'attestation - ${sanitizedStudent.NOM} ${sanitizedStudent.PRENOM} ${encryptionEnabled ? '🔐' : ''}`;
         previewWindow.document.close();
         success = true;
-        console.log('✅ Fenêtre de prévisualisation ouverte en fallback');
+        
       } else {
         throw new Error("Impossible d'ouvrir la fenêtre de prévisualisation. Vérifiez que les popups ne sont pas bloqués.");
       }
     }
     
-    console.log('✅ Prévisualisation terminée avec succès');
-    console.log(`🔐 Chiffrement QR: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
-    console.log(`📋 QR Code inclus: ${qrCodeBase64 ? 'Oui' : 'Non'}`);
+    
+    
+    
     
     return success;
     

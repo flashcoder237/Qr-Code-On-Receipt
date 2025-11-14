@@ -75,9 +75,7 @@ function createWindow() {
     console.warn('Le processus de rendu ne répond plus');
   });
 
-  win.webContents.on('responsive', () => {
-    console.log('Le processus de rendu répond à nouveau');
-  });
+
 }
 
 async function cleanupTempFiles() {
@@ -100,7 +98,7 @@ async function cleanupTempFiles() {
         const stats = await fs.stat(filePath);
         if (stats.mtimeMs < oneDayAgo) {
           await fs.unlink(filePath);
-          console.log(`Fichier temporaire nettoyé: ${filePath}`);
+          
         }
       } catch (e) {
         console.error(`Erreur lors du nettoyage du fichier temporaire ${filePath}:`, e);
@@ -115,7 +113,7 @@ async function cleanupTempFiles() {
 function setupFileSystemHandlers() {
   ipcMain.handle('fs:readFile', async (_, filePath, options) => {
     try {
-      console.log(`📁 Lecture du fichier: ${filePath}`);
+      
       return await fs.readFile(filePath, options);
     } catch (error) {
       console.error('Erreur lors de la lecture du fichier:', error);
@@ -129,7 +127,7 @@ function setupPreviewHandlers() {
   // Gestionnaire pour la prévisualisation HTML amélioré
   ipcMain.handle('show-preview', async (_, htmlContent: string, title = 'Prévisualisation') => {
     try {
-      console.log(`🖼️ Ouverture de la prévisualisation: ${title}`);
+      
       
       // Ajouter des styles pour permettre le défilement et améliorer l'affichage
       const enhancedHtml = htmlContent.replace('</head>', `
@@ -170,7 +168,7 @@ function setupPreviewHandlers() {
       
       // Écrire le contenu HTML amélioré dans le fichier temporaire
       await fs.writeFile(tempPath, enhancedHtml, 'utf8');
-      console.log(`📝 Fichier temporaire créé: ${tempPath}`);
+      
       
       // Créer une nouvelle fenêtre de prévisualisation
       const previewWindow = new BrowserWindow({
@@ -218,7 +216,7 @@ function setupPreviewHandlers() {
           indicator.style.visibility = 'visible';
         });
         
-        console.log('🔐 Indicateurs de chiffrement activés:', indicators.length);
+        
       `);
       
       // Créer un menu contextuel pour la fenêtre de prévisualisation
@@ -254,7 +252,7 @@ function setupPreviewHandlers() {
                       pageSize: 'A4'
                     });
                     await fs.writeFile(result.filePath, pdfData);
-                    console.log(`📄 PDF sauvegardé: ${result.filePath}`);
+                    
                   }
                 } catch (error) {
                   console.error('Erreur lors de la sauvegarde PDF:', error);
@@ -314,13 +312,13 @@ function setupPreviewHandlers() {
       previewWindow.on('closed', async () => {
         try {
           await fs.unlink(tempPath);
-          console.log(`🗑️ Fichier temporaire supprimé: ${tempPath}`);
+          
         } catch (err) {
           console.error('Erreur lors de la suppression du fichier temporaire:', err);
         }
       });
       
-      console.log(`✅ Fenêtre de prévisualisation ouverte avec succès`);
+      
       return true;
       
     } catch (error) {
@@ -371,7 +369,7 @@ app.on('web-contents-created', (_, contents) => {
 // Initialisation de l'application
 app.whenReady().then(async () => {
   try {
-    console.log('🚀 Initialisation de l\'application...');
+    
     
     // Nettoyer les fichiers temporaires au démarrage
     await cleanupTempFiles();
@@ -385,7 +383,7 @@ app.whenReady().then(async () => {
     // Créer la fenêtre principale
     createWindow();
     
-    console.log('✅ Application initialisée avec succès');
+    
     
   } catch (error) {
     console.error('❌ Erreur lors de l\'initialisation:', error);

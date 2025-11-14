@@ -121,9 +121,7 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
         }
       });
       
-      if (needsUpdate) {
-        console.log("Initializing column and session mapping for all ECs");
-      }
+     
       
       // Auto-mapper les sessions si possible
       autoMapSessions();

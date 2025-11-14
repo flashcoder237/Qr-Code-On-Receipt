@@ -77,7 +77,7 @@ export function sanitizeStudentData(student: StudentExcelRecord): StudentExcelRe
     
     // Si c'est un nombre (numéro de série Excel)
     if (typeof dateValue === 'number') {
-      console.log(`🔄 Conversion date Excel pour ${sanitized.MATRICULE}: ${dateValue}`);
+      
       try {
         // Conversion du numéro de série Excel en date
         const excelDate = new Date((dateValue - 25569) * 86400 * 1000);
@@ -85,7 +85,7 @@ export function sanitizeStudentData(student: StudentExcelRecord): StudentExcelRe
         const month = String(excelDate.getUTCMonth() + 1).padStart(2, "0");
         const year = excelDate.getUTCFullYear();
         sanitized["DATE DE NAISSANCE"] = `${day}/${month}/${year}`;
-        console.log(`✅ Date convertie pour ${sanitized.MATRICULE}: ${sanitized["DATE DE NAISSANCE"]}`);
+        
       } catch (error) {
         console.error(`❌ Erreur conversion date pour ${sanitized.MATRICULE}:`, error);
         sanitized["DATE DE NAISSANCE"] = 'N/D';
@@ -94,7 +94,7 @@ export function sanitizeStudentData(student: StudentExcelRecord): StudentExcelRe
     // Si c'est une chaîne, vérifier et corriger le format si nécessaire
     else if (typeof dateValue === 'string') {
       const dateStr = dateValue.toString();
-      console.log(`🔍 Vérification format date pour ${sanitized.MATRICULE}: ${dateStr}`);
+      
       
       // Vérifier si le format est déjà correct (DD/MM/YYYY)
       if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
@@ -106,7 +106,7 @@ export function sanitizeStudentData(student: StudentExcelRecord): StudentExcelRe
             const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
             const year = parsedDate.getFullYear();
             sanitized["DATE DE NAISSANCE"] = `${day}/${month}/${year}`;
-            console.log(`✅ Date reformatée pour ${sanitized.MATRICULE}: ${sanitized["DATE DE NAISSANCE"]}`);
+            
           } else {
             console.warn(`⚠️ Format de date non reconnu pour ${sanitized.MATRICULE}: ${dateStr}`);
           }
@@ -114,7 +114,7 @@ export function sanitizeStudentData(student: StudentExcelRecord): StudentExcelRe
           console.error(`❌ Erreur parsing date pour ${sanitized.MATRICULE}:`, error);
         }
       } else {
-        console.log(`✅ Date déjà au bon format pour ${sanitized.MATRICULE}: ${dateStr}`);
+        
       }
     }
   }
@@ -131,7 +131,7 @@ export function getQrCodePayloadWithEncryption(
   encryptionEnabled: boolean = false
 ): string {
   try {
-    console.log(`🔄 Génération contenu QR compact pour ${student.MATRICULE} (Chiffrement: ${encryptionEnabled})`);
+    
     
     const sanitizedStudent = sanitizeStudentData(student);
     
@@ -140,28 +140,28 @@ export function getQrCodePayloadWithEncryption(
     }
 
     if (!encryptionEnabled) {
-      console.log('📋 QR Code sans chiffrement généré');
+      
       return generateTraditionalQRContent(sanitizedStudent, documentType);
     }
 
     try {
-      console.log('🔐 Début du processus de chiffrement compact...');
-      console.log('🔑 Clé basée uniquement sur le matricule:', sanitizedStudent.MATRICULE);
+      
+      
       
       const { publicData, sensitiveData } = createCompactDataFromStudent(sanitizedStudent, documentType);
-      console.log('📋 Données séparées en publiques et sensibles');
-      console.log('📢 Données publiques (non chiffrées):', Object.keys(publicData));
-      console.log('🔒 Données sensibles (chiffrées):', Object.keys(sensitiveData));
+      
+      
+      
       
       const qrData = createCompactQRCodeData(publicData, sensitiveData);
-      console.log('🔒 Structure QR avec chiffrement compact créée');
-      console.log('📊 Longueur du contenu chiffré:', qrData.encrypted.length, 'caractères');
+      
+      
       
       const formattedContent = formatCompactQRCodeForDisplay(qrData, documentType);
       
-      console.log('✅ QR Code avec chiffrement compact généré');
-      console.log('📊 Répartition: Données publiques visibles + Données sensibles chiffrées (compact)');
-      console.log('📱 Longueur totale du contenu QR:', formattedContent.length, 'caractères');
+      
+      
+      
       return formattedContent;
     } catch (encryptionError) {
       console.error('❌ Erreur de chiffrement compact, utilisation du mode traditionnel:', encryptionError);
@@ -241,7 +241,7 @@ Année d'obtention: ${student["ANNEE D'OBTENTION"]}`;
     calculatedMention = calculateMention(moyenneNumber, student.PARCOURS, student.NIVEAU, student.FINALITE) || 'Passable';
   }
   
-  console.log(`🔄 QR Code - Moyenne: ${moyenneNumber}, Grade calculé: ${calculatedGrade}, Mention calculée: ${calculatedMention}`);
+  
   
   const commonContent = `
 Moyenne: ${isNaN(moyenneNumber) ? 'N/D' : moyenneNumber.toFixed(2)}
@@ -261,15 +261,15 @@ export async function generateQrCodeBase64(
   encryptionEnabled: boolean = false
 ): Promise<string> {
   try {
-    console.log(`🔄 Génération QR Code base64 compact pour ${student.MATRICULE}`);
-    console.log(`🔐 Mode: ${encryptionEnabled ? 'Chiffrement compact activé' : 'Mode traditionnel'}`);
+    
+    
     
     const qrContent = getQrCodePayloadWithEncryption(student, documentType, encryptionEnabled);
-    console.log('📋 Contenu QR généré, longueur:', qrContent.length);
+    
     
     if (encryptionEnabled) {
-      console.log('📊 Structure: Données publiques visibles + Données sensibles chiffrées (compact)');
-      console.log('🔑 Chiffrement basé uniquement sur le matricule');
+      
+      
     }
     
     const qrCodeDataUrl = await QRCode.toDataURL(qrContent, {
@@ -282,7 +282,7 @@ export async function generateQrCodeBase64(
       }
     });
     
-    console.log(`✅ QR Code base64 compact généré (${qrCodeDataUrl.length} caractères)`);
+    
     return qrCodeDataUrl;
   } catch (error) {
     console.error('❌ Erreur lors de la génération du QR code base64 compact:', error);
@@ -313,8 +313,8 @@ export async function generateQrCode(
   encryptionEnabled: boolean = false
 ): Promise<ArrayBuffer> {
   try {
-    console.log(`🔄 Génération QR Code ArrayBuffer compact pour ${student.MATRICULE}`);
-    console.log(`🔐 Mode: ${encryptionEnabled ? 'Chiffrement compact activé' : 'Mode traditionnel'}`);
+    
+    
     
     const qrContent = getQrCodePayloadWithEncryption(student, documentType, encryptionEnabled);
     
@@ -332,7 +332,7 @@ export async function generateQrCode(
     // Convertir le data URL en ArrayBuffer
     const arrayBuffer = dataURLToArrayBuffer(qrCodeDataUrl);
     
-    console.log(`✅ QR Code ArrayBuffer compact généré (${arrayBuffer.byteLength} bytes)`);
+    
     return arrayBuffer;
   } catch (error) {
     console.error('❌ Erreur lors de la génération du QR code ArrayBuffer compact:', error);
@@ -349,7 +349,7 @@ export async function generateQrCodeBlob(
   encryptionEnabled: boolean = false
 ): Promise<Blob> {
   try {
-    console.log(`🔄 Génération QR Code Blob pour ${student.MATRICULE}`);
+    
     
     const qrContent = getQrCodePayloadWithEncryption(student, documentType, encryptionEnabled);
     
@@ -367,7 +367,7 @@ export async function generateQrCodeBlob(
     const response = await fetch(qrCodeDataUrl);
     const blob = await response.blob();
     
-    console.log(`✅ QR Code Blob généré (${blob.size} bytes)`);
+    
     return blob;
   } catch (error) {
     console.error('❌ Erreur lors de la génération du QR code Blob:', error);
@@ -384,7 +384,7 @@ export async function generateQrCodeCanvas(
   encryptionEnabled: boolean = false
 ): Promise<{ canvas: HTMLCanvasElement; arrayBuffer: ArrayBuffer }> {
   try {
-    console.log(`🔄 Génération QR Code Canvas pour ${student.MATRICULE}`);
+    
     
     const qrContent = getQrCodePayloadWithEncryption(student, documentType, encryptionEnabled);
     
@@ -415,7 +415,7 @@ export async function generateQrCodeCanvas(
     
     const arrayBuffer = await blob.arrayBuffer();
     
-    console.log(`✅ QR Code Canvas généré (${arrayBuffer.byteLength} bytes)`);
+    
     return { canvas, arrayBuffer };
   } catch (error) {
     console.error('❌ Erreur lors de la génération du QR code Canvas:', error);
@@ -428,25 +428,25 @@ export async function generateQrCodeCanvas(
  */
 export function testStudentEncryptionCompact(student: StudentExcelRecord, documentType: 'releve' | 'attestation' | 'diplome'): boolean {
   try {
-    console.log('🧪 Test de génération QR avec chiffrement compact...');
-    console.log('🔑 Chiffrement basé uniquement sur le matricule:', student.MATRICULE);
-    console.log('🔐 Données sensibles chiffrées: matricule complet, date naissance, lieu naissance, moyenne, timestamp');
-    console.log('📢 Données publiques visibles: établissement, nom, prénom, grade, mention, informations académiques de base');
+    
+    
+    
+    
     
     const sanitizedStudent = sanitizeStudentData(student);
     const { publicData, sensitiveData } = createCompactDataFromStudent(sanitizedStudent, documentType);
     
-    console.log('📋 Données publiques générées:', Object.keys(publicData));
-    console.log('🔒 Données sensibles générées:', Object.keys(sensitiveData));
+    
+    
     
     const testResult = testCompactEncryption(publicData, sensitiveData);
     
     if (testResult) {
-      console.log('✅ Test de chiffrement compact réussi');
-      console.log('📊 Répartition confirmée: Données publiques lisibles + Données sensibles sécurisées (compact)');
-      console.log('🔑 Clé basée uniquement sur:', sensitiveData.m);
+      
+      
+      
     } else {
-      console.log('❌ Test de chiffrement compact échoué');
+      
     }
     
     return testResult;

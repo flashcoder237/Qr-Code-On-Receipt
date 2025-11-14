@@ -120,7 +120,7 @@ export const AttestationExportOptions: React.FC<AttestationExportOptionsProps> =
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      console.log(`✅ Export réussi : ${selectedStudents?.length || 0} étudiants exportés`);
+      
 
     } catch (error) {
       console.error("❌ Erreur lors de l'export:", error);
@@ -216,7 +216,7 @@ export const AttestationExportOptions: React.FC<AttestationExportOptionsProps> =
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      console.log("✅ Template attestations exporté avec succès");
+      
 
     } catch (error) {
       console.error("❌ Erreur lors de l'export du template:", error);

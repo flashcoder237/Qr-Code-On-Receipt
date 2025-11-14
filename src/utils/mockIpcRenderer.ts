@@ -10,7 +10,7 @@ class MockInvocationError extends Error {
   // Create mock implementations of PDF generation functionality
   const mockPdfGenerator = {
     'generate-transcript-pdf': async (params: any) => {
-      console.log('Mock transcript PDF generation called with:', params);
+      
       
       // Simulate PDF generation with a delay
       await new Promise(resolve => setTimeout(resolve, 800));
@@ -21,8 +21,8 @@ class MockInvocationError extends Error {
     },
     
     'generate-attestation-pdf': async (params: any) => {
-      console.log('Mock attestation PDF generation called with:', params);
-      console.log('🔐 Chiffrement dans les paramètres:', params.options?.encryptionEnabled);
+      
+      
       
       // Simulate PDF generation with a delay
       await new Promise(resolve => setTimeout(resolve, 800));
@@ -36,26 +36,26 @@ class MockInvocationError extends Error {
   // Create a mock ipcRenderer for development/testing
   export const mockIpcRenderer = {
     on(channel: string, listener: (...args: any[]) => void) {
-      console.log(`[MOCK] Registering listener for channel: ${channel}`);
+      
       return () => {
-        console.log(`[MOCK] Removing listener for channel: ${channel}`);
+        
       };
     },
     
     once(channel: string, listener: (...args: any[]) => void) {
-      console.log(`[MOCK] Registering one-time listener for channel: ${channel}`);
+      
     },
     
     off(channel: string, listener?: (...args: any[]) => void) {
-      console.log(`[MOCK] Removing ${listener ? 'specific' : 'all'} listeners for channel: ${channel}`);
+      
     },
     
     send(channel: string, ...args: any[]) {
-      console.log(`[MOCK] Sending to channel: ${channel}`, args);
+      
     },
     
     async invoke(channel: string, ...args: any[]) {
-      console.log(`[MOCK] Invoking channel: ${channel}`, args);
+      
       
       // Simulate a delay to mimic async operation
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -63,7 +63,7 @@ class MockInvocationError extends Error {
       // Implémentation pour le gestionnaire show-preview
       if (channel === 'show-preview') {
         const [htmlContent, title] = args;
-        console.log(`[MOCK] Affichage de la prévisualisation avec titre: ${title}`);
+        
         
         // Ouvrir une nouvelle fenêtre avec le contenu
         const previewWindow = window.open('', '_blank');
@@ -93,7 +93,7 @@ class MockInvocationError extends Error {
       
       if (channel === 'fs:readFile') {
         const [filePath, options] = args;
-        console.log(`[MOCK] Reading file: ${filePath}`, options);
+        
         return new Uint8Array(100);
       }
       
@@ -106,7 +106,7 @@ class MockInvocationError extends Error {
   // Create a mock fs for development/testing
   export const mockFs = {
     async readFile(filePath: string, options?: { encoding?: string }) {
-      console.log(`[MOCK] Reading file: ${filePath}`, options);
+      
       
       if (options?.encoding === 'utf8') {
         return 'Mock file content';
@@ -118,7 +118,7 @@ class MockInvocationError extends Error {
 
   export const mockTranscriptRenderer = {
     async renderHTML(params: any) {
-      console.log('[MOCK] Rendering HTML with params:', params);
+      
       
       // Simuler un délai et retourner un HTML de base
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -173,19 +173,19 @@ class MockInvocationError extends Error {
   // Mock pour le rendu des attestations avec support du chiffrement
   export const mockAttestationRenderer = {
     async renderHTML(params: any) {
-      console.log('[MOCK] Rendering attestation HTML with params:', params);
-      console.log('[MOCK] 🔐 Chiffrement activé:', params.options?.encryptionEnabled);
+      
+      
       
       // Essayer d'importer le générateur HTML réel si disponible
       try {
         const { generateAttestationHTML } = await import('../lib/attestation-generator/html-generator');
         const { sanitizeStudentData } = await import('../lib/helpers/qrcode');
         
-        console.log('[MOCK] ✅ Utilisation du générateur HTML réel');
+        
         
         // Sanitiser les données de l'étudiant
         const sanitizedStudent = sanitizeStudentData(params.student);
-        console.log('[MOCK] 🧹 Données étudiant sanitisées');
+        
         
         return await generateAttestationHTML(sanitizedStudent, params.settings, params.options);
       } catch (importError) {
@@ -393,28 +393,28 @@ class MockInvocationError extends Error {
   export function initMockIpc() {
     if (typeof window !== 'undefined') {
       if (!window.ipcRenderer) {
-        console.log('[MOCK] 🔧 Initializing mock IPC renderer');
+        
         window.ipcRenderer = mockIpcRenderer;
       }
       
       if (!window.fs) {
-        console.log('[MOCK] 📁 Initializing mock fs');
+        
         window.fs = mockFs;
       }
       
       if (!window.transcriptRenderer) {
-        console.log('[MOCK] 📄 Initializing mock transcript renderer');
+        
         window.transcriptRenderer = mockTranscriptRenderer;
       }
       
       if (!window.attestationRenderer) {
-        console.log('[MOCK] 🎓 Initializing mock attestation renderer with encryption support');
+        
         window.attestationRenderer = mockAttestationRenderer;
       }
       
       // Fonction d'initialisation globale pour faciliter le débogage
       window.initMockIpc = initMockIpc;
       
-      console.log('[MOCK] ✅ Mock IPC system initialized with full encryption support and data sanitization');
+      
     }
   }

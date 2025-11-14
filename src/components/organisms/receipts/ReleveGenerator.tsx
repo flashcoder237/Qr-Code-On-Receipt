@@ -126,7 +126,7 @@ export const ReleveGenerator: React.FC = () => {
 
   useEffect(() => {
     if (previewContentUrl) {
-      console.log("previewContentUrl a changé, nouvelle valeur:", previewContentUrl);
+      
       setActiveTab("preview");
     }
   }, [previewContentUrl]);
@@ -399,14 +399,14 @@ export const ReleveGenerator: React.FC = () => {
   // NOUVEAU: Fonction pour tester le chiffrement compact sur un étudiant
   const testStudentEncryptionCompactForReleve = (student: any) => {
     try {
-      console.log('🧪 Test du chiffrement compact pour relevé:', student.NOM, student.PRENOM);
-      console.log('🔑 Clé basée sur le matricule:', student.MATRICULE);
+      
+      
       
       const sanitizedStudent = sanitizeStudentData(student);
       const testResult = testStudentEncryptionCompact(sanitizedStudent, 'releve');
       
       if (testResult) {
-        console.log('✅ Test de chiffrement compact réussi pour relevé');
+        
         notifySuccess(
           "Chiffrement compact", 
           `Système opérationnel pour les relevés - Clé: AES-128-ECB`,
@@ -427,7 +427,7 @@ export const ReleveGenerator: React.FC = () => {
     try {
       const sizeAnalysis = getQRCodeSizeEstimate(student, 'releve', encryptionEnabled);
       
-      console.log('📊 Analyse de taille QR Code pour relevé:', sizeAnalysis);
+      
       
       if (sizeAnalysis.estimatedQRSize === 'Small') {
         notifyInfo(
@@ -508,19 +508,19 @@ export const ReleveGenerator: React.FC = () => {
   // NOUVEAU: Fonction pour faire une correspondance automatique par nom d'EC
   const autoMapByECName = useCallback((columns: string[]) => {
     if (!currentConfig) {
-      console.log('⚠️ AutoMap: Pas de config');
+      
       return 0;
     }
 
-    console.log('🔄 AutoMap: Démarrage avec', columns.length, 'colonnes');
-    console.log('📊 Colonnes disponibles:', columns);
+    
+    
 
     // Utiliser directement la fonction au lieu de l'appeler depuis le callback
     const ecs: Array<{ id: string; fullName: string; ecName: string; semesterName?: string }> = [];
 
     // Si multi-semestre est activé et des semestres sont sélectionnés
     if (selectedMultiSemesterIds.length > 0) {
-      console.log('📚 Mode multi-semestres:', selectedMultiSemesterIds.length, 'semestres');
+      
       selectedMultiSemesterIds.forEach(semesterId => {
         const semester = currentConfig.semesters.find(s => s.id === semesterId);
         if (semester) {
@@ -537,7 +537,7 @@ export const ReleveGenerator: React.FC = () => {
         }
       });
     } else if (currentSemester) {
-      console.log('📘 Mode semestre unique:', currentSemester.name);
+      
       // Mode normal - un seul semestre
       currentSemester.ues.forEach((ue: any) => {
         ue.ecs.forEach((ec: any) => {
@@ -550,11 +550,11 @@ export const ReleveGenerator: React.FC = () => {
         });
       });
     } else {
-      console.log('⚠️ AutoMap: Pas de semestre sélectionné');
+      
     }
 
-    console.log('📝 ECs trouvés:', ecs.length);
-    console.log('🔍 ECs détails:', ecs.map(e => e.ecName));
+    
+    
 
     let mappedCount = 0;
 
@@ -562,7 +562,7 @@ export const ReleveGenerator: React.FC = () => {
       // Vérifier si déjà mappé dans le state actuel (pas dans columnMapping car il peut être vide au début)
       const existingMapping = Object.entries(columnMapping).find(([key]) => key === ec.id);
       if (existingMapping && existingMapping[1]) {
-        console.log(`⏭️ EC "${ec.ecName}" déjà mappé à "${existingMapping[1]}"`);
+        
         return;
       }
 
@@ -571,28 +571,26 @@ export const ReleveGenerator: React.FC = () => {
         // Correspondance exacte (insensible à la casse)
         const match = col.toLowerCase().trim() === ec.ecName.toLowerCase().trim();
         if (match) {
-          console.log(`✅ Match trouvé: "${ec.ecName}" ← "${col}"`);
+          
         }
         return match;
       });
 
       if (matchingColumn) {
-        console.log(`🎯 Mapping: ${ec.id} → ${matchingColumn}`);
+        
         handleMappingChange(ec.id, matchingColumn);
         mappedCount++;
 
         // Chercher aussi la colonne de session correspondante
         const sessionColumn = columns.find(col => col === `S/${matchingColumn}`);
         if (sessionColumn) {
-          console.log(`📅 Session trouvée: ${sessionColumn}`);
+          
           handleSessionMappingChange(ec.id, sessionColumn);
         }
-      } else {
-        console.log(`❌ Pas de match pour: "${ec.ecName}"`);
-      }
+      } 
     });
 
-    console.log(`📊 Résultat: ${mappedCount}/${ecs.length} ECs mappés`);
+    
 
     if (mappedCount > 0) {
       notifySuccess(

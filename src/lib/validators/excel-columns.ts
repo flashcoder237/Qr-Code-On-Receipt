@@ -456,9 +456,9 @@ export function validateExcelColumns(
   documentType: 'releve' | 'attestation',
   establishmentType?: string
 ): ValidationResult {
-  console.log(`🔍 Validation des colonnes Excel pour ${documentType}`);
-  console.log(`📋 Colonnes disponibles:`, availableColumns);
-  console.log(`🏛️ Type d'établissement: ${establishmentType || 'non spécifié'}`);
+  
+  
+  
   
   const requiredColumns = documentType === 'releve' ? RELEVE_REQUIRED_COLUMNS : ATTESTATION_REQUIRED_COLUMNS;
   const optionalColumns = documentType === 'releve' ? RELEVE_OPTIONAL_COLUMNS : ATTESTATION_OPTIONAL_COLUMNS;
@@ -467,7 +467,7 @@ export function validateExcelColumns(
   const isFacultyEstablishment = establishmentType?.toLowerCase().includes('faculty') || 
                                   establishmentType?.toLowerCase().includes('faculté') || 
                                   false;
-  console.log(`🏛️ Vérification établissement Faculty: "${establishmentType}" -> ${isFacultyEstablishment}`);
+  
   
   // NOUVEAU: Ajouter les colonnes de traduction anglaise comme requises pour les établissements faculty
   let allRequiredColumns = [...requiredColumns];
@@ -488,9 +488,9 @@ export function validateExcelColumns(
     // Ajouter les colonnes EN optionnelles aux colonnes optionnelles
     allOptionalColumns = [...allOptionalColumns, ...FACULTY_OPTIONAL_EN_COLUMNS];
     
-    console.log(`🌐 Établissement Faculty détecté - Colonnes de traduction anglaise`);
-    console.log(`📋 Colonnes *_EN obligatoires:`, requiredEnKeys);
-    console.log(`📋 Colonnes *_EN optionnelles:`, optionalEnKeys);
+    
+    
+    
   }
   
   const missingRequired: ColumnRequirement[] = [];
@@ -502,21 +502,21 @@ export function validateExcelColumns(
   const sessionColumns = availableColumns.filter(col => col.startsWith('S/'));
   const sessionStats = detectSessionColumns(availableColumns);
 
-  console.log(`📝 Colonnes requises pour ${documentType}:`, allRequiredColumns.map(r => r.key));
-  console.log(`🕐 Colonnes de session détectées: ${sessionStats.totalDetected} (${sessionStats.validFormat} valides, ${sessionStats.invalidFormat} invalides)`);
+  
+  
 
   // Vérifier les colonnes requises
   allRequiredColumns.forEach(requirement => {
     const exactMatch = findExactMatch(requirement, availableColumns);
     
     if (exactMatch) {
-      console.log(`✅ Colonne requise trouvée: ${requirement.key} -> ${exactMatch}`);
+      
       mappedColumns[requirement.key] = exactMatch;
     } else {
-      console.log(`❌ Colonne requise manquante: ${requirement.key}`);
+      
       missingRequired.push(requirement);
       suggestions[requirement.key] = findSuggestions(requirement, availableColumns);
-      console.log(`💡 Suggestions pour ${requirement.key}:`, suggestions[requirement.key]);
+      
     }
   });
 
@@ -525,10 +525,10 @@ export function validateExcelColumns(
     const exactMatch = findExactMatch(requirement, availableColumns);
     
     if (exactMatch) {
-      console.log(`✅ Colonne optionnelle trouvée: ${requirement.key} -> ${exactMatch}`);
+      
       mappedColumns[requirement.key] = exactMatch;
     } else {
-      console.log(`⚠️ Colonne optionnelle manquante: ${requirement.key}`);
+      
       missingOptional.push(requirement);
       suggestions[requirement.key] = findSuggestions(requirement, availableColumns);
     }
@@ -536,18 +536,14 @@ export function validateExcelColumns(
 
   const isValid = missingRequired.length === 0;
   
-  console.log(`📊 Résultat de validation:`);
-  console.log(`   - Valide: ${isValid}`);
-  console.log(`   - Colonnes requises manquantes: ${missingRequired.length}`);
-  console.log(`   - Colonnes optionnelles manquantes: ${missingOptional.length}`);
-  console.log(`   - Correspondances automatiques:`, mappedColumns);
-  console.log(`   - Sessions détectées: ${sessionStats.totalDetected} (${sessionStats.validFormat} valides)`);
+  
+  
+  
+  
+  
+  
 
-  // NOUVEAU: Afficher les erreurs de format pour les sessions
-  if (sessionStats.formatErrors.length > 0) {
-    console.log(`⚠️ Erreurs de format pour les sessions:`);
-    sessionStats.formatErrors.forEach(error => console.log(`   - ${error}`));
-  }
+
 
   return {
     isValid,
@@ -586,7 +582,7 @@ export function generateColumnMapping(
     const filteredOptionalColumns = optionalColumns.filter(col => !requiredEnKeys.includes(col.key));
     
     allColumns = [...requiredColumns, ...FACULTY_REQUIRED_EN_COLUMNS, ...filteredOptionalColumns, ...FACULTY_OPTIONAL_EN_COLUMNS];
-    console.log(`🌐 Génération mapping pour établissement Faculty - Colonnes EN (4 obligatoires, 2 optionnelles)`);
+    
   }
   
   const mapping: { [key: string]: string } = {};
@@ -717,15 +713,15 @@ export function formatValidationErrorMessage(validation: ValidationResult): stri
  * MISE À JOUR: Inclut maintenant l'analyse des sessions
  */
 export function analyzeTemplateFile(columns: string[]): void {
-  console.log('\n🔍 ANALYSE DU FICHIER TEMPLATE :');
-  console.log('Colonnes détectées:', columns);
+  
+  
   
   // Séparer les colonnes standard et de session
   const regularColumns = columns.filter(col => !col.startsWith('S/'));
   const sessionColumns = columns.filter(col => col.startsWith('S/'));
   
-  console.log('Colonnes standard:', regularColumns);
-  console.log('Colonnes de session:', sessionColumns);
+  
+  
   
   // Test spécifique pour chaque colonne du template
   const templateMapping = {
@@ -738,33 +734,30 @@ export function analyzeTemplateFile(columns: string[]): void {
     'Gender': 'SEXE'
   };
   
-  console.log('\n🎯 Correspondances attendues pour le template:');
+  
   Object.entries(templateMapping).forEach(([template, expected]) => {
     const found = regularColumns.includes(template);
-    console.log(`${found ? '✅' : '❌'} "${template}" -> ${expected}`);
+    
   });
   
   // NOUVEAU: Analyse des sessions
   if (sessionColumns.length > 0) {
-    console.log('\n🕐 Analyse des sessions:');
-    const sessionStats = detectSessionColumns(columns);
-    console.log(`Total détecté: ${sessionStats.totalDetected}`);
-    console.log(`Format valide: ${sessionStats.validFormat}`);
-    console.log(`Format invalide: ${sessionStats.invalidFormat}`);
     
-    if (sessionStats.formatErrors.length > 0) {
-      console.log('Erreurs de format:');
-      sessionStats.formatErrors.forEach(error => console.log(`  - ${error}`));
-    }
+    const sessionStats = detectSessionColumns(columns);
+    
+    
+    
+    
+   
   }
   
   // Test de validation
   const validation = validateExcelColumns(columns, 'releve');
-  console.log('\n📊 Résultat de validation du template:');
-  console.log('- Valide:', validation.isValid);
-  console.log('- Colonnes requises manquantes:', validation.missingRequired.map(r => r.key));
-  console.log('- Correspondances trouvées:', validation.mappedColumns);
-  console.log('- Sessions détectées:', validation.sessionStats.totalDetected);
+  
+  
+  
+  
+  
 }
 
 /**

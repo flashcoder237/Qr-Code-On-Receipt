@@ -69,7 +69,7 @@ export function calculateMention(
   niveau?: string | number,
   finalite?: string
 ): string {
-  console.log(`🔍 calculateMention appelé avec:`, { average, parcours, niveau, finalite });
+  
   
   const numAverage = typeof average === 'string' ? parseFloat(average) : average;
   
@@ -88,8 +88,8 @@ export function calculateMention(
   else if (numAverage >= 6) result = "Très Faible";     // [06-08[
   else result = "Nul";                                   // [00-06[
   
-  console.log(`📝 Mention standard: ${result}`);
-  console.log(`🏆 Résultat final calculateMention: "${result}" (type: ${typeof result})`);
+  
+  
   return result;
 }
 

@@ -563,9 +563,9 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
   // Le semestre est composite s'il y a un semestre fusionné actif OU si le nom l'indique
   const isCompositeSemester = activeMergedSemester || isCompositeFromName;
   
-  console.log(`🔐 Génération du relevé avec chiffrement compact: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
-  console.log(`🎭 Mode démo: ${isDemoMode ? 'Activé' : 'Désactivé'}`);
-  console.log(`📚 Semestre composite détecté: ${isCompositeSemester ? 'Oui' : 'Non'} (${student.SEMESTRE})`);
+  
+  
+  
 
   // Calculate semester statistics first
   const uniqueUEs = new Set();
@@ -579,7 +579,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
     if (!ueValidatedCredits.has(ueCode)) {
   const ecNotes = student.COURSES
     .filter(c => c.CODE === ueCode);
-  console.log(student.COURSES);
+  
 
 
   const ueAverage = course.UE_AVERAGE || 0;
@@ -683,10 +683,10 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
   let qrCodeDataUrl = "";
   if (theme.showQRCode) {
     try {
-      console.log(`🔄 Génération QR Code pour relevé (Chiffrement: ${encryptionEnabled}, Mode démo: ${isDemoMode})`);
+      
       
       const displaySessions = student.DISPLAY_SESSIONS !== false;
-      console.log(`📊 Sessions dans QR code: ${displaySessions ? 'Affichées' : 'Masquées'}`);
+      
       
       // Créer un objet étudiant compatible avec le système de chiffrement compact
       const studentForQR = {
@@ -711,35 +711,33 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
           student.SEMESTRE.split(' ')[1] :
           student.SEMESTRE;
         studentForQR.SEMESTRE = semesterValue;
-        console.log(`📊 SEMESTRE ajouté au QR: ${semesterValue}`);
+        
       }
 
       // Ajouter conditionnellement OPTION si elle existe et n'est pas vide
       if (student.OPTION && student.OPTION !== 'N/D' && student.OPTION.trim() !== '') {
         studentForQR.OPTION = student.OPTION;
-        console.log(`🎯 OPTION ajoutée au QR: ${student.OPTION}`);
+        
       }
-      console.log(studentForQR);
-      console.log("je suis ici sans erreurs");
+      
+      
       
       
 
       // Sanitiser les données
       const sanitizedStudent = sanitizeStudentData(studentForQR);
-      console.log(sanitizedStudent);
+      
       
       // Générer le QR code avec chiffrement compact
       qrCodeDataUrl = await generateQrCodeBase64(sanitizedStudent, 'releve', encryptionEnabled, !config?.hideSemesterColumn);
       
       if (encryptionEnabled) {
-        console.log('✅ QR Code avec chiffrement compact généré pour le relevé');
+        
         
         // Analyser la taille du QR code
         const sizeAnalysis = getQRCodeSizeEstimate(sanitizedStudent, 'releve', encryptionEnabled);
-        console.log(`📊 Taille QR pour relevé: ${sizeAnalysis.estimatedQRSize} (${sizeAnalysis.totalContentLength} caractères)`);
-      } else {
-        console.log('📋 QR Code sans chiffrement généré pour le relevé');
-      }
+        
+      } 
     } catch (qrError) {
       console.error('❌ Erreur lors de la génération du QR code pour le relevé:', qrError);
       
@@ -781,9 +779,9 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
         margin: 1,
         width: 150
       });
-      console.log("je suis ici avec erreurs");
       
-      console.log('⚠️ QR Code généré en mode fallback (ancien système)');
+      
+      
     }
   }
   
@@ -813,12 +811,12 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
     });
 
     if (isComposite && isComposite.showSemesterSeparation) {
-      console.log('✅ Semestre composite avec séparation détecté');
-      console.log('📋 Nom du semestre composite:', isComposite.name);
+      
+      
 
       // Extraire les numéros de semestre depuis le nom (ex: "Semestre 3-4" -> [3, 4])
       const semesterNumbers = extractSemesterNumbers(isComposite.name);
-      console.log('🔢 Numéros de semestres extraits:', semesterNumbers);
+      
 
       console.log('📋 UEs disponibles dans la configuration:', isComposite.ues.map(u => ({
         id: u.id,
@@ -883,11 +881,11 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
 
       // Trier les semestres par numéro
       const sortedSemesters = Array.from(coursesBySemester.keys()).sort((a, b) => a - b);
-      console.log('🔢 Semestres triés:', sortedSemesters);
+      
 
       // Générer le HTML pour chaque semestre
       sortedSemesters.forEach(semesterNumber => {
-        console.log(`🔨 Génération HTML pour semestre ${semesterNumber}`);
+        
 
         // Ajouter la ligne de séparation du semestre
         html += `
@@ -906,7 +904,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
         html += generateCoursesForSemester(semesterCourses);
       });
     } else {
-      console.log('⚪ Utilisation de la logique normale (pas de séparation composite)');
+      
       // Logique normale pour les semestres non composites
       html += generateCoursesForSemester(student.COURSES);
     }
@@ -1438,8 +1436,8 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
 export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<Uint8Array> {
   return new Promise(async (resolve, reject) => {
     try {
-      console.log('🔄 Début de la génération PDF de relevé avec chiffrement:', params.settings.encryptionEnabled);
-      console.log('🎭 Mode démo PDF:', params.settings.demoMode);
+      
+      
       
       // Create a temporary HTML file with the transcript content
       const html = await createTranscriptHTML(params);
@@ -1450,7 +1448,7 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
       
       // Write HTML to temp file
       fs.writeFileSync(htmlPath, html);
-      console.log(`📄 Fichier HTML temporaire créé: ${htmlPath}`);
+      
       
       // Create a hidden browser window
       const win = new BrowserWindow({
@@ -1470,10 +1468,10 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
       // Plus de temps pour les QR codes chiffrés et le mode démo
       const loadingDelay = params.settings.encryptionEnabled || params.settings.demoMode ? 2000 : 1000;
       await new Promise(resolve => setTimeout(resolve, loadingDelay));
-      console.log(`⏱️ Attente de ${loadingDelay}ms pour le chargement complet du relevé`);
+      
       
       // Generate PDF
-      console.log('🔄 Génération du PDF de relevé...');
+      
       const pdfData = await win.webContents.printToPDF({
         printBackground: true,
         pageSize: 'A4',
@@ -1492,17 +1490,17 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
       // Clean up temp HTML file
       try {
         fs.unlinkSync(htmlPath);
-        console.log('🧹 Fichier HTML temporaire supprimé');
+        
       } catch (cleanupError) {
         console.warn('Failed to clean up temporary HTML file:', cleanupError);
         // Continue execution even if cleanup fails
       }
 
       const resultData = Buffer.from(pdfData);
-      console.log(`✅ PDF de relevé généré avec succès`);
-      console.log(`📊 Taille: ${resultData.byteLength} bytes`);
-      console.log(`🔐 Chiffrement QR: ${params.settings.encryptionEnabled ? 'Activé' : 'Désactivé'}`);
-      console.log(`🎭 Mode démo: ${params.settings.demoMode ? 'Activé (filigrane)' : 'Désactivé'}`);
+      
+      
+      
+      
       
       // Resolve with the PDF data
       resolve(resultData);
@@ -1518,8 +1516,8 @@ export function setupPDFGenerationHandlers() {
   // Set up IPC handler for PDF generation
   ipcMain.handle('render-transcript-html', async (_, params) => {
     try {
-      console.log('🔄 Rendu HTML de relevé avec chiffrement:', params.settings?.encryptionEnabled);
-      console.log('🎭 Rendu HTML mode démo:', params.settings?.demoMode);
+      
+      
       const html = await createTranscriptHTML(params);
       return html;
     } catch (error) {
@@ -1530,8 +1528,8 @@ export function setupPDFGenerationHandlers() {
   
   ipcMain.handle('generate-transcript-pdf', async (_, params: GeneratePDFParams) => {
     try {
-      console.log('🔄 Génération PDF de relevé avec chiffrement:', params.settings?.encryptionEnabled);
-      console.log('🎭 Génération PDF mode démo:', params.settings?.demoMode);
+      
+      
       return await generateTranscriptPDF(params);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -1541,8 +1539,8 @@ export function setupPDFGenerationHandlers() {
 
  ipcMain.handle('render-attestation-html', async (_, params) => {
   try {
-    console.log('🔄 Rendu HTML d\'attestation avec chiffrement:', params.options?.encryptionEnabled);
-    console.log('🎭 Rendu HTML attestation mode démo:', params.options?.demoMode);
+    
+    
     // Au lieu d'utiliser require, qui peut causer des problèmes,
     // importons le module de manière dynamique avec la syntaxe import()
     const attestationModule = await import('./attestation-generator/html-generator');
@@ -1560,8 +1558,8 @@ export function setupPDFGenerationHandlers() {
   
   ipcMain.handle('generate-attestation-pdf', async (_, params: GenerateAttestationParams) => {
     try {
-      console.log('🔄 Génération PDF d\'attestation avec chiffrement:', params.options?.encryptionEnabled);
-      console.log('🎭 Génération PDF attestation mode démo:', params.options?.demoMode);
+      
+      
       const options = {
       ...params.options,
       demoMode: params.options?.demoMode || false
@@ -1573,7 +1571,7 @@ export function setupPDFGenerationHandlers() {
     }
   });
 
-  console.log('✅ PDF generation handlers set up successfully with encryption and demo mode support');
+  
   return {
     generateTranscriptPDF
   };

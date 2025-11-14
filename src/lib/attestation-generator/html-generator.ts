@@ -88,11 +88,11 @@ export async function generateAttestationHTML(
     throw new Error("Les paramètres de l'école sont requis");
   }
 
-  console.log(`🔄 Génération HTML attestation pour ${student.NOM} ${student.PRENOM}...`);
+  
   
   // Sanitiser les données de l'étudiant
   const sanitizedStudent = sanitizeStudentData(student);
-  console.log('🧹 Données étudiant sanitisées');
+  
   console.log('🔍 Colonnes EN dans données brutes:', {
     DOMAINE_EN: student.DOMAINE_EN,
     PARCOURS_EN: student.PARCOURS_EN, 
@@ -114,8 +114,8 @@ export async function generateAttestationHTML(
   const encryptionEnabled = options.encryptionEnabled !== false;
   const isDemoMode = options.demoMode === true;
   
-  console.log(`🔐 Chiffrement compact: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
-  console.log(`🎭 Mode démo: ${isDemoMode ? 'Activé' : 'Désactivé'}`);
+  
+  
 
   // Utiliser le thème fourni ou celui des paramètres ou le thème par défaut
   const theme = options.theme || settings.theme || defaultAttestationTheme;
@@ -127,8 +127,8 @@ export async function generateAttestationHTML(
     spacing: { titleSpacing: 8, subtitleSpacing: 6, headerSpacing: 15, studentInfoSpacing: 10, tableSpacing: 8, paragraphSpacing: 6, sectionSpacing: 20, footerSpacing: 15, signatureSpacing: 25 },
     tableDesign: {}
   };
-  console.log(`📝 Configuration avancée activée: ${advancedConfig.enableAdvancedTypography ? 'Oui' : 'Non'}`);
-  console.log(`🎨 Source config: ${settings.advancedConfig ? 'Utilisateur' : 'Défaut minimal'}`);
+  
+  
   
   // Récupérer les logos au format base64
   const schoolLogo = settings.logo || '';
@@ -152,10 +152,10 @@ export async function generateAttestationHTML(
   const juryDate = formatDateForAttestation(juryDateRaw, settings.establishmentType, primaryLanguage);
   const birthDate = formatDateForAttestation(birthDateRaw, settings.establishmentType, primaryLanguage);
 
-  console.log(`📅 Dates formatées:`)
-  console.log(`   Date jury: "${juryDateRaw}" -> "${juryDate}"`);
-  console.log(`   Date naissance: "${birthDateRaw}" -> "${birthDate}"`);
-  console.log(`   Langue: ${primaryLanguage} (établissement: ${settings.establishmentType})`);
+  
+  
+  
+  
   
   const cycle = sanitizedStudent.CYCLE;
   
@@ -194,18 +194,18 @@ export async function generateAttestationHTML(
     
     if (isValidMention) {
       baseMention = mentionValue;
-      console.log(`✅ MENTION Excel valide utilisée: "${mentionValue}"`);
+      
     } else {
       // Si MENTION contient une valeur problématique (comme "2"), calculer la mention
       baseMention = calculateMention(numericAverage, sanitizedStudent.PARCOURS, sanitizedStudent.NIVEAU, sanitizedStudent.FINALITE) || 'Passable';
-      console.log(`❌ MENTION Excel ignorée (chiffre/invalide: "${mentionValue}"), mention calculée: "${baseMention}"`);
+      
     }
   } else {
     // Si pas de MENTION, calculer 
     baseMention = calculateMention(numericAverage, sanitizedStudent.PARCOURS, sanitizedStudent.NIVEAU, sanitizedStudent.FINALITE) || 'Passable';
-    console.log(`📊 Aucune MENTION Excel, mention calculée: "${baseMention}"`);
+    
   }
-  console.log(`📋 Mention de base calculée: "${baseMention}" (depuis EXCEL: ${sanitizedStudent.MENTION ? (sanitizedStudent.MENTION === '1' || sanitizedStudent.MENTION === 1 ? 'Oui (mais valeur problématique)' : 'Oui') : 'Non'})`);
+  
   
   // Priorité : MENTION_EN du fichier Excel > mention traduite > mention de base
   let mentionTranslated = String(baseMention); // Valeur par défaut sécurisée
@@ -216,10 +216,10 @@ export async function generateAttestationHTML(
       mentionTranslated = mentionENValue;
     }
   }
-  console.log(`🌐 Mention traduite: "${mentionTranslated}" (useEnglish: ${useEnglishTranslations}, MENTION_EN: ${sanitizedStudent.MENTION_EN || 'N/A'})`);
-  console.log(`🔍 DEBUG mentionTranslated - Type: ${typeof mentionTranslated}, Value: ${mentionTranslated}, JSON: ${JSON.stringify(mentionTranslated)}`);
-  console.log(`🔍 DEBUG MENTION_EN - Type: ${typeof sanitizedStudent.MENTION_EN}, Value: ${sanitizedStudent.MENTION_EN}, JSON: ${JSON.stringify(sanitizedStudent.MENTION_EN)}`);
-  console.log(`🔍 DEBUG MENTION - Type: ${typeof sanitizedStudent.MENTION}, Value: ${sanitizedStudent.MENTION}, JSON: ${JSON.stringify(sanitizedStudent.MENTION)}`);
+  
+  
+  
+  
 
   // Versions anglaises pour affichage bilingue Faculty - CORRECTION DE LA LOGIQUE
   const fieldOfStudyEN = (sanitizedStudent.DOMAINE_EN && sanitizedStudent.DOMAINE_EN !== 'N/D') ? 
@@ -259,35 +259,33 @@ export async function generateAttestationHTML(
       
       if (isValidTranslation) {
         mentionTranslatedEN = mentionENValue;
-        console.log(`✅ MENTION_EN valide utilisée: "${mentionENValue}"`);
-      } else {
-        console.log(`❌ MENTION_EN ignorée (chiffre ou invalide): "${mentionENValue}"`);
-      }
+        
+      } 
     }
     
     // Priorité 2: Traduire la MENTION du fichier Excel s'il y en a une
     if (!mentionTranslatedEN && sanitizedStudent.MENTION) {
       mentionTranslatedEN = translateMentionToEnglish(sanitizedStudent.MENTION);
-      console.log(`📝 Traduction de MENTION Excel: "${sanitizedStudent.MENTION}" -> "${mentionTranslatedEN}"`);
+      
     } 
     
     // Priorité 3: Calculer et traduire
     if (!mentionTranslatedEN) {
       const calculatedMention = calculateMention(numericAverage, sanitizedStudent.PARCOURS, sanitizedStudent.NIVEAU, sanitizedStudent.FINALITE);
       mentionTranslatedEN = translateMentionToEnglish(calculatedMention);
-      console.log(`🔢 Traduction de mention calculée: "${calculatedMention}" -> "${mentionTranslatedEN}"`);
+      
     }
   }
-  console.log(`🇺🇸 Mention EN finale: "${mentionTranslatedEN}" (depuis EXCEL: ${sanitizedStudent.MENTION_EN ? 'Oui' : 'Non'})`);
+  
 
-  console.log(`🌐 Traductions anglaises:`)
-  console.log(`   Établissement faculty: ${isFacultyEstablishment}`);
-  console.log(`   Utiliser traductions EN: ${useEnglishTranslations}`);
-  console.log(`   Domaine: ${sanitizedStudent.DOMAINE} -> ${fieldOfStudy}`);
-  console.log(`   Parcours: ${sanitizedStudent.PARCOURS} -> ${course}`);
-  console.log(`   Spécialité: ${sanitizedStudent.SPECIALITE} -> ${specialization}`);
-  console.log(`   Finalité: ${sanitizedStudent.FINALITE} -> ${finality}`);
-  console.log(`   Mention: ${sanitizedStudent.MENTION} -> ${mentionTranslated}`);
+  
+  
+  
+  
+  
+  
+  
+  
   
   const credits = sanitizedStudent["TOTAL CREDIT"];
   
@@ -302,24 +300,24 @@ export async function generateAttestationHTML(
     mention = calculateMention(numericAverage, sanitizedStudent.PARCOURS, sanitizedStudent.NIVEAU, sanitizedStudent.FINALITE) || 'Passable';
   }
   
-  console.log(`🎯 Mention finale sécurisée: "${mention}" (type: ${typeof mention}, longueur: ${mention.length})`);
+  
   
   // S'assurer que mentionTranslatedEN existe pour l'affichage bilingue
   if (useBilingualDisplay && !mentionTranslatedEN) {
     mentionTranslatedEN = translateMentionToEnglish(mention);
-    console.log(`🔄 Traduction garantie de la mention finale: "${mention}" -> "${mentionTranslatedEN}"`);
+    
   }
   
   const mgp = calculateMGP(grade);
   
-  console.log(`📊 Calculs automatiques pour ${studentFullName}:`);
-  console.log(`   Moyenne: ${average}`);
-  console.log(`   Grade: ${grade}`);
-  console.log(`   MentionTranslated: "${mentionTranslated}" (type: ${typeof mentionTranslated})`);
-  console.log(`   Mention finale: "${mention}" (type: ${typeof mention})`);
-  console.log(`   PARCOURS: ${sanitizedStudent.PARCOURS}, NIVEAU: ${sanitizedStudent.NIVEAU}`);
-  console.log(`   useBilingualDisplay: ${useBilingualDisplay}, mentionTranslatedEN: "${mentionTranslatedEN}"`);
-  console.log(`   MGP: ${mgp}`);
+  
+  
+  
+  
+  
+  
+  
+  
   
   // Calculer la traduction finale de la mention pour le template
   let finalMentionEN = '';
@@ -334,14 +332,14 @@ export async function generateAttestationHTML(
     }
     
     finalMentionEN = String(cleanMentionTranslatedEN || translateMentionToEnglish(mention) || 'N/A');
-    console.log(`🔍 DEBUG BILINGUE MENTION:`);
-    console.log(`   - useBilingualDisplay: ${useBilingualDisplay}`);
-    console.log(`   - mention (français): "${mention}"`);
-    console.log(`   - mentionTranslatedEN (brut): "${mentionTranslatedEN}"`);
-    console.log(`   - cleanMentionTranslatedEN: "${cleanMentionTranslatedEN}"`);
-    console.log(`   - translateMentionToEnglish(mention): "${translateMentionToEnglish(mention)}"`);
-    console.log(`   - finalMentionEN (ce qui s'affichera): "${finalMentionEN}"`);
-    console.log(`   - Template HTML final: ${String(mention) || 'ERREUR_MENTION'}<br><em>${finalMentionEN}</em>`);
+    
+    
+    
+    
+    
+    
+    
+    
   }
 
   const getCycleTranslateEn = (cycle : string) => {
@@ -382,17 +380,15 @@ export async function generateAttestationHTML(
   
   if (!qrCodeImage && theme.showQRCode) {
     try {
-      console.log(`🔄 Génération QR Code intégré (Chiffrement compact: ${encryptionEnabled}, Mode démo: ${isDemoMode})`);
+      
       
       qrCodeImage = await generateQrCodeBase64(sanitizedStudent, 'attestation', encryptionEnabled);
       qrCodeAnalysis = getQRCodeSizeEstimate(sanitizedStudent, 'attestation', encryptionEnabled);
       
       if (encryptionEnabled) {
-        console.log('✅ QR Code avec chiffrement compact généré pour le HTML');
-        console.log(`📊 Taille: ${qrCodeAnalysis.estimatedQRSize} (${qrCodeAnalysis.totalContentLength} caractères)`);
-      } else {
-        console.log('📋 QR Code sans chiffrement généré pour le HTML');
-      }
+        
+        
+      } 
     } catch (qrError) {
       console.error('❌ Erreur lors de la génération du QR code pour le HTML:', qrError);
       qrCodeImage = '';
@@ -1070,16 +1066,14 @@ export async function generateAttestationHTML(
 </html>
   `;
   
-  console.log(`✅ HTML généré avec succès pour ${studentFullName}`);
-  console.log(`🔐 Chiffrement compact: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
-  console.log(`📋 QR Code inclus: ${qrCodeImage ? 'Oui' : 'Non'}`);
-  console.log(`🎭 Mode démo: ${isDemoMode ? 'Activé (filigrane ajouté)' : 'Désactivé'}`);
-  console.log(`🖼️ Logo de fond personnalisé: ${settings.watermarkLogo ? 'Défini' : 'Utilise logo par défaut'}`);
-  console.log(`📝 Configuration avancée: ${advancedConfig.enableAdvancedTypography ? 'Activée' : 'Désactivée'}`);
   
-  if (qrCodeAnalysis) {
-    console.log(`📊 Performance QR: ${qrCodeAnalysis.estimatedQRSize} (${qrCodeAnalysis.totalContentLength} caractères)`);
-  }
+  
+  
+  
+  
+  
+  
+
   
   return html;
 }

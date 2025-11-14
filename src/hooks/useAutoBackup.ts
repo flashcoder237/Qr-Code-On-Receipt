@@ -64,7 +64,7 @@ export const useAutoBackup = () => {
         lastBackupDate: new Date().toISOString(),
       });
 
-      console.log("✅ Sauvegarde automatique effectuée avec succès");
+      
     } catch (error) {
       console.error("❌ Erreur lors de la sauvegarde automatique:", error);
     }
@@ -84,7 +84,7 @@ export const useAutoBackup = () => {
       const timeSinceLastBackup = now - lastBackup;
 
       if (timeSinceLastBackup >= intervalMs) {
-        console.log("⏰ Déclenchement de la sauvegarde automatique...");
+        
         performBackup();
       }
     };

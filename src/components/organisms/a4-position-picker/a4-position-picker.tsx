@@ -30,10 +30,10 @@ export const A4PositionPicker = ({
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      console.log("Fichier sélectionné :", file);
+      
       if (file.type === "application/pdf") {
         const pdfData = await file.arrayBuffer(); 
-        console.log("Données PDF lues", pdfData);
+        
         await renderPdfToImage(pdfData); // Attendez que la promesse se résolve
       } else {
         console.error("Le fichier n'est pas un PDF.");
@@ -60,7 +60,7 @@ export const A4PositionPicker = ({
       }).promise;
   
       const imageUrl = canvas.toDataURL("image/png");
-      console.log("Image URL générée :", imageUrl);
+      
       setPdfImage(imageUrl); // Mettre à jour l'état avec l'URL de l'image
     } catch (error) {
       console.error("Erreur lors du rendu du PDF :", error);

@@ -11,7 +11,7 @@ interface ToastOptions {
 // jusqu'à ce que le ToastProvider soit ajouté au root de l'app
 export const toast = {
   success: (title: string, description?: string) => {
-    console.log(`✅ ${title}${description ? ': ' + description : ''}`);
+    
     // TODO: Utiliser le vrai système de toast une fois ToastProvider ajouté
   },
 

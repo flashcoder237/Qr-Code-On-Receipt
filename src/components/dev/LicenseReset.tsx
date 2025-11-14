@@ -78,7 +78,7 @@ export const LicenseReset: React.FC = () => {
     try {
       await LicenseDB.delete();
       localStorage.removeItem('demo_mode');
-      console.log('✅ Licence supprimée');
+      
       await checkStatus();
       setTimeout(() => {
         window.location.reload();
@@ -96,7 +96,7 @@ export const LicenseReset: React.FC = () => {
     try {
       localStorage.setItem('demo_mode', 'true');
       localStorage.removeItem('license');
-      console.log('✅ Mode démo activé');
+      
       setTimeout(() => {
         window.location.reload();
       }, 500);
@@ -122,7 +122,7 @@ export const LicenseReset: React.FC = () => {
       
       await LicenseDB.save(testLicenseKey.trim().toUpperCase());
       localStorage.removeItem('demo_mode');
-      console.log('✅ Licence de test injectée');
+      
       await checkStatus();
       setTimeout(() => {
         window.location.reload();
@@ -141,7 +141,7 @@ export const LicenseReset: React.FC = () => {
       const exampleKey = generateLicenseExample();
       await LicenseDB.save(exampleKey);
       localStorage.removeItem('demo_mode');
-      console.log('✅ Licence exemple générée et injectée:', exampleKey);
+      
       setTimeout(() => {
         window.location.reload();
       }, 500);
@@ -173,7 +173,7 @@ export const LicenseReset: React.FC = () => {
       localStorage.removeItem('academicConfigs');
       localStorage.removeItem('settings');
       localStorage.removeItem('notifications');
-      console.log('✅ Tout réinitialisé');
+      
       setTimeout(() => {
         window.location.reload();
       }, 500);
@@ -190,7 +190,7 @@ export const LicenseReset: React.FC = () => {
     try {
       localStorage.removeItem('demo_mode');
       await LicenseDB.delete();
-      console.log('✅ Basculement vers mode licence');
+      
       setTimeout(() => {
         window.location.reload();
       }, 500);

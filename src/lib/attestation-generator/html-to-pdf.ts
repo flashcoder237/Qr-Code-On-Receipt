@@ -76,15 +76,15 @@ export async function generateAttestationPDFDetailed(
     let htmlPath: string | null = null;
     
     try {
-      console.log('🔄 Début de la génération PDF avec chiffrement:', options.encryptionEnabled);
+      
       
       // Sanitiser les données de l'étudiant
       const sanitizedStudent = sanitizeStudentData(student);
-      console.log('🧹 Données étudiant sanitisées pour PDF');
+      
       
       // Par défaut, le chiffrement est activé sauf indication contraire
       const encryptionEnabled = options.encryptionEnabled !== false;
-      console.log(`🔐 Chiffrement PDF: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
+      
       
       // Vérification de sécurité pour la position du QR code
       const safeQrPosition = options.qrCodePosition && 
@@ -122,20 +122,16 @@ export async function generateAttestationPDFDetailed(
           qrCodeBase64 = `data:image/png;base64,${buffer.toString('base64')}`;
         }
         qrCodeIncluded = true;
-        console.log('📋 QR Code fourni utilisé pour le PDF');
+        
       } else if (settings.theme?.showQRCode !== false) {
         // Générer un QR code avec chiffrement
         try {
-          console.log(`🔄 Génération QR Code pour PDF (Chiffrement: ${encryptionEnabled})`);
+          
           
           qrCodeBase64 = await generateQrCodeBase64(sanitizedStudent, 'attestation', encryptionEnabled);
           qrCodeIncluded = true;
           
-          if (encryptionEnabled) {
-            console.log('✅ QR Code avec chiffrement généré pour le PDF');
-          } else {
-            console.log('📋 QR Code sans chiffrement généré pour le PDF');
-          }
+         
         } catch (qrError) {
           console.error("❌ Erreur lors de la génération du QR code pour le PDF:", qrError);
           // Continuer sans QR code
@@ -145,7 +141,7 @@ export async function generateAttestationPDFDetailed(
       }
 
       // Générer le HTML de l'attestation avec chiffrement
-      console.log('🔄 Génération HTML pour PDF...');
+      
       const html = await generateAttestationHTML(sanitizedStudent, settings, {
         qrCodeImage: qrCodeBase64,
         qrCodePosition: safeQrPosition,
@@ -153,7 +149,7 @@ export async function generateAttestationPDFDetailed(
         demoMode: options.demoMode,
         encryptionEnabled: encryptionEnabled
       });
-      console.log('✅ HTML généré pour PDF');
+      
 
       // Créer un fichier HTML temporaire
       const tempDir = os.tmpdir();
@@ -163,7 +159,7 @@ export async function generateAttestationPDFDetailed(
       
       // Écrire le HTML dans le fichier temporaire
       await fs.writeFile(htmlPath, html, 'utf8');
-      console.log(`📄 Fichier HTML temporaire créé: ${htmlPath}`);
+      
 
       // Créer une fenêtre de navigateur cachée pour générer le PDF
       win = new BrowserWindow({
@@ -178,21 +174,21 @@ export async function generateAttestationPDFDetailed(
         }
       });
 
-      console.log('🔄 Chargement du HTML dans la fenêtre cachée...');
+      
 
       try {
         // Charger le fichier HTML
         await win.loadFile(htmlPath);
-        console.log('✅ HTML chargé dans la fenêtre');
+        
 
         // Attendre que le contenu soit complètement chargé
         // Plus de temps pour les QR codes chiffrés
         const loadingDelay = encryptionEnabled ? 2000 : 1000;
         await new Promise(resolve => setTimeout(resolve, loadingDelay));
-        console.log(`⏱️ Attente de ${loadingDelay}ms pour le chargement complet`);
+        
 
         // Générer le PDF
-        console.log('🔄 Génération du PDF...');
+        
         const pdfData = await win.webContents.printToPDF({
           printBackground: true,
           pageSize: 'A4',
@@ -210,13 +206,13 @@ export async function generateAttestationPDFDetailed(
         // Fermer la fenêtre
         win.close();
         win = null;
-        console.log('✅ PDF généré et fenêtre fermée');
+        
 
         // Sauvegarder dans le chemin spécifié si demandé
         if (options.outputPath) {
           try {
             await fs.writeFile(options.outputPath, pdfData);
-            console.log(`💾 PDF sauvegardé: ${options.outputPath}`);
+            
           } catch (saveError) {
             console.warn('⚠️ Erreur lors de la sauvegarde du PDF:', saveError);
             // Continuer sans interrompre le processus
@@ -227,7 +223,7 @@ export async function generateAttestationPDFDetailed(
         if (!options.keepTempFile && htmlPath) {
           try {
             await fs.unlink(htmlPath);
-            console.log('🧹 Fichier HTML temporaire supprimé');
+            
           } catch (cleanupError) {
             console.warn('⚠️ Erreur lors de la suppression du fichier HTML temporaire:', cleanupError);
             // Continuer l'exécution même si le nettoyage échoue
@@ -251,10 +247,10 @@ export async function generateAttestationPDFDetailed(
           fileSize: resultData.byteLength
         };
 
-        console.log(`✅ PDF d'attestation généré avec succès`);
-        console.log(`📊 Taille: ${result.fileSize} bytes`);
-        console.log(`🔐 Chiffrement QR: ${encryptionEnabled ? 'Activé' : 'Désactivé'}`);
-        console.log(`📋 QR Code inclus: ${qrCodeIncluded ? 'Oui' : 'Non'}`);
+        
+        
+        
+        
 
         // Résoudre avec les données PDF et les métadonnées
         resolve(result);
@@ -281,7 +277,7 @@ export async function generateAttestationPDFDetailed(
       if (htmlPath && !options.keepTempFile) {
         try {
           await fs.unlink(htmlPath);
-          console.log('🧹 Fichier HTML temporaire supprimé après erreur');
+          
         } catch (cleanupError) {
           console.warn('⚠️ Erreur lors du nettoyage après erreur:', cleanupError);
         }
@@ -300,7 +296,7 @@ export async function generateMultipleAttestationPDFs(
   settings: SchoolSettings,
   options: GenerationOptions = {}
 ): Promise<PDFGenerationResult[]> {
-  console.log(`🔄 Génération en lot de ${students.length} attestations PDF`);
+  
   
   const results: PDFGenerationResult[] = [];
   const errors: Array<{ student: StudentExcelRecord; error: Error }> = [];
@@ -308,7 +304,7 @@ export async function generateMultipleAttestationPDFs(
   for (let i = 0; i < students.length; i++) {
     const student = students[i];
     try {
-      console.log(`🔄 Génération PDF ${i + 1}/${students.length} pour ${student.NOM} ${student.PRENOM}`);
+      
       
       const result = await generateAttestationPDFDetailed(student, settings, {
         ...options,
@@ -316,7 +312,7 @@ export async function generateMultipleAttestationPDFs(
       });
       
       results.push(result);
-      console.log(`✅ PDF ${i + 1}/${students.length} généré avec succès`);
+      
       
     } catch (error) {
       console.error(`❌ Erreur PDF ${i + 1}/${students.length} pour ${student.NOM} ${student.PRENOM}:`, error);
@@ -334,7 +330,7 @@ export async function generateMultipleAttestationPDFs(
     // Vous pouvez choisir de throw une erreur ou de retourner les résultats partiels
   }
   
-  console.log(`✅ Génération en lot terminée: ${results.length} succès, ${errors.length} erreurs`);
+  
   return results;
 }
 

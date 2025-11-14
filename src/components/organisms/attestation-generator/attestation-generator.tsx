@@ -142,15 +142,15 @@ export const AttestationGenerator: React.FC = () => {
   // Fonction pour tester le chiffrement compact sur un étudiant
   const testStudentEncryptionCompact = (student: StudentExcelRecord) => {
     try {
-      console.log('🧪 Test du chiffrement compact pour:', student.NOM, student.PRENOM);
-      console.log('🔑 Clé basée sur le matricule:', student.MATRICULE);
+      
+      
       
       const sanitizedStudent = sanitizeStudentData(student);
       const { publicData, sensitiveData } = createCompactDataFromStudent(sanitizedStudent, 'attestation');
       const testResult = testCompactEncryption(publicData, sensitiveData);
       
       if (testResult) {
-        console.log('✅ Test de chiffrement compact réussi');
+        
         const encryptionInfo = getCompactEncryptionInfo(student.MATRICULE);
         notifySuccess(
           "Chiffrement compact", 
@@ -172,7 +172,7 @@ export const AttestationGenerator: React.FC = () => {
     try {
       const sizeAnalysis = getQRCodeSizeEstimate(student, 'attestation', encryptionEnabled);
       
-      console.log('📊 Analyse de taille QR Code:', sizeAnalysis);
+      
       
       if (sizeAnalysis.estimatedQRSize === 'Small') {
        // Suite du fichier attestation-generator.tsx - à partir de la fonction analyzeQRCodeSizes
@@ -203,7 +203,7 @@ export const AttestationGenerator: React.FC = () => {
       });
 
       // Les données ont déjà été traitées par le FileUploader avec sanitisation
-      console.log('🧹 Données déjà sanitisées par FileUploader');
+      
       
       // Conversion finale et validation
       const convertedData = data.map((row) => {
@@ -251,7 +251,7 @@ export const AttestationGenerator: React.FC = () => {
       setExcelColumns(columns);
       setError(null);
       
-      console.log('✅ Données converties et stockées:', convertedData.length, 'étudiants');
+      
       
     } catch (err) {
       console.error("Erreur lors du traitement du fichier Excel", err);
@@ -373,7 +373,7 @@ export const AttestationGenerator: React.FC = () => {
       // Analyser la taille totale estimée
       if (encryptionEnabled && eligibleStudents.length > 0) {
         const sampleAnalysis = getQRCodeSizeEstimate(eligibleStudents[0], 'attestation', true);
-        console.log('📊 Analyse de taille pour le lot:', sampleAnalysis);
+        
         
         if (sampleAnalysis.estimatedQRSize === 'Large') {
           notifyWarning(
@@ -585,11 +585,11 @@ export const AttestationGenerator: React.FC = () => {
         throw new Error(`Cet étudiant n'est pas éligible pour une attestation: ${validation.reason}`);
       }
       
-      console.log('🔄 Début de la prévisualisation avec chiffrement compact');
+      
       
       // Sanitiser les données de l'étudiant
       const sanitizedStudent = sanitizeStudentData(student);
-      console.log('🧹 Données étudiant sanitisées pour prévisualisation');
+      
       
       const safePosition = position && typeof position.x === 'number' && typeof position.y === 'number' 
         ? position 

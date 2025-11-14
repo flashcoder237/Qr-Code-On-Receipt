@@ -86,7 +86,7 @@ export function encryptSensitiveData(
   publicData: PublicData
 ): string {
   try {
-    console.log('🔐 Chiffrement des données sensibles uniquement...');
+    
     
     // Générer la clé basée sur les données publiques
     const encryptionKey = generateSelectiveKey(
@@ -116,7 +116,7 @@ export function encryptSensitiveData(
       padding: CryptoJS.pad.Pkcs7
     }).toString();
     
-    console.log('✅ Données sensibles chiffrées avec succès');
+    
     return encrypted;
   } catch (error) {
     console.error('❌ Erreur lors du chiffrement des données sensibles:', error);
@@ -132,7 +132,7 @@ export function decryptSensitiveData(
   publicData: PublicData
 ): SensitiveData | null {
   try {
-    console.log('🔓 Déchiffrement des données sensibles...');
+    
     
     // Générer la même clé basée sur les données publiques
     const decryptionKey = generateSelectiveKey(
@@ -163,7 +163,7 @@ export function decryptSensitiveData(
       return null;
     }
     
-    console.log('✅ Données sensibles déchiffrées avec succès');
+    
     return parsedData as SensitiveData;
   } catch (error) {
     console.error('❌ Erreur lors du déchiffrement des données sensibles:', error);
@@ -190,7 +190,7 @@ export function createSelectiveQRCodeData(
   sensitiveData: SensitiveData
 ): QRCodeData {
   try {
-    console.log('📋 Création du QR code avec chiffrement sélectif...');
+    
     
     // Chiffrer uniquement les données sensibles
     const encryptedSensitive = encryptSensitiveData(sensitiveData, publicData);
@@ -205,7 +205,7 @@ export function createSelectiveQRCodeData(
       version: '2.0_selective'
     };
     
-    console.log('✅ Structure QR code créée avec chiffrement sélectif');
+    
     return qrCodeData;
   } catch (error) {
     console.error('❌ Erreur lors de la création du QR code sélectif:', error);
@@ -250,7 +250,7 @@ export function validateSelectiveQRCode(
   expectedSensitiveData?: SensitiveData
 ): boolean {
   try {
-    console.log('🔍 Validation du QR code sélectif...');
+    
     
     // Vérifier la structure de base
     if (!qrData.public || !qrData.encrypted || !qrData.verification) {
@@ -280,7 +280,7 @@ export function validateSelectiveQRCode(
       }
     }
     
-    console.log('✅ QR code sélectif valide');
+    
     return true;
   } catch (error) {
     console.error('❌ Erreur lors de la validation du QR code sélectif:', error);
@@ -351,23 +351,23 @@ export function testSelectiveEncryption(
   sensitiveData: SensitiveData
 ): boolean {
   try {
-    console.log('🧪 Test du chiffrement sélectif...');
+    
     
     // Créer la structure QR
     const qrData = createSelectiveQRCodeData(publicData, sensitiveData);
-    console.log('✅ Structure QR créée');
+    
     
     // Tester le déchiffrement
     const decryptedSensitive = decryptSensitiveData(qrData.encrypted, publicData);
-    console.log('✅ Déchiffrement réussi');
+    
     
     // Valider l'intégrité
     const isValid = validateSelectiveQRCode(qrData, sensitiveData);
-    console.log('✅ Validation:', isValid ? 'Réussie' : 'Échouée');
+    
     
     // Tester le formatage pour affichage
     const displayFormat = formatSelectiveQRCodeForDisplay(qrData);
-    console.log('✅ Format d\'affichage généré');
+    
     
     return isValid;
   } catch (error) {
