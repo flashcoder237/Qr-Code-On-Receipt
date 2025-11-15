@@ -208,16 +208,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           return sanitizeExcelRow(mappedRow, documentType);
         });
 
-        
+
         onFileLoaded(processedData, columns, automaticMapping, fileName);
         setPendingData(null);
-
-        // CORRECTION: Libérer le workbook après extraction réussie pour économiser la mémoire
-        if (!onWorkbookLoaded) {
-          setLocalPendingWorkbook(null);
-          setLocalAvailableSheets([]);
-          setLocalPendingFileName('');
-        }
 
       } else if (allowPartialImport && validation.missingRequired.length === 0) {
         // Seules des colonnes optionnelles manquent, on peut continuer
@@ -230,13 +223,6 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
         onFileLoaded(processedData, columns, automaticMapping, fileName);
         setPendingData(null);
-
-        // CORRECTION: Libérer le workbook après extraction réussie pour économiser la mémoire
-        if (!onWorkbookLoaded) {
-          setLocalPendingWorkbook(null);
-          setLocalAvailableSheets([]);
-          setLocalPendingFileName('');
-        }
 
       } else {
         // Des colonnes requises manquent
@@ -251,8 +237,14 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         if (!allowPartialImport) {
           onError(formatValidationErrorMessage(validation));
         }
-        // Le workbook est gardé en mémoire seulement si validation échoue pour permettre nouvelle tentative
       }
+
+      // Ne PAS réinitialiser le workbook et les feuilles - garder tout pour permettre le changement
+      // Garder showSheetSelector à true pour que le sélecteur reste visible
+      // setShowSheetSelector(false); // DÉSACTIVÉ
+      // setPendingWorkbook(null); // DÉSACTIVÉ
+      // setAvailableSheets([]; // DÉSACTIVÉ
+      // setSelectedSheet(''); // DÉSACTIVÉ
 
     } catch (error) {
       console.error('❌ Erreur lors du traitement de la feuille:', error);
@@ -288,8 +280,6 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       // Une seule feuille, traiter directement
       const sheetName = workbook.SheetNames[0];
       processSheet(workbook, sheetName, file.name);
-
-      // CORRECTION: Le workbook sera libéré dans processSheet après extraction
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Erreur lors du chargement du fichier";
@@ -352,13 +342,6 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       setPendingData(null);
       setValidationResult(null);
       setShowValidationDetails(false);
-
-      // CORRECTION: Libérer le workbook après import forcé
-      if (!onWorkbookLoaded) {
-        setLocalPendingWorkbook(null);
-        setLocalAvailableSheets([]);
-        setLocalPendingFileName('');
-      }
     }
   };
 
@@ -366,13 +349,6 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     setValidationResult(null);
     setPendingData(null);
     setShowValidationDetails(false);
-
-    // CORRECTION: Libérer le workbook lors du retry
-    if (!onWorkbookLoaded) {
-      setLocalPendingWorkbook(null);
-      setLocalAvailableSheets([]);
-      setLocalPendingFileName('');
-    }
   };
 
   const getValidationStatusColor = (validation: ValidationResult) => {

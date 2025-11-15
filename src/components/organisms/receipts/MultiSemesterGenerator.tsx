@@ -6,21 +6,27 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Download, Layers, AlertCircle, CheckCircle, Info } from "lucide-react";
+import { Download, Layers, AlertCircle, CheckCircle, Info, FileText, Files, Archive, FolderArchive, BookOpen } from "lucide-react";
 import { ClassConfig } from "@/components/organisms/configs/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface MultiSemesterGeneratorProps {
   config: ClassConfig;
   onGenerateMultiple: (semesterIds: string[]) => Promise<void>;
   onSemesterSelectionChange?: (semesterIds: string[]) => void;
   isLoading: boolean;
+  // NOUVEAU: Props pour le format d'export
+  multiSemesterExportFormat?: 'all-single' | 'all-zip-individual' | 'per-semester-merged' | 'zip-per-semester-merged' | 'all-individual';
+  onExportFormatChange?: (format: 'all-single' | 'all-zip-individual' | 'per-semester-merged' | 'zip-per-semester-merged' | 'all-individual') => void;
 }
 
 export const MultiSemesterGenerator: React.FC<MultiSemesterGeneratorProps> = ({
   config,
   onGenerateMultiple,
   onSemesterSelectionChange,
-  isLoading
+  isLoading,
+  multiSemesterExportFormat = 'all-zip-individual',
+  onExportFormatChange
 }) => {
   const [selectedSemesters, setSelectedSemesters] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
@@ -204,15 +210,97 @@ export const MultiSemesterGenerator: React.FC<MultiSemesterGeneratorProps> = ({
         {/* Informations et bouton de génération */}
         {selectedSemesters.length > 0 && (
           <div className="space-y-3 pt-4 border-t border-purple-200">
+            {/* NOUVEAU: Sélecteur de format d'export */}
+            <div className="space-y-2">
+              <Label htmlFor="export-format" className="text-sm font-semibold text-purple-900">
+                Format d'export
+              </Label>
+              <Select
+                value={multiSemesterExportFormat}
+                onValueChange={(value: any) => onExportFormatChange?.(value)}
+                disabled={isLoading || generating}
+              >
+                <SelectTrigger id="export-format" className="w-full border-purple-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all-single">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">PDF unique global</span>
+                        <span className="text-xs text-gray-500">Tout fusionné en 1 seul fichier</span>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="per-semester-merged">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="h-4 w-4" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">PDFs par semestre</span>
+                        <span className="text-xs text-gray-500">1 PDF fusionné par semestre</span>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="zip-per-semester-merged">
+                    <div className="flex items-center gap-2">
+                      <Archive className="h-4 w-4" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">ZIP avec PDFs par semestre</span>
+                        <span className="text-xs text-gray-500">ZIP contenant 1 PDF fusionné par semestre</span>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="all-zip-individual">
+                    <div className="flex items-center gap-2">
+                      <FolderArchive className="h-4 w-4" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">ZIP organisé par semestre</span>
+                        <span className="text-xs text-gray-500">ZIP avec dossiers et fichiers individuels</span>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="all-individual">
+                    <div className="flex items-center gap-2">
+                      <Files className="h-4 w-4" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Fichiers individuels</span>
+                        <span className="text-xs text-gray-500">Tous les PDFs séparément (sans ZIP)</span>
+                      </div>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Alert className="bg-blue-50 border-blue-200">
               <Info className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-800 text-sm">
                 <strong>Génération prévue :</strong>
                 <ul className="list-disc list-inside mt-2 space-y-1">
                   <li>{selectedSemesters.length} semestre{selectedSemesters.length > 1 ? 's' : ''} sélectionné{selectedSemesters.length > 1 ? 's' : ''}</li>
-                  <li>Les relevés seront regroupés par semestre dans des dossiers séparés</li>
-                  <li>Une archive ZIP globale sera créée avec tous les relevés</li>
-                  <li className="text-xs mt-1 text-blue-600">Les options d'exportation configurées (compression, nommage) seront appliquées</li>
+                  {multiSemesterExportFormat === 'all-single' && (
+                    <li>1 PDF unique avec tous les relevés fusionnés</li>
+                  )}
+                  {multiSemesterExportFormat === 'per-semester-merged' && (
+                    <li>{selectedSemesters.length} PDF{selectedSemesters.length > 1 ? 's' : ''} fusionné{selectedSemesters.length > 1 ? 's' : ''} (1 par semestre)</li>
+                  )}
+                  {multiSemesterExportFormat === 'zip-per-semester-merged' && (
+                    <>
+                      <li>1 ZIP contenant {selectedSemesters.length} PDF{selectedSemesters.length > 1 ? 's' : ''} fusionné{selectedSemesters.length > 1 ? 's' : ''}</li>
+                      <li>1 PDF fusionné par semestre dans le ZIP</li>
+                    </>
+                  )}
+                  {multiSemesterExportFormat === 'all-zip-individual' && (
+                    <>
+                      <li>1 ZIP avec dossiers par semestre</li>
+                      <li>Fichiers PDF individuels organisés par dossier</li>
+                    </>
+                  )}
+                  {multiSemesterExportFormat === 'all-individual' && (
+                    <li>Fichiers PDF téléchargés individuellement (pas de ZIP)</li>
+                  )}
+                  <li className="text-xs mt-1 text-blue-600">Les options d'exportation (compression, nommage) seront appliquées</li>
                 </ul>
               </AlertDescription>
             </Alert>

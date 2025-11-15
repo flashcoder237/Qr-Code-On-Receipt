@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -12,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { FileText, Files, Archive } from "lucide-react";
 import { generateQrCode, StudentExcelRecord } from "@/lib/helpers/qrcode";
 import JSZip from "jszip";
 import { PDFDocument } from "pdf-lib";
@@ -48,6 +50,12 @@ export const QrCodeOnPdf = () => {
   const [orientation, setOrientation] = useLocalStorage<"portrait" | "paysage">(
     "orientation", "portrait"
   );
+
+  // NOUVEAU: Format d'export
+  const [exportFormat, setExportFormat] = useLocalStorage<'zip' | 'individual' | 'single'>(
+    'qr-pdf-export-format', 'zip'
+  );
+
   const handleSetDocumentType = (element: string) => {
     if (documentType !== element) {
       // Cas où le type de document change
@@ -176,7 +184,9 @@ export const QrCodeOnPdf = () => {
     try {
       setIsLoading(true);
       setSuccessNotification(false);
-      const zip = new JSZip();
+
+      // Collecter tous les PDFs traités
+      const processedPdfs: Array<{ bytes: Uint8Array; matricule: string }> = [];
       let processedCount = 0;
 
       for (const student of excelData) {
@@ -194,18 +204,28 @@ export const QrCodeOnPdf = () => {
           const arrayBuffer = await pdfFile.file.arrayBuffer();
           const pdfDoc = await PDFDocument.load(arrayBuffer);
 
-          const [firstPage] = pdfDoc.getPages();
+          // CORRECTION: Traiter TOUTES les pages, pas seulement la première
+          const pages = pdfDoc.getPages();
+          console.log(`📄 [QR-PDF] ${student.MATRICULE}: ${pages.length} page(s) détectée(s)`);
+
           const qrCodeImageEmbed = await pdfDoc.embedPng(qrCodeImage);
 
-          firstPage.drawImage(qrCodeImageEmbed, {
-            x: position.x * 0.75,
-            y: firstPage.getHeight() - position.y * 0.75 - 75,
-            width: 80,
-            height: 80,
+          // Ajouter le QR code sur chaque page
+          pages.forEach((page, index) => {
+            console.log(`  ├─ Ajout QR sur page ${index + 1}/${pages.length}`);
+            page.drawImage(qrCodeImageEmbed, {
+              x: position.x * 0.75,
+              y: page.getHeight() - position.y * 0.75 - 75,
+              width: 80,
+              height: 80,
+            });
           });
 
           const modifiedPdfBytes = await pdfDoc.save();
-          zip.file(`${student.MATRICULE}_QRCode.pdf`, modifiedPdfBytes);
+          processedPdfs.push({
+            bytes: modifiedPdfBytes,
+            matricule: student.MATRICULE
+          });
 
           processedCount++;
           setProcessingProgress((processedCount / excelData.length) * 100);
@@ -217,21 +237,78 @@ export const QrCodeOnPdf = () => {
         }
       }
 
-      const zipContent = await zip.generateAsync({ type: "blob" });
-      const url = window.URL.createObjectURL(zipContent);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "documents_with_qrcodes.zip";
-      link.click();
-      window.URL.revokeObjectURL(url);
+      // NOUVEAU: Appliquer le format d'export choisi
+      const timestamp = new Date().toISOString().split('T')[0];
+
+      switch (exportFormat) {
+        case 'single': {
+          // PDF unique fusionné
+          console.log('📄 [QR-PDF] Export: PDF unique fusionné');
+          const combinedPdf = await PDFDocument.create();
+
+          for (const pdf of processedPdfs) {
+            const pdfDoc = await PDFDocument.load(pdf.bytes);
+            const pages = await combinedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+            pages.forEach((page) => combinedPdf.addPage(page));
+          }
+
+          const combinedBytes = await combinedPdf.save();
+          const blob = new Blob([combinedBytes], { type: 'application/pdf' });
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `documents_qrcodes_combined_${timestamp}.pdf`;
+          link.click();
+          window.URL.revokeObjectURL(url);
+          break;
+        }
+
+        case 'individual': {
+          // Fichiers individuels
+          console.log('📥 [QR-PDF] Export: Fichiers individuels');
+          for (const pdf of processedPdfs) {
+            const blob = new Blob([pdf.bytes], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${pdf.matricule}_QRCode.pdf`;
+            link.click();
+            window.URL.revokeObjectURL(url);
+
+            // Petit délai pour éviter de bloquer le navigateur
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          break;
+        }
+
+        case 'zip':
+        default: {
+          // ZIP (défaut)
+          console.log('🗜️ [QR-PDF] Export: Archive ZIP');
+          const zip = new JSZip();
+
+          for (const pdf of processedPdfs) {
+            zip.file(`${pdf.matricule}_QRCode.pdf`, pdf.bytes);
+          }
+
+          const zipContent = await zip.generateAsync({ type: "blob" });
+          const url = window.URL.createObjectURL(zipContent);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `documents_qrcodes_${timestamp}.zip`;
+          link.click();
+          window.URL.revokeObjectURL(url);
+          break;
+        }
+      }
 
       setSuccessNotification(true);
       setTimeout(() => {
         setSuccessNotification(false);
       }, 10000);
     } catch (err) {
-      console.error("Erreur lors de la création du ZIP", err);
-      setError("Erreur lors de la création du fichier ZIP");
+      console.error("Erreur lors du traitement", err);
+      setError(`Erreur lors du traitement: ${err.message}`);
     } finally {
       setIsLoading(false);
       setProcessingProgress(0);
@@ -330,6 +407,56 @@ export const QrCodeOnPdf = () => {
                 className="bg-primary h-2.5 rounded-full"
                 style={{ width: `${processingProgress}%` }}
               ></div>
+            </div>
+          )}
+
+          {/* NOUVEAU: Sélecteur de format d'export */}
+          {excelData.length > 0 && pdfFiles.length > 0 && (
+            <div className="space-y-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <Label htmlFor="export-format" className="text-sm font-semibold text-blue-900">
+                Format d'export
+              </Label>
+              <Select
+                value={exportFormat}
+                onValueChange={(value: any) => setExportFormat(value)}
+                disabled={isLoading}
+              >
+                <SelectTrigger id="export-format" className="w-full border-blue-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="zip">
+                    <div className="flex items-center gap-2">
+                      <Archive className="h-4 w-4" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Archive ZIP</span>
+                        <span className="text-xs text-gray-500">Tous les PDFs dans un ZIP</span>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="individual">
+                    <div className="flex items-center gap-2">
+                      <Files className="h-4 w-4" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Fichiers individuels</span>
+                        <span className="text-xs text-gray-500">Téléchargements séparés (sans ZIP)</span>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="single">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">PDF unique fusionné</span>
+                        <span className="text-xs text-gray-500">Tous les documents en 1 seul PDF</span>
+                      </div>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-blue-700">
+                ℹ️ Le QR code sera ajouté sur <strong>toutes les pages</strong> de chaque document PDF
+              </p>
             </div>
           )}
 

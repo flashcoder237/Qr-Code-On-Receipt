@@ -67,6 +67,7 @@ export async function generateQRCodeImage(
 
 /**
  * Process a single PDF document with QR code embedding
+ * CORRECTION: Traite TOUTES les pages, pas seulement la première
  */
 export async function processPDFWithQRCode(
   documentFile: File,
@@ -76,45 +77,53 @@ export async function processPDFWithQRCode(
   try {
     // Generate QR code image
     const qrImageBuffer = await generateQRCodeImage(qrContent, settings);
-    
+
     // Load the PDF document
     const arrayBuffer = await documentFile.arrayBuffer();
     const pdfDoc = await PDFDocument.load(arrayBuffer);
-    
+
     // Embed QR code image
     const qrImage = await pdfDoc.embedPng(qrImageBuffer);
-    
-    // Get first page for QR placement
-    const [firstPage] = pdfDoc.getPages();
-    const pageWidth = firstPage.getWidth();
-    const pageHeight = firstPage.getHeight();
-    
-    // Calculate position based on percentage
+
+    // CORRECTION: Traiter TOUTES les pages, pas seulement la première
+    const pages = pdfDoc.getPages();
+    console.log(`📄 [QR-PROCESSOR] ${documentFile.name}: ${pages.length} page(s) détectée(s)`);
+
     const qrSize = getActualQRSize(settings);
-    const xPosition = (settings.position.x / 100) * pageWidth - (qrSize / 2);
-    const yPosition = pageHeight - ((settings.position.y / 100) * pageHeight) - (qrSize / 2);
-    
-    // Draw QR code on the page
-    firstPage.drawImage(qrImage, {
-      x: xPosition,
-      y: yPosition,
-      width: qrSize,
-      height: qrSize,
+
+    // Ajouter le QR code sur chaque page
+    pages.forEach((page, index) => {
+      const pageWidth = page.getWidth();
+      const pageHeight = page.getHeight();
+
+      // Calculate position based on percentage
+      const xPosition = (settings.position.x / 100) * pageWidth - (qrSize / 2);
+      const yPosition = pageHeight - ((settings.position.y / 100) * pageHeight) - (qrSize / 2);
+
+      console.log(`  ├─ Ajout QR sur page ${index + 1}/${pages.length}`);
+
+      // Draw QR code on each page
+      page.drawImage(qrImage, {
+        x: xPosition,
+        y: yPosition,
+        width: qrSize,
+        height: qrSize,
+      });
     });
-    
+
     // Save the modified PDF
     const modifiedPdfBytes = await pdfDoc.save();
-    
+
     // Generate output filename
     const originalName = documentFile.name.replace(/\.[^/.]+$/, "");
     const outputFilename = `${originalName}_avec_QR.pdf`;
-    
+
     return {
       success: true,
       filename: outputFilename,
       data: modifiedPdfBytes
     };
-    
+
   } catch (error) {
     console.error('Error processing PDF with QR code:', error);
     return {
@@ -257,34 +266,107 @@ export function downloadProcessedDocument(result: ProcessingResult): void {
  * Download multiple documents as ZIP
  */
 export async function downloadProcessedDocumentsAsZip(
-  results: ProcessingResult[], 
+  results: ProcessingResult[],
   zipFilename: string = 'documents_avec_QR.zip'
 ): Promise<void> {
   const JSZip = (await import('jszip')).default;
   const zip = new JSZip();
-  
+
   const successfulResults = results.filter(r => r.success && r.data);
-  
+
   if (successfulResults.length === 0) {
     throw new Error('Aucun document traité avec succès');
   }
-  
+
   // Add each successful document to the ZIP
   successfulResults.forEach(result => {
     if (result.data) {
       zip.file(result.filename, result.data);
     }
   });
-  
+
   // Generate and download ZIP
   const zipContent = await zip.generateAsync({ type: 'blob' });
   const url = URL.createObjectURL(zipContent);
-  
+
   const link = document.createElement('a');
   link.href = url;
   link.download = zipFilename;
   link.click();
-  
+
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * NOUVEAU: Download multiple documents as individual files
+ */
+export async function downloadProcessedDocumentsIndividually(
+  results: ProcessingResult[]
+): Promise<void> {
+  const successfulResults = results.filter(r => r.success && r.data);
+
+  if (successfulResults.length === 0) {
+    throw new Error('Aucun document traité avec succès');
+  }
+
+  console.log(`📥 [QR-PROCESSOR] Téléchargement de ${successfulResults.length} fichiers individuels`);
+
+  for (const result of successfulResults) {
+    if (!result.data) continue;
+
+    const blob = new Blob([result.data], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = result.filename;
+    link.click();
+
+    URL.revokeObjectURL(url);
+
+    // Petit délai pour éviter de bloquer le navigateur
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+}
+
+/**
+ * NOUVEAU: Download multiple documents as a single merged PDF
+ */
+export async function downloadProcessedDocumentsAsSinglePDF(
+  results: ProcessingResult[],
+  filename: string = 'documents_fusionnes_avec_QR.pdf'
+): Promise<void> {
+  const successfulResults = results.filter(r => r.success && r.data);
+
+  if (successfulResults.length === 0) {
+    throw new Error('Aucun document traité avec succès');
+  }
+
+  console.log(`📄 [QR-PROCESSOR] Fusion de ${successfulResults.length} documents en un seul PDF`);
+
+  const mergedPdf = await PDFDocument.create();
+
+  for (const result of successfulResults) {
+    if (!result.data) continue;
+
+    try {
+      const pdfDoc = await PDFDocument.load(result.data);
+      const pages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+      pages.forEach(page => mergedPdf.addPage(page));
+    } catch (error) {
+      console.error(`Erreur lors de la fusion de ${result.filename}:`, error);
+    }
+  }
+
+  const mergedBytes = await mergedPdf.save();
+  const blob = new Blob([mergedBytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+
   URL.revokeObjectURL(url);
 }
 

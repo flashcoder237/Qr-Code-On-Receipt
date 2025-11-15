@@ -72,19 +72,24 @@ export const ReleveGenerator: React.FC = () => {
   const [currentFileName, setCurrentFileName] = useState<string | null>(null);
   const [selectedMultiSemesterIds, setSelectedMultiSemesterIds] = useState<string[]>([]);
 
-  // SUPPRIMÉ: Ne plus stocker le workbook en mémoire pour éviter les fuites
-  // Le workbook sera géré localement dans FileUploader et libéré après extraction
-  // const [loadedWorkbook, setLoadedWorkbook] = useState<any>(null);
-  // const [availableExcelSheets, setAvailableExcelSheets] = useState<string[]>([]);
-  // const [currentExcelFileName, setCurrentExcelFileName] = useState<string>('');
+  // RESTAURÉ: États pour gérer le workbook Excel chargé et les feuilles disponibles
+  // Note: Le vrai problème était JSON.stringify dans useProcessing, pas le workbook
+  const [loadedWorkbook, setLoadedWorkbook] = useState<any>(null);
+  const [availableExcelSheets, setAvailableExcelSheets] = useState<string[]>([]);
+  const [currentExcelFileName, setCurrentExcelFileName] = useState<string>('');
 
   // NOUVEAU: Option pour activer/désactiver le chiffrement compact pour les relevés
   const [encryptionEnabled, setEncryptionEnabled] = useLocalStorage("releve-encryption-enabled", true);
-  
+
   // Nouvelles options d'export
   const [exportFormat, setExportFormat] = useLocalStorage<'zip' | 'individual' | 'single'>('releve-export-format', 'zip');
   const [useCompression, setUseCompression] = useLocalStorage('releve-use-compression', true);
   const [nameFormat, setNameFormat] = useLocalStorage<'default' | 'detailed'>('releve-name-format', 'detailed');
+
+  // NOUVEAU: Format d'export spécifique pour multi-semestres (plus d'options)
+  const [multiSemesterExportFormat, setMultiSemesterExportFormat] = useLocalStorage<
+    'all-single' | 'all-zip-individual' | 'per-semester-merged' | 'zip-per-semester-merged' | 'all-individual'
+  >("multi-semester-export-format", 'all-zip-individual');
 
   // Hooks pour notifications et historique
   const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotifications();
@@ -1468,16 +1473,15 @@ export const ReleveGenerator: React.FC = () => {
 
     try {
       console.log('📊 [MULTI-SEM] Configuration validée, début du traitement');
+      console.log(`📦 [MULTI-SEM] Format d'export: ${multiSemesterExportFormat}, compression: ${useCompression}, nommage: ${nameFormat}`);
       notifyInfo(
         "Génération multi-semestres",
         `Génération de ${semesterIds.length} semestre(s) pour ${excelData.length} étudiant(s)...`
       );
 
-      // CORRECTION: Créer le ZIP dès le début pour éviter l'accumulation en mémoire
-      const JSZip = (await import('jszip')).default;
-      const zip = new JSZip();
-      const semesterFolders = new Map<string, any>();
-
+      // CORRECTION: Collecter tous les PDFs avec leurs métadonnées
+      // Le format d'export sera appliqué à la fin
+      const allPDFs: Array<{ blob: Uint8Array; fileName: string; semesterName: string; studentInfo: any }> = [];
       let totalGenerated = 0;
 
       // Pour chaque semestre sélectionné
@@ -1494,10 +1498,6 @@ export const ReleveGenerator: React.FC = () => {
 
         console.log(`✅ [MULTI-SEM] Semestre trouvé: ${semester.name}`);
         notifyInfo("Génération", `Traitement du semestre: ${semester.name}...`);
-
-        // Créer le dossier pour ce semestre
-        const semesterFolder = zip.folder(semester.name);
-        semesterFolders.set(semester.name, semesterFolder);
 
         // CORRECTION: Traiter par lots plus petits pour éviter l'accumulation de BrowserWindow
         // Chaque BrowserWindow consomme ~100-200 MB de RAM, donc limiter le parallélisme
@@ -1552,7 +1552,7 @@ export const ReleveGenerator: React.FC = () => {
             1  // batchSize = 1 pour éviter l'accumulation de BrowserWindow
           );
 
-          // CORRECTION: Ajouter immédiatement les fichiers au ZIP et libérer les blobs
+          // CORRECTION: Collecter les PDFs avec leurs métadonnées
           results.forEach((blob, key) => {
             try {
               // Parser la clé JSON pour récupérer les infos de l'étudiant
@@ -1574,12 +1574,17 @@ export const ReleveGenerator: React.FC = () => {
                 fileName = `${prefix}_${cleanNom}_${cleanPrenom}_${matricule}.pdf`;
               }
 
-              console.log(`📁 [MULTI-SEM] Ajout au ZIP: ${fileName}`);
-              semesterFolder.file(fileName, blob);
+              console.log(`📁 [MULTI-SEM] PDF collecté: ${fileName}`);
+              allPDFs.push({
+                blob,
+                fileName,
+                semesterName: semester.name,
+                studentInfo
+              });
               totalGenerated++;
               processedInSemester++;
             } catch (error) {
-              console.error('❌ [MULTI-SEM] Erreur lors de l\'ajout au ZIP:', error);
+              console.error('❌ [MULTI-SEM] Erreur lors de la collecte du PDF:', error);
             }
           });
 
@@ -1604,35 +1609,210 @@ export const ReleveGenerator: React.FC = () => {
         return;
       }
 
-      notifyInfo("Finalisation", "Création de l'archive ZIP...");
-
-      // Générer le ZIP final avec les options de compression
-      const zipBlob = await zip.generateAsync({
-        type: 'blob',
-        compression: useCompression ? 'DEFLATE' : 'STORE',
-        compressionOptions: useCompression ? { level: 6 } : undefined
-      });
-
-      // Télécharger
-      const url = URL.createObjectURL(zipBlob);
-      const link = document.createElement("a");
-      link.href = url;
+      // NOUVEAU: Appliquer le format d'export choisi avec TOUTES les options possibles
       const timestamp = new Date().toISOString().split('T')[0];
       const encryptionSuffix = encryptionEnabled ? '_compact' : '';
-      const compressionSuffix = useCompression ? '' : '_nocompress';
-      link.download = `releves_multi_semestres_${timestamp}${encryptionSuffix}${compressionSuffix}.zip`;
-      link.click();
-      URL.revokeObjectURL(url);
+
+      switch (multiSemesterExportFormat) {
+        case 'all-single': {
+          // Option 1: TOUT fusionné en UN SEUL PDF
+          console.log('📄 [MULTI-SEM] Export: TOUT en un seul PDF');
+          notifyInfo("Finalisation", "Combinaison de TOUS les relevés en un seul document...");
+
+          const { PDFDocument } = await import('pdf-lib');
+          const combinedPdf = await PDFDocument.create();
+
+          for (const pdf of allPDFs) {
+            try {
+              const pdfDoc = await PDFDocument.load(pdf.blob);
+              const pages = await combinedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+              pages.forEach((page) => combinedPdf.addPage(page));
+            } catch (error) {
+              console.error(`Erreur lors de l'ajout du PDF ${pdf.fileName}:`, error);
+            }
+          }
+
+          const combinedBytes = await combinedPdf.save();
+          const blob = new Blob([combinedBytes], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `releves_tous_semestres_${timestamp}${encryptionSuffix}.pdf`;
+          link.click();
+          URL.revokeObjectURL(url);
+
+          notifySuccess("Export terminé", `1 PDF unique généré (${totalGenerated} relevés combinés)`);
+          break;
+        }
+
+        case 'per-semester-merged': {
+          // Option 2: Un PDF fusionné PAR SEMESTRE (téléchargés séparément)
+          console.log('📚 [MULTI-SEM] Export: Un PDF fusionné par semestre');
+          notifyInfo("Finalisation", "Création d'un PDF par semestre...");
+
+          const { PDFDocument } = await import('pdf-lib');
+          const semesterGroups = new Map<string, typeof allPDFs>();
+
+          // Grouper les PDFs par semestre
+          for (const pdf of allPDFs) {
+            if (!semesterGroups.has(pdf.semesterName)) {
+              semesterGroups.set(pdf.semesterName, []);
+            }
+            semesterGroups.get(pdf.semesterName).push(pdf);
+          }
+
+          // Créer un PDF fusionné pour chaque semestre
+          for (const [semesterName, pdfs] of semesterGroups) {
+            const mergedPdf = await PDFDocument.create();
+
+            for (const pdf of pdfs) {
+              try {
+                const pdfDoc = await PDFDocument.load(pdf.blob);
+                const pages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+                pages.forEach((page) => mergedPdf.addPage(page));
+              } catch (error) {
+                console.error(`Erreur lors de l'ajout du PDF ${pdf.fileName}:`, error);
+              }
+            }
+
+            const mergedBytes = await mergedPdf.save();
+            const blob = new Blob([mergedBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            const cleanSemesterName = semesterName.replace(/[^a-zA-Z0-9\-_]/g, '_');
+            link.download = `releves_${cleanSemesterName}_${timestamp}${encryptionSuffix}.pdf`;
+            link.click();
+            URL.revokeObjectURL(url);
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+
+          notifySuccess("Export terminé", `${semesterGroups.size} PDFs fusionnés générés (1 par semestre)`);
+          break;
+        }
+
+        case 'zip-per-semester-merged': {
+          // Option 3: ZIP avec un PDF fusionné PAR SEMESTRE
+          console.log('🗜️📚 [MULTI-SEM] Export: ZIP avec PDFs fusionnés par semestre');
+          notifyInfo("Finalisation", "Création d'un ZIP avec un PDF par semestre...");
+
+          const { PDFDocument } = await import('pdf-lib');
+          const JSZip = (await import('jszip')).default;
+          const zip = new JSZip();
+
+          const semesterGroups = new Map<string, typeof allPDFs>();
+
+          // Grouper les PDFs par semestre
+          for (const pdf of allPDFs) {
+            if (!semesterGroups.has(pdf.semesterName)) {
+              semesterGroups.set(pdf.semesterName, []);
+            }
+            semesterGroups.get(pdf.semesterName).push(pdf);
+          }
+
+          // Créer un PDF fusionné pour chaque semestre et l'ajouter au ZIP
+          for (const [semesterName, pdfs] of semesterGroups) {
+            const mergedPdf = await PDFDocument.create();
+
+            for (const pdf of pdfs) {
+              try {
+                const pdfDoc = await PDFDocument.load(pdf.blob);
+                const pages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+                pages.forEach((page) => mergedPdf.addPage(page));
+              } catch (error) {
+                console.error(`Erreur lors de l'ajout du PDF ${pdf.fileName}:`, error);
+              }
+            }
+
+            const mergedBytes = await mergedPdf.save();
+            const cleanSemesterName = semesterName.replace(/[^a-zA-Z0-9\-_]/g, '_');
+            zip.file(`${cleanSemesterName}.pdf`, mergedBytes);
+          }
+
+          // Générer le ZIP
+          const zipBlob = await zip.generateAsync({
+            type: 'blob',
+            compression: useCompression ? 'DEFLATE' : 'STORE',
+            compressionOptions: useCompression ? { level: 6 } : undefined
+          });
+
+          const url = URL.createObjectURL(zipBlob);
+          const link = document.createElement("a");
+          link.href = url;
+          const compressionSuffix = useCompression ? '' : '_nocompress';
+          link.download = `releves_par_semestre_${timestamp}${encryptionSuffix}${compressionSuffix}.zip`;
+          link.click();
+          URL.revokeObjectURL(url);
+
+          notifySuccess("Export terminé", `ZIP créé avec ${semesterGroups.size} PDFs fusionnés`);
+          break;
+        }
+
+        case 'all-individual': {
+          // Option 4: TOUS les fichiers individuels (sans ZIP)
+          console.log('📥 [MULTI-SEM] Export: Tous fichiers individuels');
+          notifyInfo("Finalisation", "Téléchargement de tous les fichiers individuels...");
+
+          for (const pdf of allPDFs) {
+            const blob = new Blob([pdf.blob], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = pdf.fileName;
+            link.click();
+            URL.revokeObjectURL(url);
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+
+          notifySuccess("Export terminé", `${totalGenerated} fichiers téléchargés individuellement`);
+          break;
+        }
+
+        case 'all-zip-individual':
+        default: {
+          // Option 5 (défaut): ZIP avec fichiers individuels organisés par semestre
+          console.log('🗜️📁 [MULTI-SEM] Export: ZIP avec fichiers individuels par semestre');
+          notifyInfo("Finalisation", "Création d'une archive ZIP organisée...");
+
+          const JSZip = (await import('jszip')).default;
+          const zip = new JSZip();
+
+          // Organiser par semestre
+          const semesterFolders = new Map<string, any>();
+          for (const pdf of allPDFs) {
+            if (!semesterFolders.has(pdf.semesterName)) {
+              semesterFolders.set(pdf.semesterName, zip.folder(pdf.semesterName));
+            }
+            const folder = semesterFolders.get(pdf.semesterName);
+            folder.file(pdf.fileName, pdf.blob);
+          }
+
+          // Générer le ZIP
+          const zipBlob = await zip.generateAsync({
+            type: 'blob',
+            compression: useCompression ? 'DEFLATE' : 'STORE',
+            compressionOptions: useCompression ? { level: 6 } : undefined
+          });
+
+          const url = URL.createObjectURL(zipBlob);
+          const link = document.createElement("a");
+          link.href = url;
+          const compressionSuffix = useCompression ? '' : '_nocompress';
+          link.download = `releves_multi_semestres_${timestamp}${encryptionSuffix}${compressionSuffix}.zip`;
+          link.click();
+          URL.revokeObjectURL(url);
+
+          notifySuccess("Export terminé", `ZIP créé avec ${totalGenerated} relevés dans ${semesterFolders.size} dossiers`);
+          break;
+        }
+      }
 
       // Sauvegarder les infos du fichier
       if (currentFileName) {
         saveExcelFileInfo(currentFileName, columnMapping, sessionMapping);
       }
-
-      notifySuccess(
-        "Génération terminée",
-        `${totalGenerated} relevé(s) générés pour ${semesterIds.length} semestre(s)`
-      );
 
     } catch (error) {
       console.error("Erreur lors de la génération multi-semestres:", error);
@@ -1937,15 +2117,15 @@ export const ReleveGenerator: React.FC = () => {
                     isLoading={processingState.isLoading}
                     documentType="releve"
                     allowPartialImport={true}
-                    // SUPPRIMÉ: Ne plus passer le workbook au parent pour économiser la mémoire
-                    // externalWorkbook={loadedWorkbook}
-                    // externalSheets={availableExcelSheets}
-                    // externalFileName={currentExcelFileName}
-                    // onWorkbookLoaded={(wb, sheets, fileName) => {
-                    //   setLoadedWorkbook(wb);
-                    //   setAvailableExcelSheets(sheets);
-                    //   setCurrentExcelFileName(fileName);
-                    // }}
+                    // RESTAURÉ: Gestion du workbook (le vrai problème était ailleurs)
+                    externalWorkbook={loadedWorkbook}
+                    externalSheets={availableExcelSheets}
+                    externalFileName={currentExcelFileName}
+                    onWorkbookLoaded={(wb, sheets, fileName) => {
+                      setLoadedWorkbook(wb);
+                      setAvailableExcelSheets(sheets);
+                      setCurrentExcelFileName(fileName);
+                    }}
                   />
 
                   {error && (
@@ -2182,6 +2362,8 @@ export const ReleveGenerator: React.FC = () => {
                   onGenerateMultiple={handleGenerateMultipleSemesters}
                   onSemesterSelectionChange={setSelectedMultiSemesterIds}
                   isLoading={processingState.isLoading}
+                  multiSemesterExportFormat={multiSemesterExportFormat}
+                  onExportFormatChange={setMultiSemesterExportFormat}
                 />
               </div>
             </TabsContent>

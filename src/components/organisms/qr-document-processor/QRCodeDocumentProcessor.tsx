@@ -6,19 +6,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  QrCode, 
-  FileText, 
-  Upload, 
-  Settings, 
-  Eye, 
-  Download, 
-  Wand2, 
+import { Label } from "@/components/ui/label";
+import {
+  QrCode,
+  FileText,
+  Upload,
+  Settings,
+  Eye,
+  Download,
+  Wand2,
   FileSpreadsheet,
   MousePointer,
   AlertCircle,
   CheckCircle,
-  Info
+  Info,
+  Archive,
+  Files
 } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { useNotifications } from "@/components/ui/notification-system";
@@ -61,6 +64,11 @@ export const QRCodeDocumentProcessor: React.FC = () => {
     position: { x: 50, y: 50 },
     errorCorrection: "M"
   });
+
+  // NOUVEAU: Format d'export
+  const [exportFormat, setExportFormat] = useLocalStorage<'zip' | 'individual' | 'single'>(
+    'qr-document-export-format', 'zip'
+  );
 
   // Manual mode data
   const [manualData, setManualData] = useState<ManualQRData>({
@@ -189,13 +197,15 @@ export const QRCodeDocumentProcessor: React.FC = () => {
     setError(null);
 
     try {
-      const { 
-        processPDFWithQRCode, 
-        processImageWithQRCode, 
-        downloadProcessedDocument, 
+      const {
+        processPDFWithQRCode,
+        processImageWithQRCode,
+        downloadProcessedDocument,
         validateDocumentFile,
         processBatchDocuments,
-        downloadProcessedDocumentsAsZip
+        downloadProcessedDocumentsAsZip,
+        downloadProcessedDocumentsIndividually,
+        downloadProcessedDocumentsAsSinglePDF
       } = await import("@/lib/qr-document-processor/pdf-qr-processor");
 
       if (processingMode.mode === "manual") {
@@ -239,17 +249,39 @@ export const QRCodeDocumentProcessor: React.FC = () => {
         if (successCount === 0) {
           throw new Error("Aucun document n'a pu être traité avec succès");
         }
-        
+
+        // NOUVEAU: Appliquer le format d'export choisi
+        const timestamp = new Date().toISOString().split('T')[0];
+
         if (successCount === 1 && totalCount === 1) {
+          // Un seul document : téléchargement direct
           const successResult = results.find(r => r.success);
           if (successResult) {
             downloadProcessedDocument(successResult);
           }
         } else {
-          await downloadProcessedDocumentsAsZip(results, "documents_lot_avec_QR.zip");
+          // Plusieurs documents : appliquer le format d'export
+          switch (exportFormat) {
+            case 'single':
+              console.log('📄 [QR-DOC] Export: PDF unique fusionné');
+              await downloadProcessedDocumentsAsSinglePDF(results, `documents_fusionnes_QR_${timestamp}.pdf`);
+              notifySuccess("Traitement terminé", `${successCount} documents fusionnés en 1 PDF`);
+              break;
+
+            case 'individual':
+              console.log('📥 [QR-DOC] Export: Fichiers individuels');
+              await downloadProcessedDocumentsIndividually(results);
+              notifySuccess("Traitement terminé", `${successCount} fichiers téléchargés individuellement`);
+              break;
+
+            case 'zip':
+            default:
+              console.log('🗜️ [QR-DOC] Export: Archive ZIP');
+              await downloadProcessedDocumentsAsZip(results, `documents_QR_${timestamp}.zip`);
+              notifySuccess("Traitement terminé", `ZIP créé avec ${successCount} documents`);
+              break;
+          }
         }
-        
-        notifySuccess("Traitement terminé", `${successCount}/${totalCount} documents traités avec succès`);
         
         if (successCount < totalCount) {
           const errorCount = totalCount - successCount;
@@ -266,7 +298,7 @@ export const QRCodeDocumentProcessor: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [uploadedDocument, processingMode.mode, manualData.content, excelBatchData, qrSettings, notifySuccess, notifyError, notifyWarning]);
+  }, [uploadedDocument, processingMode.mode, manualData.content, excelBatchData, qrSettings, exportFormat, notifySuccess, notifyError, notifyWarning]);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -495,11 +527,61 @@ export const QRCodeDocumentProcessor: React.FC = () => {
                     </div>
                   )}
 
+                  {/* NOUVEAU: Sélecteur de format d'export pour mode batch */}
+                  {processingMode.mode === "excel" && excelBatchData && excelBatchData.documentMappings.filter(m => m.status === 'matched').length > 1 && (
+                    <div className="space-y-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <Label htmlFor="export-format-qr" className="text-sm font-semibold text-blue-900">
+                        Format d'export
+                      </Label>
+                      <Select
+                        value={exportFormat}
+                        onValueChange={(value: any) => setExportFormat(value)}
+                        disabled={isLoading}
+                      >
+                        <SelectTrigger id="export-format-qr" className="w-full border-blue-200">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="zip">
+                            <div className="flex items-center gap-2">
+                              <Archive className="h-4 w-4" />
+                              <div className="flex flex-col">
+                                <span className="font-medium">Archive ZIP</span>
+                                <span className="text-xs text-gray-500">Tous les PDFs dans un ZIP</span>
+                              </div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="individual">
+                            <div className="flex items-center gap-2">
+                              <Files className="h-4 w-4" />
+                              <div className="flex flex-col">
+                                <span className="font-medium">Fichiers individuels</span>
+                                <span className="text-xs text-gray-500">Téléchargements séparés (sans ZIP)</span>
+                              </div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="single">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4" />
+                              <div className="flex flex-col">
+                                <span className="font-medium">PDF unique fusionné</span>
+                                <span className="text-xs text-gray-500">Tous les documents en 1 seul PDF</span>
+                              </div>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-blue-700">
+                        ℹ️ Le QR code sera ajouté sur <strong>toutes les pages</strong> de chaque document PDF
+                      </p>
+                    </div>
+                  )}
+
                   <div className="space-y-4">
-                    <Button 
+                    <Button
                       onClick={handleProcessDocument}
                       disabled={
-                        isLoading || 
+                        isLoading ||
                         (processingMode.mode === "manual" && !uploadedDocument) ||
                         (processingMode.mode === "excel" && !excelBatchData)
                       }
