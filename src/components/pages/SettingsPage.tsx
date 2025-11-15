@@ -33,18 +33,7 @@ export const SettingsPage: React.FC = () => {
       icon: User,
       available: true
     },
-    {
-      id: 'institution',
-      label: 'Institution',
-      icon: Building,
-      available: true
-    },
-    {
-      id: 'appearance',
-      label: 'Apparence',
-      icon: Palette,
-      available: true
-    },
+
     {
       id: 'backup',
       label: 'Sauvegarde',

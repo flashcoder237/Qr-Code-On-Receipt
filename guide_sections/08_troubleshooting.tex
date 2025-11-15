@@ -1,0 +1,339 @@
+% Section 08 - Dépannage et résolution de problèmes
+\section{Dépannage et résolution de problèmes}
+
+\subsection{Problèmes courants et solutions}
+
+\subsubsection{L'application ne se lance pas}
+
+\textbf{Symptômes :}
+\begin{itemize}[leftmargin=*]
+    \item Double-clic sur l'icône sans effet
+    \item Fenêtre s'affiche brièvement puis disparaît
+    \item Message d'erreur au démarrage
+\end{itemize}
+
+\textbf{Solutions :}
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Vérifier la configuration système}
+    \begin{itemize}
+        \item RAM disponible : minimum 4 Go
+        \item Espace disque : minimum 500 Mo
+        \item Système d'exploitation à jour
+    \end{itemize}
+
+    \item \textbf{Désinstaller et réinstaller}
+    \begin{itemize}
+        \item Désinstallez complètement l'application
+        \item Téléchargez la dernière version
+        \item Réinstallez
+    \end{itemize}
+
+    \item \textbf{Vérifier les permissions}
+    \begin{itemize}
+        \item Windows : Exécuter en tant qu'administrateur
+        \item macOS : Autoriser dans Sécurité et confidentialité
+        \item Linux : Vérifier les permissions d'exécution
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Erreur lors du chargement du fichier Excel}
+
+\textbf{Message d'erreur :} "Impossible de lire le fichier Excel" ou "Colonnes manquantes"
+
+\textbf{Solutions :}
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Vérifier le format du fichier}
+    \begin{itemize}
+        \item Format accepté : .xlsx ou .xls
+        \item Pas de macros actives
+        \item Fichier non protégé par mot de passe
+    \end{itemize}
+
+    \item \textbf{Vérifier les colonnes obligatoires}
+    \begin{itemize}
+        \item Pour relevés : MATRICULE, NOM, PRENOM, SEMESTRE, NIVEAU, FILIERE
+        \item Pour attestations : Ajouter DATE\_NAISSANCE, LIEU\_NAISSANCE, DOMAINE, PARCOURS, MOYENNE\_GENERALE
+        \item Respect de la casse (majuscules/minuscules)
+    \end{itemize}
+
+    \item \textbf{Fermer Excel}
+    \begin{itemize}
+        \item Le fichier ne doit pas être ouvert dans Excel
+        \item Fermez Excel complètement
+        \item Réessayez le chargement
+    \end{itemize}
+
+    \item \textbf{Vérifier l'encodage}
+    \begin{itemize}
+        \item Enregistrez le fichier avec encodage UTF-8
+        \item Évitez les caractères spéciaux dans les noms de colonnes
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Erreur "Out of Memory" (OOM)}
+
+\textbf{Message :} "JavaScript heap out of memory" ou "Mémoire insuffisante"
+
+\textbf{Causes :}
+\begin{itemize}[leftmargin=*]
+    \item Génération de trop de documents simultanément
+    \item Fichier Excel très volumineux
+    \item Autres applications consommant beaucoup de RAM
+\end{itemize}
+
+\textbf{Solutions :}
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Réduire le nombre de documents}
+    \begin{itemize}
+        \item Limitez à 200 relevés par génération
+        \item Pour plus, divisez en plusieurs lots
+        \item Utilisez les filtres pour sélectionner un sous-ensemble
+    \end{itemize}
+
+    \item \textbf{Fermer les autres applications}
+    \begin{itemize}
+        \item Libérez de la RAM
+        \item Fermez les navigateurs avec beaucoup d'onglets
+        \item Redémarrez l'ordinateur si nécessaire
+    \end{itemize}
+
+    \item \textbf{Simplifier le fichier Excel}
+    \begin{itemize}
+        \item Supprimez les colonnes inutiles
+        \item Retirez les formules complexes
+        \item Conservez uniquement les données nécessaires
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Mapping des colonnes non sauvegardé}
+
+\textbf{Symptôme :} À chaque chargement d'Excel, le mapping doit être refait
+
+\textbf{Cause :} Changement des noms de colonnes entre les chargements
+
+\textbf{Solution :}
+\begin{itemize}[leftmargin=*]
+    \item Gardez les mêmes noms de colonnes dans vos fichiers Excel
+    \item Le mapping est basé sur le NOM de la colonne, pas sa position
+    \item Si vous devez renommer, utilisez \bouton{Réinitialiser le mapping}
+\end{itemize}
+
+\subsubsection{QR codes non lisibles}
+
+\textbf{Symptômes :}
+\begin{itemize}[leftmargin=*]
+    \item Le scanner ne détecte pas le QR code
+    \item Message d'erreur lors du scan
+    \item QR code trop petit ou trop flou
+\end{itemize}
+
+\textbf{Solutions :}
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Augmenter la taille}
+    \begin{itemize}
+        \item Passez de "Petit" à "Moyen" ou "Grand"
+        \item Minimum recommandé : 80x80 pixels
+    \end{itemize}
+
+    \item \textbf{Augmenter la correction d'erreur}
+    \begin{itemize}
+        \item Passez de "L" ou "M" à "Q" ou "H"
+        \item Plus de redondance = meilleure lisibilité
+    \end{itemize}
+
+    \item \textbf{Réduire le contenu}
+    \begin{itemize}
+        \item Limitez le nombre de colonnes dans le QR
+        \item Trop de données = QR trop dense
+        \item Maximum recommandé : 5-6 champs
+    \end{itemize}
+
+    \item \textbf{Vérifier la position}
+    \begin{itemize}
+        \item Le QR ne doit pas chevaucher du texte
+        \item Fond blanc recommandé autour du QR
+        \item Évitez les zones avec images de fond
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Moyennes calculées incorrectement}
+
+\textbf{Symptôme :} Les moyennes affichées ne correspondent pas aux calculs manuels
+
+\textbf{Vérifications :}
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Poids des ECs}
+    \begin{itemize}
+        \item Vérifiez les coefficients dans la configuration
+        \item Formule : $\text{Moy UE} = \frac{\sum(\text{Note} \times \text{Poids})}{\sum \text{Poids}}$
+    \end{itemize}
+
+    \item \textbf{Crédits des UEs}
+    \begin{itemize}
+        \item Les crédits ECTS sont-ils corrects ?
+        \item Formule : $\text{Moy Gén} = \frac{\sum(\text{Moy UE} \times \text{Crédits})}{\sum \text{Crédits}}$
+    \end{itemize}
+
+    \item \textbf{Notes manquantes}
+    \begin{itemize}
+        \item Les cellules vides sont ignorées dans le calcul
+        \item Assurez-vous que toutes les notes sont présentes
+    \end{itemize}
+
+    \item \textbf{Base de notation}
+    \begin{itemize}
+        \item Vérifiez que la base définie (10, 20, 100) correspond aux notes
+        \item L'application normalise automatiquement sur 20
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Attestations générées pour des étudiants ajournés}
+
+\textbf{Symptôme :} Des étudiants avec moyenne < 10 reçoivent des attestations
+
+\attention{Ceci ne devrait PAS se produire. L'application filtre automatiquement.}
+
+\textbf{Vérifications :}
+\begin{enumerate}[leftmargin=*]
+    \item Vérifiez la colonne \texttt{MOYENNE\_GENERALE} dans l'Excel
+    \item Les valeurs doivent être numériques (pas de texte)
+    \item Format : 10.5, 12.75, etc. (point décimal, pas virgule)
+    \item Si le problème persiste, contactez le support
+\end{enumerate}
+
+\subsubsection{Thème personnalisé non appliqué}
+
+\textbf{Symptôme :} Le thème configuré n'apparaît pas sur les documents générés
+
+\textbf{Solutions :}
+\begin{enumerate}[leftmargin=*]
+    \item Vérifiez que le thème est bien enregistré (bouton \bouton{Enregistrer le thème})
+    \item Pour les relevés : le thème est lié à la configuration de classe
+    \item Pour les attestations : le thème est indépendant
+    \item Essayez de prévisualiser pour voir si le thème s'applique
+    \item Exportez et réimportez le thème pour tester
+\end{enumerate}
+
+\subsection{Optimisation des performances}
+
+\subsubsection{Accélérer la génération}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Désactiver la compression ZIP} (si non nécessaire)
+    \begin{itemize}
+        \item Gain de temps : 20-30\%
+        \item Fichiers plus volumineux
+    \end{itemize}
+
+    \item \textbf{Générer par lots de 100-200}
+    \begin{itemize}
+        \item Au lieu de 500 en une fois
+        \item Évite les erreurs mémoire
+        \item Permet de vérifier progressivement
+    \end{itemize}
+
+    \item \textbf{Simplifier les thèmes}
+    \begin{itemize}
+        \item Évitez trop d'images ou de polices complexes
+        \item Utilisez des préréglages plutôt que des thèmes très personnalisés
+    \end{itemize}
+
+    \item \textbf{Utiliser un SSD}
+    \begin{itemize}
+        \item Plus rapide qu'un disque dur mécanique
+        \item Améliore l'écriture des fichiers générés
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Réduire l'utilisation mémoire}
+
+\begin{enumerate}[leftmargin=*]
+    \item Fermez toutes les applications inutiles
+    \item Utilisez le format "Fichiers individuels" au lieu de "ZIP" si possible
+    \item Ne générez pas de QR codes si non nécessaire
+    \item Redémarrez l'application entre deux générations massives
+\end{enumerate}
+
+\subsection{Journalisation et logs}
+
+\subsubsection{Consulter les logs de l'application}
+
+Les logs peuvent aider à identifier des problèmes :
+
+\textbf{Windows :}
+\begin{verbatim}
+%APPDATA%\FMSP-Releves\logs\
+\end{verbatim}
+
+\textbf{macOS :}
+\begin{verbatim}
+~/Library/Logs/FMSP-Releves/
+\end{verbatim}
+
+\textbf{Linux :}
+\begin{verbatim}
+~/.config/FMSP-Releves/logs/
+\end{verbatim}
+
+\subsubsection{Console de développement}
+
+Pour les utilisateurs avancés :
+
+\begin{enumerate}[leftmargin=*]
+    \item Appuyez sur \texttt{F12} ou \texttt{Ctrl+Shift+I} (Windows/Linux)
+    \item Ou \texttt{Cmd+Option+I} (macOS)
+    \item La console de développement s'ouvre
+    \item Consultez l'onglet \textbf{Console} pour les messages
+    \item Recherchez les messages en rouge (erreurs)
+\end{enumerate}
+
+\subsection{Réinitialisation de l'application}
+
+Si les problèmes persistent, réinitialisez l'application :
+
+\begin{tcolorbox}[colback=red!5!white,colframe=red!75!black,title=ATTENTION : Sauvegardez vos données]
+La réinitialisation supprime :
+\begin{itemize}[leftmargin=*]
+    \item Toutes les configurations de classes
+    \item Tous les thèmes personnalisés
+    \item L'historique des générations
+    \item Les paramètres de l'établissement
+\end{itemize}
+
+Exportez vos configurations et thèmes avant de continuer !
+\end{tcolorbox}
+
+\textbf{Procédure :}
+\begin{enumerate}[leftmargin=*]
+    \item Menu \menu{Paramètres} > \textbf{Avancé}
+    \item Cliquez sur \bouton{Réinitialiser l'application}
+    \item Confirmez l'action
+    \item L'application redémarre avec les paramètres par défaut
+\end{enumerate}
+
+\subsection{Contacter le support}
+
+Si aucune solution ne fonctionne :
+
+\begin{enumerate}[leftmargin=*]
+    \item Menu \menu{Aide} > \bouton{Rapporter un problème}
+    \item Remplissez le formulaire :
+    \begin{itemize}
+        \item Description du problème
+        \item Étapes pour reproduire
+        \item Captures d'écran si possible
+    \end{itemize}
+    \item Joignez les logs récents
+    \item Cliquez sur \bouton{Envoyer}
+\end{enumerate}
+
+\textbf{Informations utiles à fournir :}
+\begin{itemize}[leftmargin=*]
+    \item Version de l'application (Menu \menu{Aide} > \menu{À propos})
+    \item Système d'exploitation et version
+    \item Nombre d'étudiants traités
+    \item Type de document généré
+    \item Message d'erreur exact (copier-coller)
+\end{itemize}
+
+\newpage

@@ -7,7 +7,8 @@
       "Bash(rm:*)",
       "Bash(rg:*)",
       "Bash(del test-mention-fix.js)",
-      "Bash(wmic logicaldisk get size,freespace,caption)"
+      "Bash(wmic logicaldisk get size,freespace,caption)",
+      "WebSearch"
     ],
     "deny": []
   }

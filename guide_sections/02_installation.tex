@@ -1,0 +1,266 @@
+% Section 02 - Installation et démarrage
+\section{Installation et premier démarrage}
+
+\subsection{Téléchargement de l'application}
+
+\subsubsection{Où télécharger ?}
+
+L'application est distribuée sous forme d'installateur pour chaque système d'exploitation :
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Windows} : Fichier \texttt{FMSP-Releves-Setup-x.x.x.exe}
+    \item \textbf{macOS} : Fichier \texttt{FMSP-Releves-x.x.x.dmg}
+    \item \textbf{Linux} : Fichier \texttt{FMSP-Releves-x.x.x.AppImage} ou \texttt{.deb}
+\end{itemize}
+
+\astuce{Vérifiez toujours que vous téléchargez la dernière version depuis la source officielle.}
+
+\subsection{Installation sur Windows}
+
+\begin{enumerate}[leftmargin=*]
+    \item Double-cliquez sur le fichier \texttt{FMSP-Releves-Setup-x.x.x.exe}
+    \item Si Windows SmartScreen affiche un avertissement :
+    \begin{itemize}
+        \item Cliquez sur \bouton{Informations complémentaires}
+        \item Puis sur \bouton{Exécuter quand même}
+    \end{itemize}
+    \item Suivez l'assistant d'installation :
+    \begin{itemize}
+        \item Acceptez la licence
+        \item Choisissez le répertoire d'installation (défaut : \texttt{C:\textbackslash Program Files\textbackslash FMSP-Releves})
+        \item Cochez "Créer un raccourci sur le bureau" si souhaité
+        \item Cliquez sur \bouton{Installer}
+    \end{itemize}
+    \item Attendez la fin de l'installation (environ 30 secondes)
+    \item Cliquez sur \bouton{Terminer} pour lancer l'application
+\end{enumerate}
+
+\begin{figure}[h]
+    \centering
+    % \includegraphics[width=0.7\textwidth]{images/installation_windows.png}
+    \fbox{\parbox{0.7\textwidth}{\centering [CAPTURE D'ÉCRAN : ASSISTANT D'INSTALLATION WINDOWS]}}
+    \caption{Assistant d'installation sous Windows}
+\end{figure}
+
+\subsection{Installation sur macOS}
+
+\begin{enumerate}[leftmargin=*]
+    \item Double-cliquez sur le fichier \texttt{FMSP-Releves-x.x.x.dmg}
+    \item Une fenêtre s'ouvre montrant l'icône de l'application
+    \item Glissez-déposez l'icône vers le dossier \texttt{Applications}
+    \item Éjectez le volume DMG
+    \item Ouvrez le dossier \texttt{Applications}
+    \item Double-cliquez sur \texttt{FMSP-Releves}
+    \item Si macOS affiche "Application non vérifiée" :
+    \begin{itemize}
+        \item Allez dans \menu{Préférences Système} > \menu{Sécurité et confidentialité}
+        \item Cliquez sur \bouton{Ouvrir quand même}
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Installation sur Linux}
+
+\subsubsection{Méthode 1 : AppImage (recommandé)}
+
+\begin{enumerate}[leftmargin=*]
+    \item Rendez le fichier exécutable :
+    \begin{verbatim}
+chmod +x FMSP-Releves-x.x.x.AppImage
+    \end{verbatim}
+    \item Lancez l'application :
+    \begin{verbatim}
+./FMSP-Releves-x.x.x.AppImage
+    \end{verbatim}
+\end{enumerate}
+
+\subsubsection{Méthode 2 : Paquet Debian (.deb)}
+
+\begin{enumerate}[leftmargin=*]
+    \item Installez le paquet :
+    \begin{verbatim}
+sudo dpkg -i FMSP-Releves-x.x.x.deb
+    \end{verbatim}
+    \item Si des dépendances manquent :
+    \begin{verbatim}
+sudo apt-get install -f
+    \end{verbatim}
+    \item Lancez depuis le menu des applications ou en ligne de commande :
+    \begin{verbatim}
+fmsp-releves
+    \end{verbatim}
+\end{enumerate}
+
+\subsection{Premier démarrage}
+
+\subsubsection{Écran de bienvenue}
+
+Au premier lancement, l'application affiche un écran de bienvenue vous guidant à travers les étapes initiales.
+
+\begin{figure}[h]
+    \centering
+    % \includegraphics[width=0.8\textwidth]{images/ecran_bienvenue.png}
+    \fbox{\parbox{0.8\textwidth}{\centering [CAPTURE D'ÉCRAN : ÉCRAN DE BIENVENUE]}}
+    \caption{Écran de bienvenue au premier démarrage}
+\end{figure}
+
+\subsubsection{Configuration initiale de l'établissement}
+
+Avant de générer vos premiers documents, configurez les informations de votre établissement :
+
+\begin{enumerate}[leftmargin=*]
+    \item Cliquez sur le menu \menu{Configurer les entêtes}
+    \item Remplissez les informations suivantes :
+
+    \begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=Informations requises]
+    \begin{itemize}[leftmargin=*]
+        \item \champ{Nom de l'établissement} : Ex. "Faculté de Médecine et Sciences Pharmaceutiques"
+        \item \champ{Adresse complète} : Rue, ville, code postal, pays
+        \item \champ{Téléphone} : Numéro de contact
+        \item \champ{Email} : Adresse email officielle
+        \item \champ{Site web} : URL du site (optionnel)
+        \item \champ{Logo} : Image PNG ou JPG (max 2 Mo, résolution recommandée : 800x200 px)
+    \end{itemize}
+    \end{tcolorbox}
+
+    \item Cliquez sur \bouton{Enregistrer les paramètres}
+\end{enumerate}
+
+\begin{figure}[h]
+    \centering
+    % \includegraphics[width=\textwidth]{images/config_entetes.png}
+    \fbox{\parbox{0.9\textwidth}{\centering [CAPTURE D'ÉCRAN : FORMULAIRE DE CONFIGURATION DES ENTÊTES]}}
+    \caption{Configuration des entêtes de l'établissement}
+\end{figure}
+
+\subsection{Activation de la licence}
+
+\subsubsection{Mode démo vs Mode activé}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Fonctionnalité} & \textbf{Mode démo} & \textbf{Mode activé} \\
+\hline
+Générer les relevés & ✓ & ✓ \\
+Générer les attestations & ✓ & ✓ \\
+Config des relevés & ✓ & ✓ \\
+Configurer les entêtes & ✓ & ✓ \\
+Historique des docs & ✓ & ✓ \\
+\textbf{QR Codes sur PDF} & \textbf{✗} & \textbf{✓} \\
+Placement QR sur Documents & ✓ & ✓ \\
+Aide & ✓ & ✓ \\
+Paramètres & ✓ & ✓ \\
+\hline
+\end{tabular}
+\caption{Comparaison mode démo vs mode activé}
+\end{table}
+
+\attention{Le menu "QR Codes sur PDF" est désactivé en mode démo. Pour l'activer, vous devez entrer une clé de licence valide.}
+
+\subsubsection{Procédure d'activation}
+
+\begin{enumerate}[leftmargin=*]
+    \item Cliquez sur le menu \menu{Paramètres}
+    \item Dans l'onglet \textbf{Licence}, vous verrez l'état actuel (Démo ou Activé)
+    \item Entrez votre clé de licence dans le champ prévu
+    \item Cliquez sur \bouton{Activer}
+    \item Si la clé est valide, un message de confirmation s'affiche
+    \item Redémarrez l'application pour appliquer l'activation
+\end{enumerate}
+
+\begin{figure}[h]
+    \centering
+    % \includegraphics[width=0.8\textwidth]{images/activation_licence.png}
+    \fbox{\parbox{0.8\textwidth}{\centering [CAPTURE D'ÉCRAN : ÉCRAN D'ACTIVATION DE LA LICENCE]}}
+    \caption{Interface d'activation de la licence}
+\end{figure}
+
+\subsection{Structure des dossiers de l'application}
+
+Après installation, l'application crée automatiquement les dossiers suivants sur votre système :
+
+\subsubsection{Windows}
+
+\begin{verbatim}
+C:\Users\[VotreNom]\AppData\Roaming\FMSP-Releves\
+├── configs\              # Configurations de classes sauvegardées
+├── themes\               # Thèmes personnalisés
+├── history\              # Historique des documents générés
+└── cache\                # Cache temporaire
+\end{verbatim}
+
+\subsubsection{macOS}
+
+\begin{verbatim}
+~/Library/Application Support/FMSP-Releves/
+├── configs/
+├── themes/
+├── history/
+└── cache/
+\end{verbatim}
+
+\subsubsection{Linux}
+
+\begin{verbatim}
+~/.config/FMSP-Releves/
+├── configs/
+├── themes/
+├── history/
+└── cache/
+\end{verbatim}
+
+\info{Ces dossiers contiennent vos données personnalisées. N'hésitez pas à en faire des sauvegardes régulières.}
+
+\subsection{Vérification de l'installation}
+
+Pour vérifier que l'application fonctionne correctement :
+
+\begin{enumerate}[leftmargin=*]
+    \item L'interface principale s'affiche correctement avec les 9 menus dans la barre latérale
+    \item Le menu \menu{Aide} affiche la documentation
+    \item Le menu \menu{Paramètres} montre l'état de la licence
+    \item Vous pouvez accéder à tous les menus (sauf "QR Codes sur PDF" si en mode démo)
+\end{enumerate}
+
+\begin{tcolorbox}[colback=red!5!white,colframe=red!75!black,title=En cas de problème au démarrage]
+Si l'application ne se lance pas correctement :
+\begin{itemize}[leftmargin=*]
+    \item Vérifiez que votre système répond à la configuration minimale
+    \item Désinstallez et réinstallez l'application
+    \item Vérifiez les logs d'erreur dans le dossier de l'application
+    \item Consultez le menu \menu{Aide} > \menu{Rapporter un problème}
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{Désinstallation}
+
+\subsubsection{Windows}
+
+\begin{enumerate}[leftmargin=*]
+    \item Panneau de configuration > Programmes et fonctionnalités
+    \item Recherchez "FMSP-Releves"
+    \item Clic droit > Désinstaller
+    \item Suivez l'assistant de désinstallation
+\end{enumerate}
+
+\subsubsection{macOS}
+
+\begin{enumerate}[leftmargin=*]
+    \item Ouvrez le dossier Applications
+    \item Glissez l'icône FMSP-Releves vers la Corbeille
+    \item Videz la Corbeille
+\end{enumerate}
+
+\subsubsection{Linux}
+
+Pour AppImage : supprimez simplement le fichier .AppImage
+
+Pour paquet Debian :
+\begin{verbatim}
+sudo apt-get remove fmsp-releves
+\end{verbatim}
+
+\attention{La désinstallation ne supprime pas automatiquement vos données personnelles (configurations, thèmes, historique). Ces dossiers doivent être supprimés manuellement si souhaité.}
+
+\newpage

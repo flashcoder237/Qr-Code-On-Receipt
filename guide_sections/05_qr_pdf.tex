@@ -1,0 +1,387 @@
+% Section 05 - QR Code sur PDF
+\section{Ajout de codes QR sur PDFs existants}
+
+\subsection{Vue d'ensemble}
+
+Le menu \menu{QR Codes sur PDF} permet d'ajouter des codes QR sur des documents PDF déjà générés (relevés, attestations, ou autres documents).
+
+\attention{Cette fonctionnalité est DÉSACTIVÉE en mode démo. Vous devez activer l'application avec une licence valide pour y accéder.}
+
+\textbf{Caractéristiques principales :}
+\begin{itemize}[leftmargin=*]
+    \item QR code ajouté sur \textbf{TOUTES les pages} de chaque PDF
+    \item Matching automatique entre PDFs et données Excel
+    \item Positionnement visuel précis avec grille A4
+    \item Support des orientations portrait et paysage
+    \item 3 types de documents supportés : relevé, attestation, diplôme
+    \item 3 formats d'export : ZIP, Fichiers individuels, PDF unique
+\end{itemize}
+
+\subsection{Quand utiliser cette fonctionnalité ?}
+
+\textbf{Cas d'usage typiques :}
+
+\begin{enumerate}[leftmargin=*]
+    \item Vous avez généré des relevés SANS QR code et souhaitez les ajouter après coup
+    \item Vous voulez ajouter des QR codes sur des documents PDF externes (non générés par l'application)
+    \item Vous devez mettre à jour les QR codes de documents existants
+    \item Vous voulez ajouter des informations de vérification sur des documents scannés
+\end{enumerate}
+
+\info{Si vous générez des relevés ou attestations depuis l'application, vous pouvez directement activer l'option "QR code chiffré" dans les paramètres de génération. Cette fonctionnalité est pour ajouter des QR APRÈS la génération.}
+
+\subsection{Workflow complet}
+
+\subsubsection{Étape 1 : Accéder au menu}
+
+\begin{enumerate}[leftmargin=*]
+    \item Assurez-vous d'avoir une licence active (sinon le menu est grisé)
+    \item Cliquez sur \menu{QR Codes sur PDF} dans la barre latérale
+    \item L'interface s'affiche avec plusieurs sections
+\end{enumerate}
+
+\subsubsection{Étape 2 : Charger les documents PDF}
+
+\begin{enumerate}[leftmargin=*]
+    \item Cliquez sur \bouton{Charger des PDFs}
+    \item Sélectionnez un ou plusieurs fichiers PDF
+    \item L'application analyse chaque PDF :
+    \begin{itemize}
+        \item Nombre de pages détecté
+        \item Taille du fichier
+        \item Orientation (portrait/paysage)
+    \end{itemize}
+    \item Les PDFs apparaissent dans une liste
+\end{enumerate}
+
+\begin{figure}[h]
+    \centering
+    % \includegraphics[width=\textwidth]{images/liste_pdfs_qr.png}
+    \fbox{\parbox{0.9\textwidth}{\centering [CAPTURE D'ÉCRAN : LISTE DES PDFs CHARGÉS]\\ \vspace{0.3cm}
+    Tableau : Nom fichier | Pages | Taille | Statut | Actions\\
+    Releve\_DUPONT\_Jean.pdf | 1 | 245 Ko | ✓ Prêt | [Supprimer]\\
+    Releve\_MARTIN\_Marie.pdf | 2 | 387 Ko | ✓ Prêt | [Supprimer]}}
+    \caption{Liste des PDFs chargés pour traitement}
+\end{figure}
+
+\subsubsection{Étape 3 : Charger le fichier Excel avec données}
+
+\begin{enumerate}[leftmargin=*]
+    \item Cliquez sur \bouton{Charger fichier Excel}
+    \item Sélectionnez le fichier contenant les données des étudiants
+    \item L'application lit les colonnes disponibles
+\end{enumerate}
+
+\textbf{Colonnes minimales requises :}
+\begin{itemize}[leftmargin=*]
+    \item \texttt{MATRICULE} : Pour le matching avec les noms de fichiers PDF
+    \item \texttt{NOM} : Nom de l'étudiant
+    \item \texttt{PRENOM} : Prénom de l'étudiant
+    \item Toutes autres colonnes que vous souhaitez inclure dans le QR code
+\end{itemize}
+
+\subsubsection{Étape 4 : Vérifier le matching automatique}
+
+L'application tente automatiquement d'associer chaque PDF à une ligne de l'Excel :
+
+\begin{enumerate}[leftmargin=*]
+    \item Le matching se fait par recherche du matricule dans le nom du fichier PDF
+    \item Exemple : \texttt{Releve\_2023001\_DUPONT.pdf} → Ligne avec \texttt{MATRICULE = 2023001}
+    \item Les correspondances trouvées sont marquées \textcolor{green}{\textbf{✓ Matched}}
+    \item Les correspondances manquantes sont marquées \textcolor{red}{\textbf{✗ Non matché}}
+\end{enumerate}
+
+\begin{figure}[h]
+    \centering
+    % \includegraphics[width=\textwidth]{images/matching_pdfs.png}
+    \fbox{\parbox}{0.9\textwidth}{\centering [CAPTURE D'ÉCRAN : RÉSULTAT DU MATCHING]\\ \vspace{0.3cm}
+    Tableau avec statut de matching pour chaque PDF\\
+    ✓ Vert pour les matchés\\
+    ✗ Rouge pour les non matchés avec bouton "Associer manuellement"}}
+    \caption{Résultat du matching automatique PDFs-Excel}
+\end{figure}
+
+\subsubsection{Étape 5 : Associer manuellement les PDFs non matchés (si nécessaire)}
+
+Pour les PDFs non automatiquement matchés :
+
+\begin{enumerate}[leftmargin=*]
+    \item Cliquez sur \bouton{Associer manuellement} à côté du PDF
+    \item Une fenêtre s'ouvre avec la liste de tous les étudiants de l'Excel
+    \item Utilisez la barre de recherche pour trouver l'étudiant correct
+    \item Cliquez sur \bouton{Associer} à côté de l'étudiant
+    \item Le PDF passe au statut \textcolor{green}{✓ Matched}
+\end{enumerate}
+
+\subsubsection{Étape 6 : Sélectionner le type de document}
+
+\begin{enumerate}[leftmargin=*]
+    \item Dans le champ \champ{Type de document}, sélectionnez :
+    \begin{description}[leftmargin=3cm]
+        \item[Relevé] Pour des relevés de notes (orientation portrait A4)
+        \item[Attestation] Pour des attestations (orientation portrait A4)
+        \item[Diplôme] Pour des diplômes (orientation paysage A4)
+    \end{description}
+    \item Ce choix détermine l'orientation par défaut de la grille de positionnement
+\end{enumerate}
+
+\subsubsection{Étape 7 : Positionner le QR code}
+
+\begin{enumerate}[leftmargin=*]
+    \item Une grille de positionnement A4 s'affiche
+    \item Cliquez directement sur la grille pour placer le QR code
+    \item Ou utilisez les positions prédéfinies :
+    \begin{itemize}
+        \item \bouton{Haut Gauche}
+        \item \bouton{Haut Droite}
+        \item \bouton{Centre}
+        \item \bouton{Bas Gauche}
+        \item \bouton{Bas Droite}
+    \end{itemize}
+    \item Les coordonnées X et Y (en pourcentage) sont affichées
+    \item Un aperçu visuel montre l'emplacement du QR sur la page
+\end{enumerate}
+
+\begin{figure}[h]
+    \centering
+    % \includegraphics[width=0.7\textwidth]{images/grille_positionnement_qr.png}
+    \fbox{\parbox{0.65\textwidth}{\centering [CAPTURE D'ÉCRAN : GRILLE DE POSITIONNEMENT]\\ \vspace{0.3cm}
+    Grille A4 cliquable avec aperçu du QR code\\
+    Boutons positions prédéfinies\\
+    Coordonnées affichées : X: 85\%, Y: 15\%}}
+    \caption{Grille de positionnement visuel du QR code}
+\end{figure}
+
+\astuce{Pour un placement standard sur les relevés, utilisez la position "Haut Droite" (85\%, 15\%). Le QR code sera visible sans masquer d'informations importantes.}
+
+\subsubsection{Étape 8 : Configurer le contenu du QR code}
+
+\begin{enumerate}[leftmargin=*]
+    \item Sélectionnez les colonnes Excel à inclure dans le QR code
+    \item Recommandations :
+    \begin{itemize}
+        \item Minimum : MATRICULE, NOM, PRENOM
+        \item Optionnel : SEMESTRE, NIVEAU, DATE\_NAISSANCE
+        \item Évitez : Trop de données (QR code trop dense)
+    \end{itemize}
+    \item Cochez les colonnes souhaitées dans la liste
+    \item Un aperçu du contenu QR s'affiche :
+\end{enumerate}
+
+\begin{verbatim}
+Contenu du QR code:
+MATRICULE: 2023001
+NOM: DUPONT
+PRENOM: Jean
+SEMESTRE: S1
+NIVEAU: L1
+\end{verbatim}
+
+\subsubsection{Étape 9 : Configurer les paramètres du QR code}
+
+\begin{description}[leftmargin=3.5cm]
+    \item[Taille] Choisissez parmi :
+    \begin{itemize}
+        \item Petit (60x60 pixels)
+        \item Moyen (80x80 pixels) - Recommandé
+        \item Grand (100x100 pixels)
+        \item Personnalisée (saisissez une taille en pixels)
+    \end{itemize}
+
+    \item[Correction d'erreur] Niveau de récupération si le QR est endommagé :
+    \begin{itemize}
+        \item L (Low) : 7\% de récupération - QR plus simple
+        \item M (Medium) : 15\% de récupération - \textbf{Recommandé}
+        \item Q (Quartile) : 25\% de récupération
+        \item H (High) : 30\% de récupération - QR plus dense
+    \end{itemize}
+\end{description}
+
+\begin{figure}[h]
+    \centering
+    % \includegraphics[width=0.8\textwidth]{images/config_qr_params.png}
+    \fbox{\parbox{0.75\textwidth}{\centering [CAPTURE D'ÉCRAN : PARAMÈTRES DU QR CODE]\\ \vspace{0.3cm}
+    Taille : ○ Petit  ● Moyen  ○ Grand  ○ Personnalisée [ ]px\\
+    Correction d'erreur : ○ L  ● M  ○ Q  ○ H\\
+    Colonnes : ☑ MATRICULE  ☑ NOM  ☑ PRENOM  ☑ SEMESTRE}}
+    \caption{Configuration des paramètres du QR code}
+\end{figure}
+
+\subsubsection{Étape 10 : Choisir le format d'exportation}
+
+\begin{description}[leftmargin=3.5cm]
+    \item[ZIP (défaut)] Archive contenant tous les PDFs avec QR codes
+    \item[Fichiers individuels] Chaque PDF téléchargé séparément
+    \item[PDF unique] Tous les PDFs fusionnés en un seul fichier
+\end{description}
+
+\subsubsection{Étape 11 : Traiter les documents}
+
+\begin{enumerate}[leftmargin=*]
+    \item Vérifiez le récapitulatif :
+    \begin{itemize}
+        \item Nombre de PDFs à traiter
+        \item Nombre de PDFs matchés
+        \item Position du QR code
+        \item Colonnes incluses
+        \item Format d'export
+    \end{itemize}
+    \item Cliquez sur \bouton{Traiter tous les documents}
+    \item Une barre de progression s'affiche :
+    \begin{itemize}
+        \item Document en cours de traitement
+        \item Numéro de page en cours (pour les PDFs multi-pages)
+        \item Pourcentage global de progression
+    \end{itemize}
+\end{enumerate}
+
+\begin{figure}[h]
+    \centering
+    % \includegraphics[width=0.8\textwidth]{images/traitement_qr_pdf.png}
+    \fbox{\parbox{0.75\textwidth}{\centering [CAPTURE D'ÉCRAN : TRAITEMENT EN COURS]\\ \vspace{0.3cm}
+    Traitement de Releve\_MARTIN\_Marie.pdf\\
+    Page 2/2 en cours...\\
+    ▓▓▓▓▓▓▓░░░░░░░░  23/50 PDFs (46\%)}}
+    \caption{Barre de progression du traitement}
+\end{figure}
+
+\info{Le QR code est ajouté sur TOUTES les pages de chaque PDF. Pour un relevé de 2 pages, le même QR code apparaîtra sur les 2 pages.}
+
+\subsubsection{Étape 12 : Téléchargement et vérification}
+
+\begin{enumerate}[leftmargin=*]
+    \item Une fois terminé, un message de confirmation s'affiche :
+    \begin{itemize}
+        \item \textcolor{green}{✓ 50 documents traités avec succès}
+        \item \textcolor{red}{✗ 0 erreur}
+    \end{itemize}
+    \item Le fichier ou les fichiers sont téléchargés automatiquement
+    \item Ouvrez quelques PDFs pour vérifier :
+    \begin{itemize}
+        \item Le QR code est présent sur toutes les pages
+        \item La position est correcte
+        \item Le QR code est lisible (testez avec un scanner)
+        \item Le QR ne masque pas d'informations importantes
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Traitement de PDFs multi-pages}
+
+\textbf{Particularité importante :} Contrairement à la plupart des outils, cette application ajoute le QR code sur **TOUTES les pages** de chaque document.
+
+\textbf{Exemple :}
+\begin{itemize}[leftmargin=*]
+    \item Vous avez un relevé de 3 pages
+    \item Le QR code sera ajouté identiquement sur la page 1, page 2 ET page 3
+    \item Chaque page du document peut être vérifiée indépendamment
+\end{itemize}
+
+\textbf{Avantages :}
+\begin{itemize}[leftmargin=*]
+    \item Si une page est séparée du reste, elle reste vérifiable
+    \item Pas besoin de chercher le QR code sur une page spécifique
+    \item Meilleure traçabilité
+\end{itemize}
+
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=Logs de traitement multi-pages]
+Dans la console de l'application, vous verrez :
+
+\begin{verbatim}
+📄 [QR-PDF] 2023001: 3 page(s) détectée(s)
+  ├─ Ajout QR sur page 1/3
+  ├─ Ajout QR sur page 2/3
+  └─ Ajout QR sur page 3/3
+✅ Document traité avec succès
+\end{verbatim}
+\end{tcolorbox}
+
+\subsection{Différences entre orientations (relevé/attestation vs diplôme)}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Critère} & \textbf{Relevé / Attestation} & \textbf{Diplôme} \\
+\hline
+Orientation & Portrait & Paysage \\
+\hline
+Dimensions A4 & 21 x 29.7 cm & 29.7 x 21 cm \\
+\hline
+Position "Haut Droite" & 85\%, 15\% & 90\%, 10\% \\
+\hline
+\end{tabular}
+\caption{Différences selon le type de document}
+\end{table}
+
+\subsection{Tester la lisibilité d'un QR code}
+
+Pour vérifier qu'un QR code généré est bien lisible :
+
+\begin{enumerate}[leftmargin=*]
+    \item Ouvrez le PDF sur votre ordinateur
+    \item Utilisez un smartphone avec une application de scan de QR code
+    \item Approchez la caméra du QR code à l'écran
+    \item Le contenu devrait s'afficher immédiatement
+    \item Vérifiez que toutes les informations sont correctes
+\end{enumerate}
+
+\textbf{Applications de scan recommandées :}
+\begin{itemize}[leftmargin=*]
+    \item iOS : Application Appareil photo native, QR Code Reader
+    \item Android : Google Lens, QR Code Reader
+\end{itemize}
+
+\subsection{Limitation en mode démo}
+
+\begin{tcolorbox}[colback=red!5!white,colframe=red!75!black,title=Restriction mode démo]
+\textbf{Menu désactivé en mode démo}
+
+Si vous n'avez pas de licence active :
+\begin{itemize}[leftmargin=*]
+    \item Le menu \menu{QR Codes sur PDF} apparaît grisé dans la barre latérale
+    \item Un clic affiche : "Cette fonctionnalité nécessite une licence active"
+    \item Vous devez activer l'application via \menu{Paramètres} > \menu{Licence}
+\end{itemize}
+
+\textbf{Alternative :} Utilisez le menu \menu{Placement QR sur Documents} qui reste disponible en mode démo.
+\end{tcolorbox}
+
+\subsection{Conseils pour un résultat optimal}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Nommage des fichiers PDF} :
+    \begin{itemize}
+        \item Incluez le matricule dans le nom pour faciliter le matching automatique
+        \item Format recommandé : \texttt{Type\_MATRICULE\_NOM\_Prenom.pdf}
+        \item Exemple : \texttt{Releve\_2023001\_DUPONT\_Jean.pdf}
+    \end{itemize}
+
+    \item \textbf{Position du QR code} :
+    \begin{itemize}
+        \item Évitez le centre qui peut masquer des informations
+        \item Préférez les coins (Haut Droite recommandé)
+        \item Gardez une marge de 10\% par rapport aux bords
+    \end{itemize}
+
+    \item \textbf{Taille du QR code} :
+    \begin{itemize}
+        \item Trop petit : difficile à scanner
+        \item Trop grand : envahissant visuellement
+        \item Recommandation : Moyen (80x80 px) ou Grand (100x100 px)
+    \end{itemize}
+
+    \item \textbf{Contenu du QR code} :
+    \begin{itemize}
+        \item Limitez aux informations essentielles
+        \item Maximum recommandé : 5-6 champs
+        \item Plus le contenu est long, plus le QR est dense
+    \end{itemize}
+
+    \item \textbf{Correction d'erreur} :
+    \begin{itemize}
+        \item Utilisez "M" (Medium) par défaut
+        \item Passez à "Q" ou "H" si les documents risquent d'être photocopiés plusieurs fois
+    \end{itemize}
+\end{enumerate}
+
+\newpage

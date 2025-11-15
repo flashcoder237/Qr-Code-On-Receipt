@@ -1,0 +1,227 @@
+% Section 06 - Placement QR sur Documents
+\section{Placement avancé de QR code sur documents}
+
+\subsection{Vue d'ensemble}
+
+Le menu \menu{Placement QR sur Documents} offre une fonctionnalité similaire à \menu{QR Codes sur PDF}, mais avec deux modes de fonctionnement : manuel et Excel.
+
+\info{Cette fonctionnalité est DISPONIBLE même en mode démo, contrairement à "QR Codes sur PDF".}
+
+\textbf{Principales différences avec "QR Codes sur PDF" :}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|p{5cm}|p{5cm}|}
+\hline
+\textbf{Critère} & \textbf{QR Codes sur PDF} & \textbf{Placement QR sur Documents} \\
+\hline
+Mode démo & ✗ Désactivé & ✓ Disponible \\
+\hline
+Modes & Uniquement Excel & Manuel ET Excel \\
+\hline
+QR personnalisé & Basé sur colonnes Excel & Texte libre + Excel \\
+\hline
+Complexité & Simple & Avancée \\
+\hline
+\end{tabular}
+\caption{Comparaison des deux menus QR}
+\end{table}
+
+\subsection{Mode 1 : Placement manuel (texte libre)}
+
+\subsubsection{Cas d'usage}
+
+Utilisez ce mode pour :
+\begin{itemize}[leftmargin=*]
+    \item Ajouter un QR code unique sur un seul document
+    \item Créer un QR code avec du texte personnalisé (URL, vCard, texte libre)
+    \item Tester rapidement le positionnement avant un traitement en masse
+\end{itemize}
+
+\subsubsection{Workflow manuel}
+
+\begin{enumerate}[leftmargin=*]
+    \item Cliquez sur \menu{Placement QR sur Documents}
+    \item Sélectionnez le mode \textbf{Manuel}
+    \item Chargez UN document PDF avec \bouton{Charger PDF}
+    \item Dans le champ \champ{Contenu du QR code}, saisissez le texte souhaité :
+    \begin{itemize}
+        \item URL : \texttt{https://www.fmsp.edu/verify?id=123}
+        \item Texte : \texttt{Document officiel FMSP 2024}
+        \item vCard : Contact au format vCard
+        \item Tout autre texte libre
+    \end{itemize}
+    \item Configurez la position avec la grille A4
+    \item Choisissez la taille et la correction d'erreur
+    \item Cliquez sur \bouton{Générer le QR code}
+    \item Un aperçu s'affiche avec le QR code positionné
+    \item Si satisfait, cliquez sur \bouton{Télécharger le PDF}
+\end{enumerate}
+
+\begin{figure}[h]
+    \centering
+    % \includegraphics[width=0.9\textwidth]{images/qr_placement_manuel.png}
+    \fbox{\parbox{0.85\textwidth}{\centering [CAPTURE D'ÉCRAN : MODE MANUEL]\\ \vspace{0.3cm}
+    Champ texte "Contenu du QR code"\\
+    Grille de positionnement\\
+    Aperçu du PDF avec QR code}}
+    \caption{Interface du mode manuel}
+\end{figure}
+
+\subsection{Mode 2 : Traitement en lot avec Excel}
+
+\subsubsection{Cas d'usage}
+
+Utilisez ce mode pour :
+\begin{itemize}[leftmargin=*]
+    \item Traiter plusieurs documents en une seule opération
+    \item Associer automatiquement des données Excel à chaque document
+    \item Générer des QR codes uniques basés sur les données de chaque étudiant
+\end{itemize}
+
+\subsubsection{Workflow Excel}
+
+\begin{enumerate}[leftmargin=*]
+    \item Sélectionnez le mode \textbf{Excel}
+    \item Chargez plusieurs PDFs avec \bouton{Charger Documents PDF}
+    \item Chargez le fichier Excel avec \bouton{Charger Fichier Excel}
+    \item Sélectionnez la \champ{Colonne de correspondance} :
+    \begin{itemize}
+        \item MATRICULE (recommandé)
+        \item NOM
+        \item Toute autre colonne unique
+    \end{itemize}
+    \item L'application tente de matcher automatiquement chaque PDF
+    \item Corrigez manuellement les correspondances non trouvées
+    \item Sélectionnez les colonnes à inclure dans les QR codes
+    \item Configurez le positionnement et les paramètres du QR
+    \item Choisissez le format d'export (ZIP / Individual / Single)
+    \item Cliquez sur \bouton{Traiter tous les documents}
+\end{enumerate}
+
+\subsection{Paramètres avancés du QR code}
+
+\subsubsection{Taille personnalisée}
+
+\begin{enumerate}[leftmargin=*]
+    \item Sélectionnez \champ{Taille : Personnalisée}
+    \item Un champ s'affiche : \champ{Taille en pixels}
+    \item Entrez une valeur entre 40 et 200 pixels
+    \item Recommandations :
+    \begin{itemize}
+        \item 40-60 px : Très discret, pour documents chargés
+        \item 80-100 px : Standard, bon compromis
+        \item 120-150 px : Grand, très visible
+        \item 150+ px : Très grand, pour affiches
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Correction d'erreur}
+
+Les 4 niveaux expliqués en détail :
+
+\begin{description}[leftmargin=2.5cm, style=nextline]
+    \item[L (Low)]
+    \begin{itemize}
+        \item 7\% de données récupérables si endommagées
+        \item QR code plus simple (moins de modules)
+        \item Idéal pour : documents imprimés sur imprimante de qualité, environnement propre
+        \item Éviter si : photocopies multiples, scan de mauvaise qualité
+    \end{itemize}
+
+    \item[M (Medium)]
+    \begin{itemize}
+        \item 15\% de données récupérables
+        \item Bon équilibre entre densité et robustesse
+        \item \textbf{Recommandé pour la plupart des cas}
+        \item Usage type : relevés de notes, attestations standard
+    \end{itemize}
+
+    \item[Q (Quartile)]
+    \begin{itemize}
+        \item 25\% de données récupérables
+        \item QR code plus dense
+        \item Idéal pour : documents qui seront photocopiés, archivage long terme
+        \item Usage type : diplômes, certificats officiels
+    \end{itemize}
+
+    \item[H (High)]
+    \begin{itemize}
+        \item 30\% de données récupérables
+        \item QR code très dense
+        \item Idéal pour : environnements difficiles, affichage public, documents manipulés fréquemment
+        \item Usage type : affiches, documents d'identité
+    \end{itemize}
+\end{description}
+
+\subsection{Prévisualisation avant traitement}
+
+Avant de lancer un traitement en masse :
+
+\begin{enumerate}[leftmargin=*]
+    \item Configurez tous les paramètres
+    \item Cliquez sur \bouton{Prévisualiser avec le premier document}
+    \item Un PDF de test s'affiche avec le QR code positionné
+    \item Vérifiez :
+    \begin{itemize}
+        \item Position correcte
+        \item Taille appropriée
+        \item Lisibilité du QR code (testez avec un scanner)
+        \item Absence de chevauchement avec du texte important
+    \end{itemize}
+    \item Si nécessaire, ajustez les paramètres et prévisualisez à nouveau
+    \item Une fois satisfait, lancez le traitement complet
+\end{enumerate}
+
+\subsection{Gestion des correspondances}
+
+\subsubsection{Matching automatique}
+
+L'algorithme de matching utilise plusieurs stratégies :
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Recherche exacte} : Le nom du fichier contient la valeur exacte de la colonne de correspondance
+    \item \textbf{Recherche partielle} : Recherche insensible à la casse et aux accents
+    \item \textbf{Extraction de mots-clés} : Si le fichier est nommé "Releve\_2023001\_DUPONT.pdf", extraction de "2023001" et "DUPONT"
+\end{enumerate}
+
+\subsubsection{Correction manuelle}
+
+Pour les documents non matchés automatiquement :
+
+\begin{enumerate}[leftmargin=*]
+    \item Le document apparaît en \textcolor{red}{rouge} avec statut "Non matché"
+    \item Cliquez sur \bouton{Sélectionner manuellement}
+    \item Une liste déroulante s'affiche avec tous les étudiants de l'Excel
+    \item Utilisez la barre de recherche pour trouver rapidement
+    \item Sélectionnez l'étudiant correspondant
+    \item Le statut passe à \textcolor{green}{✓ Matché}
+\end{enumerate}
+
+\subsection{Formats d'exportation}
+
+Les mêmes 3 formats que les autres fonctionnalités :
+
+\begin{description}[leftmargin=3cm]
+    \item[ZIP]
+    \begin{itemize}
+        \item Tous les documents dans une archive
+        \item Nom : \texttt{Documents\_QR\_[Date]\_[Heure].zip}
+    \end{itemize}
+
+    \item[Fichiers individuels]
+    \begin{itemize}
+        \item Chaque document téléchargé séparément
+        \item Délai de 100 ms entre chaque téléchargement
+        \item Nom conservé : \texttt{[Nom\_original]\_avec\_QR.pdf}
+    \end{itemize}
+
+    \item[PDF unique]
+    \begin{itemize}
+        \item Tous les documents fusionnés
+        \item Nom : \texttt{Documents\_Fusionnes\_QR\_[Date].pdf}
+        \item Ordre : alphabétique par nom de fichier
+    \end{itemize}
+\end{description}
+
+\newpage

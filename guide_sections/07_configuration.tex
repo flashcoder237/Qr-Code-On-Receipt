@@ -1,0 +1,205 @@
+% Section 07 - Configuration académique
+\section{Configuration académique des classes}
+
+\subsection{Menu "Config des relevés"}
+
+Ce menu permet de créer et gérer les configurations de classes nécessaires pour générer les relevés de notes.
+
+\subsection{Structure hiérarchique}
+
+Une configuration de classe est organisée en 3 niveaux :
+
+\begin{verbatim}
+Configuration de Classe
+├── Semestre 1
+│   ├── UE1 - Sciences Fondamentales (30 crédits)
+│   │   ├── EC: Mathématiques (poids: 2, base: 20)
+│   │   ├── EC: Physique (poids: 1.5, base: 20)
+│   │   └── EC: Chimie (poids: 2, base: 20)
+│   └── UE2 - Sciences Humaines (30 crédits)
+│       └── EC: Anglais (poids: 1, base: 20)
+├── Semestre 2
+│   └── ...
+└── Semestre 3
+    └── ...
+\end{verbatim}
+
+\subsection{Créer une nouvelle configuration}
+
+\subsubsection{Étape 1 : Informations générales}
+
+\begin{enumerate}[leftmargin=*]
+    \item Cliquez sur \bouton{Nouvelle Configuration}
+    \item Remplissez :
+    \begin{itemize}
+        \item \champ{Nom de la configuration} : Ex. "Licence 1 Médecine - 2023-2024"
+        \item \champ{Niveau} : L1, L2, L3, M1, M2, etc.
+    \end{itemize}
+    \item Cliquez sur \bouton{Créer}
+\end{enumerate}
+
+\subsubsection{Étape 2 : Ajouter des semestres}
+
+\begin{enumerate}[leftmargin=*]
+    \item Dans la configuration créée, cliquez sur \bouton{Ajouter un semestre}
+    \item Remplissez :
+    \begin{itemize}
+        \item \champ{Nom du semestre} : "Semestre 1" ou "S1"
+        \item \champ{Code} : S1, S2, S3, etc.
+    \end{itemize}
+    \item Répétez pour ajouter tous les semestres nécessaires
+\end{enumerate}
+
+\subsubsection{Étape 3 : Ajouter des UEs}
+
+Pour chaque semestre :
+
+\begin{enumerate}[leftmargin=*]
+    \item Cliquez sur \bouton{Ajouter une UE}
+    \item Remplissez :
+    \begin{itemize}
+        \item \champ{Nom de l'UE} : "UE1 - Sciences Fondamentales"
+        \item \champ{Crédits ECTS} : Nombre de crédits (ex: 30)
+    \end{itemize}
+    \item Cliquez sur \bouton{Créer l'UE}
+\end{enumerate}
+
+\subsubsection{Étape 4 : Ajouter des ECs}
+
+Pour chaque UE :
+
+\begin{enumerate}[leftmargin=*]
+    \item Cliquez sur \bouton{Ajouter un EC}
+    \item Remplissez :
+    \begin{itemize}
+        \item \champ{Nom de l'EC} : "Mathématiques", "Physique", etc.
+        \item \champ{Poids (coefficient)} : 1, 1.5, 2, etc.
+        \item \champ{Base de notation} : 10, 20, ou 100
+        \item \champ{A une session de rattrapage} : Cochez si applicable
+    \end{itemize}
+    \item Cliquez sur \bouton{Créer l'EC}
+    \item Répétez pour tous les ECs de l'UE
+\end{enumerate}
+
+\begin{figure}[h]
+    \centering
+    % \includegraphics[width=\textwidth]{images/config_classe.png}
+    \fbox{\parbox{0.9\textwidth}{\centering [CAPTURE D'ÉCRAN : INTERFACE DE CONFIGURATION]\\ \vspace{0.3cm}
+    Arborescence : Config > Semestre > UE > EC\\
+    Boutons "Ajouter" à chaque niveau\\
+    Formulaires d'édition}}
+    \caption{Interface de configuration académique}
+\end{figure}
+
+\subsection{Réorganiser les UEs}
+
+Par défaut, les UEs s'affichent dans l'ordre de création. Pour les réorganiser :
+
+\begin{enumerate}[leftmargin=*]
+    \item Cliquez sur \bouton{Réorganiser les UEs}
+    \item Utilisez le drag \& drop pour réordonner
+    \item Ou utilisez les boutons ↑ et ↓
+    \item Cliquez sur \bouton{Enregistrer l'ordre}
+\end{enumerate}
+
+\subsection{Personnaliser le thème des relevés}
+
+Chaque configuration peut avoir son propre thème :
+
+\begin{enumerate}[leftmargin=*]
+    \item Dans la configuration, cliquez sur l'onglet \textbf{Thème}
+    \item Configurez :
+    \begin{itemize}
+        \item Couleurs (primaire, secondaire, accent)
+        \item Polices (famille, tailles)
+        \item Mise en page
+    \end{itemize}
+    \item Prévisualisez en temps réel
+    \item Enregistrez le thème
+\end{enumerate}
+
+\subsection{Exporter / Importer une configuration}
+
+\subsubsection{Exporter}
+
+\begin{enumerate}[leftmargin=*]
+    \item Sélectionnez la configuration
+    \item Cliquez sur \bouton{Exporter la configuration}
+    \item Un fichier JSON est téléchargé : \texttt{config\_[Nom].json}
+\end{enumerate}
+
+\subsubsection{Importer}
+
+\begin{enumerate}[leftmargin=*]
+    \item Cliquez sur \bouton{Importer une configuration}
+    \item Sélectionnez le fichier JSON
+    \item La configuration est chargée et ajoutée à votre liste
+\end{enumerate}
+
+\astuce{Partagez vos configurations avec vos collègues via export/import pour standardiser les structures académiques.}
+
+\subsection{Menu "Configurer les entêtes"}
+
+Ce menu permet de définir les informations de l'établissement qui apparaîtront sur tous les documents.
+
+\subsubsection{Informations de base}
+
+\begin{itemize}[leftmargin=*]
+    \item \champ{Nom de l'établissement}
+    \item \champ{Adresse complète}
+    \item \champ{Téléphone}
+    \item \champ{Email}
+    \item \champ{Site web}
+\end{itemize}
+
+\subsubsection{Logo}
+
+\begin{enumerate}[leftmargin=*]
+    \item Cliquez sur \bouton{Charger un logo}
+    \item Sélectionnez une image PNG ou JPG
+    \item Recommandations :
+    \begin{itemize}
+        \item Résolution : 800x200 pixels minimum
+        \item Taille : Maximum 2 Mo
+        \item Format : PNG avec transparence recommandé
+    \end{itemize}
+    \item Le logo s'affichera en haut de tous les relevés et attestations
+\end{enumerate}
+
+\subsection{Menu "Historique des docs"}
+
+Ce menu permet de consulter l'historique de tous les documents générés.
+
+\subsubsection{Informations affichées}
+
+\begin{itemize}[leftmargin=*]
+    \item Date et heure de génération
+    \item Type de document (Relevé / Attestation)
+    \item Nombre de documents générés
+    \item Configuration utilisée
+    \item Semestre(s) concerné(s)
+    \item Format d'export utilisé
+\end{itemize}
+
+\subsubsection{Recherche et filtrage}
+
+\begin{enumerate}[leftmargin=*]
+    \item Utilisez la barre de recherche pour trouver une génération spécifique
+    \item Filtrez par :
+    \begin{itemize}
+        \item Type de document
+        \item Date (période)
+        \item Configuration
+    \end{itemize}
+    \item Cliquez sur une entrée pour voir les détails complets
+\end{enumerate}
+
+\subsubsection{Export de l'historique}
+
+\begin{enumerate}[leftmargin=*]
+    \item Cliquez sur \bouton{Exporter l'historique}
+    \item Choisissez le format : Excel ou PDF
+    \item Un fichier récapitulatif est téléchargé
+\end{enumerate}
+
+\newpage
