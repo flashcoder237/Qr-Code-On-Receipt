@@ -84,3 +84,15 @@ contextBridge.exposeInMainWorld('fs', {
   }
 });
 
+// Extension pour le rendu de l'historique des documents en PDF
+contextBridge.exposeInMainWorld('electron', {
+  async renderHistoryPDF(htmlContent: string) {
+    try {
+      return await ipcRenderer.invoke('render-history-pdf', htmlContent);
+    } catch (err) {
+      console.error('Error rendering history PDF:', err);
+      throw err;
+    }
+  }
+});
+

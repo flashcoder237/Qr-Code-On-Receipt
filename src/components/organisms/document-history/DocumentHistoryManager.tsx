@@ -12,9 +12,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { 
-  FileText, 
-  Award, 
+import {
+  FileText,
+  Award,
   Calendar,
   User,
   Download,
@@ -36,10 +36,13 @@ import {
   FolderOpen,
   Users,
   GraduationCap,
-  CalendarDays
+  CalendarDays,
+  Printer
 } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { motion, AnimatePresence } from "framer-motion";
+import { generateHistoryPDF } from "@/lib/history-pdf-generator";
+import { useToast } from "@/hooks/use-toast";
 
 // Fonction de formatage de date fallback si date-fns n'est pas disponible
 const formatDate = (date: Date) => {
@@ -114,6 +117,8 @@ export interface DocumentRecord {
 type GroupByType = 'none' | 'date' | 'type' | 'student' | 'academicYear' | 'status' | 'level';
 
 export const DocumentHistoryManager: React.FC = () => {
+  const { toast } = useToast();
+
   // État pour l'historique des documents
   const [documentHistory, setDocumentHistory] = useLocalStorage<DocumentRecord[]>(
     "document-history",
@@ -125,6 +130,8 @@ export const DocumentHistoryManager: React.FC = () => {
   const [filterType, setFilterType] = useState<"all" | "releve" | "attestation">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "generated" | "downloaded" | "printed">("all");
   const [filterAcademicYear, setFilterAcademicYear] = useState<string>("all");
+  const [filterStartDate, setFilterStartDate] = useState<string>("");
+  const [filterEndDate, setFilterEndDate] = useState<string>("");
   const [sortBy, setSortBy] = useState<"date" | "name" | "type" | "average">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [groupBy, setGroupBy] = useState<GroupByType>('none');
@@ -147,16 +154,21 @@ export const DocumentHistoryManager: React.FC = () => {
   // Filtrage des documents
   const filteredDocuments = useMemo(() => {
     const filtered = documentHistory.filter(doc => {
-      const matchesSearch = 
+      const matchesSearch =
         (doc.studentName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (doc.studentMatricule || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (doc.fileName || '').toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const matchesType = filterType === "all" || doc.type === filterType;
       const matchesStatus = filterStatus === "all" || doc.status === filterStatus;
       const matchesYear = filterAcademicYear === "all" || doc.academicYear === filterAcademicYear;
-      
-      return matchesSearch && matchesType && matchesStatus && matchesYear;
+
+      // Filtrage par date
+      const docDate = new Date(doc.generatedAt);
+      const matchesStartDate = !filterStartDate || docDate >= new Date(filterStartDate);
+      const matchesEndDate = !filterEndDate || docDate <= new Date(filterEndDate + 'T23:59:59');
+
+      return matchesSearch && matchesType && matchesStatus && matchesYear && matchesStartDate && matchesEndDate;
     });
 
     // Tri
@@ -182,7 +194,7 @@ export const DocumentHistoryManager: React.FC = () => {
     });
 
     return filtered;
-  }, [documentHistory, searchTerm, filterType, filterStatus, filterAcademicYear, sortBy, sortOrder]);
+  }, [documentHistory, searchTerm, filterType, filterStatus, filterAcademicYear, filterStartDate, filterEndDate, sortBy, sortOrder]);
 
   // Regroupement des documents
   const groupedDocuments = useMemo(() => {
@@ -265,6 +277,47 @@ export const DocumentHistoryManager: React.FC = () => {
       setSelectedRecords([]);
     } else {
       setSelectedRecords(filteredDocuments.map(doc => doc.id));
+    }
+  };
+
+  const handlePrintHistory = async () => {
+    try {
+      toast({
+        title: "Génération en cours...",
+        description: "Préparation du PDF de l'historique",
+      });
+
+      const pdfBlob = await generateHistoryPDF({
+        records: filteredDocuments,
+        filterType: filterType === 'all' ? undefined : filterType,
+        startDate: filterStartDate ? new Date(filterStartDate) : undefined,
+        endDate: filterEndDate ? new Date(filterEndDate + 'T23:59:59') : undefined,
+        studentName: searchTerm || undefined,
+        filterStatus: filterStatus === 'all' ? undefined : filterStatus,
+        filterAcademicYear: filterAcademicYear === 'all' ? undefined : filterAcademicYear,
+      });
+
+      // Créer un lien de téléchargement
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `historique-documents-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "PDF généré avec succès",
+        description: "L'historique a été exporté en PDF",
+      });
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF:', error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de générer le PDF de l'historique",
+      });
     }
   };
 
@@ -443,6 +496,42 @@ export const DocumentHistoryManager: React.FC = () => {
                 </SelectContent>
               </Select>
 
+              <div className="flex items-center gap-2 border rounded-md px-3 py-1">
+                <Calendar className="h-4 w-4 text-gray-500" />
+                <Input
+                  type="date"
+                  value={filterStartDate}
+                  onChange={(e) => setFilterStartDate(e.target.value)}
+                  className="w-[140px] border-0 p-0 h-auto focus-visible:ring-0"
+                  placeholder="Date début"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 border rounded-md px-3 py-1">
+                <Calendar className="h-4 w-4 text-gray-500" />
+                <Input
+                  type="date"
+                  value={filterEndDate}
+                  onChange={(e) => setFilterEndDate(e.target.value)}
+                  className="w-[140px] border-0 p-0 h-auto focus-visible:ring-0"
+                  placeholder="Date fin"
+                />
+              </div>
+
+              {(filterStartDate || filterEndDate) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setFilterStartDate("");
+                    setFilterEndDate("");
+                  }}
+                  className="text-xs"
+                >
+                  Effacer dates
+                </Button>
+              )}
+
               <Select value={sortBy} onValueChange={(value: typeof sortBy) => setSortBy(value)}>
                 <SelectTrigger className="w-[120px]">
                   <SelectValue placeholder="Trier par" />
@@ -548,17 +637,28 @@ export const DocumentHistoryManager: React.FC = () => {
                 <Badge variant="secondary">
                   {filteredDocuments.length} résultat(s)
                 </Badge>
-                
+
                 {documentHistory.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Archive className="h-4 w-4 mr-2" />
-                    Vider l'historique
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePrintHistory}
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Imprimer l'historique
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Archive className="h-4 w-4 mr-2" />
+                      Vider l'historique
+                    </Button>
+                  </>
                 )}
               </div>
             </div>

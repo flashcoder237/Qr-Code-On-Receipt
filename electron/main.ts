@@ -331,6 +331,83 @@ function setupPreviewHandlers() {
   });
 }
 
+// Configuration du gestionnaire IPC pour la génération de PDF de l'historique
+function setupHistoryPDFHandler() {
+  ipcMain.handle('render-history-pdf', async (_, htmlContent: string) => {
+    return new Promise((resolve, reject) => {
+      try {
+        // Créer une BrowserWindow cachée pour le rendu
+        const win = new BrowserWindow({
+          width: 800,
+          height: 600,
+          show: false,
+          webPreferences: {
+            offscreen: true,
+            nodeIntegration: false,
+            contextIsolation: true,
+          },
+        });
+
+        // Créer un fichier temporaire
+        const tempDir = os.tmpdir();
+        const timestamp = Date.now();
+        const htmlPath = path.join(tempDir, `history-${timestamp}.html`);
+
+        // Écrire le HTML dans le fichier temporaire
+        fs.writeFile(htmlPath, htmlContent, 'utf8')
+          .then(() => {
+            // Charger le fichier HTML
+            return win.loadFile(htmlPath);
+          })
+          .then(() => {
+            // Générer le PDF
+            return win.webContents.printToPDF({
+              pageSize: 'A4',
+              printBackground: true,
+              margins: {
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+              },
+            });
+          })
+          .then((pdfData) => {
+            // Nettoyer
+            if (!win.isDestroyed()) {
+              win.close();
+              win.destroy();
+            }
+
+            fs.unlink(htmlPath).catch(() => {
+              // Ignorer les erreurs de suppression
+            });
+
+            resolve(pdfData);
+          })
+          .catch((error) => {
+            console.error('Erreur lors de la génération du PDF de l\'historique:', error);
+
+            // Nettoyer en cas d'erreur
+            if (!win.isDestroyed()) {
+              win.close();
+              win.destroy();
+            }
+
+            fs.unlink(htmlPath).catch(() => {
+              // Ignorer les erreurs de suppression
+            });
+
+            reject(error);
+          });
+      } catch (error) {
+        console.error('Erreur lors de la configuration du PDF de l\'historique:', error);
+        reject(error);
+      }
+    });
+  });
+}
+
 // Gestion des erreurs globales
 process.on('uncaughtException', (error) => {
   console.error('Exception non gérée:', error);
@@ -379,10 +456,13 @@ app.whenReady().then(async () => {
     
     // Configurer les gestionnaires de prévisualisation
     setupPreviewHandlers();
-    
+
     // Configurer les gestionnaires PDF pour les relevés ET les attestations avec support du chiffrement
     setupPDFGenerationHandlers();
-    
+
+    // Configurer le gestionnaire PDF pour l'historique
+    setupHistoryPDFHandler();
+
     // Créer la fenêtre principale
     createWindow();
     

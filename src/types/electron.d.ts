@@ -4,14 +4,17 @@ interface IpcRenderer {
     off(channel: string, listener?: (event: any, ...args: any[]) => void): void;
     send(channel: string, ...args: any[]): void;
   }
-  
+
   declare global {
     interface Window {
       ipcRenderer: IpcRenderer;
       fs: {
         readFile(path: string, options?: { encoding?: string }): Promise<any>;
       };
+      electron: {
+        renderHistoryPDF(htmlContent: string): Promise<Buffer>;
+      };
     }
   }
-  
+
   export {};

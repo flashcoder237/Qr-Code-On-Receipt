@@ -7,7 +7,7 @@ export const TranscriptsettingsSchema = z.object({
   establishmentType: z.enum(["ipes", "faculty"], {
     errorMap: () => ({ message: "Le type d'établissement doit être 'ipes' ou 'faculty'" })
   }),
-  
+
   nameFrench: z.string().min(1, "Le nom en français est requis"),
   nameEnglish: z.string().min(1, "Le nom en anglais est requis"),
   nameAbreviation: z.string().min(1, "L'abréviation du nom de l'établissement est requis"),
@@ -18,7 +18,12 @@ export const TranscriptsettingsSchema = z.object({
   universityLogo: z.string().optional(),
   facultyLogo: z.string().optional(),
   watermarkLogo: z.string().optional(), // NOUVEAU: Logo personnalisé pour le fond des relevés
-  
+
+  // Informations utilisateur (requis après activation de licence)
+  userFullName: z.string().optional(),
+  userPosition: z.string().optional(),
+  userDepartment: z.string().optional(),
+
   // Paramètres de base (pour rétrocompatibilité)
   themeColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "La couleur doit être au format hexadécimal (ex: #000000)"),
   themeFont: z.enum([
@@ -29,7 +34,7 @@ export const TranscriptsettingsSchema = z.object({
   ], {
     errorMap: () => ({ message: "Police de caractères invalide" })
   }),
-  
+
   // Système de thème standard
   theme: ThemeSettingsSchema.optional(),
 });
