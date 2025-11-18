@@ -78,70 +78,195 @@ const ThemePreview: React.FC<ThemePreviewProps> = ({ theme }) => {
                 <thead>
                   <tr>
                     <th style={{
-                      backgroundColor: theme.tableHeaderBgColor, 
+                      backgroundColor: theme.tableHeaderBgColor,
                       border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
                       padding: `${theme.tableCellPadding / 2}px`,
                       textAlign: "center",
+                      fontSize: `${theme.contentFontSize / 2 - 1}px`,
+                      fontWeight: theme.tableHeaderFontWeight || 600,
                     }}>
                       CODE
                     </th>
                     <th style={{
-                      backgroundColor: theme.tableHeaderBgColor, 
+                      backgroundColor: theme.tableHeaderBgColor,
                       border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
                       padding: `${theme.tableCellPadding / 2}px`,
                       textAlign: "center",
+                      fontSize: `${theme.contentFontSize / 2 - 1}px`,
+                      fontWeight: theme.tableHeaderFontWeight || 600,
                     }}>
                       UE
                     </th>
                     <th style={{
-                      backgroundColor: theme.tableHeaderBgColor, 
+                      backgroundColor: theme.tableHeaderBgColor,
                       border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
                       padding: `${theme.tableCellPadding / 2}px`,
                       textAlign: "center",
+                      fontSize: `${theme.contentFontSize / 2 - 1}px`,
+                      fontWeight: theme.tableHeaderFontWeight || 600,
+                    }}>
+                      EC
+                    </th>
+                    <th style={{
+                      backgroundColor: theme.tableHeaderBgColor,
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                      textAlign: "center",
+                      fontSize: `${theme.contentFontSize / 2 - 1}px`,
+                      fontWeight: theme.tableHeaderFontWeight || 600,
+                    }}>
+                      COEF
+                    </th>
+                    <th style={{
+                      backgroundColor: theme.tableHeaderBgColor,
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                      textAlign: "center",
+                      fontSize: `${theme.contentFontSize / 2 - 1}px`,
+                      fontWeight: theme.tableHeaderFontWeight || 600,
                     }}>
                       NOTE
+                    </th>
+                    <th style={{
+                      backgroundColor: theme.tableHeaderBgColor,
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                      textAlign: "center",
+                      fontSize: `${theme.contentFontSize / 2 - 1}px`,
+                      fontWeight: theme.tableHeaderFontWeight || 600,
+                    }}>
+                      MOY
+                    </th>
+                    <th style={{
+                      backgroundColor: theme.tableHeaderBgColor,
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                      textAlign: "center",
+                      fontSize: `${theme.contentFontSize / 2 - 1}px`,
+                      fontWeight: theme.tableHeaderFontWeight || 600,
+                    }}>
+                      CREDIT
                     </th>
                   </tr>
                 </thead>
                 <tbody>
+                  {/* Première UE avec 2 ECs */}
+                  <tr style={{
+                    backgroundColor: theme.highlightValidatedUE ? 'rgba(0, 128, 0, 0.1)' : 'transparent',
+                  }}>
+                    <td rowSpan={2} style={{
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                      textAlign: "center",
+                      fontWeight: "bold",
+                    }}>
+                      INF101
+                    </td>
+                    <td rowSpan={2} style={{
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                      fontWeight: "bold",
+                    }}>
+                      Programmation
+                    </td>
+                    <td style={{
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                    }}>
+                      Cours
+                    </td>
+                    <td style={{
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                      textAlign: "center",
+                    }}>
+                      2
+                    </td>
+                    <td style={{
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                      textAlign: "center",
+                    }}>
+                      14
+                    </td>
+                    <td rowSpan={2} style={{
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                      textAlign: "center",
+                      fontWeight: "bold",
+                    }}>
+                      13
+                    </td>
+                    <td rowSpan={2} style={{
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                      textAlign: "center",
+                      fontWeight: "bold",
+                    }}>
+                      5
+                    </td>
+                  </tr>
                   <tr style={{
                     backgroundColor: theme.highlightValidatedUE ? 'rgba(0, 128, 0, 0.1)' : 'transparent',
                   }}>
                     <td style={{
                       border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
                       padding: `${theme.tableCellPadding / 2}px`,
-                      textAlign: "center",
                     }}>
-                      INF101
-                    </td>
-                    <td style={{
-                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
-                      padding: `${theme.tableCellPadding / 2}px`,
-                    }}>
-                      Introduction à l'informatique
+                      TP
                     </td>
                     <td style={{
                       border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
                       padding: `${theme.tableCellPadding / 2}px`,
                       textAlign: "center",
-                      fontWeight: "bold",
                     }}>
-                      14/20
+                      1
+                    </td>
+                    <td style={{
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                      textAlign: "center",
+                    }}>
+                      12
                     </td>
                   </tr>
+
+                  {/* Deuxième UE avec 1 EC */}
                   <tr>
                     <td style={{
                       border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
                       padding: `${theme.tableCellPadding / 2}px`,
                       textAlign: "center",
+                      fontWeight: "bold",
                     }}>
                       MAT102
                     </td>
                     <td style={{
                       border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
                       padding: `${theme.tableCellPadding / 2}px`,
+                      fontWeight: "bold",
                     }}>
-                      Analyse mathématique
+                      Mathématiques
+                    </td>
+                    <td style={{
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                    }}>
+                      Cours
+                    </td>
+                    <td style={{
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                      textAlign: "center",
+                    }}>
+                      1
+                    </td>
+                    <td style={{
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                      textAlign: "center",
+                    }}>
+                      11
                     </td>
                     <td style={{
                       border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
@@ -149,7 +274,15 @@ const ThemePreview: React.FC<ThemePreviewProps> = ({ theme }) => {
                       textAlign: "center",
                       fontWeight: "bold",
                     }}>
-                      10/20
+                      11
+                    </td>
+                    <td style={{
+                      border: `1px ${theme.borderStyle} ${theme.tableBorderColor}`,
+                      padding: `${theme.tableCellPadding / 2}px`,
+                      textAlign: "center",
+                      fontWeight: "bold",
+                    }}>
+                      4
                     </td>
                   </tr>
                 </tbody>

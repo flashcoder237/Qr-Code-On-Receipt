@@ -33,8 +33,8 @@ import { useProcessing } from "../receipts/hooks/useProcessing";
 
 export const AttestationGenerator: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"generator" | "settings" | "theme" | "presets" | "selection" | "advanced">("generator");
-  const [excelData, setExcelData] = useState<StudentExcelRecord[]>([]);
-  const [excelColumns, setExcelColumns] = useState<string[]>([]);
+  const [excelData, setExcelData] = useLocalStorage<StudentExcelRecord[]>("attestation-excel-data", []);
+  const [excelColumns, setExcelColumns] = useLocalStorage<string[]>("attestation-excel-columns", []);
   const [isLoading, setIsLoading] = useState(false);
   const [isCancelled, setIsCancelled] = useState(false);
   const [error, setError] = useState<string | null>(null);
