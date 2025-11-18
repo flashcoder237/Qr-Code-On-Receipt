@@ -275,7 +275,7 @@ export async function generateQrCodeBase64(
     const qrCodeDataUrl = await QRCode.toDataURL(qrContent, {
       errorCorrectionLevel: 'M',
       margin: 1,
-      width: 400, // Augmenté de 300 à 800 pour une meilleure qualité
+      width: 600, // Augmenté de 300 à 800 pour une meilleure qualité
       color: {
         dark: '#000000',
         light: '#FFFFFF'

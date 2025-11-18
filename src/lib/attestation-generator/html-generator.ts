@@ -946,8 +946,8 @@ export async function generateAttestationHTML(
                 </div>
               </div>
               
-              <p><strong>Vu le procès-verbal du jury N° 003 en date du ${juryDate} <span id="to-nothidden">atteste</span><span id="to-hidden">attestons</span> que,</strong><br>
-              ${theme.showBilingualText ? `<em>Considering the jury's decision N° 003 dated ${juryDate} Certify that,</em>` : ''}</p>
+              <p><strong>Vu le procès-verbal du jury N° 001 en date du ${juryDate} <span id="to-nothidden">atteste</span><span id="to-hidden">attestons</span> que,</strong><br>
+              ${theme.showBilingualText ? `<em>Considering the jury's decision N° 001 dated ${juryDate} Certify that,</em>` : ''}</p>
             </div> 
             <div class="student-info">
                 <p>M./Mme/Mlle <strong>${studentFullName}</strong><br>
@@ -956,8 +956,8 @@ export async function generateAttestationHTML(
                 <p>Né(e) le: <strong>${birthDate}</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;à&nbsp;<strong>${birthPlace}</strong><br>
                 ${theme.showBilingualText ? '<em>Born on: <strong style="opacity:0">' + birthDate + '</strong></em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>at:</em>' : ''}</p>
                 
-                <p id="to-hidden">Inscrit(e) à <strong>L'${settings.nameAbreviation}</strong> sous le matricule: <strong>${matricule}</strong><br>
-                ${theme.showBilingualText ? `<em>Registered at the <strong>${settings.nameAbreviation}</strong> under the matricule number:</em>` : ''}</p>
+                <p id="to-hidden">Inscrit(e) à <strong>La ${settings.nameFrench}</strong> sous le matricule: <strong>${matricule}</strong><br>
+                ${theme.showBilingualText ? `<em>Registered at the <strong>${settings.nameEnglish}</strong> under the matricule number:</em>` : ''}</p>
 
                 <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase()}</strong> en <strong>${course.toUpperCase()}</strong><br>
                 ${theme.showBilingualText ? '<em>Having successfully fufilled the requirements qualifying for the :</em>' : ''}</p>
