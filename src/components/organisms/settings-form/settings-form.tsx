@@ -143,26 +143,108 @@ const SettingForm: React.FC = () => {
     }
   };
 
-  // Fonction d'exportation
+  // Fonction d'exportation (inclut toutes les configurations avancées)
   const performExport = () => {
-    const dataStr = JSON.stringify(form.getValues(), null, 2);
+    // Récupérer toutes les configurations depuis localStorage
+    const exportData = {
+      // Configuration principale (settings)
+      settings: form.getValues(),
+
+      // Thème des attestations
+      attestationTheme: localStorage.getItem('attestation-theme')
+        ? JSON.parse(localStorage.getItem('attestation-theme')!)
+        : null,
+
+      // Configuration avancée des attestations
+      attestationAdvancedConfig: localStorage.getItem('attestation-advanced-config')
+        ? JSON.parse(localStorage.getItem('attestation-advanced-config')!)
+        : null,
+
+      // Configuration académique (semestres, UEs, ECs)
+      academicConfigs: localStorage.getItem('academicConfigs')
+        ? JSON.parse(localStorage.getItem('academicConfigs')!)
+        : null,
+
+      // Configuration des semestres (pour rétrocompatibilité)
+      semesterConfig: localStorage.getItem('semester-config')
+        ? JSON.parse(localStorage.getItem('semester-config')!)
+        : null,
+
+      // Métadonnées d'export
+      exportVersion: '2.0',
+      exportDate: new Date().toISOString(),
+    };
+
+    const dataStr = JSON.stringify(exportData, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "transcript-settings.json";
+    const timestamp = new Date().toISOString().split('T')[0];
+    link.download = `configurations-completes-${timestamp}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+
+    toast.success("Export réussi", "Toutes les configurations ont été exportées avec succès");
   };
 
-  // Fonction d'importation
-  const performImport = (data: TranscriptSettingsPayload) => {
-    form.reset(data);
-    setStoredFormData(data);
-    setSaveStatus("success");
-    setTimeout(() => setSaveStatus("idle"), 3000);
+  // Fonction d'importation (restaure toutes les configurations avancées)
+  const performImport = (data: any) => {
+    try {
+      // Vérifier si c'est un ancien format (v1.0) ou nouveau format (v2.0)
+      const isNewFormat = data.exportVersion === '2.0';
+
+      if (isNewFormat) {
+        // Nouveau format : restaurer toutes les configurations
+
+        // Restaurer la configuration principale
+        if (data.settings) {
+          form.reset(data.settings);
+          setStoredFormData(data.settings);
+        }
+
+        // Restaurer le thème des attestations
+        if (data.attestationTheme) {
+          localStorage.setItem('attestation-theme', JSON.stringify(data.attestationTheme));
+        }
+
+        // Restaurer la configuration avancée des attestations
+        if (data.attestationAdvancedConfig) {
+          localStorage.setItem('attestation-advanced-config', JSON.stringify(data.attestationAdvancedConfig));
+        }
+
+        // Restaurer la configuration des semestres
+        if (data.semesterConfig) {
+          localStorage.setItem('semester-config', JSON.stringify(data.semesterConfig));
+        }
+
+        // Restaurer la configuration académique (UEs, ECs)
+        if (data.academicConfigs) {
+          localStorage.setItem('academicConfigs', JSON.stringify(data.academicConfigs));
+        }
+
+        toast.success(
+          "Import réussi",
+          "Toutes les configurations ont été restaurées. Veuillez recharger la page pour appliquer les changements."
+        );
+      } else {
+        // Ancien format : importer uniquement les settings
+        form.reset(data);
+        setStoredFormData(data);
+        toast.warning(
+          "Import partiel",
+          "Configuration importée au format ancien. Les configurations avancées ne sont pas incluses."
+        );
+      }
+
+      setSaveStatus("success");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } catch (error) {
+      console.error('Erreur lors de l\'import:', error);
+      toast.error("Erreur d'import", "Impossible d'importer la configuration. Vérifiez le format du fichier.");
+    }
   };
 
   // Gestionnaire pour l'export protégé

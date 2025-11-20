@@ -10,26 +10,100 @@ export const AttestationThemeSettingsSchema = z.object({
   tableBorderColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "La couleur doit être au format hexadécimal"),
   tableHeaderBgColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "La couleur doit être au format hexadécimal"),
   
-  // Typographie de base
+  // Typographie de base - Large gamme de polices
   mainFont: z.enum([
+    // Serif classiques (formelles, traditionnelles)
     "Times New Roman, serif",
+    "Georgia, serif",
+    "Garamond, serif",
+    "Palatino, serif",
+    "Cambria, serif",
+    "Baskerville, serif",
+    "Book Antiqua, serif",
+    "Didot, serif",
+    "Bodoni MT, serif",
+    "Constantia, serif",
+
+    // Serif modernes/élégantes
+    "Domine, serif",
+    "Playfair Display, serif",
+    "Lora, serif",
+    "Merriweather, serif",
+    "Crimson Text, serif",
+    "EB Garamond, serif",
+
+    // Sans-serif classiques
     "Arial, sans-serif",
     "Helvetica, sans-serif",
-    "Georgia, serif",
-    "Verdana, sans-serif",
-    "Domine, sans-serif",
     "Calibri, sans-serif",
-    "Cambria, serif",
+    "Verdana, sans-serif",
+    "Tahoma, sans-serif",
+    "Trebuchet MS, sans-serif",
+
+    // Sans-serif modernes
+    "Open Sans, sans-serif",
+    "Roboto, sans-serif",
+    "Lato, sans-serif",
+    "Montserrat, sans-serif",
+    "Nunito, sans-serif",
+    "Source Sans Pro, sans-serif",
+    "Inter, sans-serif",
+    "Poppins, sans-serif",
+    "Raleway, sans-serif",
+
+    // Polices professionnelles
+    "Century Gothic, sans-serif",
+    "Franklin Gothic, sans-serif",
+    "Gill Sans, sans-serif",
+    "Futura, sans-serif",
+    "Optima, sans-serif",
   ]),
   headerFont: z.enum([
+    // Serif classiques (formelles, traditionnelles)
     "Times New Roman, serif",
+    "Georgia, serif",
+    "Garamond, serif",
+    "Palatino, serif",
+    "Cambria, serif",
+    "Baskerville, serif",
+    "Book Antiqua, serif",
+    "Didot, serif",
+    "Bodoni MT, serif",
+    "Constantia, serif",
+
+    // Serif modernes/élégantes
+    "Domine, serif",
+    "Playfair Display, serif",
+    "Lora, serif",
+    "Merriweather, serif",
+    "Crimson Text, serif",
+    "EB Garamond, serif",
+
+    // Sans-serif classiques
     "Arial, sans-serif",
     "Helvetica, sans-serif",
-    "Georgia, serif",
-    "Verdana, sans-serif",
-    "Domine, sans-serif",
     "Calibri, sans-serif",
-    "Cambria, serif",
+    "Verdana, sans-serif",
+    "Tahoma, sans-serif",
+    "Trebuchet MS, sans-serif",
+
+    // Sans-serif modernes
+    "Open Sans, sans-serif",
+    "Roboto, sans-serif",
+    "Lato, sans-serif",
+    "Montserrat, sans-serif",
+    "Nunito, sans-serif",
+    "Source Sans Pro, sans-serif",
+    "Inter, sans-serif",
+    "Poppins, sans-serif",
+    "Raleway, sans-serif",
+
+    // Polices professionnelles
+    "Century Gothic, sans-serif",
+    "Franklin Gothic, sans-serif",
+    "Gill Sans, sans-serif",
+    "Futura, sans-serif",
+    "Optima, sans-serif",
   ]),
   
   // Tailles de police de base

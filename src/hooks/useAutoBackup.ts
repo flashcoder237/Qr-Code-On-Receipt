@@ -1,5 +1,5 @@
 // src/hooks/useAutoBackup.ts
-import { useEffect } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useLocalStorage } from "usehooks-ts";
 
 interface BackupSettings {
@@ -19,7 +19,11 @@ export const useAutoBackup = () => {
     defaultBackupSettings
   );
 
-  const performBackup = () => {
+  // Utiliser une ref pour stocker les paramètres actuels
+  const settingsRef = useRef(backupSettings);
+  settingsRef.current = backupSettings;
+
+  const performBackup = useCallback(() => {
     try {
       // Récupérer toutes les données du localStorage
       const data: Record<string, any> = {};
@@ -59,32 +63,33 @@ export const useAutoBackup = () => {
       URL.revokeObjectURL(url);
 
       // Mettre à jour la date de dernière sauvegarde
-      setBackupSettings({
-        ...backupSettings,
+      setBackupSettings(prev => ({
+        ...prev,
         lastBackupDate: new Date().toISOString(),
-      });
+      }));
 
-      
+
     } catch (error) {
       console.error("❌ Erreur lors de la sauvegarde automatique:", error);
     }
-  };
+  }, [setBackupSettings]);
 
   useEffect(() => {
     if (!backupSettings.autoBackupEnabled) return;
 
     // Vérifier si une sauvegarde est nécessaire
     const checkAndBackup = () => {
+      const currentSettings = settingsRef.current;
       const now = new Date().getTime();
-      const lastBackup = backupSettings.lastBackupDate
-        ? new Date(backupSettings.lastBackupDate).getTime()
+      const lastBackup = currentSettings.lastBackupDate
+        ? new Date(currentSettings.lastBackupDate).getTime()
         : 0;
 
-      const intervalMs = backupSettings.backupInterval * 60 * 60 * 1000;
+      const intervalMs = currentSettings.backupInterval * 60 * 60 * 1000;
       const timeSinceLastBackup = now - lastBackup;
 
       if (timeSinceLastBackup >= intervalMs) {
-        
+
         performBackup();
       }
     };
@@ -96,7 +101,7 @@ export const useAutoBackup = () => {
     const interval = setInterval(checkAndBackup, 60 * 60 * 1000); // Vérifier toutes les heures
 
     return () => clearInterval(interval);
-  }, [backupSettings]);
+  }, [backupSettings.autoBackupEnabled, backupSettings.backupInterval, performBackup]);
 
   return { backupSettings, performBackup };
 };

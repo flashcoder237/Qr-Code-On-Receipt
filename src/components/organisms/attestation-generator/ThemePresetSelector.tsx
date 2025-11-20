@@ -3,8 +3,8 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Eye, Palette, Check, Sparkles, FileText, Minimize2, Crown } from "lucide-react";
 import { AttestationThemeSettingsPayload } from "@/lib/form-schemas/attestation-theme-settings";
 import { AttestationThemePreset, attestationThemePresets, getPresetsByCategory } from "@/lib/form-schemas/attestation-presets";
@@ -63,13 +63,24 @@ export const ThemePresetSelector: React.FC<ThemePresetSelectorProps> = ({
   };
 
   const handleApplyPreset = (preset: AttestationThemePreset) => {
-    onThemeSelect(preset.theme);
+    // Fusionner le preset (partiel - styles uniquement) avec le thème actuel
+    // pour préserver les paramètres de layout
+    const mergedTheme: AttestationThemeSettingsPayload = {
+      ...currentTheme,
+      ...preset.theme,
+    };
+    onThemeSelect(mergedTheme);
   };
 
   const handlePreviewPreset = (preset: AttestationThemePreset) => {
     setPreviewPreset(preset);
     if (onPreview) {
-      onPreview(preset.theme);
+      // Fusionner le preset avec le thème actuel pour la prévisualisation
+      const mergedTheme: AttestationThemeSettingsPayload = {
+        ...currentTheme,
+        ...preset.theme,
+      };
+      onPreview(mergedTheme);
     }
   };
 
@@ -145,27 +156,73 @@ export const ThemePresetSelector: React.FC<ThemePresetSelectorProps> = ({
                         
                         {/* Mini-aperçu du thème */}
                         <div className="mb-3">
-                          <div 
-                            className="h-16 rounded border p-2 text-xs"
+                          <div
+                            className="rounded p-2 overflow-hidden"
                             style={{
                               fontFamily: preset.theme.mainFont,
                               color: preset.theme.primaryColor,
-                              borderColor: preset.theme.tableBorderColor,
                               backgroundColor: 'white',
+                              border: `${preset.theme.borderWidth || 1}px ${preset.theme.borderStyle || 'solid'} ${preset.theme.tableBorderColor}`,
                             }}
                           >
-                            <div 
-                              className="font-bold mb-1"
-                              style={{ 
+                            {/* Titre */}
+                            <div
+                              className="text-center font-bold mb-1"
+                              style={{
                                 color: preset.theme.accentColor,
-                                fontSize: '10px'
+                                fontSize: `${Math.min((preset.theme.titleFontSize || 24) / 3, 9)}px`,
+                                fontFamily: preset.theme.headerFont,
                               }}
                             >
-                              ATTESTATION DE REUSSITE
+                              ATTESTATION DE RÉUSSITE
                             </div>
-                            <div className="text-xs">
-                              <div style={{ backgroundColor: preset.theme.tableHeaderBgColor }}>
-                                M./Mme/Mlle EXEMPLE Jean
+
+                            {/* Info étudiant */}
+                            <div
+                              className="mb-1 px-1"
+                              style={{
+                                fontSize: `${Math.min((preset.theme.contentFontSize || 12) / 2, 6)}px`,
+                                color: preset.theme.secondaryColor,
+                              }}
+                            >
+                              <div>M. DUPONT Jean - N° 2024001</div>
+                            </div>
+
+                            {/* Mini tableau */}
+                            <div
+                              style={{
+                                border: `${preset.theme.borderWidth || 1}px ${preset.theme.borderStyle || 'solid'} ${preset.theme.tableBorderColor}`,
+                                fontSize: `${Math.min((preset.theme.contentFontSize || 12) / 2.2, 5.5)}px`,
+                              }}
+                            >
+                              {/* En-tête tableau */}
+                              <div
+                                className="grid grid-cols-3 px-1 py-0.5 font-bold"
+                                style={{
+                                  backgroundColor: preset.theme.tableHeaderBgColor,
+                                  borderBottom: `${preset.theme.borderWidth || 1}px ${preset.theme.borderStyle || 'solid'} ${preset.theme.tableBorderColor}`,
+                                }}
+                              >
+                                <span>UE</span>
+                                <span>EC</span>
+                                <span className="text-right">Note</span>
+                              </div>
+
+                              {/* Lignes tableau */}
+                              <div className="grid grid-cols-3 px-1 py-0.5">
+                                <span>UE101</span>
+                                <span>Mathématiques</span>
+                                <span className="text-right font-semibold">15.50</span>
+                              </div>
+                              <div
+                                className="grid grid-cols-3 px-1 py-0.5"
+                                style={{
+                                  backgroundColor: preset.theme.tableHeaderBgColor ? `${preset.theme.tableHeaderBgColor}20` : '#f9f9f9',
+                                }}
+                              >
+                                <span>UE102</span>
+                                <span>Informatique</span>
+                                <span className="text-right font-semibold">14.00</span>
                               </div>
                             </div>
                           </div>
@@ -252,7 +309,15 @@ export const ThemePresetSelector: React.FC<ThemePresetSelectorProps> = ({
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      onClick={() => onPreview && onPreview(previewPreset.theme)}
+                      onClick={() => {
+                        if (onPreview) {
+                          const mergedTheme: AttestationThemeSettingsPayload = {
+                            ...currentTheme,
+                            ...previewPreset.theme,
+                          };
+                          onPreview(mergedTheme);
+                        }
+                      }}
                     >
                       <Eye className="h-4 w-4 mr-2" />
                       Aperçu complet
@@ -278,18 +343,21 @@ export const ThemePresetSelector: React.FC<ThemePresetSelectorProps> = ({
                 </div>
                 
                 <div className="border rounded-lg p-4 bg-gray-50">
-                  <AttestationThemePreview theme={previewPreset.theme} />
+                  <AttestationThemePreview theme={{
+                    ...currentTheme,
+                    ...previewPreset.theme,
+                  }} />
                 </div>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                   <div>
                     <strong>Police principale:</strong><br />
-                    {previewPreset.theme.mainFont.split(',')[0]}
+                    {previewPreset.theme.mainFont?.split(',')[0] || 'N/A'}
                   </div>
                   <div>
                     <strong>Couleur principale:</strong><br />
                     <div className="flex items-center gap-2">
-                      <div 
+                      <div
                         className="w-4 h-4 border rounded"
                         style={{ backgroundColor: previewPreset.theme.primaryColor }}
                       />
@@ -297,12 +365,12 @@ export const ThemePresetSelector: React.FC<ThemePresetSelectorProps> = ({
                     </div>
                   </div>
                   <div>
-                    <strong>Style de tableau:</strong><br />
-                    {previewPreset.theme.tableStyle}
+                    <strong>Style de bordure:</strong><br />
+                    {previewPreset.theme.borderStyle || 'N/A'}
                   </div>
                   <div>
-                    <strong>Mise en page:</strong><br />
-                    {previewPreset.theme.contentLayout}
+                    <strong>Épaisseur bordure:</strong><br />
+                    {previewPreset.theme.borderWidth ? `${previewPreset.theme.borderWidth}px` : 'N/A'}
                   </div>
                 </div>
               </div>
