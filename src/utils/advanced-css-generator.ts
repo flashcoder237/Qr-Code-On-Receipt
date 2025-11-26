@@ -318,27 +318,15 @@ export function generateTableDesignCSS(tableConfig: AdvancedTableConfig): string
     rowStyles.push(`background-color: ${bgColor} !important`);
   }
 
-  // Couleur du texte des cellules
-  if (tableConfig.rowTextColor) {
-    rowStyles.push(`color: ${tableConfig.rowTextColor} !important`);
-  }
-
   if (rowStyles.length > 0) {
     cssRules.push(`tbody tr, .academic-table tbody tr {
       ${rowStyles.join(';\n  ')};
     }`);
   }
 
-  // Couleur du texte pour toutes les cellules td
-  if (tableConfig.rowTextColor) {
-    cssRules.push(`td, .academic-table td {
-      color: ${tableConfig.rowTextColor} !important;
-    }`);
-  }
-
   // Lignes alternées (striped)
   if (tableConfig.enableStriped && tableConfig.alternateRowBackgroundColor) {
-    const opacity = tableConfig.alternateRowOpacity ?? 1;
+    const opacity = tableConfig.alternateRowBackgroundOpacity ?? 1;
     const bgColor = opacity < 1 ? 
       hexToRgba(tableConfig.alternateRowBackgroundColor, opacity) : 
       tableConfig.alternateRowBackgroundColor;
@@ -350,7 +338,7 @@ export function generateTableDesignCSS(tableConfig: AdvancedTableConfig): string
 
   // Effet hover
   if (tableConfig.enableHover && tableConfig.hoverBackgroundColor) {
-    const opacity = tableConfig.hoverOpacity ?? 0.8;
+    const opacity = tableConfig.hoverBackgroundOpacity ?? 0.8;
     const bgColor = opacity < 1 ? 
       hexToRgba(tableConfig.hoverBackgroundColor, opacity) : 
       tableConfig.hoverBackgroundColor;

@@ -99,7 +99,7 @@ export function calculateMention(
 export function getCurrentAcademicYear(): string {
   const currentYear = new Date().getFullYear();
   const month = new Date().getMonth() + 1; // 0-indexed
-  
+
   // Si nous sommes après août, l'année académique est année courante/année suivante
   // Sinon c'est l'année précédente/année courante
   if (month >= 9) {
@@ -107,4 +107,27 @@ export function getCurrentAcademicYear(): string {
   } else {
     return `${currentYear - 1}/${currentYear}`;
   }
+}
+
+/**
+ * Formate le numéro de jury sur 3 chiffres avec des zéros au début
+ * @param juryNumber - Le numéro de jury (peut être string ou number)
+ * @returns Le numéro formaté sur 3 chiffres (ex: 1 → "001", 15 → "015", 123 → "123")
+ */
+export function formatJuryNumber(juryNumber: string | number | undefined): string {
+  // Si pas de numéro, retourner "001" par défaut
+  if (!juryNumber && juryNumber !== 0) {
+    return '001';
+  }
+
+  // Convertir en nombre
+  const num = typeof juryNumber === 'string' ? parseInt(juryNumber, 10) : juryNumber;
+
+  // Si ce n'est pas un nombre valide, retourner "001"
+  if (isNaN(num)) {
+    return '001';
+  }
+
+  // Formater sur 3 chiffres avec des zéros au début
+  return num.toString().padStart(3, '0');
 }

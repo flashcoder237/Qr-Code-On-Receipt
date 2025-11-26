@@ -7,8 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { generateQrCodeBase64, StudentExcelRecord, sanitizeStudentData, getQRCodeSizeEstimate } from "@/lib/helpers/qrcode";
-import JSZip from "jszip";
+import { StudentExcelRecord, sanitizeStudentData, getQRCodeSizeEstimate } from "@/lib/helpers/qrcode";
 import { useLocalStorage } from "usehooks-ts";
 import { AttestationSettings } from "./AttestationSettings";
 import { AttestationThemeEditor } from "./AttestationThemeEditor";
@@ -17,7 +16,7 @@ import { AttestationExportOptions } from "./AttestationExportOptions";
 import { AttestationAdvancedStyler } from "./AttestationAdvancedStyler";
 import { StudentSelector } from "../student-selector";
 import { FileUploader } from "@/components/organisms/receipts/ExcelUploader.tsx";
-import { FileDown, Loader2, Settings2, Table2, Palette, FileText, Eye, Wand2, Users, AlertCircle, CheckCircle, Shield, ShieldCheck, Info, TrendingUp, XCircle } from "lucide-react";
+import { Loader2, Settings2, Table2, Palette, Wand2, Users, AlertCircle, Shield, ShieldCheck, Info, TrendingUp, XCircle, FileText, Download, Archive, PackageOpen, Zap } from "lucide-react";
 import { calculateGrade, calculateMention, getCurrentAcademicYear } from "@/lib/attestation-generator/utils";
 import { openAttestationPreview } from "@/lib/attestation-generator/preview";
 import { AttestationThemeSettingsPayload, defaultAttestationTheme, getAdvancedAttestationConfig } from "@/lib/form-schemas/attestation-theme-settings";
@@ -25,16 +24,17 @@ import { AdvancedAttestationConfig, defaultAdvancedAttestationConfig } from "@/l
 import { useNotifications } from "@/components/ui/notification-system";
 import { useDocumentHistory } from "@/components/organisms/document-history/DocumentHistoryManager";
 import { testCompactEncryption, createCompactDataFromStudent, getCompactEncryptionInfo } from "@/lib/crypto/compact-encryption";
-import { validateExcelColumns, ValidationResult } from "@/lib/validators/excel-columns";
 import { validateStudentForAttestation, filterEligibleStudents, validateSelectedStudents, calculateAverageStatistics } from "@/lib/validation/average-validation";
+import { ValidationResult } from "@/lib/validators/excel-columns";
 import { Label } from "@/components/ui/label";
-import { Download, Archive, FileText as FileTextIcon, PackageOpen, Zap } from "lucide-react";
 import { useProcessing } from "../receipts/hooks/useProcessing";
 
 export const AttestationGenerator: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"generator" | "settings" | "theme" | "presets" | "selection" | "advanced">("generator");
-  const [excelData, setExcelData] = useLocalStorage<StudentExcelRecord[]>("attestation-excel-data", []);
-  const [excelColumns, setExcelColumns] = useLocalStorage<string[]>("attestation-excel-columns", []);
+  // Les données Excel ne persistent que pendant la session (pas en localStorage)
+  // Elles sont effacées quand on quitte le composant (changement de menu)
+  const [excelData, setExcelData] = useState<StudentExcelRecord[]>([]);
+  const [excelColumns, setExcelColumns] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCancelled, setIsCancelled] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -444,13 +444,13 @@ export const AttestationGenerator: React.FC = () => {
       try {
         switch (exportFormat) {
           case 'individual':
-            await downloadFiles(results, prefix, 'descriptive');
+            await downloadFiles(results, prefix, 'detailed');
             notifySuccess("Export terminé", `${results.size} fichiers téléchargés individuellement`);
             break;
             
           case 'pdf':
           case 'single':
-            await downloadSinglePDF(results, prefix, 'descriptive');
+            await downloadSinglePDF(results, prefix, 'detailed');
             notifySuccess("Export terminé", "PDF combiné téléchargé avec succès");
             break;
             
@@ -458,7 +458,7 @@ export const AttestationGenerator: React.FC = () => {
           default:
             const zipBlob = await generateZipFile(results, prefix, {
               useCompression,
-              nameFormat: 'descriptive'
+              nameFormat: 'detailed'
             });
             const url = URL.createObjectURL(zipBlob);
             

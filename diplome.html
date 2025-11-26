@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diplôme d'État de Docteur en Médecine</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            background: white;
+            margin: 0;
+            padding: 0;
+        }
+
+        .diploma-container {
+            width: 297mm;
+            height: 210mm;
+            background: white;
+            position: relative;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        /* Decorative border frame - SIMPLIFIED TO 2 BORDERS */
+        .outer-border {
+            position: absolute;
+            top: 6mm;
+            left: 6mm;
+            right: 6mm;
+            bottom: 6mm;
+            border: 8px solid #000080;
+        }
+
+        .inner-border {
+            position: absolute;
+            top: 1mm;
+            left: 1mm;
+            right: 1mm;
+            bottom: 1mm;
+            border: 1px solid #000080;
+        }
+
+        .content {
+            position: absolute;
+            top: 14mm;
+            left: 14mm;
+            right: 14mm;
+            bottom: 14mm;
+            z-index: 10;
+        }
+
+        /* Header section with 5 blocks */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            text-align: center;
+            margin-bottom: 6mm;
+            gap: 3mm;
+        }
+
+        .header-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        
+            justify-content: center;
+        }
+
+        .logo-box {
+            width: auto;
+            height: 55px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            flex-shrink: 0;
+            padding-left: 50px;
+        }
+
+        .coat-of-arms {
+            width: auto;
+            height: 100px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .ministry-logo {
+            width: auto;
+            height: 70px;   
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            flex-shrink: 0;
+            padding-right: 50px;
+        }
+
+        .header-text-block {
+            flex: 1;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-text {
+            font-size: 9pt;
+            line-height: 1.15;
+        }
+
+        .header-text .country {
+            font-weight: bold;
+            font-size: 9.5pt;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+
+        .header-text .motto {
+            font-size: 8pt;
+            font-style: italic;
+            letter-spacing: 0.5px;
+        }
+
+        .header-text .stars {
+            font-size: 7pt;
+            letter-spacing: 0.5px;
+        }
+
+        .header-text .institution {
+            font-size: 8.5pt;
+            margin: 1px 0;
+            letter-spacing: 0.2px;
+        }
+
+        .header-text .faculty {
+            font-weight: bold;
+            font-size: 9pt;
+            letter-spacing: 0.3px;
+        }
+
+        /* Title section - MADE MORE REMARKABLE */
+        .title {
+            text-align: center;
+            margin-bottom: 5mm;
+        }
+
+        .title h1 {
+            font-size: 20pt;
+            font-weight: bold;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            color: #000080;
+            margin-bottom: 3px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 128, 0.2);
+            text-transform: uppercase;
+        }
+
+        .title .subtitle {
+            font-size: 16pt;
+            font-style: italic;
+            color: #000080;
+            font-weight: 500;
+        }
+
+        /* Italic style for all English translations */
+        .en-text {
+            font-style: italic;
+        }
+
+        /* FMSP-UDo watermark pattern with varied styles */
+        .watermark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 1;
+            z-index: 10;
+            overflow: hidden;
+        }
+
+        /* Central large logo */
+        .watermark-center-logo {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            height: auto;
+            opacity: 0.1;
+            z-index: 2;
+        }
+
+        /* Text pattern grid */
+        .watermark-grid {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 45px 70px;
+            width: 180%;
+            height: 180%;
+            padding: 150px;
+            z-index: 1;
+        }
+
+        .watermark-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .watermark-text {
+            font-size: 20pt;
+            font-weight: bold;
+            color: #000080;
+            font-family: Arial, Helvetica, sans-serif;
+            white-space: nowrap;
+            letter-spacing: 2px;
+            opacity: 0.05;
+        }
+
+        .watermark-text.style-1 {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 24pt;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .watermark-text.style-2 {
+            font-family: Georgia, serif;
+            font-size: 18pt;
+            font-style: italic;
+            letter-spacing: 4px;
+            font-weight: normal;
+        }
+
+        .watermark-text.style-3 {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 22pt;
+            font-weight: 900;
+            letter-spacing: 3px;
+        }
+
+        .watermark-text.style-4 {
+            font-family: 'Courier New', monospace;
+            font-size: 19pt;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        /* Minister Section */
+        .minister-section {
+            margin-bottom: 3mm;
+        }
+
+        .legal-text {
+            font-size: 7.5pt;
+            line-height: 1.25;
+            margin: 1px 0;
+            letter-spacing: 0.1px;
+        }
+
+        .legal-text-en {
+            font-size: 6.8pt;
+            font-style: italic;
+            line-height: 1.15;
+            letter-spacing: 0.1px;
+        }
+
+        /* Recipient information - INCREASED BY +2pt */
+        .recipient-section {
+            display: flex;
+            justify-content: space-between;
+            gap: 0mm;
+        }
+
+        .recipient-left {
+            flex: 1;
+            font-size: 10pt;
+        }
+
+        .recipient-right {
+            flex: 1;
+            text-align: right;
+            font-size: 9.5pt;
+        }
+
+        .field {
+            margin: 2mm 0;
+            line-height: 1.3;
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 2%;
+        }
+
+        .field-label, .field-value {
+            display: inline-block;
+            height: 100%;
+            line-height: 90%;
+        }
+
+        .field-label {
+            font-weight: normal;
+   
+        }
+
+        .field-value {
+            font-weight: bold;
+            margin-left: 6px;
+            font-size: 13pt;
+            color: #000080;
+          
+        }
+
+        .degree-box {
+            margin: 4mm 0;
+            text-align: left;
+            padding: 0;
+            line-height: 90%;
+        }
+
+        .degree-title {
+            font-size: 11pt;
+            font-weight: bold;
+            margin-bottom: 1mm;
+   
+        }
+
+        .degree-main {
+            font-size: 13pt;
+            font-weight: bold;
+
+        }
+
+        .degree-title-en {
+            font-size: 10pt;
+            font-style: italic;
+            margin-top: 1mm;
+
+        }
+
+        .mention-box {
+            margin-top: 4mm;
+            padding: 2mm;
+            display: flex;
+            align-items: flex-start;
+            text-align: left;
+            line-height: 105%;
+        }
+
+        .mention-label {
+            font-weight: bold;
+            font-size: 10pt;
+            letter-spacing: 0.3px;
+        }
+
+        .mention-value {
+            margin-left: 4px;
+            font-weight: bold;
+            font-size: 11.5pt;
+            color: #000080;
+        }
+
+        .degree-main, .degree-main-en {
+            color: #000080;
+        }
+
+        .mention-en {
+            font-style: italic;
+            font-size: 8.5pt;
+        }
+
+        /* QR Code placeholder - ALIGNÉ À DROITE */
+        .qr-code {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #000080;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8pt;
+            color: #000080;
+            margin: 2mm 0 2mm auto;
+            font-weight: bold;
+        }
+
+        /* Signature section - INCREASED BY +2pt */
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4mm;
+            font-size: 9.5pt;
+        }
+
+        .signature-box {
+            text-align: center;
+            width: 30%;
+        }
+
+        .signature-title {
+            font-weight: bold;
+            line-height: 1.2;
+        }
+
+        .signature-title-en {
+            font-style: italic;
+            font-size: 8.5pt;
+        }
+
+        /* Footer - INCREASED BY +2pt */
+        .footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 8.5pt;
+            line-height: 1.3;
+            letter-spacing: 0.2px;
+        }
+
+        .footer-en {
+            font-style: italic;
+            font-size: 7.5pt;
+            letter-spacing: 0.2px;
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+
+            .diploma-container {
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="diploma-container">
+        <!-- Decorative borders - SIMPLIFIED TO 2 BORDERS -->
+        <div class="outer-border">
+            <div class="inner-border"></div>
+        </div>
+
+        <!-- Watermark -->
+        <div class="watermark">
+            <!-- Large central logo -->
+            <img src="logo-ud.png" alt="" class="watermark-center-logo">
+            
+            <!-- Text pattern around -->
+            <div class="watermark-grid">
+                <div class="watermark-item"><div class="watermark-text style-1">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-2">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-3">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text">FMSP • UDo</div></div>
+                
+                <div class="watermark-item"><div class="watermark-text style-4">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-1">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-2">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-3">FMSP • UDo</div></div>
+                
+                <div class="watermark-item"><div class="watermark-text">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-4">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-1">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-2">FMSP • UDo</div></div>
+                
+                <div class="watermark-item"><div class="watermark-text style-3">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-4">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-1">FMSP • UDo</div></div>
+                
+                <div class="watermark-item"><div class="watermark-text style-2">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-3">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-4">FMSP • UDo</div></div>
+                
+                <div class="watermark-item"><div class="watermark-text style-1">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-2">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-3">FMSP • UDo</div></div>
+                <div class="watermark-item"><div class="watermark-text style-4">FMSP • UDo</div></div>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Header with 5 blocks -->
+            <div class="header">
+                <!-- Block 1: FMSP Logo -->
+                <div class="header-block">
+                    <img src="logo-fmsp.png" alt="" class="logo-box">
+                </div>
+
+                <!-- Block 2: Left text -->
+                <div class="header-block header-text-block">
+                    <div class="header-text">
+                        <div class="country">REPUBLIQUE DU CAMEROUN</div>
+                        <div class="motto">Paix-Travail-Patrie</div>
+                        <div class="stars">********************</div>
+                        <div class="institution">MINISTERE DE L'ENSEIGNEMENT SUPERIEUR</div>
+                        <div class="stars">********************</div>
+                        <div class="institution">UNIVERSITE DE DOUALA</div>
+                        <div class="stars">********************</div>
+                        <div class="faculty">FACULTE DE MEDECINE ET DES<br>SCIENCES PHARMACEUTIQUES</div>
+                    </div>
+                </div>
+
+                <!-- Block 3: Coat of Arms (larger) -->
+                <div class="header-block">
+                    <img src="Coat_of_arms_of_Cameroon.png" alt="" class="coat-of-arms">
+                </div>
+
+                <!-- Block 4: Right text -->
+                <div class="header-block header-text-block">
+                    <div class="header-text">
+                        <div class="country">REPUBLIC OF CAMEROON</div>
+                        <div class="motto">Peace-Work-Fatherland</div>
+                        <div class="stars">********************</div>
+                        <div class="institution">MINISTRY OF HIGHER EDUCATION</div>
+                        <div class="stars">********************</div>
+                        <div class="institution">UNIVERSITY OF DOUALA</div>
+                        <div class="stars">********************</div>
+                        <div class="faculty">FACULTY OF MEDICINE AND<br>PHARMACEUTICAL SCIENCES</div>
+                    </div>
+                </div>
+
+                <!-- Block 5: MINESUP Logo -->
+                <div class="header-block">
+                    <img src="minesup_logo.png" alt="" class="ministry-logo">
+                </div>
+            </div>
+
+            <!-- Title -->
+            <div class="title">
+                <h1>DIPLÔME D'ÉTAT DE DOCTEUR EN MÉDECINE</h1>
+                <div class="subtitle">DOCTOR OF MEDICINE STATE DEGREE</div>
+            </div>
+
+            <!-- Minister Section -->
+            <div class="minister-section">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2mm;">
+                    <div style="flex: 1;">
+                        <div class="legal-text">Vu le décret n°93/036 portant organisation administrative de l'Université de Douala</div>
+                        <div class="legal-text legal-text-en"><em>Mindful of decree N° 93/036 to organize the administrative and academic structure of the University of Douala</em></div>
+                        
+                        <div class="legal-text">Vu les textes en vigueur, portant organisation des enseignements et des évaluations à la Faculté de Médecine et des Sciences Pharmaceutiques</div>
+                        <div class="legal-text legal-text-en"><em>Mindful of the text in force, of the regulations organizing the courses and examinations at the Faculty of Medicine and Pharmaceutical Sciences</em></div>
+                        
+                        <div class="legal-text">Vu le Procès-verbal du jury d'admission, session du <strong>13/10/2017</strong></div>
+                        <div class="legal-text legal-text-en"><em>Mindful of the results sheets of panel admission of 13/10/2017</em></div>
+                        
+                        <div class="legal-text">Vu le Procès-verbal des délibérations du jury, session du <strong>28/07/2024</strong></div>
+                        <div class="legal-text legal-text-en"><em>Mindful of the minute of deliberations of the promotion jury sitting of 28/07/2024</em></div>
+                    </div>
+                    <div style="width: 35%; padding-left: 5mm; display: flex; flex-direction: column; align-items: flex-end;">
+                        <div style="margin-top: 3mm; width: 100%;">
+                            <div style="font-weight: bold; font-size: 9pt; text-align: right;">N°______________MINESUP/DCAA/UD/FMSP</div>
+                            <div class="qr-code">QR</div>
+                            <div style="margin-top: 2mm; text-align: right;">
+                                <div style="font-weight: bold; font-size: 9pt;">N° Matricule : 17MM019</div>
+                                <div style="font-style: italic; font-size: 7.5pt; font-weight: normal;"><em>Matriculation N<sup>o</sup> : 17MM019</em></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recipient Section -->
+            <div class="recipient-section">
+                <div class="recipient-left">
+                    <div class="field">
+                        <div class="field-label">Délivre à M./Mlle <br><span style="font-style: italic; font-size: 8.5pt;"><em>Confers on Mr/Ms</em></span></div>
+                        <div class="field-value">ANGOA SAAH GABRIELLE SANDRA</div>
+                    </div>
+
+                    <div class="field">
+                        <div class="field-label">Né(e) le : <br><span style="font-style: italic; font-size: 8.5pt;"><em>Born on</em></span></div>
+                        <div class="field-value">27/01/2000 à YAOUNDE <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;"><em>27/01/2000 in YAOUNDE</em></span></div>
+                    </div>
+
+                    <div class="field">
+                        <div class="field-label">Option : <br> <span style="font-style: italic; font-size: 8.5pt;"><em>Speciality</em></span></div>
+                        <div class="field-value">/</div>
+                    </div>
+
+                    <div class="field">
+                        <div class="field-label">Année d'obtention: <br>  <span style="font-style: italic; font-size: 8.5pt;"><em>Year of completion</em></span> </div>
+                        <div class="field-value">2024</div>
+                    </div>
+                </div>
+
+                <div class="recipient-right">
+                    <div class="degree-box" style="margin-top: 2mm;">
+                        <div class="degree-title">Le <span class="degree-main">Diplôme d'Etat de DOCTEUR EN MEDECINE</span></div>
+                        <div class="degree-title-en"><em>The <span class="degree-main-en">Doctor of Medicine State Degree</span></em></div>
+                    </div>
+                    <div class="mention-box">
+                        <div class="mention-label">Mention :  <br> <span class="mention-en"><em>Grade:</em></span></div>
+                        <div class="mention-value">TRES HONORABLE AVEC FELICITATIONS DU JURY <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;"><em>HIGH HONORS WITH JURY COMMENDATION</em></span></div>
+                    </div>
+
+                    <div style="margin-top: 6mm; padding-right: 41%;">
+                        <div style="font-size: 9.5pt;">
+                            <div style="font-weight: bold;">Fait à Douala, Le</div>
+                            <div style="font-style: italic; font-size: 8.5pt;"><em>Done in Douala, The</em></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Signatures -->
+            <div class="signature-section">
+                <div class="signature-box">
+                    <div class="signature-title">L'impétrant</div>
+                    <div class="signature-title-en"><em>The Holder</em></div>
+                </div>
+
+                <div class="signature-box">
+                    <div class="signature-title">Le Recteur</div>
+                    <div class="signature-title-en"><em>The Rector</em></div>
+                </div>
+
+                <div class="signature-box">
+                    <div class="signature-title">Le Ministre d'Etat, Ministre de l'Enseignement Supérieur,<br>Chancelier des Ordres Académiques</div>
+                    <div class="signature-title-en"><em>The Minister of State, Minister of Higher Education,<br>Chancellor of Academics Orders</em></div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <div>En foi de quoi ce diplôme lui est délivré pour servir et valoir ce que de droit</div>
+                <div class="footer-en"><em>In witness this diploma is issued to serve when and where necessary</em></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

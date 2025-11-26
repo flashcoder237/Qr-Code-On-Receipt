@@ -1,5 +1,5 @@
 // src/components/organisms/attestation-generator/AttestationAdvancedStyler.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -11,23 +11,18 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useNotifications } from "@/components/ui/notification-system";
-import { 
-  Settings, 
-  Table2, 
-  Eye, 
-  RotateCcw, 
+import {
+  Settings,
+  Table2,
+  Eye,
+  RotateCcw,
   Save,
-  ArrowUpDown,
   Square,
-  Paintbrush,
   Type,
   Sparkles,
-  Monitor,
   Download,
   Upload,
   FileText,
-  ToggleLeft,
-  ToggleRight,
   Sliders,
   Palette,
   Grid3x3,

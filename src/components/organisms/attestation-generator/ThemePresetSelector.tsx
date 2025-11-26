@@ -1,5 +1,5 @@
 // src/components/organisms/attestation-generator/ThemePresetSelector.tsx
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,12 +33,14 @@ export const ThemePresetSelector: React.FC<ThemePresetSelectorProps> = ({
     { id: "minimalist", label: "Minimaliste", icon: Minimize2 },
   ];
 
-  const getCurrentPresets = () => {
+  // Memoize current presets based on selected category
+  const currentPresets = useMemo(() => {
     if (selectedCategory === "all") return attestationThemePresets;
     return getPresetsByCategory(selectedCategory);
-  };
+  }, [selectedCategory]);
 
-  const getCategoryIcon = (category: string) => {
+  // Memoize category icon function
+  const getCategoryIcon = useCallback((category: string) => {
     switch (category) {
       case 'formal': return <FileText className="h-4 w-4" />;
       case 'modern': return <Sparkles className="h-4 w-4" />;
@@ -46,9 +48,10 @@ export const ThemePresetSelector: React.FC<ThemePresetSelectorProps> = ({
       case 'minimalist': return <Minimize2 className="h-4 w-4" />;
       default: return <Palette className="h-4 w-4" />;
     }
-  };
+  }, []);
 
-  const getCategoryColor = (category: string) => {
+  // Memoize category color function
+  const getCategoryColor = useCallback((category: string) => {
     switch (category) {
       case 'formal': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'modern': return 'bg-purple-100 text-purple-800 border-purple-200';
@@ -56,13 +59,18 @@ export const ThemePresetSelector: React.FC<ThemePresetSelectorProps> = ({
       case 'minimalist': return 'bg-gray-100 text-gray-800 border-gray-200';
       default: return 'bg-green-100 text-green-800 border-green-200';
     }
-  };
+  }, []);
 
-  const isCurrentTheme = (preset: AttestationThemePreset): boolean => {
-    return JSON.stringify(preset.theme) === JSON.stringify(currentTheme);
-  };
+  // Memoize current theme serialization for comparison
+  const currentThemeSerialized = useMemo(() =>
+    JSON.stringify(currentTheme), [currentTheme]
+  );
 
-  const handleApplyPreset = (preset: AttestationThemePreset) => {
+  const isCurrentTheme = useCallback((preset: AttestationThemePreset): boolean => {
+    return JSON.stringify(preset.theme) === currentThemeSerialized;
+  }, [currentThemeSerialized]);
+
+  const handleApplyPreset = useCallback((preset: AttestationThemePreset) => {
     // Fusionner le preset (partiel - styles uniquement) avec le thème actuel
     // pour préserver les paramètres de layout
     const mergedTheme: AttestationThemeSettingsPayload = {
@@ -70,9 +78,9 @@ export const ThemePresetSelector: React.FC<ThemePresetSelectorProps> = ({
       ...preset.theme,
     };
     onThemeSelect(mergedTheme);
-  };
+  }, [currentTheme, onThemeSelect]);
 
-  const handlePreviewPreset = (preset: AttestationThemePreset) => {
+  const handlePreviewPreset = useCallback((preset: AttestationThemePreset) => {
     setPreviewPreset(preset);
     if (onPreview) {
       // Fusionner le preset avec le thème actuel pour la prévisualisation
@@ -82,7 +90,7 @@ export const ThemePresetSelector: React.FC<ThemePresetSelectorProps> = ({
       };
       onPreview(mergedTheme);
     }
-  };
+  }, [currentTheme, onPreview]);
 
   return (
     <Card>
@@ -122,7 +130,7 @@ export const ThemePresetSelector: React.FC<ThemePresetSelectorProps> = ({
               transition={{ duration: 0.2 }}
             >
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {getCurrentPresets().map((preset) => (
+                {currentPresets.map((preset) => (
                   <motion.div
                     key={preset.id}
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -273,7 +281,7 @@ export const ThemePresetSelector: React.FC<ThemePresetSelectorProps> = ({
             </motion.div>
           </AnimatePresence>
 
-          {getCurrentPresets().length === 0 && (
+          {currentPresets.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               <Palette className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p>Aucun thème trouvé dans cette catégorie</p>

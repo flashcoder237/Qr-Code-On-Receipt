@@ -6,33 +6,12 @@ import { BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as os from 'os';
+import { SchoolSettings, GenerationOptions } from './types';
 
-interface SchoolSettings {
-  establishmentType: string;
-  nameFrench: string;
-  nameEnglish: string;
-  nameAbreviation: string;
-  postalBox: string;
-  postalBoxEn: string;
-  email: string;
-  logo?: string;
-  universityLogo?: string;
-  facultyLogo?: string;
-  watermarkLogo?: string; // Logo personnalisé pour le fond des attestations
-  themeColor?: string;
-  themeFont?: string;
-  theme?: AttestationThemeSettingsPayload;
-}
+// Les types SchoolSettings et GenerationOptions sont maintenant importés depuis ./types
 
-interface GenerationOptions {
-  qrCodeImage?: ArrayBuffer | string; // Support des deux formats
-  qrCodePosition?: {
-    x: number;
-    y: number;
-  };
-  theme?: AttestationThemeSettingsPayload;
-  demoMode?: boolean;
-  encryptionEnabled?: boolean; // Support du chiffrement
+// Extension du type GenerationOptions avec des options spécifiques à la génération de PDF
+interface PDFGenerationOptions extends GenerationOptions {
   outputPath?: string; // Chemin de sortie optionnel
   keepTempFile?: boolean; // Garder le fichier temporaire pour débogage
 }
@@ -57,7 +36,7 @@ interface PDFGenerationResult {
 export async function generateAttestationPDF(
   student: StudentExcelRecord,
   settings: SchoolSettings,
-  options: GenerationOptions = {}
+  options: PDFGenerationOptions = {}
 ): Promise<Uint8Array> {
   const result = await generateAttestationPDFDetailed(student, settings, options);
   return result.pdfData;
@@ -69,7 +48,7 @@ export async function generateAttestationPDF(
 export async function generateAttestationPDFDetailed(
   student: StudentExcelRecord,
   settings: SchoolSettings,
-  options: GenerationOptions = {}
+  options: PDFGenerationOptions = {}
 ): Promise<PDFGenerationResult> {
   return new Promise(async (resolve, reject) => {
     let win: BrowserWindow | null = null;
@@ -294,7 +273,7 @@ export async function generateAttestationPDFDetailed(
 export async function generateMultipleAttestationPDFs(
   students: StudentExcelRecord[],
   settings: SchoolSettings,
-  options: GenerationOptions = {}
+  options: PDFGenerationOptions = {}
 ): Promise<PDFGenerationResult[]> {
   
   

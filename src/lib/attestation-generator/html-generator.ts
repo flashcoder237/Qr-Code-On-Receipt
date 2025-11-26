@@ -1,12 +1,13 @@
 // src/lib/attestation-generator/html-generator.ts - Version avec support typographie avancée
 
 import { StudentExcelRecord, sanitizeStudentData, generateQrCodeBase64 } from '../helpers/qrcode';
-import { formatDate, calculateGrade, calculateMention } from './utils';
+import { formatDate, calculateGrade, calculateMention, formatJuryNumber } from './utils';
 import { calculateMGP } from '../helpers/grades';
 import { AttestationThemeSettingsPayload, defaultAttestationTheme, getAdvancedAttestationConfig } from '../form-schemas/attestation-theme-settings';
 import { getQRCodeSizeEstimate } from '../helpers/qrcode';
 import { generateAdvancedAttestationCSS, combineStyles } from '../../utils/advanced-css-generator'; // NOUVEAU
 import { formatDateForAttestation } from '../../utils/date-formatter'; // NOUVEAU
+import { SchoolSettings, GenerationOptions } from './types';
 
 /**
  * Helper function to format numbers in French format (comma as decimal separator)
@@ -38,34 +39,7 @@ function translateMentionToEnglish(mentionFR: string): string {
   return translations[mentionFR] || mentionFR;
 }
 
-interface SchoolSettings {
-  establishmentType: string;
-  nameFrench: string;
-  nameEnglish: string;
-  nameAbreviation: string;
-  postalBox: string;
-  postalBoxEn: string;
-  email: string;
-  logo?: string;
-  universityLogo?: string;
-  facultyLogo?: string;
-  watermarkLogo?: string; // Logo personnalisé pour le fond des attestations
-  themeColor?: string;
-  themeFont?: string;
-  theme?: AttestationThemeSettingsPayload;
-  advancedConfig?: any; // Configuration avancée du style
-}
-
-interface GenerationOptions {
-  qrCodeImage?: string;
-  qrCodePosition?: {
-    x: number;
-    y: number;
-  };
-  theme?: AttestationThemeSettingsPayload;
-  encryptionEnabled?: boolean;
-  demoMode?: boolean;
-}
+// Les types SchoolSettings et GenerationOptions sont maintenant importés depuis ./types
 
 /**
  * Génère le HTML pour l'attestation de réussite avec support de la typographie avancée
@@ -138,6 +112,7 @@ export async function generateAttestationHTML(
   // Données de l'étudiant formatées
   const academicYear = sanitizedStudent["ANNEE ACADEMIQUE"];
   const juryDateRaw = sanitizedStudent["DATE JURY"];
+  const juryNumber = sanitizedStudent["NUMERO JURY"];
   const currentYear = new Date().getFullYear() % 100;
   
   const studentName = sanitizedStudent.NOM;
@@ -151,6 +126,9 @@ export async function generateAttestationHTML(
   const primaryLanguage = theme.primaryLanguage;
   const juryDate = formatDateForAttestation(juryDateRaw, settings.establishmentType, primaryLanguage);
   const birthDate = formatDateForAttestation(birthDateRaw, settings.establishmentType, primaryLanguage);
+
+  // Formatage du numéro de jury sur 3 chiffres
+  const formattedJuryNumber = formatJuryNumber(juryNumber);
 
   
   
@@ -946,8 +924,8 @@ export async function generateAttestationHTML(
                 </div>
               </div>
               
-              <p><strong>Vu le procès-verbal du jury N° 001 en date du ${juryDate} <span id="to-nothidden">atteste</span><span id="to-hidden">attestons</span> que,</strong><br>
-              ${theme.showBilingualText ? `<em>Considering the jury's decision N° 001 dated ${juryDate} Certify that,</em>` : ''}</p>
+              <p><strong>Vu le procès-verbal du jury N° ${formattedJuryNumber} en date du ${juryDate} <span id="to-nothidden">atteste</span><span id="to-hidden">attestons</span> que,</strong><br>
+              ${theme.showBilingualText ? `<em>Considering the jury's decision N° ${formattedJuryNumber} dated ${juryDate} Certify that,</em>` : ''}</p>
             </div> 
             <div class="student-info">
                 <p>M./Mme/Mlle <strong>${studentFullName}</strong><br>

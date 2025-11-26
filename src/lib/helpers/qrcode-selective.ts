@@ -33,6 +33,7 @@ export interface StudentExcelRecord {
   DOMAINE?: string;
   "ANNEE D'OBTENTION"?: string;
   "DATE JURY"?: string;
+  "NUMERO JURY"?: string | number;
   [key: string]: any;
 }
 
@@ -47,7 +48,7 @@ export function sanitizeStudentData(student: StudentExcelRecord): StudentExcelRe
     'ETABLISSEMENT', 'NOM', 'PRENOM', 'MATRICULE', 'DATE DE NAISSANCE', 'LIEU DE NAISSANCE',
     'PARCOURS', 'SPECIALITE', 'OPTION', 'GRADE', 'MENTION', 'ANNEE ACADEMIQUE',
     'NIVEAU', 'SEMESTRE', 'CYCLE', 'FILIERE', 'FINALITE', 'TOTAL CREDIT', 'DOMAINE',
-    'ANNEE D\'OBTENTION', 'DATE JURY'
+    'ANNEE D\'OBTENTION', 'DATE JURY', 'NUMERO JURY'
   ];
   
   fieldsToSanitize.forEach(field => {

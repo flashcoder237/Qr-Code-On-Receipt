@@ -2,32 +2,9 @@
 import { StudentExcelRecord, sanitizeStudentData, generateQrCodeBase64 } from '../helpers/qrcode';
 import { generateAttestationHTML } from './html-generator';
 import { AttestationThemeSettingsPayload } from '../form-schemas/attestation-theme-settings';
+import { SchoolSettings, PreviewOptions } from './types';
 
-interface SchoolSettings {
-  establishmentType: string;
-  nameFrench: string;
-  nameEnglish: string;
-  nameAbreviation: string;
-  postalBox: string;
-  postalBoxEn: string;
-  email: string;
-  logo?: string;
-  universityLogo?: string;
-  facultyLogo?: string;
-  themeColor?: string;
-  themeFont?: string;
-  theme?: AttestationThemeSettingsPayload;
-}
-
-interface PreviewOptions {
-  qrCodePosition?: {
-    x: number;
-    y: number;
-  };
-  qrCodeImage?: string; // Base64 encoded QR code image
-  theme?: AttestationThemeSettingsPayload;
-  encryptionEnabled?: boolean; // Support du chiffrement
-}
+// Les types SchoolSettings et PreviewOptions sont maintenant importés depuis ./types
 
 /**
  * Ouvre une nouvelle fenêtre avec la prévisualisation de l'attestation

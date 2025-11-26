@@ -6,10 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  PlusCircle, AlertCircle, Search, Filter, BookOpen, 
+  PlusCircle, AlertCircle, Search, BookOpen,
   Users, Calendar, GraduationCap, ChevronRight,
   BarChart3, TrendingUp, Database, Settings2
 } from "lucide-react";
