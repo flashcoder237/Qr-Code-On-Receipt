@@ -9,7 +9,7 @@ import { PageLayout } from "@/components/layouts/PageLayout";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { menuItems } from "@/lib/constants/menu";
+import { getFilteredMenuItems } from "@/lib/constants/menu";
 import { Loader2, RefreshCw, AlertTriangle } from "lucide-react";
 import { useLicense } from "@/hooks/use-license";
 import { LicenseForm } from "@/components/organisms/license-form/LicenseForm";
@@ -89,16 +89,13 @@ const AppContent: React.FC = () => {
     }, 1000);
   };
 
-  // Filtrer les éléments de menu selon le mode
-  const getFilteredMenuItems = () => {
-    if (isDemoMode) {
-      // En mode démo, désactiver l'item "QR Codes sur PDF"
-      return menuItems.filter(item => item.url !== "qrcode");
-    }
-    return menuItems;
-  };
+  // Récupérer le type d'établissement depuis les paramètres
+  const [settings] = useLocalStorage('settings', {
+    establishmentType: 'ipes'
+  });
 
-  const filteredMenuItems = getFilteredMenuItems();
+  // Filtrer les éléments de menu selon le mode et le type d'établissement
+  const filteredMenuItems = getFilteredMenuItems(isDemoMode, settings.establishmentType);
 
   // Trouve le composant et le titre pour la route actuelle
   const currentMenuItem = filteredMenuItems.find(item => item.url === currentPath);

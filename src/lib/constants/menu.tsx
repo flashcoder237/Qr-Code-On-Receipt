@@ -3,6 +3,7 @@
 import { QrCodeOnPdf } from "@/components/organisms/qrcode-on-pdf";
 import { QRCodeDocumentProcessor } from "@/components/organisms/qr-document-processor/QRCodeDocumentProcessor";
 import { AttestationGenerator } from "@/components/organisms/attestation-generator";
+import { DiplomaGenerator } from "@/components/organisms/diploma-generator";
 import { SettingsForm } from "@/components/organisms/settings-form";
 import { CoursesList } from "@/components/organisms/courses-list";
 import { ReleveGenerator } from "@/components/organisms/receipts/ReleveGenerator";
@@ -23,7 +24,8 @@ import {
   QrCode,
   GraduationCap,
   FileSpreadsheet,
-  Cog
+  Cog,
+  ScrollText
 } from "lucide-react";
 
 interface MenuItem {
@@ -32,6 +34,7 @@ interface MenuItem {
   icon: React.ElementType;
   component: React.ReactElement;
   demoRestricted?: boolean; // Nouveau: indicateur pour les éléments restreints en mode démo
+  requiresFaculty?: boolean; // NOUVEAU: indicateur pour les éléments réservés aux facultés
 }
 
 const menuItems: MenuItem[] = [
@@ -46,6 +49,13 @@ const menuItems: MenuItem[] = [
     url: "attestation",
     icon: GraduationCap,
     component: <AttestationGenerator />,
+  },
+  {
+    title: "Générer les diplômes",
+    url: "diplomes",
+    icon: ScrollText,
+    component: <DiplomaGenerator />,
+    requiresFaculty: true, // NOUVEAU: Seulement pour les établissements de type faculty
   },
   {
     title: "Config des rele...",
@@ -94,15 +104,30 @@ const menuItems: MenuItem[] = [
 ];
 
 /**
- * Filtre les éléments de menu selon le mode de fonctionnement
+ * Filtre les éléments de menu selon le mode de fonctionnement et le type d'établissement
  * @param isDemoMode - Indique si l'application est en mode démo
+ * @param establishmentType - Type d'établissement ('ipes' ou 'faculty')
  * @returns Liste des éléments de menu autorisés
  */
-export const getFilteredMenuItems = (isDemoMode: boolean = false): MenuItem[] => {
-  if (isDemoMode) {
-    return menuItems.filter(item => !item.demoRestricted);
-  }
-  return menuItems;
+export const getFilteredMenuItems = (isDemoMode: boolean = false, establishmentType?: string): MenuItem[] => {
+  // Vérifier si c'est une faculté (insensible à la casse et supportant plusieurs formats)
+  const isFaculty = establishmentType?.toLowerCase().includes('faculty') ||
+                    establishmentType?.toLowerCase().includes('faculté') ||
+                    establishmentType === 'faculty';
+
+  return menuItems.filter(item => {
+    // Filtrer les éléments restreints en mode démo
+    if (isDemoMode && item.demoRestricted) {
+      return false;
+    }
+
+    // Filtrer les éléments réservés aux facultés
+    if (item.requiresFaculty && !isFaculty) {
+      return false;
+    }
+
+    return true;
+  });
 };
 
 export { menuItems };

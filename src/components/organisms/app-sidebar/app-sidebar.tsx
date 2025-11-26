@@ -38,9 +38,9 @@ export function AppSidebar() {
   
   // Détection du mode démo
   const isDemoMode = localStorage.getItem('demo_mode') === 'true';
-  
-  // Utiliser les éléments de menu filtrés selon le mode
-  const menuItems = getFilteredMenuItems(isDemoMode);
+
+  // Utiliser les éléments de menu filtrés selon le mode et le type d'établissement
+  const menuItems = getFilteredMenuItems(isDemoMode, (settings as any).establishmentType);
 
   // Calcul des statistiques pour les indicateurs
   const statistics = useMemo(() => {

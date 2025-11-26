@@ -65,6 +65,8 @@ const SettingForm: React.FC = () => {
       universityLogo: "",
       facultyLogo: "",
       watermarkLogo: "", // NOUVEAU: Logo de fond
+      coatOfArms: "", // NOUVEAU: Armoiries (diplômes)
+      ministryLogo: "", // NOUVEAU: Logo MINESUP (diplômes)
       themeColor: "#000000",
       themeFont: "Times New Roman, serif",
       theme: defaultTheme,
@@ -78,7 +80,7 @@ const SettingForm: React.FC = () => {
   // Fonction pour réinitialiser le formulaire
   const resetForm = () => {
     if (!isEditing) return;
-    
+
     const defaultSettings = {
       establishmentType: "ipes",
       nameFrench: "",
@@ -91,6 +93,8 @@ const SettingForm: React.FC = () => {
       universityLogo: "",
       facultyLogo: "",
       watermarkLogo: "", // NOUVEAU: Logo de fond
+      coatOfArms: "", // NOUVEAU: Armoiries (diplômes)
+      ministryLogo: "", // NOUVEAU: Logo MINESUP (diplômes)
       themeColor: "#000000",
       themeFont: "Times New Roman, serif",
       theme: defaultTheme,
@@ -316,6 +320,8 @@ const SettingForm: React.FC = () => {
   const universityLogoDropzone = createImageDropzone("universityLogo");
   const facultyLogoDropzone = createImageDropzone("facultyLogo");
   const watermarkLogoDropzone = createImageDropzone("watermarkLogo"); // NOUVEAU: Logo de fond
+  const coatOfArmsDropzone = createImageDropzone("coatOfArms"); // NOUVEAU: Armoiries
+  const ministryLogoDropzone = createImageDropzone("ministryLogo"); // NOUVEAU: Logo MINESUP
 
   // Fonction pour enregistrer les modifications
   const saveChanges = () => {
@@ -946,6 +952,98 @@ const SettingForm: React.FC = () => {
                           </FormItem>
                         )}
                       />
+
+                      {/* NOUVEAU: Armoiries du Cameroun (pour diplômes) */}
+                      {watchEstablishmentType === "faculty" && (
+                        <FormField
+                          control={form.control}
+                          name="coatOfArms"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Armoiries du Cameroun (pour diplômes)</FormLabel>
+                              <FormControl>
+                                <div
+                                  {...(isEditing ? coatOfArmsDropzone.getRootProps() : {})}
+                                  className={`border-2 ${isEditing ? 'border-dashed cursor-pointer' : 'border-solid'} rounded-md p-4 text-center flex flex-col justify-center ${
+                                    isEditing && coatOfArmsDropzone.isDragActive ? "border-primary bg-primary/10" : isEditing ? "border-gray-300" : "border-gray-200"
+                                  }`}
+                                >
+                                  {isEditing && <input {...coatOfArmsDropzone.getInputProps()} />}
+                                  {field.value ? (
+                                    <div className="flex flex-col items-center">
+                                      <img
+                                        src={field.value}
+                                        alt="Armoiries du Cameroun"
+                                        className="mx-auto max-h-32 w-full object-contain mb-2"
+                                      />
+                                      <p className={`text-sm ${!isEditing ? "text-gray-400" : "text-gray-500"}`}>
+                                        {isEditing ? "Cliquez ou glissez-déposez pour changer" : "Mode lecture seule"}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col items-center">
+                                      <UploadIcon className={`h-10 w-10 mb-2 ${!isEditing ? "text-gray-400" : "text-gray-500"}`} />
+                                      <p className={`text-sm ${!isEditing ? "text-gray-400" : "text-gray-500"}`}>
+                                        {isEditing ? "Cliquez ou glissez-déposez pour ajouter les armoiries" : "Mode lecture seule"}
+                                      </p>
+                                      <p className="text-xs text-gray-400 mt-1">
+                                        Utilisé sur les diplômes uniquement
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+
+                      {/* NOUVEAU: Logo MINESUP (pour diplômes) */}
+                      {watchEstablishmentType === "faculty" && (
+                        <FormField
+                          control={form.control}
+                          name="ministryLogo"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Logo MINESUP (pour diplômes)</FormLabel>
+                              <FormControl>
+                                <div
+                                  {...(isEditing ? ministryLogoDropzone.getRootProps() : {})}
+                                  className={`border-2 ${isEditing ? 'border-dashed cursor-pointer' : 'border-solid'} rounded-md p-4 text-center flex flex-col justify-center ${
+                                    isEditing && ministryLogoDropzone.isDragActive ? "border-primary bg-primary/10" : isEditing ? "border-gray-300" : "border-gray-200"
+                                  }`}
+                                >
+                                  {isEditing && <input {...ministryLogoDropzone.getInputProps()} />}
+                                  {field.value ? (
+                                    <div className="flex flex-col items-center">
+                                      <img
+                                        src={field.value}
+                                        alt="Logo MINESUP"
+                                        className="mx-auto max-h-32 w-full object-contain mb-2"
+                                      />
+                                      <p className={`text-sm ${!isEditing ? "text-gray-400" : "text-gray-500"}`}>
+                                        {isEditing ? "Cliquez ou glissez-déposez pour changer" : "Mode lecture seule"}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col items-center">
+                                      <UploadIcon className={`h-10 w-10 mb-2 ${!isEditing ? "text-gray-400" : "text-gray-500"}`} />
+                                      <p className={`text-sm ${!isEditing ? "text-gray-400" : "text-gray-500"}`}>
+                                        {isEditing ? "Cliquez ou glissez-déposez pour ajouter le logo MINESUP" : "Mode lecture seule"}
+                                      </p>
+                                      <p className="text-xs text-gray-400 mt-1">
+                                        Utilisé sur les diplômes uniquement
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
                     </div>
                   </div>
                 </TabsContent>

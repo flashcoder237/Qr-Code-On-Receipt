@@ -18,6 +18,8 @@ export const TranscriptsettingsSchema = z.object({
   universityLogo: z.string().optional(),
   facultyLogo: z.string().optional(),
   watermarkLogo: z.string().optional(), // NOUVEAU: Logo personnalisé pour le fond des relevés
+  coatOfArms: z.string().optional(), // NOUVEAU: Armoiries du Cameroun (pour diplômes)
+  ministryLogo: z.string().optional(), // NOUVEAU: Logo MINESUP (pour diplômes)
 
   // Informations utilisateur (requis après activation de licence)
   userFullName: z.string().optional(),

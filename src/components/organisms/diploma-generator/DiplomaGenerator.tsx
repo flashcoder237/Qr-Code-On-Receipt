@@ -1,0 +1,591 @@
+// src/components/organisms/diploma-generator/DiplomaGenerator.tsx
+// Générateur principal de diplômes avec gestion des thèmes
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import {
+  FileText,
+  Settings2,
+  Palette,
+  Eye,
+  Download,
+  AlertCircle,
+  Loader2,
+  BookOpen
+} from 'lucide-react';
+import { useLocalStorage } from 'usehooks-ts';
+import { DiplomaStudentRecord, FAKE_DIPLOMA_DATA } from '@/lib/diploma-generator/types';
+import { defaultDiplomaTheme, DiplomaThemeSettingsPayload } from '@/lib/form-schemas/diploma-theme-settings';
+import { DiplomaThemeEditor } from './DiplomaThemeEditor';
+import { DiplomaThemeManager } from './DiplomaThemeManager';
+import { ImportReport, ImportStats } from './ImportReport';
+import { analyzeImportedData } from './import-analyzer';
+import { DiplomaExportOptions } from './DiplomaExportOptions';
+import { DiplomaGenerationReport } from './DiplomaGenerationReport';
+import { validateDiplomaList, DiplomaValidationResult } from './diploma-validator';
+import { openDiplomaPreview } from '@/lib/diploma-generator/preview';
+import { generateDiplomaHTML } from '@/lib/diploma-generator/html-generator';
+import { FileUploader } from '../receipts/components/FileUploader';
+
+export const DiplomaGenerator: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<"generator" | "theme" | "manager">("generator");
+
+  // Données Excel des étudiants
+  const [excelData, setExcelData] = useState<DiplomaStudentRecord[]>([]);
+  const [importStats, setImportStats] = useState<ImportStats | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [processingProgress, setProcessingProgress] = useState<number>(0);
+
+  // Options d'export
+  const [exportFormat, setExportFormat] = useState<string>('zip');
+  const [useCompression, setUseCompression] = useState(false);
+
+  // Rapport de génération
+  const [generationReport, setGenerationReport] = useState<{
+    valid: DiplomaValidationResult[];
+    invalid: DiplomaValidationResult[];
+    generated: number;
+    failed: Array<{ student: DiplomaValidationResult; error: string }>;
+    date: Date;
+  } | null>(null);
+
+  // Thème actuel
+  const [diplomaTheme, setDiplomaTheme] = useLocalStorage<DiplomaThemeSettingsPayload>(
+    'diploma-theme',
+    defaultDiplomaTheme
+  );
+
+  // Paramètres de l'école
+  const [schoolSettings, setSchoolSettings] = useLocalStorage('settings', {
+    nameFrench: "FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES",
+    nameEnglish: "FACULTY OF MEDICINE AND PHARMACEUTICAL SCIENCES",
+    nameAbreviation: "FMSP",
+    logo: "",
+    universityLogo: "",
+    facultyLogo: "",
+    coatOfArms: "",
+    ministryLogo: "",
+    watermarkLogo: "",
+  });
+
+  const isDemoMode = localStorage.getItem('demo_mode') === 'true';
+
+  // Gestionnaire d'upload Excel
+  const handleFileLoaded = (data: any[], columns: string[]) => {
+    try {
+      console.log('📊 Données reçues du fichier:', {
+        rows: data.length,
+        columns: columns.length
+      });
+
+      // Mapper les données aux champs du diplôme
+      const convertedData: DiplomaStudentRecord[] = data.map((row) => ({
+        NOM: row.NOM || row['Nom'] || 'N/D',
+        PRENOM: row.PRENOM || row['Prénom'] || 'N/D',
+        MATRICULE: row.MATRICULE || row['Matricule'] || 'N/D',
+        "DATE DE NAISSANCE": row["DATE DE NAISSANCE"] || row['Date de naissance'] || 'N/D',
+        "LIEU DE NAISSANCE": row["LIEU DE NAISSANCE"] || row['Lieu de naissance'] || 'N/D',
+        PARCOURS: row.PARCOURS || row['Parcours'] || 'N/D',
+        SPECIALITE: row.SPECIALITE || row['Spécialité'] || 'N/D',
+        OPTION: row.OPTION || row['Option'],
+        "ANNEE OBTENTION": row["ANNEE OBTENTION"] || row['Année obtention'] || new Date().getFullYear().toString(),
+        MOYENNE: row.MOYENNE || row['Moyenne'] || 0,
+        GRADE: row.GRADE || row['Grade'] || 'N/D',
+        MENTION: row.MENTION || row['Mention'] || 'N/D',
+        "TITRE DIPLOME FR": row["TITRE DIPLOME FR"] || row['Titre diplôme FR'] || 'N/D',
+        "TITRE DIPLOME EN": row["TITRE DIPLOME EN"] || row['Titre diplôme EN'] || 'N/D',
+        MENTION_EN: row.MENTION_EN || row['Mention EN'],
+        OPTION_EN: row.OPTION_EN || row['Option EN'],
+        "DATE JURY ADMISSION": row["DATE JURY ADMISSION"] || row['Date jury admission'] || 'N/D',
+        "DATE JURY DELIBERATION": row["DATE JURY DELIBERATION"] || row['Date jury délibération'] || 'N/D',
+      }));
+
+      setExcelData(convertedData);
+
+      // Analyser les données et générer le rapport
+      const stats = analyzeImportedData(convertedData);
+      setImportStats(stats);
+
+      setError(null);
+
+      console.log('✅ Données converties:', convertedData.length);
+      console.log('📊 Statistiques d\'import:', stats);
+    } catch (err) {
+      console.error("Erreur lors du traitement du fichier Excel", err);
+      const errorMessage = "Erreur lors du traitement du fichier Excel";
+      setError(errorMessage);
+    }
+  };
+
+  // Prévisualisation avec fausses données
+  const handlePreviewWithFakeData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const success = await openDiplomaPreview(
+        FAKE_DIPLOMA_DATA,
+        {
+          ...schoolSettings,
+          theme: diplomaTheme
+        },
+        {
+          theme: diplomaTheme,
+          demoMode: true
+        }
+      );
+
+      if (!success) {
+        const message = "Impossible d'ouvrir la fenêtre de prévisualisation. Vérifiez que les popups ne sont pas bloqués.";
+        setError(message);
+      }
+    } catch (err) {
+      console.error("Erreur lors de la prévisualisation", err);
+      const message = "Une erreur est survenue lors de la prévisualisation du diplôme";
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Prévisualisation avec un étudiant réel
+  const handlePreviewStudent = async (student: DiplomaStudentRecord) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const success = await openDiplomaPreview(
+        student,
+        {
+          ...schoolSettings,
+          theme: diplomaTheme
+        },
+        {
+          theme: diplomaTheme,
+          demoMode: isDemoMode
+        }
+      );
+
+      if (!success) {
+        const message = "Impossible d'ouvrir la fenêtre de prévisualisation";
+        setError(message);
+      }
+    } catch (err) {
+      console.error("Erreur lors de la prévisualisation", err);
+      const message = "Une erreur est survenue lors de la prévisualisation";
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Génération des diplômes avec validation et filtrage automatique
+  const handleGenerateDiplomas = async (validStudents: DiplomaStudentRecord[]) => {
+    if (validStudents.length === 0) {
+      setError("Aucun diplôme générable. Tous les étudiants ont des données manquantes ou une moyenne < 10.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      setProcessingProgress(0);
+
+      // Valider tous les étudiants d'origine pour le rapport
+      const fullValidation = validateDiplomaList(excelData);
+      const generationDate = new Date();
+
+      const successfulGenerations: DiplomaStudentRecord[] = [];
+      const failedGenerations: Array<{ student: DiplomaValidationResult; error: string }> = [];
+
+      if (exportFormat === 'pdf') {
+        // Mode PDF unique : Générer tous les diplômes dans une seule fenêtre
+        try {
+          let combinedHTML = `
+            <html>
+            <head>
+              <meta charset="UTF-8">
+              <title>Diplômes - ${schoolSettings.nameFrench}</title>
+              <style>
+                @page { size: A4 landscape; margin: 0; }
+                body { margin: 0; padding: 0; }
+                .page-break { page-break-after: always; }
+              </style>
+            </head>
+            <body>
+          `;
+
+          for (let i = 0; i < validStudents.length; i++) {
+            const student = validStudents[i];
+            setProcessingProgress(((i + 1) / validStudents.length) * 50); // 50% pour la génération HTML
+
+            try {
+              const html = await generateDiplomaHTML(
+                student,
+                {
+                  ...schoolSettings,
+                  theme: diplomaTheme
+                },
+                {
+                  theme: diplomaTheme,
+                  demoMode: isDemoMode
+                }
+              );
+
+              // Extraire le body du HTML généré
+              const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+              const bodyContent = bodyMatch ? bodyMatch[1] : html;
+
+              combinedHTML += bodyContent;
+              if (i < validStudents.length - 1) {
+                combinedHTML += '<div class="page-break"></div>';
+              }
+
+              successfulGenerations.push(student);
+            } catch (err) {
+              console.error(`Erreur lors de la génération du diplôme pour ${student.NOM}`, err);
+              const validation = fullValidation.valid.find(v => v.student.MATRICULE === student.MATRICULE);
+              if (validation) {
+                failedGenerations.push({
+                  student: validation,
+                  error: err instanceof Error ? err.message : 'Erreur inconnue'
+                });
+              }
+            }
+          }
+
+          combinedHTML += '</body></html>';
+
+          // Ouvrir une fenêtre avec tous les diplômes
+          const printWindow = window.open('', '', 'width=1200,height=800');
+          if (printWindow) {
+            printWindow.document.write(combinedHTML);
+            printWindow.document.close();
+
+            setProcessingProgress(75);
+
+            // Attendre que le contenu soit chargé
+            await new Promise(resolve => {
+              printWindow.onload = resolve;
+              setTimeout(resolve, 2000); // Timeout plus long pour charger tous les diplômes
+            });
+
+            setProcessingProgress(90);
+
+            // Ouvrir le dialogue d'impression
+            printWindow.print();
+
+            setProcessingProgress(100);
+          } else {
+            throw new Error('Impossible d\'ouvrir la fenêtre d\'impression. Popups bloqués?');
+          }
+        } catch (err) {
+          console.error("Erreur lors de la génération du PDF unique", err);
+          setError(err instanceof Error ? err.message : 'Erreur inconnue');
+        }
+      } else {
+        // Mode fichiers individuels ou ZIP : Générer chaque diplôme séparément
+        for (let i = 0; i < validStudents.length; i++) {
+          const student = validStudents[i];
+
+          try {
+            const html = await generateDiplomaHTML(
+              student,
+              {
+                ...schoolSettings,
+                theme: diplomaTheme
+              },
+              {
+                theme: diplomaTheme,
+                demoMode: isDemoMode
+              }
+            );
+
+            // Créer une fenêtre pour chaque diplôme
+            const printWindow = window.open('', '', 'width=1200,height=800');
+            if (printWindow) {
+              printWindow.document.write(html);
+              printWindow.document.close();
+
+              // Attendre que le contenu soit chargé
+              await new Promise(resolve => {
+                printWindow.onload = resolve;
+                setTimeout(resolve, 1000);
+              });
+
+              // Imprimer
+              printWindow.print();
+
+              successfulGenerations.push(student);
+            } else {
+              throw new Error('Impossible d\'ouvrir la fenêtre d\'impression. Popups bloqués?');
+            }
+          } catch (err) {
+            console.error(`Erreur lors de la génération du diplôme pour ${student.NOM}`, err);
+            const validation = fullValidation.valid.find(v => v.student.MATRICULE === student.MATRICULE);
+            if (validation) {
+              failedGenerations.push({
+                student: validation,
+                error: err instanceof Error ? err.message : 'Erreur inconnue'
+              });
+            }
+          }
+
+          setProcessingProgress(((i + 1) / validStudents.length) * 100);
+        }
+      }
+
+      // Créer le rapport de génération
+      setGenerationReport({
+        valid: fullValidation.valid,
+        invalid: fullValidation.invalid,
+        generated: successfulGenerations.length,
+        failed: failedGenerations,
+        date: generationDate
+      });
+
+      console.log(`✅ Génération terminée: ${successfulGenerations.length}/${validStudents.length} diplômes générés`);
+      setError(null);
+    } catch (err) {
+      console.error("Erreur lors de la génération des diplômes", err);
+      const message = "Une erreur est survenue lors de la génération des diplômes";
+      setError(message);
+    } finally {
+      setIsLoading(false);
+      setProcessingProgress(0);
+    }
+  };
+
+  // Reset du thème
+  const handleResetTheme = () => {
+    if (confirm('Êtes-vous sûr de vouloir réinitialiser le thème au défaut ?')) {
+      setDiplomaTheme(defaultDiplomaTheme);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
+        <div className="flex justify-between items-center mb-4">
+          <TabsList className="grid grid-cols-3">
+            <TabsTrigger value="generator" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Générateur
+            </TabsTrigger>
+            <TabsTrigger value="theme" className="flex items-center gap-2">
+              <Palette className="h-4 w-4" />
+              Thème
+            </TabsTrigger>
+            <TabsTrigger value="manager" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Mes Thèmes
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="flex items-center gap-2">
+            {isDemoMode && (
+              <Badge variant="destructive">MODE DÉMO</Badge>
+            )}
+          </div>
+        </div>
+
+        <TabsContent value="generator" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Génération de Diplômes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Instructions */}
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Colonnes requises dans le fichier Excel :</strong>
+                  <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                    <li>NOM, PRENOM, MATRICULE</li>
+                    <li>DATE DE NAISSANCE, LIEU DE NAISSANCE</li>
+                    <li>TITRE DIPLOME FR, TITRE DIPLOME EN</li>
+                    <li>MENTION (FR), MENTION_EN (optionnel)</li>
+                    <li>OPTION (optionnel), OPTION_EN (optionnel)</li>
+                    <li>DATE JURY ADMISSION, DATE JURY DELIBERATION</li>
+                    <li>ANNEE OBTENTION, PARCOURS, SPECIALITE</li>
+                    <li>MOYENNE, GRADE</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+
+              {/* Upload de fichier */}
+              <div className="space-y-2">
+                <Label>Fichier Excel des diplômés</Label>
+                <FileUploader
+                  onFileLoaded={handleFileLoaded}
+                  onError={(err) => setError(err)}
+                  isLoading={isLoading}
+                  documentType="diploma"
+                  allowPartialImport={true}
+                />
+              </div>
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {/* Rapport d'importation */}
+              {importStats && (
+                <ImportReport stats={importStats} />
+              )}
+
+              {isLoading && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Génération en cours...</span>
+                    <span>{Math.round(processingProgress)}%</span>
+                  </div>
+                  <Progress value={processingProgress} />
+                </div>
+              )}
+
+              {excelData.length > 0 && (
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-blue-900">Données chargées</h4>
+                        <p className="text-sm text-blue-700">
+                          {excelData.length} diplômé(s)
+                        </p>
+                        <div className="flex items-center gap-4 text-sm text-blue-700 mt-1">
+                          <span>Police: {diplomaTheme.mainFont.split(',')[0]}</span>
+                          <span>Couleur: {diplomaTheme.primaryColor}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActiveTab("theme")}
+                          className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                        >
+                          <Palette className="h-4 w-4 mr-2" />
+                          Personnaliser
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Prévisualisation */}
+              <div className="flex justify-center">
+                <Button
+                  variant="outline"
+                  onClick={handlePreviewWithFakeData}
+                  disabled={isLoading}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Prévisualiser avec fausses données
+                </Button>
+              </div>
+
+              {/* Options d'export et génération */}
+              {excelData.length > 0 && (
+                <DiplomaExportOptions
+                  students={excelData}
+                  schoolSettings={schoolSettings}
+                  diplomaTheme={diplomaTheme}
+                  exportFormat={exportFormat}
+                  useCompression={useCompression}
+                  onExportFormatChange={setExportFormat}
+                  onUseCompressionChange={setUseCompression}
+                  onGenerateDiplomas={handleGenerateDiplomas}
+                  isLoading={isLoading}
+                />
+              )}
+
+              {/* Rapport de génération */}
+              {generationReport && (
+                <DiplomaGenerationReport
+                  validDiplomas={generationReport.valid}
+                  invalidDiplomas={generationReport.invalid}
+                  generatedCount={generationReport.generated}
+                  failedGenerations={generationReport.failed}
+                  schoolName={schoolSettings.nameFrench || 'Établissement'}
+                  generationDate={generationReport.date}
+                />
+              )}
+
+              {/* Liste des étudiants */}
+              {excelData.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Diplômés ({excelData.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {excelData.map((student, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 border rounded hover:bg-gray-50"
+                        >
+                          <div>
+                            <div className="font-medium">
+                              {student.NOM} {student.PRENOM}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {student.MATRICULE} - {student["TITRE DIPLOME FR"]}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {student.MENTION} - Année {student["ANNEE OBTENTION"]}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handlePreviewStudent(student)}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            Voir
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="theme">
+          <DiplomaThemeEditor
+            theme={diplomaTheme}
+            onThemeChange={setDiplomaTheme}
+            onPreview={handlePreviewWithFakeData}
+            onReset={handleResetTheme}
+          />
+        </TabsContent>
+
+        <TabsContent value="manager">
+          <DiplomaThemeManager
+            currentTheme={diplomaTheme}
+            onThemeSelect={setDiplomaTheme}
+            onPreview={handlePreviewWithFakeData}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};

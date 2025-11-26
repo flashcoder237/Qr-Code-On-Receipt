@@ -235,6 +235,121 @@ export const ATTESTATION_OPTIONAL_COLUMNS: ColumnRequirement[] = [
   }
 ];
 
+// Colonnes requises pour les diplômes
+export const DIPLOMA_REQUIRED_COLUMNS: ColumnRequirement[] = [
+  {
+    key: 'NOM',
+    displayName: 'Nom de famille',
+    required: true,
+    alternatives: ['nom', 'surname', 'last_name', 'family_name', 'last name', 'nom de famille']
+  },
+  {
+    key: 'PRENOM',
+    displayName: 'Prénom',
+    required: true,
+    alternatives: ['prenom', 'firstname', 'first_name', 'given_name', 'first name', 'prénom']
+  },
+  {
+    key: 'MATRICULE',
+    displayName: 'Matricule',
+    required: true,
+    alternatives: ['matricule', 'mat', 'student_id', 'registration_number', 'registration number', 'numero matricule']
+  },
+  {
+    key: 'DATE DE NAISSANCE',
+    displayName: 'Date de naissance',
+    required: true,
+    alternatives: ['date_naissance', 'birth_date', 'birthdate', 'date_of_birth', 'birth date', 'date de naissance', 'naissance']
+  },
+  {
+    key: 'LIEU DE NAISSANCE',
+    displayName: 'Lieu de naissance',
+    required: true,
+    alternatives: ['lieu_naissance', 'birth_place', 'birthplace', 'place_of_birth', 'birth place', 'lieu de naissance', 'ville naissance']
+  },
+  {
+    key: 'TITRE DIPLOME FR',
+    displayName: 'Titre du diplôme (français)',
+    required: true,
+    alternatives: ['titre_diplome_fr', 'diploma_title_fr', 'titre diplome francais', 'titre fr', 'diplome fr']
+  },
+  {
+    key: 'TITRE DIPLOME EN',
+    displayName: 'Titre du diplôme (anglais)',
+    required: true,
+    alternatives: ['titre_diplome_en', 'diploma_title_en', 'titre diplome anglais', 'titre en', 'diplome en']
+  },
+  {
+    key: 'MENTION',
+    displayName: 'Mention (français)',
+    required: true,
+    alternatives: ['mention', 'honor', 'distinction', 'mention fr']
+  },
+  {
+    key: 'ANNEE OBTENTION',
+    displayName: 'Année d\'obtention',
+    required: true,
+    alternatives: ['annee_obtention', 'graduation_year', 'year_completion', 'année obtention', 'annee', 'year']
+  },
+  {
+    key: 'DATE JURY ADMISSION',
+    displayName: 'Date du jury d\'admission',
+    required: true,
+    alternatives: ['date_jury_admission', 'admission_date', 'date admission', 'jury admission']
+  },
+  {
+    key: 'DATE JURY DELIBERATION',
+    displayName: 'Date du jury de délibération',
+    required: true,
+    alternatives: ['date_jury_deliberation', 'deliberation_date', 'date deliberation', 'jury deliberation']
+  },
+  {
+    key: 'PARCOURS',
+    displayName: 'Parcours',
+    required: true,
+    alternatives: ['parcours', 'course', 'program', 'pathway', 'programme', 'formation']
+  },
+  {
+    key: 'SPECIALITE',
+    displayName: 'Spécialité',
+    required: true,
+    alternatives: ['specialite', 'specialty', 'specialization', 'major', 'spécialité']
+  },
+  {
+    key: 'MOYENNE',
+    displayName: 'Moyenne',
+    required: true,
+    alternatives: ['moyenne', 'average', 'gpa', 'mean_grade', 'note moyenne', 'score']
+  },
+  {
+    key: 'GRADE',
+    displayName: 'Grade',
+    required: true,
+    alternatives: ['grade', 'letter_grade', 'note lettre']
+  }
+];
+
+export const DIPLOMA_OPTIONAL_COLUMNS: ColumnRequirement[] = [
+  {
+    key: 'OPTION',
+    displayName: 'Option (français)',
+    required: false,
+    alternatives: ['option', 'minor', 'track', 'voie', 'option fr']
+  },
+  {
+    key: 'OPTION_EN',
+    displayName: 'Option (anglais)',
+    required: false,
+    alternatives: ['option_en', 'minor_en', 'track_en', 'option en', 'option anglais']
+  },
+  {
+    key: 'MENTION_EN',
+    displayName: 'Mention (anglais)',
+    required: false,
+    alternatives: ['mention_en', 'honor_en', 'distinction_en', 'mention en', 'mention anglais']
+  }
+];
+
 /**
  * NOUVEAU: Fonction pour détecter et valider les colonnes de session
  */
@@ -453,15 +568,19 @@ export const FACULTY_OPTIONAL_EN_COLUMNS: ColumnRequirement[] = [
  */
 export function validateExcelColumns(
   availableColumns: string[],
-  documentType: 'releve' | 'attestation',
+  documentType: 'releve' | 'attestation' | 'diploma',
   establishmentType?: string
 ): ValidationResult {
-  
-  
-  
-  
-  const requiredColumns = documentType === 'releve' ? RELEVE_REQUIRED_COLUMNS : ATTESTATION_REQUIRED_COLUMNS;
-  const optionalColumns = documentType === 'releve' ? RELEVE_OPTIONAL_COLUMNS : ATTESTATION_OPTIONAL_COLUMNS;
+
+
+
+
+  const requiredColumns = documentType === 'releve' ? RELEVE_REQUIRED_COLUMNS :
+                         documentType === 'diploma' ? DIPLOMA_REQUIRED_COLUMNS :
+                         ATTESTATION_REQUIRED_COLUMNS;
+  const optionalColumns = documentType === 'releve' ? RELEVE_OPTIONAL_COLUMNS :
+                         documentType === 'diploma' ? DIPLOMA_OPTIONAL_COLUMNS :
+                         ATTESTATION_OPTIONAL_COLUMNS;
 
   // NOUVEAU: Vérifier si c'est un établissement de type faculty
   const isFacultyEstablishment = establishmentType?.toLowerCase().includes('faculty') || 
@@ -563,11 +682,15 @@ export function validateExcelColumns(
  */
 export function generateColumnMapping(
   availableColumns: string[],
-  documentType: 'releve' | 'attestation',
+  documentType: 'releve' | 'attestation' | 'diploma',
   establishmentType?: string
 ): { [key: string]: string } {
-  const requiredColumns = documentType === 'releve' ? RELEVE_REQUIRED_COLUMNS : ATTESTATION_REQUIRED_COLUMNS;
-  const optionalColumns = documentType === 'releve' ? RELEVE_OPTIONAL_COLUMNS : ATTESTATION_OPTIONAL_COLUMNS;
+  const requiredColumns = documentType === 'releve' ? RELEVE_REQUIRED_COLUMNS :
+                         documentType === 'diploma' ? DIPLOMA_REQUIRED_COLUMNS :
+                         ATTESTATION_REQUIRED_COLUMNS;
+  const optionalColumns = documentType === 'releve' ? RELEVE_OPTIONAL_COLUMNS :
+                         documentType === 'diploma' ? DIPLOMA_OPTIONAL_COLUMNS :
+                         ATTESTATION_OPTIONAL_COLUMNS;
   
   // NOUVEAU: Inclure les colonnes de traduction anglaise pour les établissements faculty
   const isFacultyEstablishment = establishmentType?.toLowerCase().includes('faculty') || 
