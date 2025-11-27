@@ -11,6 +11,9 @@ import { ThemeSettingsPayload } from './form-schemas/theme-settings';
 import { generateAttestationPDF } from './attestation-generator/html-to-pdf';
 import { generateAttestationHTML } from './attestation-generator/html-generator';
 
+// Importer la fonction de génération de diplômes
+import { generateDiplomaPDF } from './diploma-generator/diploma-html-to-pdf';
+
 // NOUVEAU: Importer les fonctions de chiffrement compact pour les relevés
 import { sanitizeStudentData, generateQrCodeBase64 } from './helpers/qrcode-selective';
 import { getQRCodeSizeEstimate } from './helpers/qrcode';
@@ -1532,6 +1535,8 @@ export async function generateTranscriptPDF(params: GeneratePDFParams): Promise<
 }
 
 export function setupPDFGenerationHandlers() {
+  console.log('🔧 [SETUP] Initialisation des gestionnaires PDF...');
+
   // Set up IPC handler for PDF generation
   ipcMain.handle('render-transcript-html', async (_, params) => {
     try {
@@ -1574,8 +1579,8 @@ export function setupPDFGenerationHandlers() {
   
   ipcMain.handle('generate-attestation-pdf', async (_, params: GenerateAttestationParams) => {
     try {
-      
-      
+
+
       const options = {
       ...params.options,
       demoMode: params.options?.demoMode || false
@@ -1587,7 +1592,33 @@ export function setupPDFGenerationHandlers() {
     }
   });
 
-  
+  // Handler pour les diplômes
+  ipcMain.handle('generate-diploma-pdf', async (_, params: GenerateAttestationParams) => {
+    try {
+      console.log('📜 [DIPLOMA-PDF] Début génération diplôme PDF');
+      console.log('📜 [DIPLOMA-PDF] Paramètres reçus:', {
+        student: params.student?.NOM,
+        hasSettings: !!params.settings,
+        hasOptions: !!params.options
+      });
+
+      const options = {
+        ...params.options,
+        demoMode: params.options?.demoMode || false
+      };
+
+      const result = await generateDiplomaPDF(params.student, params.settings, options);
+      console.log('📜 [DIPLOMA-PDF] PDF généré avec succès');
+      return result;
+    } catch (error) {
+      console.error('❌ [DIPLOMA-PDF] Erreur lors de la génération du PDF:', error);
+      throw error;
+    }
+  });
+  console.log('✅ [SETUP] Gestionnaire "generate-diploma-pdf" enregistré');
+
+
+  console.log('✅ [SETUP] Tous les gestionnaires PDF initialisés avec succès');
   return {
     generateTranscriptPDF
   };

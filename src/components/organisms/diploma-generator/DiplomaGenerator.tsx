@@ -186,10 +186,16 @@ export const DiplomaGenerator: React.FC = () => {
     }
   };
 
-  // Génération des diplômes avec validation et filtrage automatique
+  // Génération des diplômes avec validation et filtrage automatique (système IPC)
   const handleGenerateDiplomas = async (validStudents: DiplomaStudentRecord[]) => {
     if (validStudents.length === 0) {
       setError("Aucun diplôme générable. Tous les étudiants ont des données manquantes ou une moyenne < 10.");
+      return;
+    }
+
+    // Vérifier que IPC est disponible
+    if (!window.ipcRenderer) {
+      setError("Système de génération PDF non disponible. Veuillez utiliser l'application Electron.");
       return;
     }
 
@@ -204,143 +210,132 @@ export const DiplomaGenerator: React.FC = () => {
 
       const successfulGenerations: DiplomaStudentRecord[] = [];
       const failedGenerations: Array<{ student: DiplomaValidationResult; error: string }> = [];
+      const results = new Map<string, Uint8Array>();
 
-      if (exportFormat === 'pdf') {
-        // Mode PDF unique : Générer tous les diplômes dans une seule fenêtre
+      // Générer les PDFs via IPC (comme les attestations)
+      console.log(`📜 Début génération de ${validStudents.length} diplôme(s)`);
+
+      for (let i = 0; i < validStudents.length; i++) {
+        const student = validStudents[i];
+
         try {
-          let combinedHTML = `
-            <html>
-            <head>
-              <meta charset="UTF-8">
-              <title>Diplômes - ${schoolSettings.nameFrench}</title>
-              <style>
-                @page { size: A4 landscape; margin: 0; }
-                body { margin: 0; padding: 0; }
-                .page-break { page-break-after: always; }
-              </style>
-            </head>
-            <body>
-          `;
-
-          for (let i = 0; i < validStudents.length; i++) {
-            const student = validStudents[i];
-            setProcessingProgress(((i + 1) / validStudents.length) * 50); // 50% pour la génération HTML
-
-            try {
-              const html = await generateDiplomaHTML(
-                student,
-                {
-                  ...schoolSettings,
-                  theme: diplomaTheme
-                },
-                {
-                  theme: diplomaTheme,
-                  demoMode: isDemoMode
-                }
-              );
-
-              // Extraire le body du HTML généré
-              const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-              const bodyContent = bodyMatch ? bodyMatch[1] : html;
-
-              combinedHTML += bodyContent;
-              if (i < validStudents.length - 1) {
-                combinedHTML += '<div class="page-break"></div>';
-              }
-
-              successfulGenerations.push(student);
-            } catch (err) {
-              console.error(`Erreur lors de la génération du diplôme pour ${student.NOM}`, err);
-              const validation = fullValidation.valid.find(v => v.student.MATRICULE === student.MATRICULE);
-              if (validation) {
-                failedGenerations.push({
-                  student: validation,
-                  error: err instanceof Error ? err.message : 'Erreur inconnue'
-                });
-              }
+          // Générer le PDF via IPC
+          const pdfBytes = await window.ipcRenderer.invoke('generate-diploma-pdf', {
+            student,
+            settings: {
+              ...schoolSettings,
+              theme: diplomaTheme
+            },
+            options: {
+              theme: diplomaTheme,
+              demoMode: isDemoMode
             }
-          }
+          });
 
-          combinedHTML += '</body></html>';
+          const fileName = `${student.MATRICULE}_Diplome.pdf`;
+          results.set(fileName, pdfBytes);
+          successfulGenerations.push(student);
 
-          // Ouvrir une fenêtre avec tous les diplômes
-          const printWindow = window.open('', '', 'width=1200,height=800');
-          if (printWindow) {
-            printWindow.document.write(combinedHTML);
-            printWindow.document.close();
-
-            setProcessingProgress(75);
-
-            // Attendre que le contenu soit chargé
-            await new Promise(resolve => {
-              printWindow.onload = resolve;
-              setTimeout(resolve, 2000); // Timeout plus long pour charger tous les diplômes
-            });
-
-            setProcessingProgress(90);
-
-            // Ouvrir le dialogue d'impression
-            printWindow.print();
-
-            setProcessingProgress(100);
-          } else {
-            throw new Error('Impossible d\'ouvrir la fenêtre d\'impression. Popups bloqués?');
-          }
+          console.log(`✅ Diplôme généré: ${student.NOM} ${student.PRENOM}`);
         } catch (err) {
-          console.error("Erreur lors de la génération du PDF unique", err);
-          setError(err instanceof Error ? err.message : 'Erreur inconnue');
+          console.error(`❌ Erreur lors de la génération du diplôme pour ${student.NOM}`, err);
+          const validation = fullValidation.valid.find(v => v.student.MATRICULE === student.MATRICULE);
+          if (validation) {
+            failedGenerations.push({
+              student: validation,
+              error: err instanceof Error ? err.message : 'Erreur inconnue'
+            });
+          }
         }
-      } else {
-        // Mode fichiers individuels ou ZIP : Générer chaque diplôme séparément
-        for (let i = 0; i < validStudents.length; i++) {
-          const student = validStudents[i];
 
-          try {
-            const html = await generateDiplomaHTML(
-              student,
-              {
-                ...schoolSettings,
-                theme: diplomaTheme
-              },
-              {
-                theme: diplomaTheme,
-                demoMode: isDemoMode
-              }
-            );
+        setProcessingProgress(((i + 1) / validStudents.length) * 90);
+      }
 
-            // Créer une fenêtre pour chaque diplôme
-            const printWindow = window.open('', '', 'width=1200,height=800');
-            if (printWindow) {
-              printWindow.document.write(html);
-              printWindow.document.close();
+      // Télécharger les fichiers selon le format choisi
+      if (results.size > 0) {
+        if (exportFormat === 'zip') {
+          // Créer un ZIP avec tous les PDFs
+          const JSZip = (await import('jszip')).default;
+          const zip = new JSZip();
 
-              // Attendre que le contenu soit chargé
-              await new Promise(resolve => {
-                printWindow.onload = resolve;
-                setTimeout(resolve, 1000);
-              });
-
-              // Imprimer
-              printWindow.print();
-
-              successfulGenerations.push(student);
-            } else {
-              throw new Error('Impossible d\'ouvrir la fenêtre d\'impression. Popups bloqués?');
-            }
-          } catch (err) {
-            console.error(`Erreur lors de la génération du diplôme pour ${student.NOM}`, err);
-            const validation = fullValidation.valid.find(v => v.student.MATRICULE === student.MATRICULE);
-            if (validation) {
-              failedGenerations.push({
-                student: validation,
-                error: err instanceof Error ? err.message : 'Erreur inconnue'
-              });
-            }
+          for (const [fileName, pdfBytes] of results.entries()) {
+            zip.file(fileName, pdfBytes);
           }
 
-          setProcessingProgress(((i + 1) / validStudents.length) * 100);
+          const zipBlob = await zip.generateAsync({
+            type: 'blob',
+            compression: useCompression ? 'DEFLATE' : 'STORE'
+          });
+          const url = URL.createObjectURL(zipBlob);
+
+          const link = document.createElement("a");
+          link.href = url;
+          const timestamp = new Date().toISOString().split('T')[0];
+          link.download = `diplomes_${timestamp}.zip`;
+          link.click();
+
+          URL.revokeObjectURL(url);
+          console.log(`📦 ZIP créé avec ${results.size} diplôme(s)`);
+
+        } else if (exportFormat === 'pdf') {
+          // PDF unique: combiner tous les PDFs avec pdf-lib
+          console.log('📄 Création d\'un PDF unique...');
+          const { PDFDocument } = await import('pdf-lib');
+
+          const mergedPdf = await PDFDocument.create();
+
+          // Copier toutes les pages de chaque PDF dans le PDF fusionné
+          for (const [fileName, pdfBytes] of results.entries()) {
+            const pdf = await PDFDocument.load(pdfBytes);
+            const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+            copiedPages.forEach((page) => {
+              mergedPdf.addPage(page);
+            });
+          }
+
+          // Sauvegarder le PDF fusionné
+          const mergedPdfBytes = await mergedPdf.save();
+          const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+
+          const link = document.createElement("a");
+          link.href = url;
+          const timestamp = new Date().toISOString().split('T')[0];
+          link.download = `diplomes_${timestamp}.pdf`;
+          link.click();
+
+          URL.revokeObjectURL(url);
+          console.log(`📄 PDF unique créé avec ${results.size} diplôme(s)`);
+
+        } else {
+          // Fichiers individuels: télécharger chaque PDF avec délai pour éviter le blocage
+          console.log('📄 Téléchargement de fichiers individuels...');
+          let downloadIndex = 0;
+
+          for (const [fileName, pdfBytes] of results.entries()) {
+            // Ajouter un délai entre chaque téléchargement pour éviter le blocage du navigateur
+            await new Promise(resolve => setTimeout(resolve, downloadIndex * 300));
+
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Nettoyer après un délai pour s'assurer que le téléchargement a commencé
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+            downloadIndex++;
+          }
+          console.log(`📄 ${results.size} fichier(s) individuel(s) téléchargé(s)`);
         }
       }
+
+      setProcessingProgress(100);
 
       // Créer le rapport de génération
       setGenerationReport({
