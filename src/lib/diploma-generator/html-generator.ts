@@ -12,21 +12,38 @@ import { defaultDiplomaTheme, DiplomaThemeSettingsPayload } from '../form-schema
 
 /**
  * Génère le QR code pour un diplôme
+ * @param student - Données de l'étudiant
+ * @param useCompact - Si true, utilise le format compact (6 champs), sinon format complet (11 champs)
  */
-async function generateDiplomaQRCode(student: DiplomaStudentRecord): Promise<string> {
-  const qrData: DiplomaQRData = {
-    nom: student.NOM,
-    prenom: student.PRENOM,
-    matricule: student.MATRICULE,
-    dateNaissance: student["DATE DE NAISSANCE"],
-    lieuNaissance: student["LIEU DE NAISSANCE"],
-    parcours: student.PARCOURS,
-    specialite: student.SPECIALITE,
-    anneeObtention: student["ANNEE OBTENTION"],
-    moyenne: student.MOYENNE,
-    grade: student.GRADE,
-    mention: student.MENTION,
-  };
+async function generateDiplomaQRCode(student: DiplomaStudentRecord, useCompact: boolean = false): Promise<string> {
+  let qrData: any;
+
+  if (useCompact) {
+    // FORMAT COMPACT (Option 1) - 6 champs essentiels avec clés courtes
+    qrData = {
+      mat: student.MATRICULE,
+      nom: `${student.NOM} ${student.PRENOM}`,
+      date: student["DATE DE NAISSANCE"],
+      dipl: student["ANNEE OBTENTION"],
+      moy: student.MOYENNE,
+      ment: student.MENTION,
+    };
+  } else {
+    // FORMAT COMPLET - 11 champs (original)
+    qrData = {
+      nom: student.NOM,
+      prenom: student.PRENOM,
+      matricule: student.MATRICULE,
+      dateNaissance: student["DATE DE NAISSANCE"],
+      lieuNaissance: student["LIEU DE NAISSANCE"],
+      parcours: student.PARCOURS,
+      specialite: student.SPECIALITE,
+      anneeObtention: student["ANNEE OBTENTION"],
+      moyenne: student.MOYENNE,
+      grade: student.GRADE,
+      mention: student.MENTION,
+    };
+  }
 
   const qrString = JSON.stringify(qrData);
 
@@ -556,7 +573,7 @@ export async function generateDiplomaHTML(
   // Générer le QR code si nécessaire
   let qrCodeImage = options.qrCodeImage;
   if (!qrCodeImage && theme.showQRCode) {
-    qrCodeImage = await generateDiplomaQRCode(student);
+    qrCodeImage = await generateDiplomaQRCode(student, theme.useCompactQR);
   }
 
   // Récupérer les logos - IMPORTANT: Utiliser le logo de la faculté
@@ -725,8 +742,8 @@ export async function generateDiplomaHTML(
 
                 <div class="recipient-right">
                     <div class="degree-box" style="margin-top: 2mm;">
-                        <div class="degree-title"><span class="degree-main">${diplomaTitleFr}</span></div>
-                        <div class="degree-title-en en-text"><em><span class="degree-main-en">${diplomaTitleEn}</span></em></div>
+                        <div class="degree-title"><span class="degree-main">Le ${diplomaTitleFr}</span></div>
+                        <div class="degree-title-en en-text"><em><span class="degree-main-en">The ${diplomaTitleEn}</span></em></div>
                     </div>
                     <div class="mention-box">
                         <div class="mention-label">Mention :  <br> <span class="mention-en en-text"><em>Grade:</em></span></div>

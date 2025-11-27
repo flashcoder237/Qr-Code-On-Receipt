@@ -100,6 +100,7 @@ export const DiplomaThemeSettingsSchema = z.object({
   // === QR CODE ===
   qrCodeSize: z.number().min(40).max(100),
   showQRCode: z.boolean(),
+  useCompactQR: z.boolean(), // Utiliser le format QR compact (6 champs au lieu de 11)
 
   // === WATERMARK ===
   showWatermark: z.boolean(),
@@ -163,6 +164,7 @@ export const defaultDiplomaTheme: DiplomaThemeSettingsPayload = {
   // QR Code
   qrCodeSize: 50, // 50px dans le HTML
   showQRCode: true,
+  useCompactQR: false, // Par défaut, utiliser le format complet (11 champs)
 
   // Watermark
   showWatermark: true,

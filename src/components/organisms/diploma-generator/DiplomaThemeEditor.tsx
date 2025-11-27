@@ -497,6 +497,22 @@ export const DiplomaThemeEditor: React.FC<DiplomaThemeEditorProps> = ({
                 />
               </div>
 
+              {theme.showQRCode && (
+                <div className="flex items-center justify-between pl-4 border-l-2 border-blue-200 bg-blue-50 p-3 rounded">
+                  <div>
+                    <Label className="text-blue-900">QR Code compact</Label>
+                    <p className="text-xs text-gray-600 mt-1">
+                      <strong>Activé:</strong> 6 champs essentiels (mat, nom, date, dipl, moy, ment)<br />
+                      <strong>Désactivé:</strong> 11 champs complets (format original)
+                    </p>
+                  </div>
+                  <Switch
+                    checked={theme.useCompactQR}
+                    onCheckedChange={(checked) => updateTheme({ useCompactQR: checked })}
+                  />
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <Label>Afficher le watermark</Label>
                 <Switch
