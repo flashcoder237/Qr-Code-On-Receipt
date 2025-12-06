@@ -43,6 +43,7 @@ interface ClassDetailProps {
   onAddSemester: () => void;
   onUpdateSemester: (id: string, updated: Partial<Semester>) => void;
   onDeleteSemester: (id: string) => void;
+  onDuplicateSemester: (id: string) => void;
   onAddUE: (semesterId: string) => void;
   onUpdateUE: (semesterId: string, ueId: string, updated: Partial<UE>) => void;
   onDeleteUE: (semesterId: string, ueId: string) => void;
@@ -74,6 +75,7 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
   onAddSemester,
   onUpdateSemester,
   onDeleteSemester,
+  onDuplicateSemester,
   onAddUE,
   onUpdateUE,
   onDeleteUE,
@@ -706,17 +708,31 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                         <span>{semester.name}</span>
                       )}
                       {isEditing && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteSemester(semester.id);
-                          }}
-                          className="h-6 w-6 p-0 text-red-500 hover:text-red-600"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDuplicateSemester(semester.id);
+                            }}
+                            className="h-6 w-6 p-0 text-blue-500 hover:text-blue-600"
+                            title="Dupliquer ce semestre"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteSemester(semester.id);
+                            }}
+                            className="h-6 w-6 p-0 text-red-500 hover:text-red-600"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </TabsTrigger>

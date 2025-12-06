@@ -219,6 +219,59 @@ export const AcademicConfigManager: React.FC = () => {
     }
   };
 
+  const duplicateSemester = (semesterId: string) => {
+    if (!selectedConfigId) return;
+    const currentConfig = configs.find(cfg => cfg.id === selectedConfigId);
+    if (!currentConfig) return;
+
+    const semesterToDuplicate = currentConfig.semesters.find(sem => sem.id === semesterId);
+    if (!semesterToDuplicate) return;
+
+    // Fonction pour générer un nouvel ID unique
+    const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Dupliquer les ECs avec de nouveaux IDs
+    const duplicateECs = (ecs: EC[]): EC[] => {
+      return ecs.map(ec => ({
+        ...ec,
+        id: generateId(),
+      }));
+    };
+
+    // Dupliquer les UEs avec de nouveaux IDs
+    const duplicateUEs = (ues: UE[]): UE[] => {
+      return ues.map(ue => ({
+        ...ue,
+        id: generateId(),
+        ecs: duplicateECs(ue.ecs),
+      }));
+    };
+
+    // Créer le nouveau semestre dupliqué
+    const duplicatedSemester: Semester = {
+      ...semesterToDuplicate,
+      id: generateId(),
+      name: `${semesterToDuplicate.name} (Copie)`,
+      ues: duplicateUEs(semesterToDuplicate.ues),
+    };
+
+    // Ajouter le semestre dupliqué après le semestre original
+    setConfigs(
+      configs.map((cfg) => {
+        if (cfg.id !== selectedConfigId) return cfg;
+
+        const semesterIndex = cfg.semesters.findIndex(sem => sem.id === semesterId);
+        const newSemesters = [...cfg.semesters];
+        newSemesters.splice(semesterIndex + 1, 0, duplicatedSemester);
+
+        return {
+          ...cfg,
+          semesters: newSemesters,
+        };
+      })
+    );
+  };
+
   const addUE = (semesterId: string) => {
     if (!selectedConfigId) return;
     const newUE: UE = {
@@ -811,7 +864,7 @@ export const AcademicConfigManager: React.FC = () => {
 
                 {/* Détails de la configuration */}
                 <div className="xl:col-span-5">
-                  <ClassDetail 
+                  <ClassDetail
                     config={selectedConfig}
                     isEditing={isEditing}
                     onEdit={() => setIsEditing(true)}
@@ -820,6 +873,7 @@ export const AcademicConfigManager: React.FC = () => {
                     onAddSemester={addSemester}
                     onUpdateSemester={updateSemester}
                     onDeleteSemester={deleteSemester}
+                    onDuplicateSemester={duplicateSemester}
                     onAddUE={addUE}
                     onUpdateUE={updateUE}
                     onDeleteUE={deleteUE}

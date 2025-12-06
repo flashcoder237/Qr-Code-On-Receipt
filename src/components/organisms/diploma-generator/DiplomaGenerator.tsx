@@ -32,9 +32,13 @@ import { validateDiplomaList, DiplomaValidationResult } from './diploma-validato
 import { openDiplomaPreview } from '@/lib/diploma-generator/preview';
 import { generateDiplomaHTML } from '@/lib/diploma-generator/html-generator';
 import { FileUploader } from '../receipts/components/FileUploader';
+import { useDocumentHistory } from '../document-history/DocumentHistoryManager';
 
 export const DiplomaGenerator: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"generator" | "theme" | "manager">("generator");
+
+  // Hook pour l'historique des documents
+  const { addDocumentRecord } = useDocumentHistory();
 
   // Données Excel des étudiants
   const [excelData, setExcelData] = useState<DiplomaStudentRecord[]>([]);
@@ -235,6 +239,21 @@ export const DiplomaGenerator: React.FC = () => {
           const fileName = `${student.MATRICULE}_Diplome.pdf`;
           results.set(fileName, pdfBytes);
           successfulGenerations.push(student);
+
+          // Ajouter à l'historique des documents
+          addDocumentRecord({
+            type: 'diplome',
+            studentName: `${student.NOM} ${student.PRENOM}`,
+            studentMatricule: student.MATRICULE,
+            academicYear: student["ANNEE OBTENTION"] || 'N/D',
+            parcours: student.PARCOURS,
+            speciality: student.SPECIALITE,
+            average: parseFloat(String(student.MOYENNE || '0')),
+            grade: student.GRADE,
+            mention: student.MENTION,
+            fileName: fileName,
+            status: 'generated',
+          });
 
           console.log(`✅ Diplôme généré: ${student.NOM} ${student.PRENOM}`);
         } catch (err) {

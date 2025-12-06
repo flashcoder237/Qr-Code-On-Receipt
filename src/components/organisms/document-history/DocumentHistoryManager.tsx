@@ -96,7 +96,7 @@ const formatDateGroup = (date: Date, groupBy: string) => {
 
 export interface DocumentRecord {
   id: string;
-  type: 'releve' | 'attestation';
+  type: 'releve' | 'attestation' | 'diplome';
   studentName: string;
   studentMatricule: string;
   academicYear: string;
@@ -127,7 +127,7 @@ export const DocumentHistoryManager: React.FC = () => {
 
   // États pour les filtres et la recherche
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "releve" | "attestation">("all");
+  const [filterType, setFilterType] = useState<"all" | "releve" | "attestation" | "diplome">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "generated" | "downloaded" | "printed">("all");
   const [filterAcademicYear, setFilterAcademicYear] = useState<string>("all");
   const [filterStartDate, setFilterStartDate] = useState<string>("");
@@ -212,7 +212,8 @@ export const DocumentHistoryManager: React.FC = () => {
           groupKey = formatDateGroup(doc.generatedAt, dateGroupBy);
           break;
         case 'type':
-          groupKey = doc.type === 'releve' ? 'Relevés de notes' : 'Attestations de réussite';
+          groupKey = doc.type === 'releve' ? 'Relevés de notes' :
+                    doc.type === 'attestation' ? 'Attestations de réussite' : 'Diplômes';
           break;
         case 'student':
           groupKey = doc.studentName;
@@ -341,7 +342,7 @@ export const DocumentHistoryManager: React.FC = () => {
 
   // Fonctions utilitaires
   const getDocumentIcon = (type: string) => {
-    return type === 'releve' ? FileText : Award;
+    return type === 'releve' ? FileText : type === 'diplome' ? GraduationCap : Award;
   };
 
   const getStatusColor = (status: string) => {
@@ -370,19 +371,20 @@ export const DocumentHistoryManager: React.FC = () => {
     const total = documentHistory.length;
     const releves = documentHistory.filter(doc => doc.type === 'releve').length;
     const attestations = documentHistory.filter(doc => doc.type === 'attestation').length;
+    const diplomes = documentHistory.filter(doc => doc.type === 'diplome').length;
     const recent = documentHistory.filter(doc => {
       const daysDiff = (Date.now() - new Date(doc.generatedAt).getTime()) / (1000 * 60 * 60 * 24);
       return daysDiff <= 7;
     }).length;
-    
+
     const avgAverage = documentHistory
       .filter(doc => doc.average)
-      .reduce((sum, doc) => sum + (doc.average || 0), 0) / 
+      .reduce((sum, doc) => sum + (doc.average || 0), 0) /
       documentHistory.filter(doc => doc.average).length || 0;
 
     const uniqueStudents = new Set(documentHistory.map(doc => doc.studentMatricule)).size;
-    
-    return { total, releves, attestations, recent, avgAverage, uniqueStudents };
+
+    return { total, releves, attestations, diplomes, recent, avgAverage, uniqueStudents };
   }, [documentHistory]);
 
   return (
@@ -394,7 +396,7 @@ export const DocumentHistoryManager: React.FC = () => {
             <Clock className="h-5 w-5" />
             Historique des Documents
           </CardTitle>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mt-4">
             <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.total}</div>
               <div className="text-sm text-blue-600 dark:text-blue-400">Total</div>
@@ -406,6 +408,10 @@ export const DocumentHistoryManager: React.FC = () => {
             <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
               <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.attestations}</div>
               <div className="text-sm text-orange-600 dark:text-orange-400">Attestations</div>
+            </div>
+            <div className="text-center p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+              <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.diplomes}</div>
+              <div className="text-sm text-amber-600 dark:text-amber-400">Diplômes</div>
             </div>
             <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
               <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.recent}</div>
@@ -469,6 +475,7 @@ export const DocumentHistoryManager: React.FC = () => {
                   <SelectItem value="all">Tous types</SelectItem>
                   <SelectItem value="releve">Relevés</SelectItem>
                   <SelectItem value="attestation">Attestations</SelectItem>
+                  <SelectItem value="diplome">Diplômes</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -852,9 +859,9 @@ export const DocumentHistoryManager: React.FC = () => {
                 </div>
                 <div>
                   <Label className="font-medium text-sm text-gray-600">Matricule</Label>
-                  <p className="mt-1">
+                  <div className="mt-1">
                     <Badge variant="outline">{selectedRecord.studentMatricule}</Badge>
-                  </p>
+                  </div>
                 </div>
                 <div>
                   <Label className="font-medium text-sm text-gray-600">Année académique</Label>
@@ -863,11 +870,11 @@ export const DocumentHistoryManager: React.FC = () => {
                 {selectedRecord.average && (
                   <div>
                     <Label className="font-medium text-sm text-gray-600">Moyenne</Label>
-                    <p className="mt-1">
+                    <div className="mt-1">
                       <Badge variant={selectedRecord.average >= 10 ? "default" : "secondary"}>
                         {selectedRecord.average.toFixed(2)}/20
                       </Badge>
-                    </p>
+                    </div>
                   </div>
                 )}
                 {selectedRecord.level && (
@@ -897,17 +904,17 @@ export const DocumentHistoryManager: React.FC = () => {
                 {selectedRecord.grade && (
                   <div>
                     <Label className="font-medium text-sm text-gray-600">Grade</Label>
-                    <p className="mt-1">
+                    <div className="mt-1">
                       <Badge variant="outline">{selectedRecord.grade}</Badge>
-                    </p>
+                    </div>
                   </div>
                 )}
                 {selectedRecord.mention && (
                   <div>
                     <Label className="font-medium text-sm text-gray-600">Mention</Label>
-                    <p className="mt-1">
+                    <div className="mt-1">
                       <Badge variant="outline">{selectedRecord.mention}</Badge>
-                    </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -959,7 +966,7 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
   onDelete
 }) => {
   const getDocumentIcon = (type: string) => {
-    return type === 'releve' ? FileText : Award;
+    return type === 'releve' ? FileText : type === 'diplome' ? GraduationCap : Award;
   };
 
   const getStatusColor = (status: string) => {
@@ -1092,7 +1099,7 @@ const DocumentCards: React.FC<DocumentCardsProps> = ({
   onDelete
 }) => {
   const getDocumentIcon = (type: string) => {
-    return type === 'releve' ? FileText : Award;
+    return type === 'releve' ? FileText : type === 'diplome' ? GraduationCap : Award;
   };
 
   const getStatusColor = (status: string) => {
@@ -1165,9 +1172,9 @@ const DocumentCards: React.FC<DocumentCardsProps> = ({
                   <div className="space-y-2">
                     <div>
                       <p className="font-medium text-sm">{doc.studentName}</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                      <div className="text-xs text-gray-600 dark:text-gray-400">
                         <Badge variant="outline" className="text-xs">{doc.studentMatricule}</Badge>
-                      </p>
+                      </div>
                     </div>
                     <div className="text-xs text-gray-600 dark:text-gray-400">
                       <p>Année: {doc.academicYear}</p>
@@ -1230,19 +1237,20 @@ export const useDocumentHistory = () => {
     const total = documentHistory.length;
     const releves = documentHistory.filter(doc => doc.type === 'releve').length;
     const attestations = documentHistory.filter(doc => doc.type === 'attestation').length;
+    const diplomes = documentHistory.filter(doc => doc.type === 'diplome').length;
     const recent = documentHistory.filter(doc => {
       const daysDiff = (Date.now() - new Date(doc.generatedAt).getTime()) / (1000 * 60 * 60 * 24);
       return daysDiff <= 7;
     }).length;
-    
+
     const avgAverage = documentHistory
       .filter(doc => doc.average)
-      .reduce((sum, doc) => sum + (doc.average || 0), 0) / 
+      .reduce((sum, doc) => sum + (doc.average || 0), 0) /
       documentHistory.filter(doc => doc.average).length || 0;
 
     const uniqueStudents = new Set(documentHistory.map(doc => doc.studentMatricule)).size;
-    
-    return { total, releves, attestations, recent, avgAverage, uniqueStudents };
+
+    return { total, releves, attestations, diplomes, recent, avgAverage, uniqueStudents };
   };
 
   return {

@@ -61,4 +61,5 @@ export interface ClassConfig {
     columnMapping?: { [key: string]: string }; // Mapping des colonnes sauvegardé
     sessionMapping?: { [key: string]: string }; // Mapping des sessions sauvegardé
   }; // NOUVEAU: Mémorisation du dernier fichier Excel utilisé
+  isHidden?: boolean; // Pour masquer temporairement une configuration de la liste
 }
