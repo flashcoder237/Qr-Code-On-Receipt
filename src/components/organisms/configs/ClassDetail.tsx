@@ -26,6 +26,7 @@ import {
   Download,
   Upload,
   X,
+  GripVertical,
 } from "lucide-react";
 import { ClassConfig, Semester, UE, EC } from "./types";
 import { ECConfigEditor } from "./ECConfigEditor";
@@ -186,6 +187,52 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
 
     onUpdateSemester(semesterId, { ues: updatedUEs });
   }, [config, onUpdateSemester]);
+
+  // États pour le drag and drop des UEs
+  const [draggedUEIndex, setDraggedUEIndex] = useState<{ semesterId: string; index: number } | null>(null);
+  const [dragOverUEIndex, setDragOverUEIndex] = useState<{ semesterId: string; index: number } | null>(null);
+
+  // Gestionnaires pour le drag and drop natif des UEs
+  const handleUEDragStart = useCallback((semesterId: string, index: number) => {
+    setDraggedUEIndex({ semesterId, index });
+  }, []);
+
+  const handleUEDragOver = useCallback((e: React.DragEvent, semesterId: string, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverUEIndex({ semesterId, index });
+  }, []);
+
+  const handleUEDragLeave = useCallback(() => {
+    setDragOverUEIndex(null);
+  }, []);
+
+  const handleUEDrop = useCallback((semesterId: string, dropIndex: number) => {
+    if (!draggedUEIndex || draggedUEIndex.semesterId !== semesterId || !config) return;
+
+    const semester = config.semesters.find(s => s.id === semesterId);
+    if (!semester) return;
+
+    const sourceIndex = draggedUEIndex.index;
+    if (sourceIndex === dropIndex) return;
+
+    const reorderedUEs = moveItemInArray(semester.ues, sourceIndex, dropIndex);
+
+    // Mettre à jour les ordres
+    const updatedUEs = reorderedUEs.map((ue, index) => ({
+      ...ue,
+      order: index
+    }));
+
+    onUpdateSemester(semesterId, { ues: updatedUEs });
+    setDraggedUEIndex(null);
+    setDragOverUEIndex(null);
+  }, [draggedUEIndex, config, onUpdateSemester]);
+
+  const handleUEDragEnd = useCallback(() => {
+    setDraggedUEIndex(null);
+    setDragOverUEIndex(null);
+  }, []);
 
   // Initialize local state when config changes
   useEffect(() => {
@@ -883,27 +930,51 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                   </Card>
 
                   <AnimatePresence initial={false}>
-                    {semester.ues.map((ue) => (
-                      <motion.div
-                        key={ue.id}
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <Card>
-                          <CardHeader
-                            className="cursor-pointer hover:bg-gray-50 transition-colors"
-                            onClick={() => toggleUE(ue.id)}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                {expandedUEs.has(ue.id) ? (
-                                  <ChevronDown className="h-4 w-4" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4" />
-                                )}
-                                {isEditing ? (
+                    {semester.ues.map((ue, ueIndex) => {
+                      const isDraggingThis = draggedUEIndex?.semesterId === semester.id && draggedUEIndex?.index === ueIndex;
+                      const isDragOverThis = dragOverUEIndex?.semesterId === semester.id && dragOverUEIndex?.index === ueIndex;
+
+                      return (
+                        <motion.div
+                          key={ue.id}
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          draggable={isEditing}
+                          onDragStart={() => handleUEDragStart(semester.id, ueIndex)}
+                          onDragOver={(e) => handleUEDragOver(e, semester.id, ueIndex)}
+                          onDragLeave={handleUEDragLeave}
+                          onDrop={() => handleUEDrop(semester.id, ueIndex)}
+                          onDragEnd={handleUEDragEnd}
+                          className={`
+                            ${isDraggingThis ? 'opacity-50' : ''}
+                            ${isDragOverThis && !isDraggingThis ? 'border-t-4 border-blue-400' : ''}
+                          `}
+                        >
+                          <Card className={isDraggingThis ? 'shadow-2xl' : ''}>
+                            <CardHeader
+                              className="cursor-pointer hover:bg-gray-50 transition-colors"
+                              onClick={() => toggleUE(ue.id)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  {isEditing && (
+                                    <div
+                                      className="cursor-grab active:cursor-grabbing"
+                                      title="Glisser pour réorganiser"
+                                      onClick={(e) => e.stopPropagation()}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                    >
+                                      <GripVertical className="h-4 w-4 text-gray-400" />
+                                    </div>
+                                  )}
+                                  {expandedUEs.has(ue.id) ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                  )}
+                                  {isEditing ? (
                                   <div className="flex flex-col space-y-2 w-64">
                                     <Input
                                       value={ue.name}
@@ -1090,7 +1161,8 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                           </AnimatePresence>
                         </Card>
                       </motion.div>
-                    ))}
+                      );
+                    })}
                   </AnimatePresence>
                   {isEditing && (
                     <Button

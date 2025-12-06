@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "../../ui/card";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
-import { BookOpen, GraduationCap, Trash2, MoreVertical, Calendar, Users, Layers, Copy, ArrowUp, ArrowDown } from "lucide-react";
+import { BookOpen, GraduationCap, Trash2, MoreVertical, Calendar, Users, Layers, Copy, ArrowUp, ArrowDown, Eye, EyeOff, GripVertical } from "lucide-react";
 import { ScrollArea } from "../../ui/scroll-area";
 import { ClassConfig } from "./types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,6 +20,8 @@ interface ClassListProps {
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
+  onToggleHidden?: (id: string) => void;
+  onReorder?: (startIndex: number, endIndex: number) => void;
   onMoveUp?: (id: string) => void;
   onMoveDown?: (id: string) => void;
 }
@@ -30,10 +32,45 @@ export const ClassList: React.FC<ClassListProps> = ({
   onSelect,
   onDelete,
   onDuplicate,
+  onToggleHidden,
+  onReorder,
   onMoveUp,
   onMoveDown,
 }) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+
+    if (draggedIndex === null || draggedIndex === dropIndex || !onReorder) return;
+
+    onReorder(draggedIndex, dropIndex);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
 
   const getConfigStats = (config: ClassConfig) => {
     const totalSemesters = config.semesters.length;
@@ -87,7 +124,9 @@ export const ClassList: React.FC<ClassListProps> = ({
                   const stats = getConfigStats(config);
                   const isSelected = selectedConfigId === config.id;
                   const isHovered = hoveredId === config.id;
-                  
+                  const isDragging = draggedIndex === index;
+                  const isDragOver = dragOverIndex === index;
+
                   return (
                     <motion.div
                       key={config.id}
@@ -95,18 +134,25 @@ export const ClassList: React.FC<ClassListProps> = ({
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.2, delay: index * 0.05 }}
-                      whileHover={{ scale: 1.02 }}
                       className="relative"
+                      draggable={onReorder !== undefined}
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, index)}
+                      onDragEnd={handleDragEnd}
                       onMouseEnter={() => setHoveredId(config.id)}
                       onMouseLeave={() => setHoveredId(null)}
                     >
                       <div
                         className={`
                           relative p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
-                          ${isSelected 
-                            ? 'border-blue-500 bg-blue-50 shadow-md' 
-                            : isHovered 
-                              ? 'border-gray-300 bg-gray-50 shadow-sm' 
+                          ${isDragging ? 'opacity-50' : ''}
+                          ${isDragOver && !isDragging ? 'border-blue-400 border-t-4' : ''}
+                          ${isSelected
+                            ? 'border-blue-500 bg-blue-50 shadow-md'
+                            : isHovered
+                              ? 'border-gray-300 bg-gray-50 shadow-sm'
                               : 'border-gray-200 bg-white hover:border-gray-300'
                           }
                         `}
@@ -114,16 +160,27 @@ export const ClassList: React.FC<ClassListProps> = ({
                       >
                         {/* En-tête de la configuration */}
                         <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <BookOpen className={`h-4 w-4 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
-                              <h4 className={`font-semibold truncate ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
-                                {config.name.substring(0, 15)}...
-                              </h4>
+                          <div className="flex-1 min-w-0 flex items-start gap-2">
+                            {onReorder && (
+                              <div
+                                className="cursor-grab active:cursor-grabbing pt-1"
+                                title="Glisser pour réorganiser"
+                                onMouseDown={(e) => e.stopPropagation()}
+                              >
+                                <GripVertical className={`h-4 w-4 ${isSelected ? 'text-blue-600' : 'text-gray-400'}`} />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <BookOpen className={`h-4 w-4 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
+                                <h4 className={`font-semibold truncate ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
+                                  {config.name.substring(0, 15)}...
+                                </h4>
+                              </div>
+                              <p className={`text-xs truncate ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>
+                                {config.academicYear}
+                              </p>
                             </div>
-                            <p className={`text-xs truncate ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>
-                              {config.academicYear}
-                            </p>
                           </div>
                           
                           {/* Menu d'actions */}
@@ -163,6 +220,27 @@ export const ClassList: React.FC<ClassListProps> = ({
                                 >
                                   <ArrowDown className="h-4 w-4 mr-2" />
                                   Déplacer vers le bas
+                                </DropdownMenuItem>
+                              )}
+                              {onToggleHidden && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleHidden(config.id);
+                                  }}
+                                  className="text-amber-600 focus:text-amber-600"
+                                >
+                                  {config.isHidden ? (
+                                    <>
+                                      <Eye className="h-4 w-4 mr-2" />
+                                      Afficher
+                                    </>
+                                  ) : (
+                                    <>
+                                      <EyeOff className="h-4 w-4 mr-2" />
+                                      Masquer
+                                    </>
+                                  )}
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem

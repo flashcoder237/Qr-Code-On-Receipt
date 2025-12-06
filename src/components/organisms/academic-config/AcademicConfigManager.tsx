@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   PlusCircle, AlertCircle, Search, BookOpen,
   Users, Calendar, GraduationCap, ChevronRight,
-  BarChart3, TrendingUp, Database, Settings2
+  BarChart3, TrendingUp, Database, Settings2, Eye, EyeOff
 } from "lucide-react";
 import { ClassList } from "@/components/organisms/configs/ClassList";
 import { ClassDetail } from "@/components/organisms/configs/ClassDetail";
@@ -29,6 +29,7 @@ export const AcademicConfigManager: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filterBy, setFilterBy] = useState<"all" | "year" | "cycle">("all");
   const [activeTab, setActiveTab] = useState<"overview" | "configuration">("overview");
+  const [showHidden, setShowHidden] = useState<boolean>(false);
 
   const selectedConfig = configs.find((cfg) => cfg.id === selectedConfigId);
 
@@ -58,17 +59,20 @@ export const AcademicConfigManager: React.FC = () => {
   // Filtrage des configurations
   const filteredConfigs = useMemo(() => {
     return configs.filter(config => {
+      // Filtrer les configs masquées si showHidden est false
+      if (!showHidden && config.isHidden) return false;
+
       const matchesSearch = (config.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (config.academicYear || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (config.filiere || "").toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       if (filterBy === "all") return matchesSearch;
       if (filterBy === "year") return matchesSearch && config.academicYear === getDefaultAcademicYear();
       if (filterBy === "cycle") return matchesSearch && config.cycle;
-      
+
       return matchesSearch;
     });
-  }, [configs, searchTerm, filterBy]);
+  }, [configs, searchTerm, filterBy, showHidden]);
 
   const addNewConfig = () => {
     const defaultName = `Configuration ${configs.length + 1}`;
@@ -474,6 +478,37 @@ export const AcademicConfigManager: React.FC = () => {
     setTimeout(() => setSuccess(null), 3000);
   };
 
+  const toggleHidden = (configId: string) => {
+    setConfigs(
+      configs.map((cfg) =>
+        cfg.id === configId ? { ...cfg, isHidden: !cfg.isHidden } : cfg
+      )
+    );
+  };
+
+  const reorderConfigs = (startIndex: number, endIndex: number) => {
+    // Trouver les configs correspondantes dans filteredConfigs
+    const sourceConfig = filteredConfigs[startIndex];
+    const destinationConfig = filteredConfigs[endIndex];
+
+    if (!sourceConfig) return;
+
+    // Trouver leurs positions dans la liste complète configs
+    const sourceIndexInConfigs = configs.findIndex(c => c.id === sourceConfig.id);
+    const destinationIndexInConfigs = destinationConfig
+      ? configs.findIndex(c => c.id === destinationConfig.id)
+      : configs.length - 1;
+
+    if (sourceIndexInConfigs === -1) return;
+
+    // Réordonner dans la liste complète
+    const result = Array.from(configs);
+    const [removed] = result.splice(sourceIndexInConfigs, 1);
+    result.splice(destinationIndexInConfigs, 0, removed);
+
+    setConfigs(result);
+  };
+
   const handleImportConfigs = (importedConfigs: ClassConfig[]) => {
     const duplicates: string[] = [];
     importedConfigs.forEach(imported => {
@@ -833,6 +868,15 @@ export const AcademicConfigManager: React.FC = () => {
                       >
                         Avec cycle
                       </Button>
+                      <Button
+                        variant={showHidden ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setShowHidden(!showHidden)}
+                        title={showHidden ? "Masquer les configs cachées" : "Afficher les configs cachées"}
+                      >
+                        {showHidden ? <Eye className="h-4 w-4 mr-2" /> : <EyeOff className="h-4 w-4 mr-2" />}
+                        {showHidden ? "Cachées visibles" : "Cachées masquées"}
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -857,6 +901,8 @@ export const AcademicConfigManager: React.FC = () => {
                     onSelect={handleSelectConfig}
                     onDelete={deleteConfig}
                     onDuplicate={duplicateConfig}
+                    onToggleHidden={toggleHidden}
+                    onReorder={reorderConfigs}
                     onMoveUp={moveConfigUp}
                     onMoveDown={moveConfigDown}
                   />
