@@ -191,6 +191,7 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
   // États pour le drag and drop des UEs
   const [draggedUEIndex, setDraggedUEIndex] = useState<{ semesterId: string; index: number } | null>(null);
   const [dragOverUEIndex, setDragOverUEIndex] = useState<{ semesterId: string; index: number } | null>(null);
+  const [ueDropPosition, setUEDropPosition] = useState<'before' | 'after'>('after');
 
   // Gestionnaires pour le drag and drop natif des UEs
   const handleUEDragStart = useCallback((semesterId: string, index: number) => {
@@ -200,7 +201,14 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
   const handleUEDragOver = useCallback((e: React.DragEvent, semesterId: string, index: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+
+    // Calculer si on est dans la moitié supérieure ou inférieure
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    const position = e.clientY < midpoint ? 'before' : 'after';
+
     setDragOverUEIndex({ semesterId, index });
+    setUEDropPosition(position);
   }, []);
 
   const handleUEDragLeave = useCallback(() => {
@@ -214,20 +222,32 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
     if (!semester) return;
 
     const sourceIndex = draggedUEIndex.index;
-    if (sourceIndex === dropIndex) return;
 
-    const reorderedUEs = moveItemInArray(semester.ues, sourceIndex, dropIndex);
+    // Calculer l'index final basé sur la position de drop
+    let finalIndex = dropIndex;
+    if (ueDropPosition === 'after' && dropIndex >= sourceIndex) {
+      finalIndex = dropIndex;
+    } else if (ueDropPosition === 'before' && dropIndex <= sourceIndex) {
+      finalIndex = dropIndex;
+    } else if (ueDropPosition === 'after') {
+      finalIndex = dropIndex + 1;
+    }
 
-    // Mettre à jour les ordres
-    const updatedUEs = reorderedUEs.map((ue, index) => ({
-      ...ue,
-      order: index
-    }));
+    if (sourceIndex !== finalIndex && sourceIndex !== finalIndex - 1) {
+      const reorderedUEs = moveItemInArray(semester.ues, sourceIndex, finalIndex > sourceIndex ? finalIndex - 1 : finalIndex);
 
-    onUpdateSemester(semesterId, { ues: updatedUEs });
+      // Mettre à jour les ordres
+      const updatedUEs = reorderedUEs.map((ue, index) => ({
+        ...ue,
+        order: index
+      }));
+
+      onUpdateSemester(semesterId, { ues: updatedUEs });
+    }
+
     setDraggedUEIndex(null);
     setDragOverUEIndex(null);
-  }, [draggedUEIndex, config, onUpdateSemester]);
+  }, [draggedUEIndex, ueDropPosition, config, onUpdateSemester]);
 
   const handleUEDragEnd = useCallback(() => {
     setDraggedUEIndex(null);
@@ -947,12 +967,21 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                           onDragLeave={handleUEDragLeave}
                           onDrop={() => handleUEDrop(semester.id, ueIndex)}
                           onDragEnd={handleUEDragEnd}
-                          className={`
-                            ${isDraggingThis ? 'opacity-50' : ''}
-                            ${isDragOverThis && !isDraggingThis ? 'border-t-4 border-blue-400' : ''}
-                          `}
+                          className="relative"
+                          style={{
+                            marginTop: isDragOverThis && ueDropPosition === 'before' && !isDraggingThis ? '40px' : '0',
+                            marginBottom: isDragOverThis && ueDropPosition === 'after' && !isDraggingThis ? '40px' : '0',
+                            transition: 'margin 0.2s ease',
+                          }}
                         >
-                          <Card className={isDraggingThis ? 'shadow-2xl' : ''}>
+                          {/* Indicateur de drop - ligne avant */}
+                          {isDragOverThis && ueDropPosition === 'before' && !isDraggingThis && (
+                            <div className="absolute -top-5 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg z-10">
+                              <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-4 h-4 bg-blue-500 rounded-full" />
+                            </div>
+                          )}
+
+                          <Card className={`transition-all ${isDraggingThis ? 'opacity-50 scale-95' : ''}`}>
                             <CardHeader
                               className="cursor-pointer hover:bg-gray-50 transition-colors"
                               onClick={() => toggleUE(ue.id)}
@@ -1160,6 +1189,13 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                             )}
                           </AnimatePresence>
                         </Card>
+
+                        {/* Indicateur de drop - ligne après */}
+                        {isDragOverThis && ueDropPosition === 'after' && !isDraggingThis && (
+                          <div className="absolute -bottom-5 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg z-10">
+                            <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-4 h-4 bg-blue-500 rounded-full" />
+                          </div>
+                        )}
                       </motion.div>
                       );
                     })}

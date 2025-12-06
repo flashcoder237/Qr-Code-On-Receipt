@@ -40,6 +40,7 @@ export const ClassList: React.FC<ClassListProps> = ({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
@@ -50,7 +51,14 @@ export const ClassList: React.FC<ClassListProps> = ({
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+
+    // Calculer si on est dans la moitié supérieure ou inférieure
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    const position = e.clientY < midpoint ? 'before' : 'after';
+
     setDragOverIndex(index);
+    setDropPosition(position);
   };
 
   const handleDragLeave = () => {
@@ -60,9 +68,22 @@ export const ClassList: React.FC<ClassListProps> = ({
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
 
-    if (draggedIndex === null || draggedIndex === dropIndex || !onReorder) return;
+    if (draggedIndex === null || !onReorder) return;
 
-    onReorder(draggedIndex, dropIndex);
+    // Calculer l'index final basé sur la position de drop
+    let finalIndex = dropIndex;
+    if (dropPosition === 'after' && dropIndex >= draggedIndex) {
+      finalIndex = dropIndex;
+    } else if (dropPosition === 'before' && dropIndex <= draggedIndex) {
+      finalIndex = dropIndex;
+    } else if (dropPosition === 'after') {
+      finalIndex = dropIndex + 1;
+    }
+
+    if (draggedIndex !== finalIndex && draggedIndex !== finalIndex - 1) {
+      onReorder(draggedIndex, finalIndex > draggedIndex ? finalIndex - 1 : finalIndex);
+    }
+
     setDraggedIndex(null);
     setDragOverIndex(null);
   };
@@ -143,12 +164,23 @@ export const ClassList: React.FC<ClassListProps> = ({
                       onDragEnd={handleDragEnd}
                       onMouseEnter={() => setHoveredId(config.id)}
                       onMouseLeave={() => setHoveredId(null)}
+                      style={{
+                        marginTop: isDragOver && dropPosition === 'before' && !isDragging ? '40px' : '0',
+                        marginBottom: isDragOver && dropPosition === 'after' && !isDragging ? '40px' : '0',
+                        transition: 'margin 0.2s ease',
+                      }}
                     >
+                      {/* Indicateur de drop - ligne avant */}
+                      {isDragOver && dropPosition === 'before' && !isDragging && (
+                        <div className="absolute -top-5 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg z-10">
+                          <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-4 h-4 bg-blue-500 rounded-full" />
+                        </div>
+                      )}
+
                       <div
                         className={`
                           relative p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
-                          ${isDragging ? 'opacity-50' : ''}
-                          ${isDragOver && !isDragging ? 'border-blue-400 border-t-4' : ''}
+                          ${isDragging ? 'opacity-50 scale-95' : ''}
                           ${isSelected
                             ? 'border-blue-500 bg-blue-50 shadow-md'
                             : isHovered
@@ -326,6 +358,13 @@ export const ClassList: React.FC<ClassListProps> = ({
                           />
                         )}
                       </div>
+
+                      {/* Indicateur de drop - ligne après */}
+                      {isDragOver && dropPosition === 'after' && !isDragging && (
+                        <div className="absolute -bottom-5 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg z-10">
+                          <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-4 h-4 bg-blue-500 rounded-full" />
+                        </div>
+                      )}
                     </motion.div>
                   );
                 })}
