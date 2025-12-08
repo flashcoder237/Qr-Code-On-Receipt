@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "../../ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { ScrollArea } from "../../ui/scroll-area";
 import { Badge } from "../../ui/badge";
+import { Switch } from "../../ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../ui/dialog";
 import {
   PlusCircle,
@@ -29,6 +30,8 @@ import {
   X,
   GripVertical,
   Layers,
+  Move,
+  
 } from "lucide-react";
 import { ClassConfig, Semester, UE, EC } from "./types";
 import { ECConfigEditor } from "./ECConfigEditor";
@@ -120,6 +123,9 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
   const [selectedSemestersForComposite, setSelectedSemestersForComposite] = useState<string[]>([]);
   const [compositeName, setCompositeName] = useState<string>("");
   const [compositeEquivalentMulti, setCompositeEquivalentMulti] = useState<string>("");
+
+  // NOUVEAU: État pour activer/désactiver la réorganisation des UEs
+  const [ueReorderEnabled, setUeReorderEnabled] = useState<boolean>(false);
 
   // Fonction pour déplacer une UE vers le haut
   const moveUEUp = useCallback((semesterId: string, ueId: string) => {
@@ -828,6 +834,21 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                 )}
               </div>
 
+              {/* NOUVEAU: Toggle pour activer/désactiver la réorganisation des UEs */}
+              {isEditing && config.semesters.length > 0 && (
+                <div className="flex items-center gap-2 mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <Move className={`h-4 w-4 ${ueReorderEnabled ? 'text-blue-600' : 'text-gray-400'}`} />
+                  <Label htmlFor="ue-reorder-toggle" className="text-sm cursor-pointer flex-1">
+                    Réorganisation des UEs
+                  </Label>
+                  <Switch
+                    id="ue-reorder-toggle"
+                    checked={ueReorderEnabled}
+                    onCheckedChange={setUeReorderEnabled}
+                  />
+                </div>
+              )}
+
               {config.semesters.length === 0 && (
                 <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                   <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -1087,7 +1108,7 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                             >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2">
-                                  {isEditing && (
+                                  {isEditing && ueReorderEnabled && (
                                     <div
                                       className="cursor-grab active:cursor-grabbing"
                                       title="Glisser pour réorganiser"
@@ -1135,7 +1156,7 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                               </div>
                               <div className="flex items-center space-x-2">
                                 {/* Actions de réorganisation */}
-                                {isEditing && semester.ues.length > 1 && (
+                                {isEditing && ueReorderEnabled && semester.ues.length > 1 && (
                                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                     <Button
                                       variant="ghost"

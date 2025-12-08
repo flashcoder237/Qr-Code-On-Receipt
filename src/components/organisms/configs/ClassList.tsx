@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "../../ui/card";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
-import { BookOpen, GraduationCap, Trash2, MoreVertical, Calendar, Users, Layers, Copy, ArrowUp, ArrowDown, Eye, EyeOff, GripVertical } from "lucide-react";
+import { BookOpen, GraduationCap, Trash2, MoreVertical, Calendar, Users, Layers, Copy, ArrowUp, ArrowDown, Eye, EyeOff, GripVertical, Move } from "lucide-react";
 import { ScrollArea } from "../../ui/scroll-area";
 import { ClassConfig } from "./types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,6 +13,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
+import { Switch } from "../../ui/switch";
+import { Label } from "../../ui/label";
 
 interface ClassListProps {
   configs: ClassConfig[];
@@ -41,6 +43,8 @@ export const ClassList: React.FC<ClassListProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
+  // NOUVEAU: État pour activer/désactiver le drag and drop
+  const [dragEnabled, setDragEnabled] = useState<boolean>(false);
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
@@ -123,6 +127,20 @@ export const ClassList: React.FC<ClassListProps> = ({
             {configs.length}
           </Badge>
         </CardTitle>
+        {/* NOUVEAU: Toggle pour activer/désactiver le drag and drop */}
+        {onReorder && (
+          <div className="flex items-center gap-2 mt-3 p-2 bg-white rounded-lg border border-blue-200">
+            <Move className={`h-4 w-4 ${dragEnabled ? 'text-blue-600' : 'text-gray-400'}`} />
+            <Label htmlFor="drag-toggle" className="text-sm cursor-pointer flex-1">
+              Réorganisation par glisser-déposer
+            </Label>
+            <Switch
+              id="drag-toggle"
+              checked={dragEnabled}
+              onCheckedChange={setDragEnabled}
+            />
+          </div>
+        )}
       </CardHeader>
       <CardContent className="p-0">
         <ScrollArea className="h-[calc(100vh)]">
@@ -156,7 +174,7 @@ export const ClassList: React.FC<ClassListProps> = ({
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.2, delay: index * 0.05 }}
                       className="relative mb-3"
-                      draggable={onReorder !== undefined}
+                      draggable={dragEnabled && onReorder !== undefined}
                       onDragStart={(e) => handleDragStart(e, index)}
                       onDragOver={(e) => handleDragOver(e, index)}
                       onDragLeave={handleDragLeave}
@@ -205,7 +223,7 @@ export const ClassList: React.FC<ClassListProps> = ({
 
                         {/* En-tête de la configuration */}
                         <div className="flex items-center gap-1.5">
-                          {onReorder && (
+                          {onReorder && dragEnabled && (
                             <div
                               className="cursor-grab active:cursor-grabbing flex-shrink-0"
                               title="Glisser pour réorganiser"

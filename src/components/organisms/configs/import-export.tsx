@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Upload, FileDown } from "lucide-react";
+import { Download, Upload, FileDown, FileJson } from "lucide-react";
 import ExcelJS from 'exceljs';
 import { ClassConfig, Semester, UE, EC } from "@/components/organisms/configs/types";
 import { useToast } from "@/hooks/use-toast";
@@ -1282,6 +1282,75 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // NOUVEAU: Export JSON
+  const handleExportJSON = () => {
+    try {
+      const exportData = {
+        version: "1.0",
+        exportDate: new Date().toISOString(),
+        configCount: configs.length,
+        configs: configs
+      };
+
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      const timestamp = new Date().toISOString().split('T')[0];
+      link.download = `configurations_${timestamp}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success("Export réussi", `${configs.length} configuration(s) exportée(s) en JSON`);
+    } catch (error) {
+      console.error("Erreur lors de l'export JSON:", error);
+      toast.error("Erreur", "Impossible d'exporter les configurations en JSON");
+    }
+  };
+
+  // NOUVEAU: Import JSON
+  const jsonInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleImportJSON = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      // Validation basique
+      if (!data.configs || !Array.isArray(data.configs)) {
+        toast.error("Format invalide", "Le fichier JSON ne contient pas de configurations valides");
+        return;
+      }
+
+      // Valider chaque configuration
+      const validConfigs = data.configs.filter((config: any) => {
+        return config.id && config.name && config.academicYear && Array.isArray(config.semesters);
+      });
+
+      if (validConfigs.length === 0) {
+        toast.error("Aucune configuration valide", "Le fichier ne contient aucune configuration valide");
+        return;
+      }
+
+      // Importer les configurations
+      onImport(validConfigs);
+      toast.success("Import réussi", `${validConfigs.length} configuration(s) importée(s) depuis JSON`);
+
+      // Réinitialiser l'input
+      if (jsonInputRef.current) jsonInputRef.current.value = "";
+    } catch (error) {
+      console.error("Erreur lors de l'import JSON:", error);
+      toast.error("Erreur", "Impossible d'importer le fichier JSON - Format invalide");
+    }
+  };
+
   // Fonctions utilitaires optimisées
   const flattenConfig = (config: ClassConfig) => {
     const result: any[] = [];
@@ -1448,6 +1517,7 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
       <ToastContainer toasts={toasts} onClose={removeToast} position="top-right" />
       <div className="space-y-4">
         <div className="flex gap-2 flex-wrap">
+          {/* Boutons Excel */}
           <Button
             variant="outline"
             size="sm"
@@ -1456,7 +1526,7 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
             title="Exporter toutes les configurations vers Excel avec styles avancés"
           >
             <Download className="h-4 w-4 mr-2" />
-            Exporter
+            Exporter Excel
           </Button>
 
           <Button
@@ -1479,13 +1549,47 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
               title="Charger un fichier Excel"
             >
               <Upload className="h-4 w-4 mr-2" />
-              {loadedWorkbook ? "Changer de fichier" : "Charger un fichier"}
+              {loadedWorkbook ? "Changer de fichier" : "Importer Excel"}
             </Button>
             <input
               ref={fileInputRef}
               type="file"
               accept=".xlsx,.xls"
               onChange={handleFileLoad}
+              className="hidden"
+            />
+          </div>
+
+          {/* NOUVEAU: Boutons JSON */}
+          <div className="w-px h-8 bg-gray-300 self-center" />
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportJSON}
+            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 whitespace-nowrap transition-colors duration-200"
+            title="Exporter toutes les configurations en JSON"
+          >
+            <FileJson className="h-4 w-4 mr-2" />
+            Exporter JSON
+          </Button>
+
+          <div className="relative">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => jsonInputRef.current?.click()}
+              className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 whitespace-nowrap transition-colors duration-200"
+              title="Importer des configurations depuis JSON"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Importer JSON
+            </Button>
+            <input
+              ref={jsonInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleImportJSON}
               className="hidden"
             />
           </div>
