@@ -139,7 +139,7 @@ export const ClassList: React.FC<ClassListProps> = ({
               </p>
             </motion.div>
           ) : (
-            <div className="p-2 space-y-2 w-full">
+            <div className="p-2 space-y-0 w-full">
               <AnimatePresence initial={false}>
                 {configs.map((config, index) => {
                   const stats = getConfigStats(config);
@@ -155,7 +155,7 @@ export const ClassList: React.FC<ClassListProps> = ({
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.2, delay: index * 0.05 }}
-                      className="relative"
+                      className="relative mb-3"
                       draggable={onReorder !== undefined}
                       onDragStart={(e) => handleDragStart(e, index)}
                       onDragOver={(e) => handleDragOver(e, index)}
@@ -166,7 +166,7 @@ export const ClassList: React.FC<ClassListProps> = ({
                       onMouseLeave={() => setHoveredId(null)}
                       style={{
                         marginTop: isDragOver && dropPosition === 'before' && !isDragging ? '40px' : '0',
-                        marginBottom: isDragOver && dropPosition === 'after' && !isDragging ? '40px' : '0',
+                        marginBottom: isDragOver && dropPosition === 'after' && !isDragging ? '40px' : index < configs.length - 1 ? '12px' : '0',
                         transition: 'margin 0.2s ease',
                       }}
                     >
@@ -179,39 +179,52 @@ export const ClassList: React.FC<ClassListProps> = ({
 
                       <div
                         className={`
-                          relative p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
+                          relative p-2 rounded-md border transition-all duration-200
                           ${isDragging ? 'opacity-50 scale-95' : ''}
-                          ${isSelected
+                          ${config.isHidden ? 'bg-amber-50/50 border-amber-200' : ''}
+                          ${isSelected && !config.isHidden
                             ? 'border-blue-500 bg-blue-50 shadow-md'
-                            : isHovered
+                            : isHovered && !config.isHidden
                               ? 'border-gray-300 bg-gray-50 shadow-sm'
-                              : 'border-gray-200 bg-white hover:border-gray-300'
+                              : !config.isHidden
+                                ? 'border-gray-200 bg-white hover:border-gray-300'
+                                : ''
                           }
                         `}
                         onClick={() => onSelect(config.id)}
                       >
+                        {/* Indicateur de config masquée */}
+                        {config.isHidden && (
+                          <div className="absolute top-1 right-1 z-10">
+                            <Badge variant="outline" className="text-xs py-0 px-1.5 bg-amber-100 text-amber-700 border-amber-300">
+                              <EyeOff className="h-3 w-3 mr-1" />
+                              Masqué
+                            </Badge>
+                          </div>
+                        )}
+
                         {/* En-tête de la configuration */}
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1 min-w-0 flex items-start gap-2">
-                            {onReorder && (
-                              <div
-                                className="cursor-grab active:cursor-grabbing pt-1"
-                                title="Glisser pour réorganiser"
-                                onMouseDown={(e) => e.stopPropagation()}
-                              >
-                                <GripVertical className={`h-4 w-4 ${isSelected ? 'text-blue-600' : 'text-gray-400'}`} />
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <BookOpen className={`h-4 w-4 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
-                                <h4 className={`font-semibold truncate ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
-                                  {config.name.substring(0, 15)}...
+                        <div className="flex items-center gap-1.5">
+                          {onReorder && (
+                            <div
+                              className="cursor-grab active:cursor-grabbing flex-shrink-0"
+                              title="Glisser pour réorganiser"
+                              onMouseDown={(e) => e.stopPropagation()}
+                            >
+                              <GripVertical className={`h-3.5 w-3.5 ${isSelected ? 'text-blue-600' : 'text-gray-400'}`} />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <BookOpen className={`h-3.5 w-3.5 flex-shrink-0 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
+                              <div className="flex-1 min-w-0">
+                                <h4 className={`text-sm font-medium truncate ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
+                                  {config.name}
                                 </h4>
+                                <p className={`text-xs truncate ${isSelected ? 'text-blue-600' : 'text-gray-500'}`}>
+                                  {config.academicYear}
+                                </p>
                               </div>
-                              <p className={`text-xs truncate ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>
-                                {config.academicYear}
-                              </p>
                             </div>
                           </div>
                           
@@ -221,12 +234,12 @@ export const ClassList: React.FC<ClassListProps> = ({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className={`h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity ${
+                                className={`h-6 w-6 p-0 flex-shrink-0 opacity-0 transition-opacity ${
                                   isHovered || isSelected ? 'opacity-100' : ''
                                 }`}
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <MoreVertical className="h-4 w-4" />
+                                <MoreVertical className="h-3.5 w-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -299,63 +312,41 @@ export const ClassList: React.FC<ClassListProps> = ({
                           </DropdownMenu>
                         </div>
 
-                        {/* Badges informatifs */}
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {config.filiere && (
-                            <Badge variant="outline" className="text-xs">
-                              {config.filiere}
-                            </Badge>
-                          )}
-                          {config.cycle && (
-                            <Badge className={`text-xs ${getCycleColor(config.cycle)} border-0`}>
-                              {config.cycle}
-                            </Badge>
-                          )}
-                          {config.niveau && (
-                            <Badge variant="secondary" className="text-xs">
-                              Niv. {config.niveau}
-                            </Badge>
-                          )}
-                        </div>
+                        {/* Badges et statistiques condensés */}
+                        <div className="flex items-center justify-between gap-2 mt-1.5 pt-1.5 border-t border-gray-100">
+                          <div className="flex flex-wrap gap-1">
+                            {config.cycle && (
+                              <Badge className={`text-[10px] py-0 px-1.5 ${getCycleColor(config.cycle)} border-0`}>
+                                {config.cycle}
+                              </Badge>
+                            )}
+                            {config.niveau && (
+                              <Badge variant="secondary" className="text-[10px] py-0 px-1.5">
+                                N{config.niveau}
+                              </Badge>
+                            )}
+                          </div>
 
-                        {/* Statistiques rapides */}
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          <div className={`text-center p-2 rounded ${isSelected ? 'bg-blue-100' : 'bg-gray-50'}`}>
-                            <Calendar className={`inline-block mr-2 h-3 w-3 mx-auto mb-1 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
-                            <span className={`mr-1 font-medium ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
+                          {/* Statistiques inline compactes */}
+                          <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                            <span className="flex items-center gap-0.5">
+                              <Calendar className="h-2.5 w-2.5" />
                               {stats.totalSemesters}
                             </span>
-                            <span className={`${isSelected ? 'text-blue-700' : 'text-gray-500'}`}>
-                              Sem.
-                            </span>
-                          </div>
-                          <div className={`text-center p-2 rounded ${isSelected ? 'bg-blue-100' : 'bg-gray-50'}`}>
-                            <Layers className={`inline-block mr-2 h-3 w-3 mx-auto mb-1 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
-                            <span className={`mr-1 font-medium ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
+                            <span className="flex items-center gap-0.5">
+                              <Layers className="h-2.5 w-2.5" />
                               {stats.totalUEs}
                             </span>
-                            <span className={`${isSelected ? 'text-blue-700' : 'text-gray-500'}`}>
-                              UEs
-                            </span>
-                          </div>
-                          <div className={`text-center p-2 rounded ${isSelected ? 'bg-blue-100' : 'bg-gray-50'}`}>
-                            <Users className={`inline-block mr-2 h-3 w-3 mx-auto mb-1 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
-                            <span className={`mr-1 font-medium ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
+                            <span className="flex items-center gap-0.5">
+                              <Users className="h-2.5 w-2.5" />
                               {stats.totalECs}
-                            </span>
-                            <span className={`${isSelected ? 'text-blue-700' : 'text-gray-500'}`}>
-                              ECs
                             </span>
                           </div>
                         </div>
 
                         {/* Indicateur de sélection */}
                         {isSelected && (
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: '100%' }}
-                            className="absolute bottom-0 left-0 h-1 bg-blue-500 rounded-b-lg"
-                          />
+                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-l-md" />
                         )}
                       </div>
 

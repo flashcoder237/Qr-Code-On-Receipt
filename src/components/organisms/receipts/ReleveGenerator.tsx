@@ -114,13 +114,16 @@ export const ReleveGenerator: React.FC = () => {
   });
 
   // Load configurations from localStorage only once during component mount
+  // MODIFIÉ: Filtrer les configurations masquées
   useEffect(() => {
     if (!configsLoaded) {
       try {
         const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (stored) {
           const parsedConfigs = JSON.parse(stored);
-          setConfigs(parsedConfigs);
+          // Filtrer les configurations masquées (isHidden: true)
+          const visibleConfigs = parsedConfigs.filter((config: any) => !config.isHidden);
+          setConfigs(visibleConfigs);
         }
         setConfigsLoaded(true);
       } catch (error) {
@@ -138,12 +141,15 @@ export const ReleveGenerator: React.FC = () => {
   }, [previewContentUrl]);
 
   // Listen to localStorage changes
+  // MODIFIÉ: Filtrer les configurations masquées lors des changements
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === LOCAL_STORAGE_KEY) {
         try {
           const parsedConfigs = JSON.parse(e.newValue);
-          setConfigs(parsedConfigs);
+          // Filtrer les configurations masquées (isHidden: true)
+          const visibleConfigs = parsedConfigs.filter((config: any) => !config.isHidden);
+          setConfigs(visibleConfigs);
         } catch (error) {
           console.error("Erreur lors du traitement des nouvelles configurations:", error);
           notifyError("Erreur", "Erreur lors de la mise à jour des configurations");

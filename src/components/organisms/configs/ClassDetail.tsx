@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
-import { Alert } from "../../ui/alert";
+import { Label } from "../../ui/label";
+import { Alert, AlertDescription } from "../../ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { ScrollArea } from "../../ui/scroll-area";
 import { Badge } from "../../ui/badge";
@@ -27,6 +28,7 @@ import {
   Upload,
   X,
   GripVertical,
+  Layers,
 } from "lucide-react";
 import { ClassConfig, Semester, UE, EC } from "./types";
 import { ECConfigEditor } from "./ECConfigEditor";
@@ -45,6 +47,8 @@ interface ClassDetailProps {
   onUpdateSemester: (id: string, updated: Partial<Semester>) => void;
   onDeleteSemester: (id: string) => void;
   onDuplicateSemester: (id: string) => void;
+  onConvertToComposite: (semesterId: string, compositeEquivalent: number) => void;
+  onCreateCompositeFromSemesters: (semesterIds: string[], name: string, compositeEquivalent?: number) => void;
   onAddUE: (semesterId: string) => void;
   onUpdateUE: (semesterId: string, ueId: string, updated: Partial<UE>) => void;
   onDeleteUE: (semesterId: string, ueId: string) => void;
@@ -77,6 +81,8 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
   onUpdateSemester,
   onDeleteSemester,
   onDuplicateSemester,
+  onConvertToComposite,
+  onCreateCompositeFromSemesters,
   onAddUE,
   onUpdateUE,
   onDeleteUE,
@@ -103,6 +109,17 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
   const [selectedSemesterForTheme, setSelectedSemesterForTheme] = useState<string | null>(null);
   const [semesterThemeSettings, setSemesterThemeSettings] = useState<any>(null);
   const [expandedSemesterThemes, setExpandedSemesterThemes] = useState<Set<string>>(new Set());
+
+  // NOUVEAU: États pour la conversion en semestre composite
+  const [showConvertDialog, setShowConvertDialog] = useState(false);
+  const [semesterToConvert, setSemesterToConvert] = useState<string | null>(null);
+  const [compositeEquivalent, setCompositeEquivalent] = useState<string>("2");
+
+  // NOUVEAU: États pour la création de composite à partir de semestres
+  const [showCreateCompositeDialog, setShowCreateCompositeDialog] = useState(false);
+  const [selectedSemestersForComposite, setSelectedSemestersForComposite] = useState<string[]>([]);
+  const [compositeName, setCompositeName] = useState<string>("");
+  const [compositeEquivalentMulti, setCompositeEquivalentMulti] = useState<string>("");
 
   // Fonction pour déplacer une UE vers le haut
   const moveUEUp = useCallback((semesterId: string, ueId: string) => {
@@ -328,6 +345,63 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
       }
       return newSet;
     });
+  };
+
+  // NOUVEAU: Fonction pour ouvrir le dialogue de conversion en composite
+  const openConvertDialog = (semesterId: string) => {
+    const semester = config?.semesters.find(s => s.id === semesterId);
+    if (semester?.isComposite) {
+      toast.error("Erreur", "Ce semestre est déjà un semestre composite");
+      return;
+    }
+    setSemesterToConvert(semesterId);
+    setCompositeEquivalent("2");
+    setShowConvertDialog(true);
+  };
+
+  // NOUVEAU: Fonction pour convertir un semestre en composite
+  const handleConvertToComposite = () => {
+    if (!semesterToConvert) return;
+    const equivalent = parseInt(compositeEquivalent) || 2;
+    onConvertToComposite(semesterToConvert, equivalent);
+    setShowConvertDialog(false);
+    setSemesterToConvert(null);
+  };
+
+  // NOUVEAU: Fonction pour ouvrir le dialogue de création de composite
+  const openCreateCompositeDialog = () => {
+    if (!config || config.semesters.length < 2) {
+      toast.error("Erreur", "Vous devez avoir au moins 2 semestres pour créer un composite");
+      return;
+    }
+    setSelectedSemestersForComposite([]);
+    setCompositeName("");
+    setCompositeEquivalentMulti("");
+    setShowCreateCompositeDialog(true);
+  };
+
+  // NOUVEAU: Fonction pour basculer la sélection d'un semestre
+  const toggleSemesterSelection = (semesterId: string) => {
+    setSelectedSemestersForComposite(prev =>
+      prev.includes(semesterId)
+        ? prev.filter(id => id !== semesterId)
+        : [...prev, semesterId]
+    );
+  };
+
+  // NOUVEAU: Fonction pour créer un composite à partir de semestres
+  const handleCreateComposite = () => {
+    if (selectedSemestersForComposite.length < 2) {
+      toast.error("Erreur", "Veuillez sélectionner au moins 2 semestres");
+      return;
+    }
+    if (!compositeName.trim()) {
+      toast.error("Erreur", "Veuillez entrer un nom pour le semestre composite");
+      return;
+    }
+    const equivalent = compositeEquivalentMulti ? parseInt(compositeEquivalentMulti) : undefined;
+    onCreateCompositeFromSemesters(selectedSemestersForComposite, compositeName, equivalent);
+    setShowCreateCompositeDialog(false);
   };
 
   // Fonctions de gestion du thème par semestre
@@ -741,6 +815,17 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                     Ajouter un semestre
                   </Button>
                 )}
+                {isEditing && config.semesters.length >= 2 && (
+                  <Button
+                    onClick={openCreateCompositeDialog}
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                  >
+                    <Layers className="mr-2 h-4 w-4" />
+                    Créer composite depuis semestres
+                  </Button>
+                )}
               </div>
 
               {config.semesters.length === 0 && (
@@ -776,6 +861,20 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                       )}
                       {isEditing && (
                         <>
+                          {!semester.isComposite && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openConvertDialog(semester.id);
+                              }}
+                              className="h-6 w-6 p-0 text-amber-500 hover:text-amber-600"
+                              title="Convertir en semestre composite"
+                            >
+                              <Layers className="h-3 w-3" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -967,10 +1066,10 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                           onDragLeave={handleUEDragLeave}
                           onDrop={() => handleUEDrop(semester.id, ueIndex)}
                           onDragEnd={handleUEDragEnd}
-                          className="relative"
+                          className="relative mb-3"
                           style={{
                             marginTop: isDragOverThis && ueDropPosition === 'before' && !isDraggingThis ? '40px' : '0',
-                            marginBottom: isDragOverThis && ueDropPosition === 'after' && !isDraggingThis ? '40px' : '0',
+                            marginBottom: isDragOverThis && ueDropPosition === 'after' && !isDraggingThis ? '40px' : ueIndex < semester.ues.length - 1 ? '12px' : '0',
                             transition: 'margin 0.2s ease',
                           }}
                         >
@@ -1262,6 +1361,165 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
           </DialogContent>
         </Dialog>
       )}
+
+      {/* NOUVEAU: Dialog de conversion en semestre composite */}
+      <Dialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-amber-600" />
+              Convertir en semestre composite
+            </DialogTitle>
+            <DialogDescription>
+              Convertir ce semestre en semestre composite qui représente plusieurs semestres académiques
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Alert className="bg-amber-50 border-amber-200">
+              <Layers className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800 text-sm">
+                La conversion préservera toutes les UEs et ECs existantes. Le semestre sera marqué comme composite et pourra afficher des séparations entre les semestres.
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-2">
+              <label htmlFor="equivalent" className="text-sm font-medium">
+                Équivaut à combien de semestres ?
+              </label>
+              <Input
+                id="equivalent"
+                type="number"
+                value={compositeEquivalent}
+                onChange={(e) => setCompositeEquivalent(e.target.value)}
+                min="1"
+                max="4"
+                placeholder="2"
+              />
+              <p className="text-xs text-gray-500">
+                Nombre de semestres académiques équivalents (généralement 2 pour une année complète)
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConvertDialog(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={handleConvertToComposite}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              <Layers className="h-4 w-4 mr-2" />
+              Convertir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* NOUVEAU: Dialog de création de composite depuis semestres */}
+      <Dialog open={showCreateCompositeDialog} onOpenChange={setShowCreateCompositeDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-amber-600" />
+              Créer un semestre composite depuis semestres existants
+            </DialogTitle>
+            <DialogDescription>
+              Combinez plusieurs semestres pour créer un nouveau semestre composite avec toutes leurs UEs et ECs
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="composite-name" className="text-sm font-medium">
+                Nom du semestre composite
+              </label>
+              <Input
+                id="composite-name"
+                value={compositeName}
+                onChange={(e) => setCompositeName(e.target.value)}
+                placeholder="Ex: Année L1, Semestre 1-2, etc."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Sélectionner les semestres à combiner (min. 2)
+              </label>
+              <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
+                {config?.semesters.map((semester) => (
+                  <div key={semester.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`select-${semester.id}`}
+                      checked={selectedSemestersForComposite.includes(semester.id)}
+                      onChange={() => toggleSemesterSelection(semester.id)}
+                      className="h-4 w-4"
+                    />
+                    <label
+                      htmlFor={`select-${semester.id}`}
+                      className="text-sm cursor-pointer flex-1"
+                    >
+                      {semester.name}
+                      {semester.isComposite && (
+                        <Badge variant="secondary" className="ml-2 bg-amber-100 text-amber-800 text-xs">
+                          Composite
+                        </Badge>
+                      )}
+                      <span className="text-xs text-gray-500 ml-2">
+                        ({semester.ues.length} UE{semester.ues.length > 1 ? 's' : ''})
+                      </span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+              {selectedSemestersForComposite.length > 0 && (
+                <p className="text-xs text-gray-500">
+                  {selectedSemestersForComposite.length} semestre(s) sélectionné(s)
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="composite-equivalent-multi" className="text-sm font-medium">
+                Équivalence en semestres (optionnel)
+              </label>
+              <Input
+                id="composite-equivalent-multi"
+                type="number"
+                value={compositeEquivalentMulti}
+                onChange={(e) => setCompositeEquivalentMulti(e.target.value)}
+                min="1"
+                max="4"
+                placeholder={`${selectedSemestersForComposite.length || 2}`}
+              />
+              <p className="text-xs text-gray-500">
+                Laissez vide pour utiliser le nombre de semestres sélectionnés
+              </p>
+            </div>
+
+            {selectedSemestersForComposite.length >= 2 && (
+              <Alert className="bg-blue-50 border-blue-200">
+                <Layers className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800 text-sm">
+                  Un nouveau semestre composite sera créé avec toutes les UEs et ECs des {selectedSemestersForComposite.length} semestres sélectionnés. Les semestres originaux seront préservés.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateCompositeDialog(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={handleCreateComposite}
+              disabled={selectedSemestersForComposite.length < 2 || !compositeName.trim()}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              <Layers className="h-4 w-4 mr-2" />
+              Créer composite
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Toast notifications */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />

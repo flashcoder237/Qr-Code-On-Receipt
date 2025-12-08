@@ -276,6 +276,121 @@ export const AcademicConfigManager: React.FC = () => {
     );
   };
 
+  // NOUVEAU: Convertir un semestre en semestre composite
+  const convertSemesterToComposite = (semesterId: string, compositeEquivalent: number = 2) => {
+    if (!selectedConfigId) return;
+    const currentConfig = configs.find(cfg => cfg.id === selectedConfigId);
+    if (!currentConfig) return;
+
+    const semester = currentConfig.semesters.find(sem => sem.id === semesterId);
+    if (!semester) return;
+
+    // Ne pas convertir si c'est déjà un semestre composite
+    if (semester.isComposite) {
+      setError("Ce semestre est déjà un semestre composite");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    // Convertir le semestre en composite
+    const compositeSemester: Semester = {
+      ...semester,
+      isComposite: true,
+      compositeEquivalent: compositeEquivalent,
+      creditsRequired: semester.creditsRequired || compositeEquivalent * 30,
+    };
+
+    setConfigs(
+      configs.map((cfg) => {
+        if (cfg.id !== selectedConfigId) return cfg;
+        return {
+          ...cfg,
+          semesters: cfg.semesters.map((sem) =>
+            sem.id === semesterId ? compositeSemester : sem
+          ),
+        };
+      })
+    );
+
+    setSuccess(`Le semestre "${semester.name}" a été converti en semestre composite (${compositeEquivalent} semestres)`);
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  // NOUVEAU: Créer un semestre composite à partir de plusieurs semestres
+  const createCompositeSemesterFromSemesters = (semesterIds: string[], name: string, compositeEquivalent?: number) => {
+    if (!selectedConfigId) return;
+    const currentConfig = configs.find(cfg => cfg.id === selectedConfigId);
+    if (!currentConfig) return;
+
+    if (semesterIds.length < 2) {
+      setError("Veuillez sélectionner au moins 2 semestres");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    const selectedSemesters = currentConfig.semesters.filter(sem => semesterIds.includes(sem.id));
+    if (selectedSemesters.length !== semesterIds.length) {
+      setError("Certains semestres sélectionnés sont introuvables");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    // Fonction pour générer un nouvel ID unique
+    const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Dupliquer les ECs avec de nouveaux IDs
+    const duplicateECs = (ecs: EC[]): EC[] => {
+      return ecs.map(ec => ({
+        ...ec,
+        id: generateId(),
+      }));
+    };
+
+    // Dupliquer les UEs avec de nouveaux IDs et ajouter le numéro de semestre
+    const duplicateUEs = (ues: UE[], semesterNumber: number): UE[] => {
+      return ues.map(ue => ({
+        ...ue,
+        id: generateId(),
+        ecs: duplicateECs(ue.ecs),
+        semesterNumber: semesterNumber, // Assigner le numéro de semestre
+      }));
+    };
+
+    // Fusionner toutes les UEs des semestres sélectionnés
+    let allUEs: UE[] = [];
+    selectedSemesters.forEach((semester, index) => {
+      const semesterUEs = duplicateUEs(semester.ues, index + 1);
+      allUEs = [...allUEs, ...semesterUEs];
+    });
+
+    // Calculer le total des crédits requis
+    const totalCredits = selectedSemesters.reduce((sum, sem) => sum + (sem.creditsRequired || 30), 0);
+
+    // Créer le nouveau semestre composite
+    const compositeSemester: Semester = {
+      id: generateId(),
+      name: name.trim() || `Composite ${selectedSemesters.map(s => s.name).join(" + ")}`,
+      ues: allUEs,
+      creditsRequired: totalCredits,
+      isComposite: true,
+      compositeEquivalent: compositeEquivalent || selectedSemesters.length,
+      showSemesterSeparation: true, // Activer par défaut la séparation
+    };
+
+    setConfigs(
+      configs.map((cfg) => {
+        if (cfg.id !== selectedConfigId) return cfg;
+        return {
+          ...cfg,
+          semesters: [...cfg.semesters, compositeSemester],
+        };
+      })
+    );
+
+    setSuccess(`Semestre composite "${compositeSemester.name}" créé avec succès à partir de ${selectedSemesters.length} semestres`);
+    setTimeout(() => setSuccess(null), 4000);
+  };
+
   const addUE = (semesterId: string) => {
     if (!selectedConfigId) return;
     const newUE: UE = {
@@ -920,6 +1035,8 @@ export const AcademicConfigManager: React.FC = () => {
                     onUpdateSemester={updateSemester}
                     onDeleteSemester={deleteSemester}
                     onDuplicateSemester={duplicateSemester}
+                    onConvertToComposite={convertSemesterToComposite}
+                    onCreateCompositeFromSemesters={createCompositeSemesterFromSemesters}
                     onAddUE={addUE}
                     onUpdateUE={updateUE}
                     onDeleteUE={deleteUE}
