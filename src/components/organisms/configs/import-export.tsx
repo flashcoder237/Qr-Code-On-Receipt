@@ -1312,6 +1312,131 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
     }
   };
 
+  // NOUVEAU: Télécharger template JSON
+  const handleDownloadTemplateJSON = () => {
+    try {
+      const templateData = {
+        version: "1.0",
+        description: "Template de configuration - Modifiez ce fichier et importez-le",
+        exportDate: new Date().toISOString(),
+        configCount: 1,
+        configs: [
+          {
+            id: "exemple-2024",
+            name: "Licence 1 Informatique",
+            academicYear: "2024-2025",
+            filiere: "Informatique",
+            niveau: "1",
+            cycle: "Licence",
+            option: "",
+            isHidden: false,
+            semesters: [
+              {
+                id: "sem1-exemple",
+                name: "Semestre 1",
+                creditsRequired: 30,
+                isComposite: false,
+                ues: [
+                  {
+                    id: "ue1-exemple",
+                    name: "Mathématiques 1",
+                    code: "MAT101",
+                    credits: 6,
+                    displayBase: 20,
+                    ecs: [
+                      {
+                        id: "ec1-exemple",
+                        name: "Algèbre",
+                        weight: 1,
+                        noteBase: 20,
+                        displayBase: 20
+                      },
+                      {
+                        id: "ec2-exemple",
+                        name: "Analyse",
+                        weight: 1,
+                        noteBase: 20,
+                        displayBase: 20
+                      }
+                    ]
+                  },
+                  {
+                    id: "ue2-exemple",
+                    name: "Programmation 1",
+                    code: "INFO101",
+                    credits: 6,
+                    displayBase: 20,
+                    ecs: [
+                      {
+                        id: "ec3-exemple",
+                        name: "Algorithmique",
+                        weight: 2,
+                        noteBase: 20,
+                        displayBase: 20
+                      },
+                      {
+                        id: "ec4-exemple",
+                        name: "Travaux Pratiques",
+                        weight: 1,
+                        noteBase: 20,
+                        displayBase: 20
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                id: "sem2-exemple",
+                name: "Semestre 2",
+                creditsRequired: 30,
+                isComposite: false,
+                ues: [
+                  {
+                    id: "ue3-exemple",
+                    name: "Mathématiques 2",
+                    code: "MAT102",
+                    credits: 6,
+                    displayBase: 20,
+                    ecs: [
+                      {
+                        id: "ec5-exemple",
+                        name: "Probabilités",
+                        weight: 1,
+                        noteBase: 20,
+                        displayBase: 20
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            mergedSemesters: [],
+            displaySessions: true,
+            sessionDisplayFormat: "short",
+            hideSemesterColumn: false
+          }
+        ]
+      };
+
+      const dataStr = JSON.stringify(templateData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'template_configuration.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success("Template téléchargé", "Modèle JSON téléchargé avec succès");
+    } catch (error) {
+      console.error("Erreur lors du téléchargement du template:", error);
+      toast.error("Erreur", "Impossible de télécharger le template JSON");
+    }
+  };
+
   // NOUVEAU: Import JSON
   const jsonInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -1516,41 +1641,92 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
     <>
       <ToastContainer toasts={toasts} onClose={removeToast} position="top-right" />
       <div className="space-y-4">
-        <div className="flex gap-2 flex-wrap">
-          {/* Boutons Excel */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportAll}
-            className="text-green-600 hover:text-green-700 hover:bg-green-50 whitespace-nowrap transition-colors duration-200"
-            title="Exporter toutes les configurations vers Excel avec styles avancés"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Exporter Excel
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportTemplate}
-            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 whitespace-nowrap transition-colors duration-200"
-            title="Télécharger un modèle Excel pré-formaté avec exemples"
-          >
-            <FileDown className="h-4 w-4 mr-2" />
-            Télécharger Modèle
-          </Button>
-
-          <div className="relative">
+        <div className="grid grid-cols-3 gap-2">
+          {/* Exporter */}
+          <div className="relative group">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 whitespace-nowrap transition-colors duration-200"
-              title="Charger un fichier Excel"
+              className="w-full text-green-600 hover:text-green-700 hover:bg-green-50 border-green-300"
+              title="Exporter les configurations"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exporter
+            </Button>
+            <div className="absolute left-0 top-full mt-1 w-full bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+              <button
+                onClick={handleExportAll}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-green-50 flex items-center gap-2 rounded-t-lg"
+              >
+                <Download className="h-3 w-3 text-green-600" />
+                <span>Excel</span>
+              </button>
+              <button
+                onClick={handleExportJSON}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-purple-50 flex items-center gap-2 rounded-b-lg"
+              >
+                <FileJson className="h-3 w-3 text-purple-600" />
+                <span>JSON</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Template */}
+          <div className="relative group">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-300"
+              title="Télécharger un modèle"
+            >
+              <FileDown className="h-4 w-4 mr-2" />
+              Template
+            </Button>
+            <div className="absolute left-0 top-full mt-1 w-full bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+              <button
+                onClick={handleExportTemplate}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-2 rounded-t-lg"
+              >
+                <FileDown className="h-3 w-3 text-blue-600" />
+                <span>Excel</span>
+              </button>
+              <button
+                onClick={handleDownloadTemplateJSON}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-indigo-50 flex items-center gap-2 rounded-b-lg"
+              >
+                <FileJson className="h-3 w-3 text-indigo-600" />
+                <span>JSON</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Importer */}
+          <div className="relative group">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-orange-300"
+              title="Importer des configurations"
             >
               <Upload className="h-4 w-4 mr-2" />
-              {loadedWorkbook ? "Changer de fichier" : "Importer Excel"}
+              Importer
             </Button>
+            <div className="absolute left-0 top-full mt-1 w-full bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-orange-50 flex items-center gap-2 rounded-t-lg"
+              >
+                <Upload className="h-3 w-3 text-orange-600" />
+                <span>{loadedWorkbook ? "Excel (changer)" : "Excel"}</span>
+              </button>
+              <button
+                onClick={() => jsonInputRef.current?.click()}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-pink-50 flex items-center gap-2 rounded-b-lg"
+              >
+                <Upload className="h-3 w-3 text-pink-600" />
+                <span>JSON</span>
+              </button>
+            </div>
             <input
               ref={fileInputRef}
               type="file"
@@ -1558,33 +1734,6 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
               onChange={handleFileLoad}
               className="hidden"
             />
-          </div>
-
-          {/* NOUVEAU: Boutons JSON */}
-          <div className="w-px h-8 bg-gray-300 self-center" />
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportJSON}
-            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 whitespace-nowrap transition-colors duration-200"
-            title="Exporter toutes les configurations en JSON"
-          >
-            <FileJson className="h-4 w-4 mr-2" />
-            Exporter JSON
-          </Button>
-
-          <div className="relative">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => jsonInputRef.current?.click()}
-              className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 whitespace-nowrap transition-colors duration-200"
-              title="Importer des configurations depuis JSON"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Importer JSON
-            </Button>
             <input
               ref={jsonInputRef}
               type="file"
