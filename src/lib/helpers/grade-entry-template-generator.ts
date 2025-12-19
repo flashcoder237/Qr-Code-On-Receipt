@@ -456,7 +456,7 @@ function getExampleValue(key: string): string {
     'SEXE': 'M',
     'EMAIL': 'jean.dupont@example.com',
     'NIVEAU': '1',
-    'SEMESTRE': 'S1',
+    'SEMESTRE': '1',
     'CYCLE': 'Licence',
     'FILIERE': 'Informatique',
     'ANNEE ACADEMIQUE': '2024-2025',

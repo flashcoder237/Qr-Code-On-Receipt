@@ -233,51 +233,9 @@ function createTemplateDataSheet(
     fitToWidth: 1
   };
 
-  // === LIGNE 1 : Titre ===
-  const titleText = `MODÈLE D'IMPORTATION - ${getDocumentTypeLabel(config.type).toUpperCase()}`;
-  worksheet.addRow([titleText]);
-  worksheet.mergeCells(1, 1, 1, columns.length);
-
-  const titleCell = worksheet.getCell('A1');
-  titleCell.style = {
-    font: { bold: true, size: 16, color: { argb: 'FF1F497D' }, name: 'Calibri' },
-    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE7F3FF' } },
-    alignment: { horizontal: 'center', vertical: 'middle' },
-    border: {
-      top: { style: 'thick', color: { argb: 'FF1F497D' } },
-      bottom: { style: 'thick', color: { argb: 'FF1F497D' } },
-      left: { style: 'thick', color: { argb: 'FF1F497D' } },
-      right: { style: 'thick', color: { argb: 'FF1F497D' } }
-    }
-  };
-  worksheet.getRow(1).height = 40;
-
-  // === LIGNE 2 : Instructions ===
-  const instructionText = 'Remplissez les colonnes selon les en-têtes ci-dessous. ' +
-                          'Colonnes obligatoires en rouge, optionnelles en bleu/violet/orange.';
-  worksheet.addRow([instructionText]);
-  worksheet.mergeCells(2, 1, 2, columns.length);
-
-  const instructionCell = worksheet.getCell('A2');
-  instructionCell.style = {
-    font: { italic: true, size: 11, color: { argb: 'FF505050' }, name: 'Calibri' },
-    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FBFF' } },
-    alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
-    border: {
-      left: { style: 'thick', color: { argb: 'FF1F497D' } },
-      right: { style: 'thick', color: { argb: 'FF1F497D' } },
-      bottom: { style: 'thick', color: { argb: 'FF1F497D' } }
-    }
-  };
-  worksheet.getRow(2).height = 30;
-
-  // === LIGNE 3 : Séparation ===
-  worksheet.addRow([]);
-  worksheet.getRow(3).height = 10;
-
-  // === LIGNE 4 : En-têtes de colonnes ===
+  // === LIGNE 1 : En-têtes de colonnes (IMPORTANT: Première ligne pour l'import) ===
   const headerRow = worksheet.addRow(columns.map(col => col.displayName));
-  headerRow.height = 50;
+  headerRow.height = 40;
 
   // Appliquer styles selon catégorie
   columns.forEach((col, index) => {
@@ -285,10 +243,27 @@ function createTemplateDataSheet(
     cell.style = getColumnHeaderStyle(col);
 
     // Ajouter commentaire pour colonnes importantes
-    if (col.required && col.description) {
-      cell.note = `⚠️ Colonne obligatoire\n${col.description}`;
-    } else if (col.description) {
-      cell.note = col.description;
+    const noteLines = [];
+    if (index === 0) {
+      noteLines.push(`MODÈLE ${getDocumentTypeLabel(config.type).toUpperCase()}`);
+      noteLines.push('');
+      noteLines.push('⚠️ NE PAS MODIFIER LES EN-TÊTES DE COLONNES');
+      noteLines.push('Colonnes obligatoires en rouge, optionnelles en bleu/violet/orange');
+      noteLines.push('');
+    }
+
+    if (col.required) {
+      noteLines.push('⚠️ COLONNE OBLIGATOIRE');
+    } else {
+      noteLines.push('💡 Colonne optionnelle');
+    }
+
+    if (col.description) {
+      noteLines.push(col.description);
+    }
+
+    if (noteLines.length > 0) {
+      cell.note = noteLines.join('\n');
     }
   });
 
@@ -313,22 +288,22 @@ function createTemplateDataSheet(
     worksheet.getColumn(colLetter).width = width;
   });
 
-  // Figer les 4 premières lignes
+  // Figer la première ligne (en-têtes)
   worksheet.views = [
     {
       state: 'frozen',
       xSplit: 0,
-      ySplit: 4,
-      topLeftCell: 'A5',
-      activeCell: 'A5'
+      ySplit: 1,
+      topLeftCell: 'A2',
+      activeCell: 'A2'
     }
   ];
 
   // Filtres automatiques
   const lastColumn = String.fromCharCode(64 + columns.length);
   worksheet.autoFilter = {
-    from: 'A4',
-    to: `${lastColumn}4`
+    from: 'A1',
+    to: `${lastColumn}1`
   };
 
   // Validation des données
@@ -391,9 +366,9 @@ function addDataValidation(
   columns.forEach((col, index) => {
     const colLetter = String.fromCharCode(65 + index);
 
-    // Validation dates
+    // Validation dates (commence à la ligne 2, après les en-têtes)
     if (col.key.includes('DATE')) {
-      for (let rowNum = 5; rowNum <= 100; rowNum++) {
+      for (let rowNum = 2; rowNum <= 100; rowNum++) {
         const cell = worksheet.getCell(`${colLetter}${rowNum}`);
         cell.dataValidation = {
           type: 'date',
@@ -408,7 +383,7 @@ function addDataValidation(
 
     // Validation notes (0-20)
     if (col.category === 'scores') {
-      for (let rowNum = 5; rowNum <= 100; rowNum++) {
+      for (let rowNum = 2; rowNum <= 100; rowNum++) {
         const cell = worksheet.getCell(`${colLetter}${rowNum}`);
         cell.dataValidation = {
           type: 'decimal',
@@ -769,7 +744,7 @@ function generateExampleData(
     // Colonnes académiques
     if (config.type === 'releve') {
       example['NIVEAU'] = '1';
-      example['SEMESTRE'] = 'S1';
+      example['SEMESTRE'] = '1';
       example['CYCLE'] = 'Licence';
       example['FILIERE'] = 'Informatique';
       example['ANNEE ACADEMIQUE'] = '2024-2025';
