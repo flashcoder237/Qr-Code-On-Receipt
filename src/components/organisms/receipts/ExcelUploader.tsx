@@ -1,19 +1,20 @@
 // src/components/organisms/receipts/components/FileUploader.tsx - Version corrigée
 import React, { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, AlertTriangle, CheckCircle, X, RefreshCw, FileSpreadsheet } from 'lucide-react';
+import { Upload, AlertTriangle, CheckCircle, X, RefreshCw, FileSpreadsheet, FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  validateExcelColumns, 
-  formatValidationErrorMessage, 
+import {
+  validateExcelColumns,
+  formatValidationErrorMessage,
   generateColumnMapping,
-  ValidationResult 
+  ValidationResult
 } from '@/lib/validators/excel-columns';
+import { generateExcelTemplate } from '@/lib/helpers/excel-template-generator';
 
 interface FileUploaderProps {
   onFileLoaded: (data: any[], columns: string[], mapping?: { [key: string]: string }, fileName?: string) => void;
@@ -363,8 +364,59 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     return <X className="h-4 w-4 text-red-600" />;
   };
 
+  // Télécharger modèle d'import vierge
+  const handleDownloadTemplate = async () => {
+    try {
+      const result = await generateExcelTemplate({
+        type: documentType,
+        establishmentType: establishmentType,
+        includeInstructions: true,
+        includeExamples: false,
+        dynamicColumns: documentType === 'releve' ? {
+          ecNames: [],
+          includeSessions: true
+        } : undefined
+      });
+
+      const buffer = await result.workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      onError(''); // Clear errors
+    } catch (error) {
+      console.error("Erreur lors de la génération du modèle:", error);
+      onError("Impossible de générer le modèle");
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* En-tête avec bouton de téléchargement de modèle */}
+      <div className="flex justify-between items-center">
+        <h3 className="text-sm font-medium text-gray-700">
+          Importer des données depuis Excel
+        </h3>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownloadTemplate}
+          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-300"
+        >
+          <FileDown className="h-4 w-4 mr-2" />
+          Télécharger modèle vierge
+        </Button>
+      </div>
+
       {/* Zone de drop principal */}
       <div
         {...getRootProps()}

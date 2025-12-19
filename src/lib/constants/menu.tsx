@@ -10,7 +10,8 @@ import { ReleveGenerator } from "@/components/organisms/receipts/ReleveGenerator
 import { AcademicConfigManager } from "@/components/organisms/academic-config/AcademicConfigManager";
 import { DocumentHistoryManager } from "@/components/organisms/document-history/DocumentHistoryManager";
 import { HelpSupport } from '@/components/organisms/help-support';
-import {SettingsPage} from '@/components/pages/SettingsPage';
+import { SettingsPage } from '@/components/pages/SettingsPage';
+import { TemplateExportMenu } from '@/components/organisms/template-export';
 import {
   Download,
   HelpCircle,
@@ -25,7 +26,8 @@ import {
   GraduationCap,
   FileSpreadsheet,
   Cog,
-  ScrollText
+  ScrollText,
+  FileDown
 } from "lucide-react";
 
 interface MenuItem {
@@ -62,6 +64,13 @@ const menuItems: MenuItem[] = [
     url: "config",
     icon: Settings2,
     component: <AcademicConfigManager />,
+  },
+  {
+    title: "Export modèles Excel",
+    url: "template-export",
+    icon: FileDown,
+    component: <TemplateExportMenu />,
+    description: "Télécharger les modèles d'import Excel"
   },
   {
     title: "Configurer les entêtes",

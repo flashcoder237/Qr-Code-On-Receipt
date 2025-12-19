@@ -5,6 +5,7 @@ import ExcelJS from 'exceljs';
 import { ClassConfig, Semester, UE, EC } from "@/components/organisms/configs/types";
 import { useToast } from "@/hooks/use-toast";
 import { ToastContainer } from "@/components/ui/toast";
+import { generateExcelTemplate } from '@/lib/helpers/excel-template-generator';
 
 interface ImportExportExcelProps {
   configs: ClassConfig[];
@@ -1437,6 +1438,43 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
     }
   };
 
+  // NOUVEAU: Télécharger modèle d'import de données
+  const handleDownloadImportTemplate = async () => {
+    try {
+      const result = await generateExcelTemplate({
+        type: 'releve',
+        includeInstructions: true,
+        includeExamples: false,
+        dynamicColumns: {
+          ecNames: [],
+          includeSessions: true
+        }
+      });
+
+      const buffer = await result.workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success(
+        "Modèle téléchargé",
+        `${result.stats.totalColumns} colonnes • ${result.fileName}`
+      );
+    } catch (error) {
+      console.error("Erreur lors de la génération du modèle:", error);
+      toast.error("Erreur", "Impossible de générer le modèle d'import");
+    }
+  };
+
   // NOUVEAU: Import JSON
   const jsonInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -1688,14 +1726,26 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
                 className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-2 rounded-t-lg"
               >
                 <FileDown className="h-3 w-3 text-blue-600" />
-                <span>Excel</span>
+                <span>Excel (Configurations)</span>
               </button>
               <button
                 onClick={handleDownloadTemplateJSON}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-indigo-50 flex items-center gap-2 rounded-b-lg"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-indigo-50 flex items-center gap-2"
               >
                 <FileJson className="h-3 w-3 text-indigo-600" />
-                <span>JSON</span>
+                <span>JSON (Configurations)</span>
+              </button>
+
+              {/* Séparateur */}
+              <div className="border-t my-1 border-gray-200"></div>
+
+              {/* NOUVEAU: Modèle Import Données */}
+              <button
+                onClick={handleDownloadImportTemplate}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-purple-50 flex items-center gap-2 rounded-b-lg"
+              >
+                <Download className="h-3 w-3 text-purple-600" />
+                <span>Modèle Import Données</span>
               </button>
             </div>
           </div>

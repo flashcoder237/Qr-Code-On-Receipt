@@ -1,5 +1,5 @@
 // src/App.tsx - Version avec gestion du mode démo
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocalStorage } from "usehooks-ts";
 import { motion, AnimatePresence } from "framer-motion";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -99,7 +99,14 @@ const AppContent: React.FC = () => {
 
   // Trouve le composant et le titre pour la route actuelle
   const currentMenuItem = filteredMenuItems.find(item => item.url === currentPath);
-  const currentComponent = currentMenuItem?.component || <div>Page non trouvée</div>;
+
+  // Clone le composant avec les props nécessaires (notamment establishmentType)
+  const currentComponent = currentMenuItem?.component
+    ? React.cloneElement(currentMenuItem.component, {
+        establishmentType: settings.establishmentType
+      })
+    : <div>Page non trouvée</div>;
+
   const currentTitle = currentMenuItem?.title || "Page inconnue";
 
   // Affichage du chargement initial des licences
