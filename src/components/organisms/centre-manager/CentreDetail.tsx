@@ -461,12 +461,12 @@ export const CentreDetail: React.FC<CentreDetailProps> = ({
                       ) : (
                         <div className="text-center">
                           <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                          <Label
+                          <label
                             htmlFor={`admin-logo-${index}`}
                             className="cursor-pointer text-sm text-blue-600 hover:text-blue-700"
                           >
                             Cliquez pour uploader (max 1MB)
-                          </Label>
+                          </label>
                           <input
                             id={`admin-logo-${index}`}
                             type="file"

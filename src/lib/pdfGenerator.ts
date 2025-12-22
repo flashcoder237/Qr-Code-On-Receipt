@@ -1,5 +1,5 @@
 import { StudentRecord } from "../types/student";
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ipcMain } from 'electron';
@@ -1725,8 +1725,7 @@ export function setupPDFGenerationHandlers() {
     try {
       console.log(`📜 [CENTRE-ATTESTATIONS-BATCH] Début génération de ${options.students.length} attestations`);
 
-      const { students, centre, theme, exportFormat, useCompression } = options;
-      const isDemoMode = localStorage.getItem('demo_mode') === 'true';
+      const { students, centre, theme, exportFormat, useCompression, isDemoMode = false } = options;
 
       const pdfResults: { pdfData: Uint8Array; student: CentreAttestationStudentRecord }[] = [];
 
@@ -1811,11 +1810,9 @@ export function setupPDFGenerationHandlers() {
       console.log(`✅ [CENTRE-ATTESTATIONS-BATCH] ${pdfResults.length} PDFs générés avec succès`);
 
       // Exporter selon le format demandé
-      const { dialog } = require('electron');
-
       if (exportFormat === 'zip') {
         // Créer un ZIP avec tous les PDFs
-        const JSZip = require('jszip');
+        const JSZip = (await import('jszip')).default;
         const zip = new JSZip();
 
         pdfResults.forEach(({ pdfData, student }) => {

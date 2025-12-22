@@ -109,18 +109,28 @@ contextBridge.exposeInMainWorld('electron', {
     try {
       console.log('📜 [PRELOAD] Appel generateCentreAttestations pour', options.students.length, 'étudiants');
 
+      // Extraire la fonction onProgress (ne pas la passer via IPC)
+      const onProgressCallback = options.onProgress;
+
+      // Créer une copie des options SANS la fonction onProgress
+      const { onProgress, ...serializableOptions } = options;
+
       // Écouter les événements de progression
-      if (options.onProgress) {
-        const progressHandler = (_event: any, data: { current: number; total: number }) => {
-          options.onProgress(data.current, data.total);
+      let progressHandler: any = null;
+      if (onProgressCallback) {
+        progressHandler = (_event: any, data: { current: number; total: number }) => {
+          onProgressCallback(data.current, data.total);
         };
         ipcRenderer.on('centre-attestation-progress', progressHandler);
       }
 
-      const result = await ipcRenderer.invoke('generateCentreAttestations', options);
+      // Passer uniquement les options sérialisables (sans la fonction)
+      const result = await ipcRenderer.invoke('generateCentreAttestations', serializableOptions);
 
       // Nettoyer l'écouteur de progression
-      ipcRenderer.removeAllListeners('centre-attestation-progress');
+      if (progressHandler) {
+        ipcRenderer.removeListener('centre-attestation-progress', progressHandler);
+      }
 
       return result;
     } catch (err) {

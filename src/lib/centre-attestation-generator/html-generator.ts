@@ -243,100 +243,89 @@ function generateCentreAttestationStyles(
       font-style: italic;
       color: ${theme.secondaryColor};
       opacity: 0.9;
+      font-size: ${theme.legalTextFontSize - 1}pt;
     }
 
-    /* Spécialité */
-    .specialty-section {
-      margin: ${theme.sectionSpacing}mm 0;
-      text-align: center;
+    /* Section ministre (textes légaux) */
+    .minister-section {
+      margin-bottom: ${theme.sectionSpacing - 2}mm;
     }
 
-    .specialty-label {
-      font-size: ${theme.contentFontSize}pt;
-      color: ${theme.secondaryColor};
-    }
-
-    .specialty-value {
-      font-family: ${theme.titleFont};
-      font-size: ${theme.contentFontSize + 2}pt;
-      font-weight: bold;
-      color: ${theme.primaryColor};
-      margin: 0 5px;
-    }
-
-    .specialty-value-en {
-      font-style: italic;
-      color: ${theme.secondaryColor};
-    }
-
-    /* Informations étudiant */
-    .student-section {
-      margin: ${theme.sectionSpacing}mm 0;
-      padding: ${theme.sectionSpacing}mm;
-      border: 2px solid ${theme.accentColor};
-      border-radius: 5px;
-      background: rgba(${parseInt(theme.accentColor.slice(1, 3), 16)}, ${parseInt(theme.accentColor.slice(3, 5), 16)}, ${parseInt(theme.accentColor.slice(5, 7), 16)}, 0.05);
-    }
-
-    .conferred-label {
-      text-align: center;
-      font-size: ${theme.contentFontSize}pt;
-      color: ${theme.secondaryColor};
-      margin-bottom: 10px;
-    }
-
-    .student-name {
-      text-align: center;
-      font-family: ${theme.titleFont};
-      font-size: ${theme.studentNameFontSize}pt;
-      font-weight: bold;
-      color: ${theme.primaryColor};
-      text-transform: uppercase;
-      margin: 10px 0;
-      letter-spacing: 1px;
-    }
-
-    .birth-info {
+    /* Section informations destinataire */
+    .recipient-section {
       display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      font-size: ${theme.studentInfoFontSize}pt;
-      color: ${theme.secondaryColor};
-      margin: 10px 0;
-      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 0mm;
     }
 
-    .birth-label {
+    .recipient-left {
+      flex: 1;
+      font-size: ${theme.contentFontSize}pt;
+    }
+
+    .recipient-right {
+      flex: 1;
+      text-align: right;
+      font-size: ${theme.contentFontSize}pt;
+    }
+
+    .field {
+      margin: 2mm 0;
+      line-height: 1.3;
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 2%;
+    }
+
+    .field-label, .field-value {
+      display: inline-block;
+      height: 100%;
+      line-height: 90%;
+    }
+
+    .field-label {
       font-weight: normal;
     }
 
-    .birth-value {
+    .field-value {
       font-weight: bold;
+      margin-left: 6px;
+      font-size: ${theme.studentNameFontSize}pt;
       color: ${theme.primaryColor};
     }
 
-    .results-section {
-      display: flex;
-      justify-content: center;
-      gap: 30px;
-      margin-top: 15px;
+    .degree-box {
+      margin: 4mm 0;
+      text-align: left;
+      padding: 0;
+      line-height: 90%;
     }
 
-    .result-item {
-      text-align: center;
-    }
-
-    .result-label {
-      font-size: ${theme.studentInfoFontSize - 1}pt;
-      color: ${theme.secondaryColor};
-      margin-bottom: 3px;
-    }
-
-    .result-value {
-      font-family: ${theme.titleFont};
-      font-size: ${theme.studentInfoFontSize + 2}pt;
+    .degree-title {
+      font-size: ${theme.contentFontSize + 1}pt;
       font-weight: bold;
+      margin-bottom: 1mm;
+    }
+
+    .mention-box {
+      margin-top: 4mm;
+      padding: 2mm;
+      display: flex;
+      align-items: flex-start;
+      text-align: left;
+      line-height: 105%;
+    }
+
+    .mention-label {
+      font-weight: bold;
+      font-size: ${theme.contentFontSize}pt;
+      letter-spacing: 0.3px;
+    }
+
+    .mention-value {
+      margin-left: 4px;
+      font-weight: bold;
+      font-size: ${theme.contentFontSize + 1.5}pt;
       color: ${theme.primaryColor};
     }
 
@@ -390,14 +379,25 @@ function generateCentreAttestationStyles(
       margin: 0 auto;
     }
 
+    /* QR Code */
     .qr-code {
-      flex: 0 0 auto;
-      display: ${theme.showQRCode ? 'block' : 'none'};
+      width: ${theme.qrCodeSize}px;
+      height: ${theme.qrCodeSize}px;
+      border: 2px solid ${theme.primaryColor};
+      background: white;
+      display: ${theme.showQRCode ? 'flex' : 'none'};
+      align-items: center;
+      justify-content: center;
+      font-size: 8pt;
+      color: ${theme.primaryColor};
+      margin: 2mm 0 2mm auto;
+      font-weight: bold;
     }
 
     .qr-code img {
-      width: ${theme.qrCodeSize}px;
-      height: ${theme.qrCodeSize}px;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
 
     @media print {
@@ -519,53 +519,76 @@ export async function generateCentreAttestationHTML(
       <h1 class="main-title">ATTESTATION DE QUALIFICATION PROFESSIONNELLE</h1>
       <h2 class="main-subtitle">VOCATIONAL TRAINING CERTIFICATE</h2>
 
-      <!-- Textes légaux -->
-      ${centre.legalTexts && centre.legalTexts.length > 0 ? `
-      <div class="legal-texts">
-        ${centre.legalTexts.map(legal => `
-          <div class="legal-text legal-text-fr">${legal.textFr}</div>
-          <div class="legal-text legal-text-en">${legal.textEn}</div>
-        `).join('')}
-      </div>
-      ` : ''}
-
-      <!-- Spécialité -->
-      <div class="specialty-section">
-        <div class="specialty-label">
-          L'Attestation de Qualification Professionnelle dans la spécialité :
-          <span class="specialty-value">${student.SPECIALITE}</span>
-          ${student.SPECIALITE_EN ? `/ <span class="specialty-value-en">${student.SPECIALITE_EN}</span>` : ''}
-        </div>
-        <div class="specialty-label" style="margin-top: 5px; font-style: italic;">
-          The Vocational Training Certificate in the speciality
-        </div>
-      </div>
-
-      <!-- Informations étudiant -->
-      <div class="student-section">
-        <div class="conferred-label">
-          Est délivrée à :<br/>
-          <em>Is conferred on</em>
-        </div>
-
-        <div class="student-name">${student.NOM} ${student.PRENOM}</div>
-
-        <div class="birth-info">
-          <span class="birth-label">Né(e) le : <br/><em>Born on</em></span>
-          <span class="birth-value">${student["DATE DE NAISSANCE"]}</span>
-          <span class="birth-label">A : <br/><em>At</em></span>
-          <span class="birth-value">${student["LIEU DE NAISSANCE"]}</span>
-        </div>
-
-        <div class="results-section">
-          <div class="result-item">
-            <div class="result-label">Mention :<br/><em>Honor</em></div>
-            <div class="result-value">${student.MENTION}</div>
+      <!-- Section textes légaux (comme minister-section dans diplômes) -->
+      <div class="minister-section">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2mm;">
+          <!-- Textes légaux à gauche -->
+          <div style="flex: 1;">
+            ${centre.legalTexts && centre.legalTexts.length > 0 ?
+              centre.legalTexts.map(legal => `
+                <div class="legal-text">${legal.textFr}</div>
+                <div class="legal-text-en"><em>${legal.textEn}</em></div>
+              `).join('') : ''}
           </div>
-          <div class="result-item">
-            <div class="result-label">Grade :<br/><em>Grade</em></div>
-            <div class="result-value">${student.GRADE}</div>
+
+          <!-- QR Code et numéro à droite -->
+          <div style="width: 35%; padding-left: 5mm; display: flex; flex-direction: column; align-items: flex-end;">
+            <div style="margin-top: 3mm; width: 100%;">
+              ${student.NUMERO_ORDRE ? `
+              <div style="font-weight: bold; font-size: 9pt; text-align: right;">N° ${student.NUMERO_ORDRE} / ${new Date().getFullYear()}</div>
+              ` : ''}
+              ${includeQRCode && qrCodeImage ? `
+              <div class="qr-code">
+                <img src="${qrCodeImage}" alt="QR Code">
+              </div>
+              ` : ''}
+              <div style="margin-top: 2mm; text-align: right;">
+                <div style="font-weight: bold; font-size: 9pt;">N° Matricule : ${student.MATRICULE}</div>
+                <div style="font-style: italic; font-size: 7.5pt; font-weight: normal;"><em>Matriculation N°: ${student.MATRICULE}</em></div>
+              </div>
+            </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Section destinataire (comme recipient-section dans diplômes) -->
+      <div class="recipient-section">
+        <div class="recipient-left">
+          <div class="field">
+            <div class="field-label">Délivre à M./Mlle <br><span style="font-style: italic; font-size: 8.5pt;"><em>Confers on Mr/Ms</em></span></div>
+            <div class="field-value">${student.NOM} ${student.PRENOM}</div>
+          </div>
+
+          <div class="field">
+            <div class="field-label">Né(e) le : <br><span style="font-style: italic; font-size: 8.5pt;"><em>Born on</em></span></div>
+            <div class="field-value">${student["DATE DE NAISSANCE"]} à ${student["LIEU DE NAISSANCE"]} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;"><em>${student["DATE DE NAISSANCE"]} in ${student["LIEU DE NAISSANCE"]}</em></span></div>
+          </div>
+
+          <div class="field">
+            <div class="field-label">Session d'examen : <br> <span style="font-style: italic; font-size: 8.5pt;"><em>Examination session</em></span></div>
+            <div class="field-value">${student.SESSION_EXAMEN}</div>
+          </div>
+        </div>
+
+        <div class="recipient-right">
+          <div class="degree-box" style="margin-top: 2mm;">
+            <div class="degree-title"><span style="font-size: ${theme.studentNameFontSize}pt; font-weight: bold; color: ${theme.primaryColor};">L'Attestation de Qualification Professionnelle dans la spécialité</span></div>
+            <div style="font-style: italic; font-size: ${theme.contentFontSize}pt; margin-top: 1mm;"><em><span style="color: ${theme.primaryColor};">The Vocational Training Certificate in the speciality</span></em></div>
+            <div style="font-weight: bold; font-size: ${theme.studentNameFontSize + 2}pt; margin-top: 2mm; color: ${theme.primaryColor};">${student.SPECIALITE}</div>
+            ${student.SPECIALITE_EN ? `<div style="font-style: italic; font-size: ${theme.contentFontSize}pt; margin-top: 1mm;"><em>${student.SPECIALITE_EN}</em></div>` : ''}
+          </div>
+
+          <div class="mention-box">
+            <div class="mention-label">Mention :  <br> <span style="font-style: italic; font-size: ${theme.contentFontSize - 1.5}pt;"><em>Grade:</em></span></div>
+            <div class="mention-value">${student.MENTION}</div>
+          </div>
+
+          ${student.GRADE ? `
+          <div class="mention-box">
+            <div class="mention-label">Grade :  <br> <span style="font-style: italic; font-size: ${theme.contentFontSize - 1.5}pt;"><em>Level:</em></span></div>
+            <div class="mention-value">${student.GRADE}</div>
+          </div>
+          ` : ''}
         </div>
       </div>
 
@@ -588,12 +611,6 @@ export async function generateCentreAttestationHTML(
           </div>
           <div class="signature-line"></div>
         </div>
-
-        ${includeQRCode && qrCodeImage ? `
-        <div class="qr-code">
-          <img src="${qrCodeImage}" alt="QR Code" />
-        </div>
-        ` : ''}
       </div>
     </div>
   </div>
