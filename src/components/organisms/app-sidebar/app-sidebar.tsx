@@ -1,4 +1,5 @@
-// src/components/organisms/app-sidebar/app-sidebar.tsx - Version avec mode démo
+// src/components/organisms/app-sidebar/app-sidebar.tsx - Version avec menus groupés
+import { useState, useMemo } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -10,16 +11,23 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { getFilteredMenuItems } from "@/lib/constants/menu";
+import { getFilteredMenuGroups } from "@/lib/constants/menu";
 import { useLocalStorage } from "usehooks-ts";
-import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { 
-  GraduationCap, 
+import {
+  GraduationCap,
   Activity,
   TrendingUp,
   Clock,
@@ -28,19 +36,21 @@ import {
   AlertTriangle,
   Shield,
   Key,
-  Lock
+  Lock,
+  ChevronDown
 } from "lucide-react";
 
 export function AppSidebar() {
   const [path, setPath] = useLocalStorage<string>("current_path", "receipts");
   const [configs] = useLocalStorage("academicConfigs", []);
   const [settings] = useLocalStorage("settings", {});
-  
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(["Génération de Documents"]));
+
   // Détection du mode démo
   const isDemoMode = localStorage.getItem('demo_mode') === 'true';
 
-  // Utiliser les éléments de menu filtrés selon le mode et le type d'établissement
-  const menuItems = getFilteredMenuItems(isDemoMode, (settings as any).establishmentType);
+  // Utiliser les groupes de menu filtrés selon le mode et le type d'établissement
+  const menuGroups = getFilteredMenuGroups(isDemoMode, (settings as any).establishmentType);
 
   // Calcul des statistiques pour les indicateurs
   const statistics = useMemo(() => {
@@ -98,6 +108,18 @@ export function AppSidebar() {
       return "Fonctionnalité non disponible en mode démo";
     }
     return "";
+  };
+
+  const toggleGroup = (groupTitle: string) => {
+    setOpenGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupTitle)) {
+        newSet.delete(groupTitle);
+      } else {
+        newSet.add(groupTitle);
+      }
+      return newSet;
+    });
   };
 
   return (
@@ -179,66 +201,87 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {menuItems.map((item) => {
-                const status = getMenuItemStatus(item.url);
-                const isActive = item.url === path;
-                const isDisabled = status === "disabled" || status === "demo-restricted";
-                const tooltip = getMenuItemTooltip(item.url, status);
-                
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => !isDisabled && setPath(item.url)}
-                      className={`
-                        group relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
-                        ${isActive 
-                          ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 shadow-sm' 
-                          : isDisabled
-                            ? status === "demo-restricted"
-                              ? 'text-red-400 dark:text-red-600 cursor-not-allowed opacity-60'
-                              : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                        }
-                        ${!isDisabled && !isActive ? 'hover:shadow-sm hover:scale-[1.02]' : ''}
-                      `}
-                      disabled={isDisabled}
-                      title={tooltip}
-                    >
-                      <div className="flex items-center gap-3 flex-1">
-                        <item.icon className={`h-4 w-4 ${
-                          isActive 
-                            ? 'text-blue-600 dark:text-blue-400' 
-                            : isDisabled 
-                              ? status === "demo-restricted"
-                                ? 'text-red-400 dark:text-red-600'
-                                : 'text-gray-400 dark:text-gray-600'
-                              : 'text-gray-500 dark:text-gray-400'
-                        }`} />
-                        <span className="font-medium">{item.title}</span>
-                      </div>
-                      
-                      {/* Indicateurs de statut */}
-                      <div className="flex items-center gap-2">
-                        {item.url === "config" && statistics.totalConfigs > 0 && (
-                          <Badge variant="secondary" className="text-xs px-2 py-0">
-                            {statistics.totalConfigs}
-                          </Badge>
-                        )}
-                        {status === "demo-restricted" && (
-                          <Badge variant="destructive" className="text-xs px-1 py-0">
-                            <Lock className="h-2 w-2" />
-                          </Badge>
-                        )}
-                        {getStatusIndicator(status)}
-                      </div>
+              {menuGroups.map((group) => {
+                const isOpen = openGroups.has(group.title);
+                const GroupIcon = group.icon;
 
-                      {/* Indicateur de sélection */}
-                      {isActive && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 dark:bg-blue-400 rounded-r-full" />
-                      )}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                return (
+                  <Collapsible
+                    key={group.title}
+                    open={isOpen}
+                    onOpenChange={() => toggleGroup(group.title)}
+                  >
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton
+                          className="group flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
+                        >
+                          <GroupIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                          <span className="flex-1 text-sm">{group.title}</span>
+                          <ChevronDown
+                            className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                          />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub className="ml-0 mt-1 space-y-1">
+                          {group.items.map((item) => {
+                            const status = getMenuItemStatus(item.url);
+                            const isActive = item.url === path;
+                            const isDisabled = status === "disabled" || status === "demo-restricted";
+                            const tooltip = getMenuItemTooltip(item.url, status);
+                            const ItemIcon = item.icon;
+
+                            return (
+                              <SidebarMenuSubItem key={item.url}>
+                                <SidebarMenuSubButton
+                                  isActive={isActive}
+                                  onClick={() => !isDisabled && setPath(item.url)}
+                                  className={`
+                                    relative flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-lg transition-all
+                                    ${isActive
+                                      ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 shadow-sm'
+                                      : isDisabled
+                                        ? status === "demo-restricted"
+                                          ? 'text-red-400 dark:text-red-600 cursor-not-allowed opacity-60'
+                                          : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                    }
+                                    ${!isDisabled && !isActive ? 'hover:shadow-sm' : ''}
+                                  `}
+                                  disabled={isDisabled}
+                                  title={tooltip}
+                                >
+                                  <ItemIcon className="h-4 w-4" />
+                                  <span className="flex-1 text-sm">{item.title}</span>
+
+                                  {/* Indicateurs de statut */}
+                                  <div className="flex items-center gap-2">
+                                    {item.url === "config" && statistics.totalConfigs > 0 && (
+                                      <Badge variant="secondary" className="text-xs px-2 py-0">
+                                        {statistics.totalConfigs}
+                                      </Badge>
+                                    )}
+                                    {status === "demo-restricted" && (
+                                      <Badge variant="destructive" className="text-xs px-1 py-0">
+                                        <Lock className="h-2 w-2" />
+                                      </Badge>
+                                    )}
+                                    {getStatusIndicator(status)}
+                                  </div>
+
+                                  {/* Indicateur de sélection */}
+                                  {isActive && (
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 dark:bg-blue-400 rounded-r-full" />
+                                  )}
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            );
+                          })}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
                 );
               })}
             </SidebarMenu>

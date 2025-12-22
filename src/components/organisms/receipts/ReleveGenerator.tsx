@@ -1194,12 +1194,62 @@ export const ReleveGenerator: React.FC = () => {
       // Utiliser le thème du semestre s'il existe, sinon le thème de la classe, sinon le thème global
       const semesterTheme = currentSemester?.theme || currentConfig?.theme;
 
+      // NOUVEAU: Charger le centre si la configuration est associée à un centre
+      let centreInfo = null;
+      console.log('🔍 [PREVIEW] Vérification centre pour config:', {
+        configName: currentConfig?.name,
+        centreId: currentConfig?.centreId,
+        hasConfig: !!currentConfig
+      });
+
+      if (currentConfig?.centreId) {
+        try {
+          const centresStored = localStorage.getItem('training-centres');
+          console.log('📦 [PREVIEW] Centres stockés:', centresStored ? 'Oui' : 'Non');
+
+          if (centresStored) {
+            const centres = JSON.parse(centresStored);
+            console.log(`📋 [PREVIEW] Nombre de centres trouvés: ${centres.length}`);
+
+            centreInfo = centres.find((c: any) => c.id === currentConfig.centreId);
+            if (centreInfo) {
+              console.log(`✅ [PREVIEW] Centre trouvé pour la config: ${centreInfo.nameFrench}`, centreInfo);
+            } else {
+              console.warn(`❌ [PREVIEW] Aucun centre trouvé avec l'ID: ${currentConfig.centreId}`);
+              console.log('IDs disponibles:', centres.map((c: any) => c.id));
+            }
+          }
+        } catch (error) {
+          console.error('❌ [PREVIEW] Erreur lors du chargement du centre:', error);
+        }
+      } else {
+        console.log('ℹ️ [PREVIEW] Pas de centreId dans la configuration');
+      }
+
       const effectiveSettings = {
         ...settings,
         demoMode: isDemoMode,
         encryptionEnabled: encryptionEnabled,
-        ...(semesterTheme && { theme: semesterTheme })
+        ...(semesterTheme && { theme: semesterTheme }),
+        // NOUVEAU: Ajouter les informations du centre si disponibles
+        ...(centreInfo && {
+          centre: centreInfo,
+          // Surcharger les logos et informations avec ceux du centre
+          centreLogo: centreInfo.logo,
+          centreAdministrativeInstanceLogo: centreInfo.administrativeInstanceLogo,
+          centreAdministrativeInstanceNameFr: centreInfo.administrativeInstanceNameFr,
+          centreAdministrativeInstanceNameEn: centreInfo.administrativeInstanceNameEn
+        })
       };
+
+      if (centreInfo) {
+        console.log('✅ [PREVIEW] Informations du centre ajoutées aux settings:', {
+          centreName: centreInfo.nameFrench,
+          hasLogo: !!centreInfo.logo,
+          hasAdminLogo: !!centreInfo.administrativeInstanceLogo,
+          adminNameFr: centreInfo.administrativeInstanceNameFr
+        });
+      }
 
       const renderParams = {
         student: preparedStudent,
@@ -1304,13 +1354,63 @@ export const ReleveGenerator: React.FC = () => {
           // Utiliser le thème du semestre s'il existe, sinon le thème de la classe, sinon le thème global
           const semesterTheme = currentSemester?.theme || currentConfig?.theme;
 
+          // NOUVEAU: Charger le centre si la configuration est associée à un centre
+          let centreInfo = null;
+          console.log('🔍 Vérification centre pour config:', {
+            configName: currentConfig?.name,
+            centreId: currentConfig?.centreId,
+            hasConfig: !!currentConfig
+          });
+
+          if (currentConfig?.centreId) {
+            try {
+              const centresStored = localStorage.getItem('training-centres');
+              console.log('📦 Centres stockés:', centresStored ? 'Oui' : 'Non');
+
+              if (centresStored) {
+                const centres = JSON.parse(centresStored);
+                console.log(`📋 Nombre de centres trouvés: ${centres.length}`);
+
+                centreInfo = centres.find((c: any) => c.id === currentConfig.centreId);
+                if (centreInfo) {
+                  console.log(`✅ Centre trouvé pour la config: ${centreInfo.nameFrench}`, centreInfo);
+                } else {
+                  console.warn(`❌ Aucun centre trouvé avec l'ID: ${currentConfig.centreId}`);
+                  console.log('IDs disponibles:', centres.map((c: any) => c.id));
+                }
+              }
+            } catch (error) {
+              console.error('❌ Erreur lors du chargement du centre:', error);
+            }
+          } else {
+            console.log('ℹ️ Pas de centreId dans la configuration');
+          }
+
           const effectiveSettings = {
             ...settings,
             demoMode: isDemoMode,
             encryptionEnabled: encryptionEnabled,
             // Si la configuration de classe ou le semestre a un thème personnalisé, l'utiliser
-            ...(semesterTheme && { theme: semesterTheme })
+            ...(semesterTheme && { theme: semesterTheme }),
+            // NOUVEAU: Ajouter les informations du centre si disponibles
+            ...(centreInfo && {
+              centre: centreInfo,
+              // Surcharger les logos et informations avec ceux du centre
+              centreLogo: centreInfo.logo,
+              centreAdministrativeInstanceLogo: centreInfo.administrativeInstanceLogo,
+              centreAdministrativeInstanceNameFr: centreInfo.administrativeInstanceNameFr,
+              centreAdministrativeInstanceNameEn: centreInfo.administrativeInstanceNameEn
+            })
           };
+
+          if (centreInfo) {
+            console.log('✅ Informations du centre ajoutées aux settings:', {
+              centreName: centreInfo.nameFrench,
+              hasLogo: !!centreInfo.logo,
+              hasAdminLogo: !!centreInfo.administrativeInstanceLogo,
+              adminNameFr: centreInfo.administrativeInstanceNameFr
+            });
+          }
 
           preparedData.push({
             student: prepared,

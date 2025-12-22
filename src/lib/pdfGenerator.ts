@@ -14,6 +14,10 @@ import { generateAttestationHTML } from './attestation-generator/html-generator'
 // Importer la fonction de génération de diplômes
 import { generateDiplomaPDF } from './diploma-generator/diploma-html-to-pdf';
 
+// Importer les fonctions de génération d'attestations de centre
+import { generateCentreAttestationHTML } from './centre-attestation-generator/html-generator';
+import { CentreAttestationStudentRecord, CentreAttestationGenerationOptions } from './centre-attestation-generator/types';
+
 // NOUVEAU: Importer les fonctions de chiffrement compact pour les relevés
 import { sanitizeStudentData, generateQrCodeBase64 } from './helpers/qrcode-selective';
 import { getQRCodeSizeEstimate } from './helpers/qrcode';
@@ -1074,7 +1078,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                         <p>REPUBLIQUE DU CAMEROUN <br>
                         <em>Paix – Travail – Patrie</em><br>
                         ********************<br>
-                        MINISTERE DE L'ENSEIGNEMENT SUPERIEUR<br>
+                        ${settings.centre ? settings.centreAdministrativeInstanceNameFr || 'MINISTERE DE L\'ENSEIGNEMENT SUPERIEUR' : 'MINISTERE DE L\'ENSEIGNEMENT SUPERIEUR'}<br>
                         ********************<br>
                         <strong>UNIVERSITE DE DOUALA</strong><br>
                         <span id="to-hidden">********************<br>
@@ -1084,26 +1088,29 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                         Email: <a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a><br>
                         ********************<br>
                         <strong>${
-                          settings.nameFrench
+                          settings.centre ? settings.centre.nameFrench : settings.nameFrench
                             .split(" ")
                             .map((w, i) => (i > 0 && i % 4 === 0 ? "<br>" + w : w))
                             .join(" ")
                         }</strong><br>
                         ********************<br>
-                        B.P ${settings.postalBox}<br>
-                        Email: <a href="mailto:${settings.email}">${settings.email}</a></p></span>
+                        B.P ${settings.centre ? settings.centre.postalBox || settings.postalBox : settings.postalBox}<br>
+                        Email: <a href="mailto:${settings.centre ? settings.centre.email || settings.email : settings.email}">${settings.centre ? settings.centre.email || settings.email : settings.email}</a></p></span>
                     </div>
                     <div class="header-logo-content">
                         <div>
-                          ${universityLogoBase64 ? `<img src="${universityLogoBase64}" alt="University Logo" height="70">` : 
+                          ${universityLogoBase64 ? `<img src="${universityLogoBase64}" alt="University Logo" height="70">` :
                             '<div style="height: 70px; border: 1px solid black;"> University Logo</div>'}
                         </div>
                         <div>
-                          ${facultyLogoBase64 ? `<img src="${facultyLogoBase64}" alt="Faculty Logo" height="50" style="margin: 5px;">` : 
+                          ${settings.centre && settings.centreAdministrativeInstanceLogo ?
+                            `<img src="${settings.centreAdministrativeInstanceLogo}" alt="Administrative Instance Logo" height="50" style="margin: 5px;">` :
+                            facultyLogoBase64 ? `<img src="${facultyLogoBase64}" alt="Faculty Logo" height="50" style="margin: 5px;">` :
                             '<div style="height: 50px; border: 1px solid black; margin: 5px;"> Faculty Logo</div>'}
                         </div>
                         <div id="to-hidden">
-                          ${settings.logo ? `<img src="${settings.logo}" alt="IPES Logo" height="70">` : 
+                          ${settings.centre && settings.centreLogo ? `<img src="${settings.centreLogo}" alt="Centre Logo" height="70">` :
+                            settings.logo ? `<img src="${settings.logo}" alt="IPES Logo" height="70">` :
                             '<div style="height: 70px; border: 1px solid black;"> IPES Logo</div>'}
                         </div>
                     </div>
@@ -1111,7 +1118,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                         <p>REPUBLIC OF CAMEROON<br>
                         <em>Peace – Work - Fatherland</em><br>
                         ********************<br>
-                        MINISTRY OF HIGHER EDUCATION<br>
+                        ${settings.centre ? settings.centreAdministrativeInstanceNameEn || 'MINISTRY OF HIGHER EDUCATION' : 'MINISTRY OF HIGHER EDUCATION'}<br>
                         ********************<br>
                         <strong>UNIVERSITY OF DOUALA</strong><br>
                         <span id="to-hidden">********************<br>
@@ -1121,14 +1128,14 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                         Email: <a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a><br>
                         ********************<br>
                         <strong>${
-                          settings.nameEnglish
+                          settings.centre ? settings.centre.nameEnglish : settings.nameEnglish
                             .split(" ")
                             .map((w, i) => (i > 0 && i % 4 === 0 ? "<br>" + w : w))
                             .join(" ")
                         }</strong><br>
                         ********************<br>
-                        PO box ${settings.postalBoxEn}<br>
-                        Email: <a href="mailto:${settings.email}">${settings.email}</a></p></span>   
+                        PO box ${settings.centre ? settings.centre.postalBox || settings.postalBoxEn : settings.postalBoxEn}<br>
+                        Email: <a href="mailto:${settings.centre ? settings.centre.email || settings.email : settings.email}">${settings.centre ? settings.centre.email || settings.email : settings.email}</a></p></span>
                     </div>
                 </div>
                 <div class="header-row2">
@@ -1617,6 +1624,239 @@ export function setupPDFGenerationHandlers() {
   });
   console.log('✅ [SETUP] Gestionnaire "generate-diploma-pdf" enregistré');
 
+  // Handler pour les attestations de centre - Génération de PDF individuel
+  ipcMain.handle('generateCentreAttestationPDF', async (_, html: string, student: CentreAttestationStudentRecord) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const startTime = Date.now();
+        const studentIdLog = `${student.NOM}_${student.PRENOM}_${student.MATRICULE}`;
+        console.log(`📜 [CENTRE-ATTESTATION-PDF] START génération PDF pour: ${studentIdLog}`);
+
+        // Créer un fichier temporaire avec le HTML
+        const tempDir = app.getPath('temp');
+        const timestamp = Date.now();
+        const studentId = `${student.NOM}_${student.PRENOM}_${student.MATRICULE}`.replace(/[^a-zA-Z0-9]/g, '_');
+        const htmlPath = path.join(tempDir, `centre-attestation-${studentId}-${timestamp}.html`);
+
+        // Écrire le HTML dans le fichier temporaire
+        fs.writeFileSync(htmlPath, html);
+        console.log(`📝 [CENTRE-ATTESTATION-PDF] ${studentIdLog}: HTML écrit dans ${htmlPath}`);
+
+        let win: BrowserWindow | null = null;
+        try {
+          // Créer une fenêtre cachée pour le rendu
+          win = new BrowserWindow({
+            width: 842,  // A4 landscape width in pixels at 72 DPI
+            height: 595, // A4 landscape height in pixels at 72 DPI
+            show: false,
+            webPreferences: {
+              nodeIntegration: false,
+              contextIsolation: true
+            }
+          });
+
+          // Charger le fichier HTML
+          await win.loadFile(htmlPath);
+          console.log(`🌐 [CENTRE-ATTESTATION-PDF] ${studentIdLog}: HTML chargé dans la fenêtre`);
+
+          // Attendre que le contenu soit complètement chargé
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          // Générer le PDF en format paysage
+          console.log(`🖨️ [CENTRE-ATTESTATION-PDF] ${studentIdLog}: Génération du PDF...`);
+          const pdfData = await win.webContents.printToPDF({
+            printBackground: true,
+            landscape: true,  // Format paysage
+            pageSize: 'A4',
+            margins: {
+              top: 0,
+              bottom: 0,
+              left: 0,
+              right: 0
+            }
+          });
+
+          const resultData = Buffer.from(pdfData);
+          const duration = Date.now() - startTime;
+          console.log(`✅ [CENTRE-ATTESTATION-PDF] ${studentIdLog}: PDF généré avec succès en ${duration}ms (${resultData.length} bytes)`);
+
+          resolve(resultData);
+
+        } finally {
+          console.log(`🧹 [CENTRE-ATTESTATION-PDF] ${studentIdLog}: Nettoyage des ressources...`);
+
+          // Fermer et détruire la fenêtre
+          if (win && !win.isDestroyed()) {
+            win.close();
+            win.destroy();
+            win = null;
+          }
+
+          // Nettoyer le fichier temporaire
+          try {
+            fs.unlinkSync(htmlPath);
+            console.log(`🗑️ [CENTRE-ATTESTATION-PDF] ${studentIdLog}: Fichier temporaire supprimé`);
+          } catch (cleanupError) {
+            console.warn(`⚠️ [CENTRE-ATTESTATION-PDF] ${studentIdLog}: Erreur lors de la suppression du fichier temporaire:`, cleanupError);
+          }
+        }
+
+      } catch (error) {
+        console.error('❌ [CENTRE-ATTESTATION-PDF] Erreur lors de la génération du PDF:', error);
+        reject(error);
+      }
+    });
+  });
+  console.log('✅ [SETUP] Gestionnaire "generateCentreAttestationPDF" enregistré');
+
+  // Handler pour la génération batch d'attestations de centre
+  ipcMain.handle('generateCentreAttestations', async (event, options: any) => {
+    try {
+      console.log(`📜 [CENTRE-ATTESTATIONS-BATCH] Début génération de ${options.students.length} attestations`);
+
+      const { students, centre, theme, exportFormat, useCompression } = options;
+      const isDemoMode = localStorage.getItem('demo_mode') === 'true';
+
+      const pdfResults: { pdfData: Uint8Array; student: CentreAttestationStudentRecord }[] = [];
+
+      // Générer chaque PDF individuellement
+      for (let i = 0; i < students.length; i++) {
+        const student = students[i];
+
+        try {
+          console.log(`📜 [CENTRE-ATTESTATIONS-BATCH] Génération ${i + 1}/${students.length}: ${student.NOM} ${student.PRENOM}`);
+
+          // Générer le HTML
+          const html = await generateCentreAttestationHTML(student, centre, {
+            theme,
+            isDemoMode,
+            centre
+          });
+
+          // Générer le PDF directement
+          const pdfData = await new Promise<Buffer>(async (resolve, reject) => {
+            const tempDir = app.getPath('temp');
+            const timestamp = Date.now();
+            const studentId = `${student.NOM}_${student.PRENOM}_${student.MATRICULE}`.replace(/[^a-zA-Z0-9]/g, '_');
+            const htmlPath = path.join(tempDir, `centre-attestation-${studentId}-${timestamp}.html`);
+
+            fs.writeFileSync(htmlPath, html);
+
+            let win: BrowserWindow | null = null;
+            try {
+              win = new BrowserWindow({
+                width: 842,
+                height: 595,
+                show: false,
+                webPreferences: {
+                  nodeIntegration: false,
+                  contextIsolation: true
+                }
+              });
+
+              await win.loadFile(htmlPath);
+              await new Promise(res => setTimeout(res, 1000));
+
+              const pdf = await win.webContents.printToPDF({
+                printBackground: true,
+                landscape: true,
+                pageSize: 'A4',
+                margins: { top: 0, bottom: 0, left: 0, right: 0 }
+              });
+
+              resolve(Buffer.from(pdf));
+
+            } catch (error) {
+              reject(error);
+            } finally {
+              if (win && !win.isDestroyed()) {
+                win.close();
+                win.destroy();
+                win = null;
+              }
+
+              try {
+                fs.unlinkSync(htmlPath);
+              } catch (cleanupError) {
+                console.warn('Erreur lors de la suppression du fichier temporaire:', cleanupError);
+              }
+            }
+          });
+
+          pdfResults.push({ pdfData, student });
+
+          // Notifier le progès
+          event.sender.send('centre-attestation-progress', {
+            current: i + 1,
+            total: students.length
+          });
+
+        } catch (error) {
+          console.error(`❌ [CENTRE-ATTESTATIONS-BATCH] Erreur pour ${student.NOM} ${student.PRENOM}:`, error);
+          throw error;
+        }
+      }
+
+      console.log(`✅ [CENTRE-ATTESTATIONS-BATCH] ${pdfResults.length} PDFs générés avec succès`);
+
+      // Exporter selon le format demandé
+      const { dialog } = require('electron');
+
+      if (exportFormat === 'zip') {
+        // Créer un ZIP avec tous les PDFs
+        const JSZip = require('jszip');
+        const zip = new JSZip();
+
+        pdfResults.forEach(({ pdfData, student }) => {
+          const fileName = `Attestation_${student.NOM}_${student.PRENOM}_${student.MATRICULE}.pdf`;
+          zip.file(fileName, pdfData);
+        });
+
+        const zipContent = await zip.generateAsync({
+          type: 'nodebuffer',
+          compression: useCompression ? 'DEFLATE' : 'STORE',
+          compressionOptions: { level: useCompression ? 9 : 0 }
+        });
+
+        const result = await dialog.showSaveDialog({
+          title: 'Enregistrer les attestations',
+          defaultPath: `Attestations_Centre_${Date.now()}.zip`,
+          filters: [{ name: 'Fichier ZIP', extensions: ['zip'] }]
+        });
+
+        if (!result.canceled && result.filePath) {
+          fs.writeFileSync(result.filePath, zipContent);
+          console.log(`✅ [CENTRE-ATTESTATIONS-BATCH] ZIP sauvegardé: ${result.filePath}`);
+        }
+
+      } else {
+        // Sauvegarder les fichiers individuellement
+        const result = await dialog.showOpenDialog({
+          title: 'Sélectionner un dossier de destination',
+          properties: ['openDirectory', 'createDirectory']
+        });
+
+        if (!result.canceled && result.filePaths.length > 0) {
+          const outputDir = result.filePaths[0];
+
+          pdfResults.forEach(({ pdfData, student }) => {
+            const fileName = `Attestation_${student.NOM}_${student.PRENOM}_${student.MATRICULE}.pdf`;
+            const filePath = path.join(outputDir, fileName);
+            fs.writeFileSync(filePath, pdfData);
+          });
+
+          console.log(`✅ [CENTRE-ATTESTATIONS-BATCH] ${pdfResults.length} fichiers sauvegardés dans ${outputDir}`);
+        }
+      }
+
+      return { success: true, count: pdfResults.length };
+
+    } catch (error) {
+      console.error('❌ [CENTRE-ATTESTATIONS-BATCH] Erreur lors de la génération batch:', error);
+      throw error;
+    }
+  });
+  console.log('✅ [SETUP] Gestionnaire "generateCentreAttestations" enregistré');
 
   console.log('✅ [SETUP] Tous les gestionnaires PDF initialisés avec succès');
   return {

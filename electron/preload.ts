@@ -93,6 +93,42 @@ contextBridge.exposeInMainWorld('electron', {
       console.error('Error rendering history PDF:', err);
       throw err;
     }
+  },
+
+  async generateCentreAttestationPDF(html: string, student: any) {
+    try {
+      console.log('📜 [PRELOAD] Appel generateCentreAttestationPDF pour:', student.NOM);
+      return await ipcRenderer.invoke('generateCentreAttestationPDF', html, student);
+    } catch (err) {
+      console.error('❌ [PRELOAD] Error generating centre attestation PDF:', err);
+      throw err;
+    }
+  },
+
+  async generateCentreAttestations(options: any) {
+    try {
+      console.log('📜 [PRELOAD] Appel generateCentreAttestations pour', options.students.length, 'étudiants');
+
+      // Écouter les événements de progression
+      if (options.onProgress) {
+        const progressHandler = (_event: any, data: { current: number; total: number }) => {
+          options.onProgress(data.current, data.total);
+        };
+        ipcRenderer.on('centre-attestation-progress', progressHandler);
+      }
+
+      const result = await ipcRenderer.invoke('generateCentreAttestations', options);
+
+      // Nettoyer l'écouteur de progression
+      ipcRenderer.removeAllListeners('centre-attestation-progress');
+
+      return result;
+    } catch (err) {
+      console.error('❌ [PRELOAD] Error generating centre attestations batch:', err);
+      // Nettoyer l'écouteur en cas d'erreur
+      ipcRenderer.removeAllListeners('centre-attestation-progress');
+      throw err;
+    }
   }
 });
 

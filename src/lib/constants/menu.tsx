@@ -30,7 +30,10 @@ import {
   Cog,
   ScrollText,
   FileDown,
-  Building2
+  Building2,
+  FileEdit,
+  Wrench,
+  Folders
 } from "lucide-react";
 
 interface MenuItem {
@@ -38,8 +41,14 @@ interface MenuItem {
   url: string;
   icon: React.ElementType;
   component: React.ReactElement;
-  demoRestricted?: boolean; // Nouveau: indicateur pour les éléments restreints en mode démo
-  requiresFaculty?: boolean; // NOUVEAU: indicateur pour les éléments réservés aux facultés
+  demoRestricted?: boolean;
+  requiresFaculty?: boolean;
+}
+
+interface MenuGroup {
+  title: string;
+  icon: React.ElementType;
+  items: MenuItem[];
 }
 
 const menuItems: MenuItem[] = [
@@ -127,6 +136,116 @@ const menuItems: MenuItem[] = [
   },
 ];
 
+// Organisation des menus par groupes
+const menuGroups: MenuGroup[] = [
+  {
+    title: "Génération de Documents",
+    icon: FileEdit,
+    items: [
+      {
+        title: "Relevés de Notes",
+        url: "receipts",
+        icon: FileSpreadsheet,
+        component: <ReleveGenerator />,
+      },
+      {
+        title: "Attestations de Réussite",
+        url: "attestation",
+        icon: GraduationCap,
+        component: <AttestationGenerator />,
+      },
+      {
+        title: "Diplômes",
+        url: "diplomes",
+        icon: ScrollText,
+        component: <DiplomaGenerator />,
+        requiresFaculty: true,
+      },
+      {
+        title: "Attestations Centre",
+        url: "centre-attestations",
+        icon: Award,
+        component: <CentreAttestationGenerator />,
+      },
+    ]
+  },
+  {
+    title: "Configuration",
+    icon: Wrench,
+    items: [
+      {
+        title: "Config des Rel...",
+        url: "config",
+        icon: Settings2,
+        component: <AcademicConfigManager />,
+      },
+      {
+        title: "Gestion des Centres",
+        url: "centre-manager",
+        icon: Building2,
+        component: <CentreManager />,
+      },
+      {
+        title: "Configurer les Entêtes",
+        url: "settings",
+        icon: Cog,
+        component: <SettingsForm />,
+      },
+      {
+        title: "Export Modèles Excel",
+        url: "template-export",
+        icon: FileDown,
+        component: <TemplateExportMenu />,
+        description: "Télécharger les modèles d'import Excel"
+      },
+    ]
+  },
+  {
+    title: "Outils QR Code",
+    icon: QrCode,
+    items: [
+      {
+        title: "QR Codes sur PDF",
+        url: "qrcode",
+        icon: File,
+        component: <QrCodeOnPdf />,
+        demoRestricted: true,
+      },
+      {
+        title: "Placement QR sur Doc",
+        url: "qr-document-processor",
+        icon: QrCode,
+        component: <QRCodeDocumentProcessor />,
+      },
+    ]
+  },
+  {
+    title: "Autres",
+    icon: Folders,
+    items: [
+      {
+        title: "Historique des Docs",
+        url: "history",
+        icon: History,
+        component: <DocumentHistoryManager />,
+      },
+      {
+        title: "Aide",
+        url: "help",
+        icon: HelpCircle,
+        component: <HelpSupport />,
+      },
+      {
+        title: "Paramètres",
+        url: "licenseSettings",
+        icon: Settings,
+        component: <SettingsPage />,
+        description: "Configuration de l'application"
+      },
+    ]
+  },
+];
+
 /**
  * Filtre les éléments de menu selon le mode de fonctionnement et le type d'établissement
  * @param isDemoMode - Indique si l'application est en mode démo
@@ -154,5 +273,27 @@ export const getFilteredMenuItems = (isDemoMode: boolean = false, establishmentT
   });
 };
 
-export { menuItems };
-export type { MenuItem };
+/**
+ * Filtre les groupes de menu selon le mode de fonctionnement et le type d'établissement
+ */
+export const getFilteredMenuGroups = (isDemoMode: boolean = false, establishmentType?: string): MenuGroup[] => {
+  const isFaculty = establishmentType?.toLowerCase().includes('faculty') ||
+                    establishmentType?.toLowerCase().includes('faculté') ||
+                    establishmentType === 'faculty';
+
+  return menuGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => {
+      if (isDemoMode && item.demoRestricted) {
+        return false;
+      }
+      if (item.requiresFaculty && !isFaculty) {
+        return false;
+      }
+      return true;
+    })
+  })).filter(group => group.items.length > 0); // Supprimer les groupes vides
+};
+
+export { menuItems, menuGroups };
+export type { MenuItem, MenuGroup };
