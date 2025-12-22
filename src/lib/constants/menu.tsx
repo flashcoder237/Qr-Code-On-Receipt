@@ -12,6 +12,8 @@ import { DocumentHistoryManager } from "@/components/organisms/document-history/
 import { HelpSupport } from '@/components/organisms/help-support';
 import { SettingsPage } from '@/components/pages/SettingsPage';
 import { TemplateExportMenu } from '@/components/organisms/template-export';
+import { CentreManager } from '@/components/organisms/centre-manager';
+import { CentreAttestationGenerator } from '@/components/organisms/centre-attestation-generator';
 import {
   Download,
   HelpCircle,
@@ -27,7 +29,8 @@ import {
   FileSpreadsheet,
   Cog,
   ScrollText,
-  FileDown
+  FileDown,
+  Building2
 } from "lucide-react";
 
 interface MenuItem {
@@ -60,10 +63,22 @@ const menuItems: MenuItem[] = [
     requiresFaculty: true, // NOUVEAU: Seulement pour les établissements de type faculty
   },
   {
+    title: "Attestations Centre",
+    url: "centre-attestations",
+    icon: Award,
+    component: <CentreAttestationGenerator />,
+  },
+  {
     title: "Config des rele...",
     url: "config",
     icon: Settings2,
     component: <AcademicConfigManager />,
+  },
+  {
+    title: "Gestion des Centres",
+    url: "centre-manager",
+    icon: Building2,
+    component: <CentreManager />,
   },
   {
     title: "Export modèles Excel",

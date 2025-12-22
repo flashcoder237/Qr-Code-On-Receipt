@@ -767,6 +767,42 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                 <p className="text-sm text-gray-500">{config.option}</p>
               )}
             </div>
+
+            {/* Centre associé (conditionnel) */}
+            {(() => {
+              const centres = typeof window !== 'undefined'
+                ? JSON.parse(localStorage.getItem('training-centres') || '[]')
+                : [];
+              if (centres.length === 0) return null;
+
+              return (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Centre de formation</label>
+                  {isEditing ? (
+                    <select
+                      value={config.centreId || ''}
+                      onChange={(e) => onUpdate({ centreId: e.target.value || undefined })}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <option value="">Aucun centre</option>
+                      {centres.map((centre: any) => (
+                        <option key={centre.id} value={centre.id}>
+                          {centre.nameFrench}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      {config.centreId
+                        ? centres.find((c: any) => c.id === config.centreId)?.nameFrench || 'Centre non trouvé'
+                        : 'Aucun centre'
+                      }
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
 

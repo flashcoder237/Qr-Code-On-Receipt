@@ -48,6 +48,7 @@ export interface ClassConfig {
   cycle: string;
   option: string;
   establishmentType?: 'ipes' | 'faculty';
+  centreId?: string; // NOUVEAU: ID du centre de formation associé (optionnel)
   semesters: Semester[];
   mergedSemesters?: MergedSemesterConfig[]; // Configurations de semestres fusionnés
   displaySessions?: boolean; // Afficher les sessions sur les relevés (défaut: true)

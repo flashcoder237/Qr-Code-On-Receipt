@@ -13,6 +13,8 @@ interface IpcRenderer {
       };
       electron: {
         renderHistoryPDF(htmlContent: string): Promise<Buffer>;
+        generateCentreAttestations?(options: any): Promise<void>;
+        generateCentreAttestationPDF?(html: string, student: any): Promise<Uint8Array>;
       };
     }
   }
