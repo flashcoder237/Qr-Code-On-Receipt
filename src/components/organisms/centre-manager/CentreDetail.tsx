@@ -20,7 +20,7 @@ import {
   Shield,
   Image as ImageIcon,
 } from 'lucide-react';
-import { Centre, LegalText } from '@/lib/form-schemas/centre-settings';
+import { Centre, LegalText, AdministrativeInstance, createNewAdministrativeInstance } from '@/lib/form-schemas/centre-settings';
 import { useToast } from '@/hooks/use-toast';
 
 interface CentreDetailProps {
@@ -92,6 +92,49 @@ export const CentreDetail: React.FC<CentreDetailProps> = ({
     const updated = [...(formData.legalTexts || [])];
     updated[index] = { ...updated[index], [field]: value };
     handleFieldChange('legalTexts', updated);
+  };
+
+  // Ajouter une instance administrative
+  const handleAddAdministrativeInstance = () => {
+    const newInstance = createNewAdministrativeInstance();
+    handleFieldChange('administrativeInstances', [...(formData.administrativeInstances || []), newInstance]);
+  };
+
+  // Supprimer une instance administrative
+  const handleRemoveAdministrativeInstance = (index: number) => {
+    const updated = [...(formData.administrativeInstances || [])];
+    updated.splice(index, 1);
+    handleFieldChange('administrativeInstances', updated);
+  };
+
+  // Modifier une instance administrative
+  const handleAdministrativeInstanceChange = (index: number, field: keyof AdministrativeInstance, value: any) => {
+    const updated = [...(formData.administrativeInstances || [])];
+    updated[index] = { ...updated[index], [field]: value };
+    handleFieldChange('administrativeInstances', updated);
+  };
+
+  // Upload logo pour une instance administrative
+  const handleAdminInstanceLogoUpload = (index: number) => {
+    return (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      if (file.size > 1024 * 1024) {
+        toast({
+          title: "Fichier trop volumineux",
+          description: "La taille maximale est de 1MB.",
+          variant: "error",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        handleAdministrativeInstanceChange(index, 'logo', reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    };
   };
 
   // Sauvegarder
@@ -323,58 +366,161 @@ export const CentreDetail: React.FC<CentreDetailProps> = ({
         </CardContent>
       </Card>
 
-      {/* Section 3: Instance administrative */}
+      {/* Section 3: Instances administratives (plusieurs) */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Instance Administrative
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Instances Administratives
+            </CardTitle>
+            <Button onClick={handleAddAdministrativeInstance} variant="outline" size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Ajouter une instance
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="adminNameFr">Nom (Français)</Label>
-              <Input
-                id="adminNameFr"
-                value={formData.administrativeInstanceNameFr || ''}
-                onChange={(e) => handleFieldChange('administrativeInstanceNameFr', e.target.value)}
-                placeholder="Ex: MINISTERE DE L'EMPLOI ET DE LA FORMATION PROFESSIONNELLE"
-              />
-            </div>
+          {formData.administrativeInstances && formData.administrativeInstances.length > 0 ? (
+            formData.administrativeInstances.map((instance, index) => (
+              <Card key={instance.id} className="p-4 border-2">
+                <div className="flex items-start justify-between mb-4">
+                  <h4 className="font-semibold">Instance #{index + 1}</h4>
+                  <Button
+                    onClick={() => handleRemoveAdministrativeInstance(index)}
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="adminNameEn">Nom (Anglais)</Label>
-              <Input
-                id="adminNameEn"
-                value={formData.administrativeInstanceNameEn || ''}
-                onChange={(e) => handleFieldChange('administrativeInstanceNameEn', e.target.value)}
-                placeholder="Ex: MINISTRY OF EMPLOYMENT AND VOCATIONAL TRAINING"
-              />
-            </div>
-          </div>
+                <div className="space-y-4">
+                  {/* Noms bilingues */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Nom (Français) *</Label>
+                      <Input
+                        value={instance.nameFr}
+                        onChange={(e) => handleAdministrativeInstanceChange(index, 'nameFr', e.target.value)}
+                        placeholder="Ex: MINISTERE DE L'EMPLOI ET DE LA FORMATION PROFESSIONNELLE"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Nom (Anglais) *</Label>
+                      <Input
+                        value={instance.nameEn}
+                        onChange={(e) => handleAdministrativeInstanceChange(index, 'nameEn', e.target.value)}
+                        placeholder="Ex: MINISTRY OF EMPLOYMENT AND VOCATIONAL TRAINING"
+                      />
+                    </div>
+                  </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="adminAcronymFr">Acronyme (Français)</Label>
-              <Input
-                id="adminAcronymFr"
-                value={formData.administrativeInstanceAcronymFr || ''}
-                onChange={(e) => handleFieldChange('administrativeInstanceAcronymFr', e.target.value)}
-                placeholder="Ex: MINEFOP"
-              />
-            </div>
+                  {/* Acronymes */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Acronyme (Français)</Label>
+                      <Input
+                        value={instance.acronymFr || ''}
+                        onChange={(e) => handleAdministrativeInstanceChange(index, 'acronymFr', e.target.value)}
+                        placeholder="Ex: MINEFOP"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Acronyme (Anglais)</Label>
+                      <Input
+                        value={instance.acronymEn || ''}
+                        onChange={(e) => handleAdministrativeInstanceChange(index, 'acronymEn', e.target.value)}
+                        placeholder="Ex: MINEFOP"
+                      />
+                    </div>
+                  </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="adminAcronymEn">Acronyme (Anglais)</Label>
-              <Input
-                id="adminAcronymEn"
-                value={formData.administrativeInstanceAcronymEn || ''}
-                onChange={(e) => handleFieldChange('administrativeInstanceAcronymEn', e.target.value)}
-                placeholder="Ex: MINEFOP"
-              />
+                  {/* Logo */}
+                  <div className="space-y-2">
+                    <Label>Logo de l'instance</Label>
+                    <div className="border-2 border-dashed rounded-lg p-4">
+                      {instance.logo ? (
+                        <div className="space-y-2">
+                          <img
+                            src={instance.logo}
+                            alt="Logo Instance"
+                            className="h-24 object-contain mx-auto"
+                          />
+                          <Button
+                            onClick={() => handleAdministrativeInstanceChange(index, 'logo', undefined)}
+                            variant="destructive"
+                            size="sm"
+                            className="w-full"
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Supprimer
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="text-center">
+                          <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                          <Label
+                            htmlFor={`admin-logo-${index}`}
+                            className="cursor-pointer text-sm text-blue-600 hover:text-blue-700"
+                          >
+                            Cliquez pour uploader (max 1MB)
+                          </Label>
+                          <input
+                            id={`admin-logo-${index}`}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleAdminInstanceLogoUpload(index)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Options d'affichage des logos */}
+                  <div className="space-y-3 border-t pt-3">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-base">Afficher le logo sur les relevés</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Le logo apparaîtra dans l'en-tête des relevés de notes
+                        </p>
+                      </div>
+                      <Switch
+                        checked={instance.showLogoOnTranscripts}
+                        onCheckedChange={(checked) =>
+                          handleAdministrativeInstanceChange(index, 'showLogoOnTranscripts', checked)
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-base">Afficher le logo sur les attestations</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Le logo apparaîtra dans l'en-tête des attestations
+                        </p>
+                      </div>
+                      <Switch
+                        checked={instance.showLogoOnAttestations}
+                        onCheckedChange={(checked) =>
+                          handleAdministrativeInstanceChange(index, 'showLogoOnAttestations', checked)
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Aucune instance administrative ajoutée</p>
+              <p className="text-sm">Cliquez sur "Ajouter une instance" pour commencer</p>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 

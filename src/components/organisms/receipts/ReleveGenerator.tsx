@@ -1233,7 +1233,12 @@ export const ReleveGenerator: React.FC = () => {
         ...(semesterTheme && { theme: semesterTheme }),
         // NOUVEAU: Ajouter les informations du centre si disponibles
         ...(centreInfo && {
-          centre: centreInfo,
+          centre: {
+            ...centreInfo,
+            authorizationTextFr: centreInfo.authorizationTextFr,
+            authorizationTextEn: centreInfo.authorizationTextEn,
+            location: centreInfo.location
+          },
           // Surcharger les logos et informations avec ceux du centre
           centreLogo: centreInfo.logo,
           centreAdministrativeInstanceLogo: centreInfo.administrativeInstanceLogo,
@@ -1394,7 +1399,12 @@ export const ReleveGenerator: React.FC = () => {
             ...(semesterTheme && { theme: semesterTheme }),
             // NOUVEAU: Ajouter les informations du centre si disponibles
             ...(centreInfo && {
-              centre: centreInfo,
+              centre: {
+                ...centreInfo,
+                authorizationTextFr: centreInfo.authorizationTextFr,
+                authorizationTextEn: centreInfo.authorizationTextEn,
+                location: centreInfo.location
+              },
               // Surcharger les logos et informations avec ceux du centre
               centreLogo: centreInfo.logo,
               centreAdministrativeInstanceLogo: centreInfo.administrativeInstanceLogo,

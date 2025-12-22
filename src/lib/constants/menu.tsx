@@ -149,7 +149,7 @@ const menuGroups: MenuGroup[] = [
         component: <ReleveGenerator />,
       },
       {
-        title: "Attestations de Réussite",
+        title: "Attestations de Réus...",
         url: "attestation",
         icon: GraduationCap,
         component: <AttestationGenerator />,

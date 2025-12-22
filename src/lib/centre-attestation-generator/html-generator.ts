@@ -458,16 +458,25 @@ export async function generateCentreAttestationHTML(
           <div class="header-text">RÉPUBLIQUE DU CAMEROUN</div>
           <div class="header-subtext">Paix – travail – patrie</div>
           <div class="header-subtext">---------</div>
-          ${centre.administrativeInstanceNameFr ? `
-          <div class="ministry-name">${centre.administrativeInstanceNameFr}</div>
-          ` : ''}
-          <div class="header-subtext">---------</div>
+          ${centre.administrativeInstances && centre.administrativeInstances.length > 0 ?
+            centre.administrativeInstances.map(inst => `
+            <div class="ministry-name">${inst.nameFr}</div>
+            <div class="header-subtext">---------</div>
+            `).join('') :
+            centre.administrativeInstanceNameFr ? `
+            <div class="ministry-name">${centre.administrativeInstanceNameFr}</div>
+            <div class="header-subtext">---------</div>
+            ` : ''
+          }
         </div>
 
         <div class="header-center">
-          ${centre.administrativeInstanceLogo ? `
-          <img src="${centre.administrativeInstanceLogo}" alt="Logo MINFOP" />
-          ` : ''}
+          ${centre.administrativeInstances && centre.administrativeInstances.length > 0 ?
+            centre.administrativeInstances
+              .filter(inst => inst.showLogoOnAttestations && inst.logo)
+              .map(inst => `<img src="${inst.logo}" alt="${inst.nameFr}" />`).join('') :
+            centre.administrativeInstanceLogo ? `<img src="${centre.administrativeInstanceLogo}" alt="Logo MINFOP" />` : ''
+          }
           ${centre.logo ? `
           <img src="${centre.logo}" alt="Logo Centre" />
           ` : ''}
@@ -477,10 +486,16 @@ export async function generateCentreAttestationHTML(
           <div class="header-text">REPUBLIC OF CAMEROON</div>
           <div class="header-subtext">Peace – Work – Fatherland</div>
           <div class="header-subtext">---------</div>
-          ${centre.administrativeInstanceNameEn ? `
-          <div class="ministry-name">${centre.administrativeInstanceNameEn}</div>
-          ` : ''}
-          <div class="header-subtext">---------</div>
+          ${centre.administrativeInstances && centre.administrativeInstances.length > 0 ?
+            centre.administrativeInstances.map(inst => `
+            <div class="ministry-name">${inst.nameEn}</div>
+            <div class="header-subtext">---------</div>
+            `).join('') :
+            centre.administrativeInstanceNameEn ? `
+            <div class="ministry-name">${centre.administrativeInstanceNameEn}</div>
+            <div class="header-subtext">---------</div>
+            ` : ''
+          }
         </div>
       </div>
 

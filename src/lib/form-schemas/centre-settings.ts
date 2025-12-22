@@ -11,6 +11,20 @@ export const LegalTextSchema = z.object({
 
 export type LegalText = z.infer<typeof LegalTextSchema>;
 
+// Schéma pour une instance administrative (ex: MINEFOP, MINESUP, etc.)
+export const AdministrativeInstanceSchema = z.object({
+  id: z.string(),
+  nameFr: z.string().min(1, "Le nom français est requis"),
+  nameEn: z.string().min(1, "Le nom anglais est requis"),
+  acronymFr: z.string().optional(),
+  acronymEn: z.string().optional(),
+  logo: z.string().optional(),
+  showLogoOnTranscripts: z.boolean().default(true),
+  showLogoOnAttestations: z.boolean().default(true),
+});
+
+export type AdministrativeInstance = z.infer<typeof AdministrativeInstanceSchema>;
+
 // Schéma principal pour un centre de formation
 export const CentreSchema = z.object({
   // Identification
@@ -21,10 +35,13 @@ export const CentreSchema = z.object({
 
   // Logos (base64)
   logo: z.string().optional(),
-  administrativeInstanceLogo: z.string().optional(),
   watermarkLogo: z.string().optional(),
 
-  // Instance administrative (ex: MINEFOP)
+  // Instances administratives (peut en avoir plusieurs)
+  administrativeInstances: z.array(AdministrativeInstanceSchema).optional().default([]),
+
+  // DEPRECATED: Anciens champs pour rétrocompatibilité
+  administrativeInstanceLogo: z.string().optional(),
   administrativeInstanceNameFr: z.string().optional(),
   administrativeInstanceNameEn: z.string().optional(),
   administrativeInstanceAcronymFr: z.string().optional(),
@@ -57,8 +74,10 @@ export const defaultCentre: Omit<Centre, 'id' | 'createdAt' | 'updatedAt'> = {
   nameFrench: "",
   nameEnglish: "",
   logo: undefined,
-  administrativeInstanceLogo: undefined,
   watermarkLogo: undefined,
+  administrativeInstances: [],
+  // DEPRECATED: pour rétrocompatibilité
+  administrativeInstanceLogo: undefined,
   administrativeInstanceNameFr: "",
   administrativeInstanceNameEn: "",
   administrativeInstanceAcronymFr: "",
@@ -72,6 +91,22 @@ export const defaultCentre: Omit<Centre, 'id' | 'createdAt' | 'updatedAt'> = {
   location: "",
   isActive: true,
 };
+
+/**
+ * Fonction pour créer une nouvelle instance administrative
+ */
+export function createNewAdministrativeInstance(): AdministrativeInstance {
+  return {
+    id: `admin-instance-${Date.now()}`,
+    nameFr: "",
+    nameEn: "",
+    acronymFr: "",
+    acronymEn: "",
+    logo: undefined,
+    showLogoOnTranscripts: true,
+    showLogoOnAttestations: true,
+  };
+}
 
 /**
  * Fonction pour valider un centre

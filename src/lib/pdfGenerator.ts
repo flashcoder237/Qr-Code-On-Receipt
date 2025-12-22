@@ -1069,7 +1069,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
             
             <!-- Logo de fond personnalisé ou par défaut -->
             <div class="watermark">
-                <img src="${settings.watermarkLogo || (settings.establishmentType === "ipes" ? settings.logo : facultyLogoBase64)}" alt="Watermark">
+                <img src="${settings.centre && settings.centre.watermarkLogo ? settings.centre.watermarkLogo : settings.watermarkLogo || (settings.establishmentType === "ipes" ? settings.logo : facultyLogoBase64)}" alt="Watermark">
             </div>
             
             <div class="header">
@@ -1077,37 +1077,39 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                     <div class="header-content">
                         <p>REPUBLIQUE DU CAMEROUN <br>
                         <em>Paix – Travail – Patrie</em><br>
-                        ********************<br>
-                        ${settings.centre ? settings.centreAdministrativeInstanceNameFr || 'MINISTERE DE L\'ENSEIGNEMENT SUPERIEUR' : 'MINISTERE DE L\'ENSEIGNEMENT SUPERIEUR'}<br>
-                        ********************<br>
-                        <strong>UNIVERSITE DE DOUALA</strong><br>
-                        <span id="to-hidden">********************<br>
-                        <strong>FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES</strong><br>
-                        ********************<br>
-                        B.P 2701, Douala, Cameroun<br>
-                        Email: <a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a><br>
-                        ********************<br>
+                        ${settings.centre && settings.centre.administrativeInstances && settings.centre.administrativeInstances.length > 0
+                          ? settings.centre.administrativeInstances.map((inst) => `********************<br>${inst.nameFr}<br>`).join('')
+                          : settings.centre && settings.centreAdministrativeInstanceNameFr
+                            ? `********************<br>${settings.centreAdministrativeInstanceNameFr}<br>`
+                            : '********************<br>MINISTERE DE L\'ENSEIGNEMENT SUPERIEUR<br>'
+                        }
+                        ${settings.centre ? '' : '********************<br><strong>UNIVERSITE DE DOUALA</strong><br>'}
+                        <span id="to-hidden">${settings.centre ? '' : '********************<br><strong>FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES</strong><br>********************<br>B.P 2701, Douala, Cameroun<br>Email: <a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a><br>'}********************<br>
                         <strong>${
                           settings.centre ? settings.centre.nameFrench : settings.nameFrench
                             .split(" ")
                             .map((w, i) => (i > 0 && i % 4 === 0 ? "<br>" + w : w))
                             .join(" ")
                         }</strong><br>
+                        ${settings.centre && settings.centre.authorizationTextFr ? `********************<br><em>${settings.centre.authorizationTextFr}</em><br>` : ''}
                         ********************<br>
-                        B.P ${settings.centre ? settings.centre.postalBox || settings.postalBox : settings.postalBox}<br>
+                        B.P ${settings.centre ? settings.centre.postalBox || '' : settings.postalBox}<br>
+                        ${settings.centre && settings.centre.phone ? `Tél: ${settings.centre.phone}<br>` : ''}
                         Email: <a href="mailto:${settings.centre ? settings.centre.email || settings.email : settings.email}">${settings.centre ? settings.centre.email || settings.email : settings.email}</a></p></span>
                     </div>
                     <div class="header-logo-content">
-                        <div>
-                          ${universityLogoBase64 ? `<img src="${universityLogoBase64}" alt="University Logo" height="70">` :
-                            '<div style="height: 70px; border: 1px solid black;"> University Logo</div>'}
-                        </div>
-                        <div>
-                          ${settings.centre && settings.centreAdministrativeInstanceLogo ?
-                            `<img src="${settings.centreAdministrativeInstanceLogo}" alt="Administrative Instance Logo" height="50" style="margin: 5px;">` :
-                            facultyLogoBase64 ? `<img src="${facultyLogoBase64}" alt="Faculty Logo" height="50" style="margin: 5px;">` :
-                            '<div style="height: 50px; border: 1px solid black; margin: 5px;"> Faculty Logo</div>'}
-                        </div>
+                        ${settings.centre && settings.centre.administrativeInstances && settings.centre.administrativeInstances.length > 0
+                          ? settings.centre.administrativeInstances
+                              .filter((inst) => inst.showLogoOnTranscripts && inst.logo)
+                              .map((inst, idx) => `<div><img src="${inst.logo}" alt="${inst.nameFr}" height="${idx === 0 ? '70' : '50'}" style="margin: 5px;"></div>`)
+                              .join('')
+                          : settings.centre && settings.centreAdministrativeInstanceLogo
+                            ? `<div><img src="${settings.centreAdministrativeInstanceLogo}" alt="Administrative Instance Logo" height="70"></div>`
+                            : !settings.centre
+                              ? `<div>${universityLogoBase64 ? `<img src="${universityLogoBase64}" alt="University Logo" height="70">` : '<div style="height: 70px; border: 1px solid black;"> University Logo</div>'}</div>
+                                 <div>${facultyLogoBase64 ? `<img src="${facultyLogoBase64}" alt="Faculty Logo" height="50" style="margin: 5px;">` : '<div style="height: 50px; border: 1px solid black; margin: 5px;"> Faculty Logo</div>'}</div>`
+                              : ''
+                        }
                         <div id="to-hidden">
                           ${settings.centre && settings.centreLogo ? `<img src="${settings.centreLogo}" alt="Centre Logo" height="70">` :
                             settings.logo ? `<img src="${settings.logo}" alt="IPES Logo" height="70">` :
@@ -1117,34 +1119,36 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                     <div class="header-content">
                         <p>REPUBLIC OF CAMEROON<br>
                         <em>Peace – Work - Fatherland</em><br>
-                        ********************<br>
-                        ${settings.centre ? settings.centreAdministrativeInstanceNameEn || 'MINISTRY OF HIGHER EDUCATION' : 'MINISTRY OF HIGHER EDUCATION'}<br>
-                        ********************<br>
-                        <strong>UNIVERSITY OF DOUALA</strong><br>
-                        <span id="to-hidden">********************<br>
-                        <strong>FACULTY OF MEDICINE AND<br>PHARMACEUTICAL SCIENCES</strong><br>
-                        ********************<br>
-                        PO box 2701, Douala, Cameroon<br>
-                        Email: <a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a><br>
-                        ********************<br>
+                        ${settings.centre && settings.centre.administrativeInstances && settings.centre.administrativeInstances.length > 0
+                          ? settings.centre.administrativeInstances.map((inst) => `********************<br>${inst.nameEn}<br>`).join('')
+                          : settings.centre && settings.centreAdministrativeInstanceNameEn
+                            ? `********************<br>${settings.centreAdministrativeInstanceNameEn}<br>`
+                            : '********************<br>MINISTRY OF HIGHER EDUCATION<br>'
+                        }
+                        ${settings.centre ? '' : '********************<br><strong>UNIVERSITY OF DOUALA</strong><br>'}
+                        <span id="to-hidden">${settings.centre ? '' : '********************<br><strong>FACULTY OF MEDICINE AND<br>PHARMACEUTICAL SCIENCES</strong><br>********************<br>PO box 2701, Douala, Cameroon<br>Email: <a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a><br>'}********************<br>
                         <strong>${
                           settings.centre ? settings.centre.nameEnglish : settings.nameEnglish
                             .split(" ")
                             .map((w, i) => (i > 0 && i % 4 === 0 ? "<br>" + w : w))
                             .join(" ")
                         }</strong><br>
+                        ${settings.centre && settings.centre.authorizationTextEn ? `********************<br><em>${settings.centre.authorizationTextEn}</em><br>` : ''}
                         ********************<br>
-                        PO box ${settings.centre ? settings.centre.postalBox || settings.postalBoxEn : settings.postalBoxEn}<br>
+                        PO box ${settings.centre ? settings.centre.postalBox || '' : settings.postalBoxEn}<br>
+                        ${settings.centre && settings.centre.phone ? `Tel: ${settings.centre.phone}<br>` : ''}
                         Email: <a href="mailto:${settings.centre ? settings.centre.email || settings.email : settings.email}">${settings.centre ? settings.centre.email || settings.email : settings.email}</a></p></span>
                     </div>
                 </div>
                 <div class="header-row2">
+                ${!settings.centre ? `
                 <span id="to-nothidden">
                     <h2 class="header-title"><strong>FACULTE DE MEDECINE ET DES SCIENCES PHARMACEUTIQUES</strong><br>
                     <strong><em>FACULTY OF MEDICINE AND PHARMACEUTICAL SCIENCES</em></strong><br>
                     <h4 class="header-title"><strong>B.P. 2701. e-mail : <em><a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a></em></strong></h4></h2></span>
+                ` : ''}
                     <h1 class="header-title"><strong>RELEVE DE NOTES</strong> / TRANSCRIPT</h1>
-                    <p><strong>Ref No</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  /${currentYear}/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR/${settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE"}</p>
+                    <p><strong>Ref No</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  /${currentYear}/${settings.centre ? (settings.centre.nameFrench.split(' ').map(w => w[0]).join('').toUpperCase()) : 'UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR'}/${settings.centre ? 'DIR' : (settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE")}</p>
                 </div>
             </div>
         
@@ -1411,18 +1415,25 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                 </div>
                 
                 <div class="signature">
-                    <div><strong>Douala, le</strong> 
-                    <br/><i>Douala, the</i></div><br/>
+                    <div><strong>${settings.centre && settings.centre.location ? settings.centre.location : 'Douala'}, le</strong>
+                    <br/><i>${settings.centre && settings.centre.location ? settings.centre.location : 'Douala'}, the</i></div><br/>
 
+                    ${settings.centre ? `
+                    <div><strong>Le Directeur du ${settings.centre.nameFrench}</strong>
+                    <br/><i>The Director of ${settings.centre.nameEnglish || settings.centre.nameFrench}</i></div>
+                    ` : `
                     <div id="to-nothidden"><strong>LE CHEF D'ÉTABLISSEMENT</strong>
                     <br/><i>The Dean of the Faculty</i></div>
                     <div id="to-hidden"><strong>Le DOYEN FMSP</strong>
                     <br/><i>The DEAN FMSP</i></div>
+                    `}
                 </div>
             </div>
 
+            ${!settings.centre ? `
             <div id="to-hidden" class="signature-ipes"><strong>Le Directeur de L'${settings.nameFrench.length >= 30 ? settings.nameAbreviation : settings.nameFrench}</strong>
             <br/><i>The Director of ${settings.nameFrench.length >= 30 ? settings.nameAbreviation : settings.nameEnglish}</i></div>
+            ` : ''}
             </div>
             
             <!-- Footer note avec mention démo si nécessaire -->
