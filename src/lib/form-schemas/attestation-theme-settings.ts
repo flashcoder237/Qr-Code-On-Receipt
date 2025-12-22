@@ -10,7 +10,7 @@ export const AttestationThemeSettingsSchema = z.object({
   tableBorderColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "La couleur doit être au format hexadécimal"),
   tableHeaderBgColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "La couleur doit être au format hexadécimal"),
   
-  // Typographie de base - Large gamme de polices
+  // Typographie de base - Très large gamme de polices
   mainFont: z.enum([
     // Serif classiques (formelles, traditionnelles)
     "Times New Roman, serif",
@@ -23,6 +23,13 @@ export const AttestationThemeSettingsSchema = z.object({
     "Didot, serif",
     "Bodoni MT, serif",
     "Constantia, serif",
+    "Hoefler Text, serif",
+    "Century Schoolbook, serif",
+    "Rockwell, serif",
+    "Caslon, serif",
+    "Cochin, serif",
+    "Big Caslon, serif",
+    "Goudy Old Style, serif",
 
     // Serif modernes/élégantes
     "Domine, serif",
@@ -31,6 +38,18 @@ export const AttestationThemeSettingsSchema = z.object({
     "Merriweather, serif",
     "Crimson Text, serif",
     "EB Garamond, serif",
+    "Libre Baskerville, serif",
+    "Cormorant, serif",
+    "Cinzel, serif",
+    "Spectral, serif",
+    "Crimson Pro, serif",
+    "Cardo, serif",
+    "Vollkorn, serif",
+    "Alegreya, serif",
+    "Bitter, serif",
+    "Arvo, serif",
+    "PT Serif, serif",
+    "Neuton, serif",
 
     // Sans-serif classiques
     "Arial, sans-serif",
@@ -39,6 +58,10 @@ export const AttestationThemeSettingsSchema = z.object({
     "Verdana, sans-serif",
     "Tahoma, sans-serif",
     "Trebuchet MS, sans-serif",
+    "Geneva, sans-serif",
+    "Lucida Grande, sans-serif",
+    "Arial Narrow, sans-serif",
+    "Segoe UI, sans-serif",
 
     // Sans-serif modernes
     "Open Sans, sans-serif",
@@ -50,6 +73,23 @@ export const AttestationThemeSettingsSchema = z.object({
     "Inter, sans-serif",
     "Poppins, sans-serif",
     "Raleway, sans-serif",
+    "Ubuntu, sans-serif",
+    "Noto Sans, sans-serif",
+    "Work Sans, sans-serif",
+    "PT Sans, sans-serif",
+    "Fira Sans, sans-serif",
+    "DM Sans, sans-serif",
+    "Manrope, sans-serif",
+    "Karla, sans-serif",
+    "Rubik, sans-serif",
+    "Quicksand, sans-serif",
+    "Barlow, sans-serif",
+    "Outfit, sans-serif",
+    "Plus Jakarta Sans, sans-serif",
+    "Space Grotesk, sans-serif",
+    "Archivo, sans-serif",
+    "Josefin Sans, sans-serif",
+    "Assistant, sans-serif",
 
     // Polices professionnelles
     "Century Gothic, sans-serif",
@@ -57,6 +97,28 @@ export const AttestationThemeSettingsSchema = z.object({
     "Gill Sans, sans-serif",
     "Futura, sans-serif",
     "Optima, sans-serif",
+    "Avenir, sans-serif",
+    "Gotham, sans-serif",
+    "Proxima Nova, sans-serif",
+
+    // Polices monospace/techniques
+    "Courier New, monospace",
+    "Monaco, monospace",
+    "Consolas, monospace",
+    "Source Code Pro, monospace",
+    "Fira Code, monospace",
+    "Roboto Mono, monospace",
+    "IBM Plex Mono, monospace",
+    "JetBrains Mono, monospace",
+    "Inconsolata, monospace",
+
+    // Polices display/créatives
+    "Oswald, sans-serif",
+    "Bebas Neue, sans-serif",
+    "Anton, sans-serif",
+    "Lobster, cursive",
+    "Pacifico, cursive",
+    "Dancing Script, cursive",
   ]),
   headerFont: z.enum([
     // Serif classiques (formelles, traditionnelles)
@@ -70,6 +132,13 @@ export const AttestationThemeSettingsSchema = z.object({
     "Didot, serif",
     "Bodoni MT, serif",
     "Constantia, serif",
+    "Hoefler Text, serif",
+    "Century Schoolbook, serif",
+    "Rockwell, serif",
+    "Caslon, serif",
+    "Cochin, serif",
+    "Big Caslon, serif",
+    "Goudy Old Style, serif",
 
     // Serif modernes/élégantes
     "Domine, serif",
@@ -78,6 +147,18 @@ export const AttestationThemeSettingsSchema = z.object({
     "Merriweather, serif",
     "Crimson Text, serif",
     "EB Garamond, serif",
+    "Libre Baskerville, serif",
+    "Cormorant, serif",
+    "Cinzel, serif",
+    "Spectral, serif",
+    "Crimson Pro, serif",
+    "Cardo, serif",
+    "Vollkorn, serif",
+    "Alegreya, serif",
+    "Bitter, serif",
+    "Arvo, serif",
+    "PT Serif, serif",
+    "Neuton, serif",
 
     // Sans-serif classiques
     "Arial, sans-serif",
@@ -86,6 +167,10 @@ export const AttestationThemeSettingsSchema = z.object({
     "Verdana, sans-serif",
     "Tahoma, sans-serif",
     "Trebuchet MS, sans-serif",
+    "Geneva, sans-serif",
+    "Lucida Grande, sans-serif",
+    "Arial Narrow, sans-serif",
+    "Segoe UI, sans-serif",
 
     // Sans-serif modernes
     "Open Sans, sans-serif",
@@ -97,6 +182,23 @@ export const AttestationThemeSettingsSchema = z.object({
     "Inter, sans-serif",
     "Poppins, sans-serif",
     "Raleway, sans-serif",
+    "Ubuntu, sans-serif",
+    "Noto Sans, sans-serif",
+    "Work Sans, sans-serif",
+    "PT Sans, sans-serif",
+    "Fira Sans, sans-serif",
+    "DM Sans, sans-serif",
+    "Manrope, sans-serif",
+    "Karla, sans-serif",
+    "Rubik, sans-serif",
+    "Quicksand, sans-serif",
+    "Barlow, sans-serif",
+    "Outfit, sans-serif",
+    "Plus Jakarta Sans, sans-serif",
+    "Space Grotesk, sans-serif",
+    "Archivo, sans-serif",
+    "Josefin Sans, sans-serif",
+    "Assistant, sans-serif",
 
     // Polices professionnelles
     "Century Gothic, sans-serif",
@@ -104,6 +206,28 @@ export const AttestationThemeSettingsSchema = z.object({
     "Gill Sans, sans-serif",
     "Futura, sans-serif",
     "Optima, sans-serif",
+    "Avenir, sans-serif",
+    "Gotham, sans-serif",
+    "Proxima Nova, sans-serif",
+
+    // Polices monospace/techniques
+    "Courier New, monospace",
+    "Monaco, monospace",
+    "Consolas, monospace",
+    "Source Code Pro, monospace",
+    "Fira Code, monospace",
+    "Roboto Mono, monospace",
+    "IBM Plex Mono, monospace",
+    "JetBrains Mono, monospace",
+    "Inconsolata, monospace",
+
+    // Polices display/créatives
+    "Oswald, sans-serif",
+    "Bebas Neue, sans-serif",
+    "Anton, sans-serif",
+    "Lobster, cursive",
+    "Pacifico, cursive",
+    "Dancing Script, cursive",
   ]),
   
   // Tailles de police de base

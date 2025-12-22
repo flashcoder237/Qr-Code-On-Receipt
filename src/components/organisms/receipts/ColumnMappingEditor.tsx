@@ -38,6 +38,7 @@ interface ColumnMappingEditorProps {
   onMappingChange: (ecId: string, excelCol: string) => void;
   onSessionMappingChange: (ecId: string, sessionCol: string) => void; // NOUVEAU: Callback pour les sessions
   onLoadMapping?: (mapping: { [ecId: string]: string }, sessionMapping: { [ecId: string]: string }) => void;
+  onAutoMapECs?: () => number; // NOUVEAU: Callback pour l'auto-mapping des ECs
 }
 
 export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
@@ -49,7 +50,8 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
   getAvailableECs,
   onMappingChange,
   onSessionMappingChange,
-  onLoadMapping
+  onLoadMapping,
+  onAutoMapECs
 }) => {
   const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotifications();
 
@@ -380,11 +382,33 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
         </div>
         
         <div className="flex space-x-2">
+          {/* NOUVEAU: Bouton d'auto-mapping des ECs */}
+          {onAutoMapECs && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => {
+                const mappedCount = onAutoMapECs();
+                if (mappedCount > 0) {
+                  notifySuccess("Auto-correspondance", `${mappedCount} EC(s) mappé(s) automatiquement`);
+                  // Auto-mapper les sessions après avoir mappé les ECs
+                  autoMapSessions();
+                } else {
+                  notifyInfo("Auto-correspondance", "Aucune correspondance automatique trouvée");
+                }
+              }}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Auto-correspondance ECs
+            </Button>
+          )}
+
           {/* NOUVEAU: Bouton d'auto-mapping des sessions */}
           {sessionStats.totalSessionColumns > 0 && (
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={autoMapSessions}
               className="text-blue-600 border-blue-300"
             >

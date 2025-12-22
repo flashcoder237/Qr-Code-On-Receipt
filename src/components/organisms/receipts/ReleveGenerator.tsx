@@ -530,40 +530,22 @@ export const ReleveGenerator: React.FC = () => {
     // Utiliser directement la fonction au lieu de l'appeler depuis le callback
     const ecs: Array<{ id: string; fullName: string; ecName: string; semesterName?: string }> = [];
 
-    // Si multi-semestre est activé et des semestres sont sélectionnés
-    if (selectedMultiSemesterIds.length > 0) {
-      
-      selectedMultiSemesterIds.forEach(semesterId => {
-        const semester = currentConfig.semesters.find(s => s.id === semesterId);
-        if (semester) {
-          semester.ues.forEach((ue: any) => {
-            ue.ecs.forEach((ec: any) => {
-              ecs.push({
-                id: ec.id,
-                fullName: `${semester.name} - ${ue.name} - ${ec.name}`,
-                ecName: ec.name,
-                semesterName: semester.name
-              });
-            });
-          });
-        }
-      });
-    } else if (currentSemester) {
-      
-      // Mode normal - un seul semestre
-      currentSemester.ues.forEach((ue: any) => {
+    // AMÉLIORATION MAJEURE: TOUJOURS chercher dans TOUS les semestres pour l'auto-mapping
+    // Cela permet de reconnaître automatiquement TOUTES les colonnes du masque de saisie,
+    // peu importe le mode (semestre simple, composite, ou aucun semestre sélectionné)
+
+    currentConfig.semesters.forEach((semester: any) => {
+      semester.ues.forEach((ue: any) => {
         ue.ecs.forEach((ec: any) => {
           ecs.push({
             id: ec.id,
-            fullName: `${currentSemester.name} - ${ue.name} - ${ec.name}`,
+            fullName: `${semester.name} - ${ue.name} - ${ec.name}`,
             ecName: ec.name,
-            semesterName: currentSemester.name
+            semesterName: semester.name
           });
         });
       });
-    } else {
-      
-    }
+    });
 
     
     
@@ -571,10 +553,11 @@ export const ReleveGenerator: React.FC = () => {
     let mappedCount = 0;
 
     ecs.forEach(ec => {
-      // Vérifier si déjà mappé dans le state actuel (pas dans columnMapping car il peut être vide au début)
-      const existingMapping = Object.entries(columnMapping).find(([key]) => key === ec.id);
-      if (existingMapping && existingMapping[1]) {
-        
+      // Vérifier si déjà mappé avec une VRAIE valeur (pas "null" ou vide)
+      const currentValue = columnMapping[ec.id];
+      if (currentValue && currentValue !== "null" && currentValue !== "") {
+        // Déjà mappé avec une vraie colonne, skip
+
         return;
       }
 
@@ -583,7 +566,7 @@ export const ReleveGenerator: React.FC = () => {
         // Correspondance exacte (insensible à la casse)
         const match = col.toLowerCase().trim() === ec.ecName.toLowerCase().trim();
         if (match) {
-          
+
         }
         return match;
       });
@@ -2319,6 +2302,7 @@ export const ReleveGenerator: React.FC = () => {
                     onMappingChange={handleMappingChange}
                     onSessionMappingChange={handleSessionMappingChange}
                     onLoadMapping={handleLoadMapping}
+                    onAutoMapECs={() => autoMapByECName(excelColumns)}
                   />
                 </CardContent>
               </Card>
