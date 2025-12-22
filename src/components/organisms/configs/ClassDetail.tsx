@@ -1081,7 +1081,7 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
                           animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.2 }}
-                          draggable={isEditing}
+                          draggable={isEditing && ueReorderEnabled}
                           onDragStart={() => handleUEDragStart(semester.id, ueIndex)}
                           onDragOver={(e) => handleUEDragOver(e, semester.id, ueIndex)}
                           onDragLeave={handleUEDragLeave}
