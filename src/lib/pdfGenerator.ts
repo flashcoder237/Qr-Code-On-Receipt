@@ -60,6 +60,56 @@ interface GenerateAttestationParams {
   };
 }
 
+// NOUVEAU: Fonction générique de conversion HTML vers PDF
+async function htmlToPdf(html: string, options: { landscape?: boolean } = {}): Promise<Buffer> {
+  return new Promise(async (resolve, reject) => {
+    const { landscape = false } = options;
+    const tempDir = app.getPath('temp');
+    const timestamp = Date.now();
+    const htmlPath = path.join(tempDir, `temp-pdf-gen-${timestamp}.html`);
+    
+    fs.writeFileSync(htmlPath, html);
+
+    let win: BrowserWindow | null = null;
+    try {
+      win = new BrowserWindow({
+        width: landscape ? 842 : 595,
+        height: landscape ? 595 : 842,
+        show: false,
+        webPreferences: { 
+          nodeIntegration: false, 
+          contextIsolation: true 
+        }
+      });
+
+      await win.loadFile(htmlPath);
+      await new Promise(res => setTimeout(res, 500));
+
+      const pdf = await win.webContents.printToPDF({
+        printBackground: true,
+        landscape: landscape,
+        pageSize: 'A4',
+        margins: { top: 0, bottom: 0, left: 0, right: 0 }
+      });
+
+      resolve(Buffer.from(pdf));
+    } catch (error) {
+      reject(error);
+    } finally {
+      if (win && !win.isDestroyed()) {
+        win.close();
+        win.destroy();
+        win = null;
+      }
+      try {
+        fs.unlinkSync(htmlPath);
+      } catch (e) {
+        console.warn(`Failed to delete temp file: ${htmlPath}`, e);
+      }
+    }
+  });
+}
+
 // Génère les styles CSS basés sur les paramètres du thème
 function generateThemeStyles(params: GeneratePDFParams): string {
   const theme = getCompleteTheme(params.settings);
@@ -1635,88 +1685,21 @@ export function setupPDFGenerationHandlers() {
   });
   console.log('✅ [SETUP] Gestionnaire "generate-diploma-pdf" enregistré');
 
-  // Handler pour les attestations de centre - Génération de PDF individuel
-  ipcMain.handle('generateCentreAttestationPDF', async (_, html: string, student: CentreAttestationStudentRecord) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const startTime = Date.now();
-        const studentIdLog = `${student.NOM}_${student.PRENOM}_${student.MATRICULE}`;
-        console.log(`📜 [CENTRE-ATTESTATION-PDF] START génération PDF pour: ${studentIdLog}`);
-
-        // Créer un fichier temporaire avec le HTML
-        const tempDir = app.getPath('temp');
-        const timestamp = Date.now();
-        const studentId = `${student.NOM}_${student.PRENOM}_${student.MATRICULE}`.replace(/[^a-zA-Z0-9]/g, '_');
-        const htmlPath = path.join(tempDir, `centre-attestation-${studentId}-${timestamp}.html`);
-
-        // Écrire le HTML dans le fichier temporaire
-        fs.writeFileSync(htmlPath, html);
-        console.log(`📝 [CENTRE-ATTESTATION-PDF] ${studentIdLog}: HTML écrit dans ${htmlPath}`);
-
-        let win: BrowserWindow | null = null;
-        try {
-          // Créer une fenêtre cachée pour le rendu
-          win = new BrowserWindow({
-            width: 842,  // A4 landscape width in pixels at 72 DPI
-            height: 595, // A4 landscape height in pixels at 72 DPI
-            show: false,
-            webPreferences: {
-              nodeIntegration: false,
-              contextIsolation: true
-            }
-          });
-
-          // Charger le fichier HTML
-          await win.loadFile(htmlPath);
-          console.log(`🌐 [CENTRE-ATTESTATION-PDF] ${studentIdLog}: HTML chargé dans la fenêtre`);
-
-          // Attendre que le contenu soit complètement chargé
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-          // Générer le PDF en format paysage
-          console.log(`🖨️ [CENTRE-ATTESTATION-PDF] ${studentIdLog}: Génération du PDF...`);
-          const pdfData = await win.webContents.printToPDF({
-            printBackground: true,
-            landscape: true,  // Format paysage
-            pageSize: 'A4',
-            margins: {
-              top: 0,
-              bottom: 0,
-              left: 0,
-              right: 0
-            }
-          });
-
-          const resultData = Buffer.from(pdfData);
-          const duration = Date.now() - startTime;
-          console.log(`✅ [CENTRE-ATTESTATION-PDF] ${studentIdLog}: PDF généré avec succès en ${duration}ms (${resultData.length} bytes)`);
-
-          resolve(resultData);
-
-        } finally {
-          console.log(`🧹 [CENTRE-ATTESTATION-PDF] ${studentIdLog}: Nettoyage des ressources...`);
-
-          // Fermer et détruire la fenêtre
-          if (win && !win.isDestroyed()) {
-            win.close();
-            win.destroy();
-            win = null;
-          }
-
-          // Nettoyer le fichier temporaire
-          try {
-            fs.unlinkSync(htmlPath);
-            console.log(`🗑️ [CENTRE-ATTESTATION-PDF] ${studentIdLog}: Fichier temporaire supprimé`);
-          } catch (cleanupError) {
-            console.warn(`⚠️ [CENTRE-ATTESTATION-PDF] ${studentIdLog}: Erreur lors de la suppression du fichier temporaire:`, cleanupError);
-          }
-        }
-
-      } catch (error) {
-        console.error('❌ [CENTRE-ATTESTATION-PDF] Erreur lors de la génération du PDF:', error);
-        reject(error);
-      }
-    });
+ // Handler corrigé pour une seule attestation de centre
+  ipcMain.handle('generate-centre-attestation-pdf', async (_, params) => {
+    try {
+      const { student, centre, options } = params;
+      console.log(`📜 [CENTRE-ATTESTATION-PDF] Génération pour ${student.NOM} ${student.PRENOM}`);
+      
+      const html = await generateCentreAttestationHTML(student, centre, options);
+      const pdfBytes = await htmlToPdf(html, { landscape: true });
+      
+      console.log(`✅ [CENTRE-ATTESTATION-PDF] PDF généré avec succès`);
+      return pdfBytes;
+    } catch (error) {
+      console.error('❌ [CENTRE-ATTESTATION-PDF] Erreur:', error);
+      throw error;
+    }
   });
   console.log('✅ [SETUP] Gestionnaire "generateCentreAttestationPDF" enregistré');
 
@@ -1729,12 +1712,12 @@ export function setupPDFGenerationHandlers() {
 
       const pdfResults: { pdfData: Uint8Array; student: CentreAttestationStudentRecord }[] = [];
 
-      // Générer chaque PDF individuellement
+      // Générer chaque PDF individuellement avec la fonction htmlToPdf
       for (let i = 0; i < students.length; i++) {
         const student = students[i];
 
         try {
-          console.log(`📜 [CENTRE-ATTESTATIONS-BATCH] Génération ${i + 1}/${students.length}: ${student.NOM} ${student.PRENOM}`);
+          console.log(`📜 [BATCH] ${i + 1}/${students.length}: ${student.NOM} ${student.PRENOM}`);
 
           // Générer le HTML
           const html = await generateCentreAttestationHTML(student, centre, {
@@ -1743,66 +1726,18 @@ export function setupPDFGenerationHandlers() {
             centre
           });
 
-          // Générer le PDF directement
-          const pdfData = await new Promise<Buffer>(async (resolve, reject) => {
-            const tempDir = app.getPath('temp');
-            const timestamp = Date.now();
-            const studentId = `${student.NOM}_${student.PRENOM}_${student.MATRICULE}`.replace(/[^a-zA-Z0-9]/g, '_');
-            const htmlPath = path.join(tempDir, `centre-attestation-${studentId}-${timestamp}.html`);
-
-            fs.writeFileSync(htmlPath, html);
-
-            let win: BrowserWindow | null = null;
-            try {
-              win = new BrowserWindow({
-                width: 842,
-                height: 595,
-                show: false,
-                webPreferences: {
-                  nodeIntegration: false,
-                  contextIsolation: true
-                }
-              });
-
-              await win.loadFile(htmlPath);
-              await new Promise(res => setTimeout(res, 1000));
-
-              const pdf = await win.webContents.printToPDF({
-                printBackground: true,
-                landscape: true,
-                pageSize: 'A4',
-                margins: { top: 0, bottom: 0, left: 0, right: 0 }
-              });
-
-              resolve(Buffer.from(pdf));
-
-            } catch (error) {
-              reject(error);
-            } finally {
-              if (win && !win.isDestroyed()) {
-                win.close();
-                win.destroy();
-                win = null;
-              }
-
-              try {
-                fs.unlinkSync(htmlPath);
-              } catch (cleanupError) {
-                console.warn('Erreur lors de la suppression du fichier temporaire:', cleanupError);
-              }
-            }
-          });
-
+          // Générer le PDF avec htmlToPdf
+          const pdfData = await htmlToPdf(html, { landscape: true });
           pdfResults.push({ pdfData, student });
 
-          // Notifier le progès
+          // Notifier le progrès
           event.sender.send('centre-attestation-progress', {
             current: i + 1,
             total: students.length
           });
 
         } catch (error) {
-          console.error(`❌ [CENTRE-ATTESTATIONS-BATCH] Erreur pour ${student.NOM} ${student.PRENOM}:`, error);
+          console.error(`❌ [BATCH] Erreur pour ${student.NOM} ${student.PRENOM}:`, error);
           throw error;
         }
       }

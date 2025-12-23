@@ -172,41 +172,122 @@ export const CentreAttestationGenerator: React.FC = () => {
       return;
     }
 
+    if (!window.ipcRenderer) {
+      toast({
+        title: "Erreur",
+        description: "Système de génération PDF non disponible. Veuillez utiliser l'application Electron.",
+        variant: "error",
+      });
+      return;
+    }
+
     setIsLoading(true);
     setProcessingProgress(0);
 
     try {
       console.log(`🚀 Début de la génération de ${validStudents.length} attestations`);
+      const results = new Map<string, Uint8Array>();
+      const failedGenerations: any[] = [];
 
-      // Appeler l'API Electron pour générer les PDFs
-      if (window.electron?.generateCentreAttestations) {
-        await window.electron.generateCentreAttestations({
-          students: validStudents,
-          centre: selectedCentre,
-          theme: attestationTheme,
-          exportFormat,
-          useCompression,
-          onProgress: (current: number, total: number) => {
-            const progress = Math.round((current / total) * 100);
-            setProcessingProgress(progress);
+      for (let i = 0; i < validStudents.length; i++) {
+        const student = validStudents[i];
+        try {
+          const pdfBytes = await window.ipcRenderer.invoke('generate-centre-attestation-pdf', {
+            student,
+            centre: selectedCentre,
+            options: {
+              theme: attestationTheme,
+              demoMode: false,
+            }
+          });
+
+          const fileName = `${student.MATRICULE}_Attestation_Centre.pdf`;
+          results.set(fileName, pdfBytes);
+        } catch (err) {
+          console.error(`❌ Erreur lors de la génération pour ${student.NOM}`, err);
+          failedGenerations.push({ student, error: err instanceof Error ? err.message : 'Erreur inconnue' });
+        }
+        setProcessingProgress(((i + 1) / validStudents.length) * 90);
+      }
+
+      // Télécharger les fichiers selon le format choisi
+      if (results.size > 0) {
+        if (exportFormat === 'zip') {
+          const JSZip = (await import('jszip')).default;
+          const zip = new JSZip();
+          for (const [fileName, pdfBytes] of results.entries()) {
+            zip.file(fileName, pdfBytes);
           }
-        });
+          const zipBlob = await zip.generateAsync({
+            type: 'blob',
+            compression: useCompression ? 'DEFLATE' : 'STORE'
+          });
+          const url = URL.createObjectURL(zipBlob);
+          const link = document.createElement("a");
+          link.href = url;
+          const timestamp = new Date().toISOString().split('T')[0];
+          link.download = `attestations_centre_${selectedCentre.nameAbreviation}_${timestamp}.zip`;
+          link.click();
+          URL.revokeObjectURL(url);
+          console.log(`📦 ZIP créé avec ${results.size} attestation(s)`);
 
+        } else if (exportFormat === 'pdf') {
+          const { PDFDocument } = await import('pdf-lib');
+          const mergedPdf = await PDFDocument.create();
+          for (const pdfBytes of results.values()) {
+            const pdf = await PDFDocument.load(pdfBytes);
+            const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+            copiedPages.forEach((page) => mergedPdf.addPage(page));
+          }
+          const mergedPdfBytes = await mergedPdf.save();
+          const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          const timestamp = new Date().toISOString().split('T')[0];
+          link.download = `attestations_centre_${selectedCentre.nameAbreviation}_${timestamp}.pdf`;
+          link.click();
+          URL.revokeObjectURL(url);
+          console.log(`📄 PDF unique créé avec ${results.size} attestation(s)`);
+
+        } else {
+          let downloadIndex = 0;
+          for (const [fileName, pdfBytes] of results.entries()) {
+            await new Promise(resolve => setTimeout(resolve, downloadIndex * 300));
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            downloadIndex++;
+          }
+          console.log(`📄 ${results.size} fichier(s) individuel(s) téléchargé(s)`);
+        }
+      }
+
+      setProcessingProgress(100);
+      toast({
+        title: "Génération terminée",
+        description: `${results.size}/${validStudents.length} attestation(s) générée(s).`,
+      });
+
+      if (failedGenerations.length > 0) {
+        console.error("Échecs de génération:", failedGenerations);
         toast({
-          title: "Génération réussie",
-          description: `${validStudents.length} attestation(s) générée(s) avec succès`,
-        });
-      } else {
-        toast({
-          title: "Fonctionnalité en développement",
-          description: "La génération PDF sera bientôt disponible",
+          title: `Échec pour ${failedGenerations.length} attestation(s)`,
+          description: "Certaines attestations n'ont pas pu être générées. Consultez la console.",
+          variant: "error",
         });
       }
 
     } catch (error) {
       console.error('Erreur lors de la génération:', error);
       toast({
-        title: "Erreur",
+        title: "Erreur majeure",
         description: `Échec de la génération: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
         variant: "error",
       });
