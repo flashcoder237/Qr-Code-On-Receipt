@@ -308,13 +308,16 @@ export const CentreAttestationGenerator: React.FC = () => {
         'LIEU DE NAISSANCE': 'Yaoundé',
         'SPECIALITE': 'Électricité Bâtiment',
         'SPECIALITE_EN': 'Building Electricity',
-        'SESSION_EXAMEN': 'Juin 2024',
+        'SPECIALITE_ABR': 'EB',
+        'SESSION_EXAMEN': 'septembre 2025',
         'LIEU_DELIVRANCE': 'Yaoundé',
         'MENTION': 'ASSEZ BIEN',
         'MENTION_EN': 'FAIRLY GOOD',
         'GRADE': 'CAP',
         'MOYENNE': '14.5',
         'NUMERO_ORDRE': '001',
+        'TITRE_ATTESTATION_FR': 'ATTESTATION DE QUALIFICATION PROFESSIONNELLE',
+        'TITRE_ATTESTATION_EN': 'VOCATIONAL TRAINING CERTIFICATE',
       },
       {
         'NOM': 'MARTIN',
@@ -324,13 +327,16 @@ export const CentreAttestationGenerator: React.FC = () => {
         'LIEU DE NAISSANCE': 'Douala',
         'SPECIALITE': 'Coupe-Couture',
         'SPECIALITE_EN': 'Tailoring',
-        'SESSION_EXAMEN': 'Juin 2024',
+        'SPECIALITE_ABR': 'CC',
+        'SESSION_EXAMEN': 'septembre 2025',
         'LIEU_DELIVRANCE': 'Douala',
         'MENTION': 'BIEN',
         'MENTION_EN': 'GOOD',
         'GRADE': 'CAP',
         'MOYENNE': '16.0',
         'NUMERO_ORDRE': '002',
+        'TITRE_ATTESTATION_FR': 'ATTESTATION DE QUALIFICATION PROFESSIONNELLE',
+        'TITRE_ATTESTATION_EN': 'VOCATIONAL TRAINING CERTIFICATE',
       }
     ];
 
@@ -347,13 +353,16 @@ export const CentreAttestationGenerator: React.FC = () => {
       { wch: 20 }, // LIEU DE NAISSANCE
       { wch: 25 }, // SPECIALITE
       { wch: 25 }, // SPECIALITE_EN
-      { wch: 15 }, // SESSION_EXAMEN
+      { wch: 15 }, // SPECIALITE_ABR
+      { wch: 18 }, // SESSION_EXAMEN
       { wch: 18 }, // LIEU_DELIVRANCE
       { wch: 15 }, // MENTION
       { wch: 15 }, // MENTION_EN
       { wch: 10 }, // GRADE
       { wch: 10 }, // MOYENNE
       { wch: 15 }, // NUMERO_ORDRE
+      { wch: 45 }, // TITRE_ATTESTATION_FR
+      { wch: 45 }, // TITRE_ATTESTATION_EN
     ];
     ws['!cols'] = colWidths;
 
@@ -433,8 +442,8 @@ export const CentreAttestationGenerator: React.FC = () => {
                   <FileSpreadsheet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <h3 className="text-lg font-semibold mb-2">Importer un fichier Excel</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Le fichier doit contenir les colonnes: NOM, PRENOM, MATRICULE, DATE DE NAISSANCE,
-                    LIEU DE NAISSANCE, SPECIALITE, SESSION_EXAMEN, LIEU_DELIVRANCE, MENTION, GRADE, MOYENNE
+                    Téléchargez le modèle pour voir toutes les colonnes requises et optionnelles.
+                    Les colonnes optionnelles permettent de personnaliser vos attestations.
                   </p>
                   <div className="flex gap-2 justify-center items-center">
                     <Label htmlFor="excel-upload" className="cursor-pointer">
@@ -467,7 +476,7 @@ export const CentreAttestationGenerator: React.FC = () => {
                     <strong>Colonnes requises:</strong> NOM, PRENOM, MATRICULE, DATE DE NAISSANCE,
                     LIEU DE NAISSANCE, SPECIALITE, SESSION_EXAMEN, LIEU_DELIVRANCE, MENTION, GRADE, MOYENNE
                     <br/>
-                    <strong>Colonnes optionnelles:</strong> SPECIALITE_EN, MENTION_EN, NUMERO_ORDRE
+                    <strong>Colonnes optionnelles:</strong> SPECIALITE_EN, SPECIALITE_ABR, MENTION_EN, NUMERO_ORDRE, TITRE_ATTESTATION_FR, TITRE_ATTESTATION_EN
                   </AlertDescription>
                 </Alert>
               </TabsContent>

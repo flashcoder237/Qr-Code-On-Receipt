@@ -22,9 +22,12 @@ export interface CentreAttestationStudentRecord {
   // Spécifique aux attestations de centres
   SPECIALITE: string;
   SPECIALITE_EN?: string;
+  SPECIALITE_ABR?: string;        // Abréviation de la spécialité
   SESSION_EXAMEN: string;         // Ex: "septembre 2025"
   NUMERO_ORDRE?: string;          // Ou NUMERO_JURY
   LIEU_DELIVRANCE: string;        // Ex: "Douala"
+  TITRE_ATTESTATION_FR?: string;  // Titre de l'attestation en français
+  TITRE_ATTESTATION_EN?: string;  // Titre de l'attestation en anglais
 
   // Optionnels supplémentaires
   OPTION?: string;

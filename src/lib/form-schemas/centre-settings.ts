@@ -32,6 +32,8 @@ export const CentreSchema = z.object({
   name: z.string().min(1, "Le nom du centre est requis"),
   nameFrench: z.string().min(1, "Le nom français est requis"),
   nameEnglish: z.string().min(1, "Le nom anglais est requis"),
+  acronymFr: z.string().optional(),
+  acronymEn: z.string().optional(),
 
   // Logos (base64)
   logo: z.string().optional(),
@@ -73,6 +75,8 @@ export const defaultCentre: Omit<Centre, 'id' | 'createdAt' | 'updatedAt'> = {
   name: "",
   nameFrench: "",
   nameEnglish: "",
+  acronymFr: "",
+  acronymEn: "",
   logo: undefined,
   watermarkLogo: undefined,
   administrativeInstances: [],

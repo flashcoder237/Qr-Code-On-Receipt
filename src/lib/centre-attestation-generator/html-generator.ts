@@ -41,6 +41,24 @@ async function generateCentreAttestationQRCode(
 }
 
 /**
+ * Convertit une moyenne en grade (ex: 15 → B+)
+ */
+function convertAverageToGrade(average: number | string): string {
+  const avg = typeof average === 'string' ? parseFloat(average) : average;
+
+  if (isNaN(avg)) return '';
+
+  if (avg >= 18) return 'A+';
+  if (avg >= 16) return 'A';
+  if (avg >= 15) return 'B+';
+  if (avg >= 14) return 'B';
+  if (avg >= 13) return 'C+';
+  if (avg >= 12) return 'C';
+  if (avg >= 10) return 'D';
+  return 'F';
+}
+
+/**
  * Génère les styles CSS basés sur le thème
  */
 function generateCentreAttestationStyles(
@@ -98,26 +116,23 @@ function generateCentreAttestationStyles(
     /* Filigrane */
     .watermark {
       position: absolute;
-      top: 50%;
+      top: 60%;
       left: 50%;
       transform: translate(-50%, -50%);
-      opacity: ${theme.watermarkOpacity};
-      z-index: ${isDemoMode ? '-1' : '0'};
-      display: ${theme.showWatermark ? 'block' : 'none'};
     }
 
     .watermark img {
       width: auto;
-      height: 300px;
-      opacity: ${theme.watermarkOpacity};
+      height: 550px;
+      opacity:0.1;
     }
 
     /* Contenu principal */
     .content {
       position: absolute;
       top: 12mm;
-      left: 12mm;
-      right: 12mm;
+      left: 20mm;
+      right: 20mm;
       bottom: 12mm;
       z-index: 2;
     }
@@ -127,14 +142,13 @@ function generateCentreAttestationStyles(
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: ${theme.sectionSpacing}mm;
-      padding-bottom: ${theme.sectionSpacing}mm;
-      border-bottom: 1px solid ${theme.primaryColor};
+      margin: ${theme.sectionSpacing/2}mm;
     }
 
     .header-left, .header-right {
       flex: 1;
       text-align: center;
+      padding: 0px 30px;
     }
 
     .header-center {
@@ -142,35 +156,34 @@ function generateCentreAttestationStyles(
       display: flex;
       flex-direction: row;
       align-items: center;
+      justify-content: center;
       gap: 15px;
       padding: 0 20px;
     }
 
     .header-center img {
       width: auto;
-      height: 60px;
+      height: 80px;
       object-fit: contain;
     }
 
     .header-text {
       font-family: ${theme.titleFont};
       font-size: ${theme.headerFontSize}pt;
-      color: ${theme.primaryColor};
-      line-height: 1.3;
-      margin-bottom: 3px;
+      color: #000000;
+      line-height: 1.1;
       font-weight: bold;
     }
 
     .header-subtext {
       font-size: ${theme.headerFontSize - 1}pt;
-      color: ${theme.secondaryColor};
+      color: #000000;
       font-style: italic;
-      margin-top: 2px;
     }
 
     .ministry-name {
       font-size: ${theme.headerFontSize - 0.5}pt;
-      color: ${theme.primaryColor};
+      color: #000000;
       font-weight: 600;
       margin-top: 5px;
     }
@@ -230,8 +243,6 @@ function generateCentreAttestationStyles(
 
     .legal-text {
       font-size: ${theme.legalTextFontSize}pt;
-      line-height: 1.4;
-      margin-bottom: 2px;
       color: ${theme.secondaryColor};
     }
 
@@ -248,7 +259,7 @@ function generateCentreAttestationStyles(
 
     /* Section ministre (textes légaux) */
     .minister-section {
-      margin-bottom: ${theme.sectionSpacing - 2}mm;
+      
     }
 
     /* Section informations destinataire */
@@ -308,12 +319,7 @@ function generateCentreAttestationStyles(
     }
 
     .mention-box {
-      margin-top: 4mm;
-      padding: 2mm;
-      display: flex;
-      align-items: flex-start;
-      text-align: left;
-      line-height: 105%;
+      display: inline-flex;
     }
 
     .mention-label {
@@ -331,12 +337,12 @@ function generateCentreAttestationStyles(
 
     /* Texte de foi */
     .certificate-text {
+      position: absolute;
       text-align: center;
-      font-size: ${theme.contentFontSize}pt;
+      font-size: ${theme.contentFontSize-2}pt;
       font-style: italic;
       color: ${theme.secondaryColor};
-      margin: ${theme.sectionSpacing}mm 0;
-      line-height: 1.5;
+      bottom: ${theme.sectionSpacing}mm;
     }
 
     /* Pied de page */
@@ -367,7 +373,7 @@ function generateCentreAttestationStyles(
     }
 
     .signature-label {
-      font-size: ${theme.footerFontSize}pt;
+      font-size: ${theme.contentFontSize+2}pt;
       font-weight: bold;
       color: ${theme.primaryColor};
       margin-bottom: 40px;
@@ -434,7 +440,7 @@ export async function generateCentreAttestationHTML(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Attestation de Qualification Professionnelle - ${student.NOM} ${student.PRENOM}</title>
+  <title>${student.TITRE_ATTESTATION_FR || 'ATTESTATION DE QUALIFICATION PROFESSIONNELLE'} - ${student.NOM} ${student.PRENOM}</title>
   <style>${styles}</style>
 </head>
 <body>
@@ -445,7 +451,7 @@ export async function generateCentreAttestationHTML(
     </div>
 
     <!-- Filigrane -->
-    ${theme.showWatermark && centre.watermarkLogo ? `
+    ${centre.watermarkLogo ? `
     <div class="watermark">
       <img src="${centre.watermarkLogo}" alt="Watermark" />
     </div>
@@ -515,9 +521,9 @@ export async function generateCentreAttestationHTML(
         ` : ''}
       </div>
 
-      <!-- Titre principal -->
-      <h1 class="main-title">ATTESTATION DE QUALIFICATION PROFESSIONNELLE</h1>
-      <h2 class="main-subtitle">VOCATIONAL TRAINING CERTIFICATE</h2>
+      <!-- Titre principal (depuis Excel ou par défaut) -->
+      <h1 class="main-title">${student.TITRE_ATTESTATION_FR || 'ATTESTATION DE QUALIFICATION PROFESSIONNELLE'}</h1>
+      <h2 class="main-subtitle">${student.TITRE_ATTESTATION_EN || 'VOCATIONAL TRAINING CERTIFICATE'}</h2>
 
       <!-- Section textes légaux (comme minister-section dans diplômes) -->
       <div class="minister-section">
@@ -529,20 +535,26 @@ export async function generateCentreAttestationHTML(
                 <div class="legal-text">${legal.textFr}</div>
                 <div class="legal-text-en"><em>${legal.textEn}</em></div>
               `).join('') : ''}
+
+            <!-- Session d'examen -->
+            ${student.SESSION_EXAMEN ? `
+            <div class="legal-text">Vu le procès-verbal de délibération, session de ${student.SESSION_EXAMEN}</div>
+            <div class="legal-text-en"><em>Mindful of the results of examination session of ${student.SESSION_EXAMEN}</em></div>
+            ` : ''}
           </div>
 
           <!-- QR Code et numéro à droite -->
           <div style="width: 35%; padding-left: 5mm; display: flex; flex-direction: column; align-items: flex-end;">
-            <div style="margin-top: 3mm; width: 100%;">
+            <div style="width: 100%;">
               ${student.NUMERO_ORDRE ? `
-              <div style="font-weight: bold; font-size: 9pt; text-align: right;">N° ${student.NUMERO_ORDRE} / ${new Date().getFullYear()}</div>
+              <div style="font-weight: bold; font-size: 9pt; text-align: right;">N° ${student.NUMERO_ORDRE}${centre.acronymFr ? '/' + centre.acronymFr : ''}${student.SPECIALITE_ABR ? '/' + student.SPECIALITE_ABR : ''} / ${new Date().getFullYear()}</div>
               ` : ''}
               ${includeQRCode && qrCodeImage ? `
               <div class="qr-code">
                 <img src="${qrCodeImage}" alt="QR Code">
               </div>
               ` : ''}
-              <div style="margin-top: 2mm; text-align: right;">
+              <div style="text-align: right;">
                 <div style="font-weight: bold; font-size: 9pt;">N° Matricule : ${student.MATRICULE}</div>
                 <div style="font-style: italic; font-size: 7.5pt; font-weight: normal;"><em>Matriculation N°: ${student.MATRICULE}</em></div>
               </div>
@@ -563,10 +575,14 @@ export async function generateCentreAttestationHTML(
             <div class="field-label">Né(e) le : <br><span style="font-style: italic; font-size: 8.5pt;"><em>Born on</em></span></div>
             <div class="field-value">${student["DATE DE NAISSANCE"]} à ${student["LIEU DE NAISSANCE"]} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;"><em>${student["DATE DE NAISSANCE"]} in ${student["LIEU DE NAISSANCE"]}</em></span></div>
           </div>
+           <div class="mention-box">
+            <div class="mention-label">Mention :  <br> <span style="font-style: italic; font-size: ${theme.contentFontSize - 1.5}pt;"><em>Grade:</em></span></div>
+            <div class="mention-value">${student.MENTION}</div>
+          </div>
 
-          <div class="field">
-            <div class="field-label">Session d'examen : <br> <span style="font-style: italic; font-size: 8.5pt;"><em>Examination session</em></span></div>
-            <div class="field-value">${student.SESSION_EXAMEN}</div>
+          <div class="mention-box">
+            <div class="mention-label">Grade :  <br> <span style="font-style: italic; font-size: ${theme.contentFontSize - 1.5}pt;"><em>Level:</em></span></div>
+            <div class="mention-value">${convertAverageToGrade(student.MOYENNE)}</div>
           </div>
         </div>
 
@@ -577,18 +593,6 @@ export async function generateCentreAttestationHTML(
             <div style="font-weight: bold; font-size: ${theme.studentNameFontSize + 2}pt; margin-top: 2mm; color: ${theme.primaryColor};">${student.SPECIALITE}</div>
             ${student.SPECIALITE_EN ? `<div style="font-style: italic; font-size: ${theme.contentFontSize}pt; margin-top: 1mm;"><em>${student.SPECIALITE_EN}</em></div>` : ''}
           </div>
-
-          <div class="mention-box">
-            <div class="mention-label">Mention :  <br> <span style="font-style: italic; font-size: ${theme.contentFontSize - 1.5}pt;"><em>Grade:</em></span></div>
-            <div class="mention-value">${student.MENTION}</div>
-          </div>
-
-          ${student.GRADE ? `
-          <div class="mention-box">
-            <div class="mention-label">Grade :  <br> <span style="font-style: italic; font-size: ${theme.contentFontSize - 1.5}pt;"><em>Level:</em></span></div>
-            <div class="mention-value">${student.GRADE}</div>
-          </div>
-          ` : ''}
         </div>
       </div>
 
@@ -609,7 +613,6 @@ export async function generateCentreAttestationHTML(
           <div class="signature-label">
             Le/La Directeur(trice) du ${centre.name || centre.nameFrench}
           </div>
-          <div class="signature-line"></div>
         </div>
       </div>
     </div>
