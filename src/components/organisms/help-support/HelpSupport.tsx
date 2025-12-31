@@ -273,24 +273,108 @@ export const HelpSupport: React.FC = () => {
       keywords: ["format", "PDF", "document", "génération"]
     },
 
+    // Catégorie: Diplômes
+    {
+      category: "Diplômes",
+      question: "Comment générer des diplômes académiques ?",
+      answer: "Allez dans 'Génération de Documents → Diplômes', importez votre fichier Excel avec les données des diplômés (NOM, PRENOM, PARCOURS, SPECIALITE, etc.), personnalisez le thème si nécessaire, puis générez.",
+      keywords: ["diplôme", "génération", "académique", "grade"]
+    },
+    {
+      category: "Diplômes",
+      question: "Pourquoi le menu Diplômes n'apparaît pas ?",
+      answer: "La génération de diplômes est réservée aux établissements de type 'Faculté'. Vérifiez dans Paramètres → Entêtes que le type d'établissement est bien configuré comme 'Faculté'.",
+      keywords: ["diplôme", "menu", "faculté", "accès"]
+    },
+    {
+      category: "Diplômes",
+      question: "Comment personnaliser l'apparence des diplômes ?",
+      answer: "Dans l'onglet 'Thème' du générateur de diplômes, vous pouvez personnaliser les couleurs, polices, bordures, marges et QR code. Des préréglages sont disponibles dans l'onglet 'Gestionnaire'.",
+      keywords: ["diplôme", "thème", "personnalisation", "apparence"]
+    },
+    {
+      category: "Diplômes",
+      question: "Quelles sont les colonnes Excel requises pour les diplômes ?",
+      answer: "Colonnes obligatoires : NOM, PRENOM, MATRICULE, DATE DE NAISSANCE, LIEU DE NAISSANCE, PARCOURS, SPECIALITE, ANNEE OBTENTION, MOYENNE, GRADE, MENTION, TITRE DIPLOME FR, TITRE DIPLOME EN, DATE JURY ADMISSION, DATE JURY DELIBERATION.",
+      keywords: ["diplôme", "excel", "colonnes", "données"]
+    },
+    {
+      category: "Diplômes",
+      question: "Puis-je sauvegarder mes thèmes de diplômes personnalisés ?",
+      answer: "Oui, après avoir personnalisé un thème, cliquez sur 'Sauvegarder le thème', donnez-lui un nom, et il sera disponible dans l'onglet 'Gestionnaire' pour réutilisation future.",
+      keywords: ["diplôme", "thème", "sauvegarde", "personnalisé"]
+    },
+
+    // Catégorie: Attestations de Centres
+    {
+      category: "Attestations de Centres",
+      question: "Quelle est la différence entre attestations académiques et attestations de centres ?",
+      answer: "Les attestations académiques sont pour les étudiants universitaires (semestres, UE, EC). Les attestations de centres sont pour les centres de formation professionnelle (CAP, BEP, BT) avec spécialités et grades professionnels.",
+      keywords: ["attestation", "centre", "différence", "académique", "professionnel"]
+    },
+    {
+      category: "Attestations de Centres",
+      question: "Comment créer un centre de formation ?",
+      answer: "Allez dans 'Configuration → Gestion des Centres', cliquez sur 'Nouveau Centre', remplissez les informations (nom, localisation, logos), configurez les instances administratives (MINEFOP, MINESUP) et les textes légaux.",
+      keywords: ["centre", "création", "formation", "MINEFOP"]
+    },
+    {
+      category: "Attestations de Centres",
+      question: "Comment ajouter une instance administrative (MINEFOP, MINESUP) ?",
+      answer: "Dans la gestion d'un centre, onglet 'Instances', cliquez sur 'Ajouter une instance', remplissez le nom français/anglais, l'acronyme, téléchargez le logo et cochez 'Afficher sur les attestations'.",
+      keywords: ["instance", "MINEFOP", "MINESUP", "administratif"]
+    },
+    {
+      category: "Attestations de Centres",
+      question: "Puis-je gérer plusieurs centres de formation ?",
+      answer: "Oui, vous pouvez créer autant de centres que nécessaire. Chaque centre a ses propres logos, instances administratives et textes légaux. Sélectionnez le centre approprié avant de générer les attestations.",
+      keywords: ["centres", "multiple", "gestion", "plusieurs"]
+    },
+    {
+      category: "Attestations de Centres",
+      question: "Comment exporter/importer les instances administratives ?",
+      answer: "Dans la gestion d'un centre, onglet 'Instances', utilisez 'Exporter les instances' pour sauvegarder en JSON (avec logos inclus), et 'Importer les instances' pour les restaurer ou les partager entre centres.",
+      keywords: ["export", "import", "instances", "JSON", "partage"]
+    },
+
     // Catégorie: Historique
     {
       category: "Historique",
       question: "Comment consulter l'historique des documents générés ?",
-      answer: "Allez dans 'Historique' pour voir tous les documents générés avec filtres par type, date, étudiant, année académique et statut.",
+      answer: "Allez dans 'Autres → Historique des Docs' pour voir tous les documents générés avec filtres par type, date, étudiant, année académique et statut. Vous pouvez rechercher par nom, matricule ou type de document.",
       keywords: ["historique", "documents", "consultation", "filtres"]
     },
     {
       category: "Historique",
       question: "Puis-je exporter l'historique des documents ?",
-      answer: "Oui, dans l'historique, cliquez sur 'Imprimer l'historique' pour générer un PDF récapitulatif avec statistiques et filtres appliqués.",
-      keywords: ["historique", "export", "impression", "PDF"]
+      answer: "Oui, dans l'historique, vous pouvez exporter la sélection en CSV ou imprimer l'historique en PDF avec les statistiques et filtres appliqués.",
+      keywords: ["historique", "export", "impression", "PDF", "CSV"]
     },
     {
       category: "Historique",
       question: "Comment filtrer l'historique par période ?",
-      answer: "Utilisez les champs 'Date de début' et 'Date de fin' dans les filtres de l'historique pour afficher uniquement les documents générés dans cette période.",
+      answer: "Utilisez les filtres 'Période' avec les options : Aujourd'hui, Cette semaine, Ce mois, ou Personnalisée pour définir des dates de début et de fin spécifiques.",
       keywords: ["historique", "filtre", "période", "date"]
+    },
+    {
+      category: "Historique",
+      question: "Puis-je regénérer un document depuis l'historique ?",
+      answer: "Oui, cliquez sur l'icône de regénération (🔄) à côté du document dans l'historique. Le document sera régénéré avec les mêmes paramètres que l'original.",
+      keywords: ["historique", "regénérer", "document", "rééditer"]
+    },
+
+    // Catégorie: Modèles Excel
+    {
+      category: "Modèles Excel",
+      question: "Où télécharger les modèles Excel ?",
+      answer: "Allez dans 'Configuration → Export Modèles Excel' pour télécharger tous les modèles : relevés, attestations, diplômes, attestations de centres, et QR codes. Chaque modèle contient des exemples de données.",
+      keywords: ["modèle", "excel", "téléchargement", "template"]
+    },
+    {
+      category: "Modèles Excel",
+      question: "Les modèles Excel contiennent-ils des exemples ?",
+      answer: "Oui, tous les modèles contiennent 2-3 lignes d'exemples avec toutes les colonnes requises et des commentaires explicatifs. Supprimez les exemples avant d'ajouter vos vraies données.",
+      keywords: ["modèle", "exemple", "données", "template"]
     },
 
     // Catégorie: Performance
@@ -538,6 +622,76 @@ export const HelpSupport: React.FC = () => {
       term: "Validation automatique",
       definition: "Système qui vérifie automatiquement si un étudiant remplit les critères pour recevoir une attestation (moyenne >= 10/20).",
       example: "Étudiant avec 9.5/20 ne peut pas recevoir d'attestation automatiquement"
+    },
+    {
+      term: "Diplôme académique",
+      definition: "Document officiel attestant l'obtention d'un grade académique (Licence, Master, Doctorat) par un étudiant ayant complété son parcours universitaire.",
+      example: "Diplôme de Docteur en Médecine pour un étudiant ayant validé tous les semestres"
+    },
+    {
+      term: "Attestation de centre",
+      definition: "Document pour les centres de formation professionnelle certifiant l'obtention d'un grade professionnel (CAP, BEP, BT) avec spécialité et mention.",
+      example: "Attestation CAP Électricité Bâtiment mention BIEN délivrée par le CFPD"
+    },
+    {
+      term: "Instance administrative",
+      definition: "Organisme de tutelle ou partenaire institutionnel d'un centre de formation (MINEFOP, MINESUP, délégations). Leurs logos apparaissent sur les attestations de centres.",
+      example: "MINEFOP (Ministère de l'Emploi et de la Formation Professionnelle)"
+    },
+    {
+      term: "Grade professionnel",
+      definition: "Niveau de qualification obtenu dans un centre de formation professionnelle (CAP, BEP, BT, BP, etc.).",
+      example: "Grade : CAP (Certificat d'Aptitude Professionnelle)"
+    },
+    {
+      term: "Spécialité (formation professionnelle)",
+      definition: "Domaine de formation dans un centre professionnel (Électricité, Plomberie, Couture, Menuiserie, etc.).",
+      example: "Spécialité : Électricité Bâtiment avec option Installation Solaire"
+    },
+    {
+      term: "Textes légaux",
+      definition: "Références réglementaires et juridiques (décrets, arrêtés) affichées sur les attestations de centres pour garantir leur conformité légale.",
+      example: "Vu le décret n° 2018/XXX du XX/XX/2018 portant organisation des examens"
+    },
+    {
+      term: "Parcours académique",
+      definition: "Filière d'études suivie par un étudiant jusqu'à l'obtention de son diplôme (Médecine Générale, Pharmacie, Sciences Infirmières, etc.).",
+      example: "Parcours : Médecine Générale sur 7 ans"
+    },
+    {
+      term: "Thème de diplôme",
+      definition: "Ensemble de paramètres visuels personnalisables pour les diplômes : couleurs, polices, bordures, marges, QR code. Plusieurs préréglages sont disponibles.",
+      example: "Thème 'Classique' avec couleurs or et bordeaux, police serif élégante"
+    },
+    {
+      term: "Gestionnaire de thèmes",
+      definition: "Interface permettant de sauvegarder, charger et gérer vos thèmes personnalisés de diplômes ou d'attestations.",
+      example: "Sauvegarder le thème 'FMSP 2025' pour le réutiliser chaque année"
+    },
+    {
+      term: "Historique des documents",
+      definition: "Base de données locale enregistrant tous les documents générés (type, date, étudiant, configuration) pour consultation, recherche et regénération.",
+      example: "Consulter tous les relevés générés en janvier 2025 pour L1 Médecine"
+    },
+    {
+      term: "Export de modèles",
+      definition: "Fonctionnalité centralisant le téléchargement de tous les modèles Excel pré-formatés avec colonnes requises et exemples de données.",
+      example: "Télécharger le modèle Excel pour diplômes avec toutes les colonnes obligatoires"
+    },
+    {
+      term: "Centre de formation",
+      definition: "Établissement de formation professionnelle configuré dans l'application avec ses informations, logos, instances administratives et textes légaux.",
+      example: "Centre de Formation Professionnelle de Douala (CFPD)"
+    },
+    {
+      term: "Session d'examen",
+      definition: "Période durant laquelle se déroulent les examens pour les formations professionnelles (septembre, juin, etc.).",
+      example: "Session d'examen : septembre 2025"
+    },
+    {
+      term: "Regénération de document",
+      definition: "Action permettant de créer à nouveau un document avec les mêmes paramètres qu'un document précédemment généré, accessible depuis l'historique.",
+      example: "Regénérer le relevé de Jean KAMDEM avec les mêmes données et thème"
     }
   ];
 
@@ -857,6 +1011,50 @@ export const HelpSupport: React.FC = () => {
               <Separator />
 
               <div className="space-y-3">
+                <h3 className="font-semibold text-lg">Nouveaux types de documents</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-3 bg-indigo-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="h-4 w-4 text-indigo-600" />
+                      <h4 className="font-medium text-indigo-900">Diplômes académiques</h4>
+                    </div>
+                    <p className="text-sm text-indigo-700">
+                      Générez des diplômes officiels pour les facultés avec thèmes personnalisables et système de préréglages avancé.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-cyan-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="h-4 w-4 text-cyan-600" />
+                      <h4 className="font-medium text-cyan-900">Attestations de centres</h4>
+                    </div>
+                    <p className="text-sm text-cyan-700">
+                      Pour les centres de formation professionnelle (CAP, BEP, BT) avec gestion des instances administratives.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-purple-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Download className="h-4 w-4 text-purple-600" />
+                      <h4 className="font-medium text-purple-900">Export de modèles Excel</h4>
+                    </div>
+                    <p className="text-sm text-purple-700">
+                      Téléchargez tous les modèles Excel pré-formatés avec exemples de données et colonnes requises.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-pink-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Database className="h-4 w-4 text-pink-600" />
+                      <h4 className="font-medium text-pink-900">Historique des documents</h4>
+                    </div>
+                    <p className="text-sm text-pink-700">
+                      Consultez, recherchez et regénérez tous vos documents avec filtres avancés et statistiques.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-3">
                 <h3 className="font-semibold text-lg">Fonctionnalités avancées</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="p-3 bg-blue-50 rounded-lg">
@@ -868,13 +1066,13 @@ export const HelpSupport: React.FC = () => {
                       Sécurisez vos QR codes avec un chiffrement basé sur le matricule pour des documents plus petits et plus sûrs.
                     </p>
                   </div>
-                  <div className="p-3 bg-purple-50 rounded-lg">
+                  <div className="p-3 bg-amber-50 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
-                      <FileText className="h-4 w-4 text-purple-600" />
-                      <h4 className="font-medium text-purple-900">Validation automatique</h4>
+                      <FileText className="h-4 w-4 text-amber-600" />
+                      <h4 className="font-medium text-amber-900">Validation automatique</h4>
                     </div>
-                    <p className="text-sm text-purple-700">
-                      Seuls les étudiants avec une moyenne &gt;= 10/20 peuvent recevoir des attestations de réussite.
+                    <p className="text-sm text-amber-700">
+                      Seuls les étudiants avec une moyenne &gt;= 10/20 peuvent recevoir des attestations ou diplômes.
                     </p>
                   </div>
                   <div className="p-3 bg-green-50 rounded-lg">
@@ -892,7 +1090,25 @@ export const HelpSupport: React.FC = () => {
                       <h4 className="font-medium text-orange-900">Génération par lots</h4>
                     </div>
                     <p className="text-sm text-orange-700">
-                      Générez des centaines de documents simultanément avec export ZIP automatique.
+                      Générez des centaines de documents simultanément avec export ZIP automatique et compression.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-teal-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Globe className="h-4 w-4 text-teal-600" />
+                      <h4 className="font-medium text-teal-900">Export/Import instances</h4>
+                    </div>
+                    <p className="text-sm text-teal-700">
+                      Partagez vos instances administratives entre centres via export/import JSON avec logos inclus.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-violet-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lightbulb className="h-4 w-4 text-violet-600" />
+                      <h4 className="font-medium text-violet-900">Gestionnaire de thèmes</h4>
+                    </div>
+                    <p className="text-sm text-violet-700">
+                      Sauvegardez et réutilisez vos thèmes personnalisés pour diplômes et attestations.
                     </p>
                   </div>
                 </div>

@@ -9,7 +9,9 @@
       "Bash(del test-mention-fix.js)",
       "Bash(wmic logicaldisk get size,freespace,caption)",
       "WebSearch",
-      "Bash(nul)"
+      "Bash(nul)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)"
     ],
     "deny": []
   }

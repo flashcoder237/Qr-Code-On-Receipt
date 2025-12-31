@@ -1030,11 +1030,11 @@ export async function generateAttestationHTML(
               ⚠️ DOCUMENT GÉNÉRÉ EN MODE DÉMO - NON OFFICIEL ⚠️
             </span><br>
             ` : ''}
-                Cette Attestation ne tient pas lieu de Diplôme et n'est délivrée qu'en un seul exemplaire et d'une validité de (6) mois à partir de la date de signature. Le Diplôme lui sera délivré ultérieurement
+                Il n'est délivré qu'un seul exemplaire d'attestation, le titulaire peut en faire des copies certifiées conformes.
             </div>
             ${theme.showBilingualText ? `
             <div>
-                <em>Only one copy of this Attestation shall be delivered and is not a certificate. This Attestation is valid for (6) six months from the date of signature. The Certificate will be issued at a later date.</em>
+                <em>This certificate is delivered only once, the owner can make certified copies as necessary.</em>
             </div>
             ` : ''}
             `}
