@@ -97,12 +97,22 @@ export const calculateSemesterStatistics = (
     average: number;
     displayBase?: number;
   }>,
-  creditsRequired: number = 30
+  creditsRequired: number = 30,
+  ignoreCredits: boolean = false
 ) => {
   const totalCredits = ues.reduce((sum, ue) => sum + ue.credits, 0);
-  const totalPoints = ues.reduce((sum, ue) => sum + ue.credits * ue.average, 0);
-  const average = totalCredits > 0 ? totalPoints / totalCredits : 0;
-  
+
+  // Calcul de la moyenne selon l'option choisie
+  let average: number;
+  if (ignoreCredits) {
+    // Moyenne arithmétique simple : toutes les UEs ont le même poids
+    average = ues.length > 0 ? ues.reduce((sum, ue) => sum + ue.average, 0) / ues.length : 0;
+  } else {
+    // Moyenne pondérée par les crédits (comportement par défaut)
+    const totalPoints = ues.reduce((sum, ue) => sum + ue.credits * ue.average, 0);
+    average = totalCredits > 0 ? totalPoints / totalCredits : 0;
+  }
+
   const isValidated = totalCredits >= creditsRequired && average >= 10;
   const grade = getGradeFromAverage(average);
   const mgp = calculateMGP(grade);
@@ -127,10 +137,11 @@ export const calculateMergedSemesterStatistics = (
       displayBase?: number;
     }>;
   }>,
-  creditsRequired: number = 60
+  creditsRequired: number = 60,
+  ignoreCredits: boolean = false
 ) => {
   // Combiner toutes les UE de tous les semestres
   const allUes = semesters.flatMap(semester => semester.ues);
-  
-  return calculateSemesterStatistics(allUes, creditsRequired);
+
+  return calculateSemesterStatistics(allUes, creditsRequired, ignoreCredits);
 };

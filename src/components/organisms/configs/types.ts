@@ -54,6 +54,7 @@ export interface ClassConfig {
   displaySessions?: boolean; // Afficher les sessions sur les relevés (défaut: true)
   sessionDisplayFormat?: 'short' | 'full'; // Format d'affichage des sessions (défaut: 'short')
   hideSemesterColumn?: boolean; // Masquer la colonne semestre dans les décisions (défaut: false)
+  ignoreCreditsInAverage?: boolean; // Calculer la moyenne sans pondération par les crédits (défaut: false)
   theme?: ThemeSettingsPayload; // Thème personnalisé pour cette configuration de classe
   lastUsedExcelFile?: {
     fileName: string;

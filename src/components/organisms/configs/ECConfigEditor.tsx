@@ -359,6 +359,15 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
     setTimeout(() => setSuccess(null), 3000);
   };
 
+  // NOUVEAU: Fonction pour activer/désactiver l'option ignorer les crédits
+  const toggleIgnoreCredits = (enabled: boolean) => {
+    const updatedConfig = { ...config };
+    updatedConfig.ignoreCreditsInAverage = enabled;
+    onConfigUpdate(updatedConfig);
+    setSuccess(`Calcul de moyenne ${enabled ? 'sans pondération par les crédits (moyenne simple)' : 'avec pondération par les crédits'}`);
+    setTimeout(() => setSuccess(null), 4000);
+  };
+
   // Fonction pour obtenir le thème global actuel depuis les paramètres
   const getGlobalTheme = () => {
     try {
@@ -999,6 +1008,85 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
                 )}
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* NOUVEAU: Configuration du calcul de la moyenne */}
+      <Card className="bg-green-50 border-green-200">
+        <CardHeader>
+          <CardTitle className="text-green-900 text-lg flex items-center gap-2">
+            <Calculator className="h-5 w-5" />
+            Calcul de la moyenne
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-green-800 text-sm">
+            Choisissez comment la moyenne du semestre doit être calculée à partir des moyennes des UEs.
+          </p>
+
+          <div className="space-y-4">
+            {/* Switch pour ignorer les crédits */}
+            <div className="flex items-center justify-between p-4 bg-white rounded-lg border">
+              <div className="space-y-1 flex-1">
+                <Label htmlFor="ignore-credits-switch" className="text-sm font-medium">
+                  Ignorer les crédits dans le calcul de la moyenne
+                </Label>
+                <p className="text-xs text-gray-500">
+                  Quand activé, toutes les UEs auront le même poids, quelle que soit leur valeur de crédits
+                </p>
+              </div>
+              <Switch
+                id="ignore-credits-switch"
+                checked={config.ignoreCreditsInAverage === true}
+                onCheckedChange={toggleIgnoreCredits}
+              />
+            </div>
+
+            {/* Explication avec exemple */}
+            <div className="p-4 bg-white rounded-lg border">
+              <div className="flex items-center gap-2 mb-3">
+                <Info className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium text-green-900">
+                  {config.ignoreCreditsInAverage ? 'Moyenne arithmétique simple' : 'Moyenne pondérée par les crédits'}
+                </span>
+              </div>
+              <div className="space-y-3 text-xs">
+                <div className="bg-gray-50 p-3 rounded border">
+                  <p className="font-medium mb-2 text-gray-700">Exemple avec 2 UEs :</p>
+                  <ul className="space-y-1 text-gray-600 ml-2">
+                    <li>• UE1 : 15/20 avec 6 crédits</li>
+                    <li>• UE2 : 12/20 avec 4 crédits</li>
+                  </ul>
+                </div>
+                {config.ignoreCreditsInAverage ? (
+                  <div className="bg-green-50 p-3 rounded border border-green-200">
+                    <p className="font-medium text-green-900 mb-1">Calcul actuel (moyenne simple) :</p>
+                    <p className="text-green-800">Moyenne = (15 + 12) / 2 = <strong>13.5/20</strong></p>
+                    <p className="text-green-700 mt-1 text-xs italic">
+                      Toutes les UEs comptent de manière égale
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                    <p className="font-medium text-blue-900 mb-1">Calcul actuel (moyenne pondérée) :</p>
+                    <p className="text-blue-800">Moyenne = (15×6 + 12×4) / (6+4) = 138 / 10 = <strong>13.8/20</strong></p>
+                    <p className="text-blue-700 mt-1 text-xs italic">
+                      Les UEs avec plus de crédits ont plus d'influence
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Note importante */}
+            <Alert className="bg-yellow-50 border-yellow-200">
+              <Info className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-800 text-sm">
+                <strong>Note importante :</strong> Les crédits continueront d'être affichés et utilisés pour la validation du semestre.
+                Cette option n'affecte que le calcul de la moyenne.
+              </AlertDescription>
+            </Alert>
           </div>
         </CardContent>
       </Card>
