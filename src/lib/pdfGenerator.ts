@@ -679,6 +679,8 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
     let totalCreditsValidated = 0;
     let weightedSum = 0;
     let totalCredits = 0;
+    let sumAverages = 0;
+    let countUEs = 0;
 
     ueValidatedCreditsLocal.forEach((ueInfo, ueCode) => {
       const credits = ensureNumber(ueInfo.credits);
@@ -686,16 +688,26 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
 
       totalCredits += credits;
       weightedSum += average * credits;
+      sumAverages += average;
+      countUEs++;
 
       if (ueInfo.isValidated) {
         totalCreditsValidated += credits;
       }
     });
 
-    const semesterAverage = totalCredits > 0 ? weightedSum / totalCredits : 0;
+    // Calculer la moyenne selon la configuration
+    let semesterAverage: number;
+    if (config?.ignoreCreditsInAverage) {
+      // Moyenne arithmétique simple (toutes les UEs ont le même poids)
+      semesterAverage = countUEs > 0 ? sumAverages / countUEs : 0;
+    } else {
+      // Moyenne pondérée par les crédits (comportement par défaut)
+      semesterAverage = totalCredits > 0 ? weightedSum / totalCredits : 0;
+    }
     const mgp = calculateMGP(semesterAverage);
     const grade = getGradeFromAverage(semesterAverage);
-    const isEnoughCredits = totalCreditsValidated >= (totalCredits * 0.7);
+    const isEnoughCredits = totalCreditsValidated >= totalCredits;
     const decision = isEnoughCredits ? "VALIDÉ" : "NON VALIDÉ";
 
     return {
@@ -712,6 +724,8 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
   // Deuxième étape : calcul des crédits validés et de la moyenne du semestre
   let totalCreditsValidated = 0;
   let weightedSum = 0;
+  let sumAverages = 0;
+  let countUEs = 0;
 
   ueValidatedCredits.forEach((ueInfo, ueCode) => {
     // Utilisez ensureNumber pour garantir que vous travaillez avec des nombres
@@ -720,6 +734,8 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
 
     // Pour la formule de moyenne, on considère toutes les UE, validées ou non
     weightedSum += average * credits;
+    sumAverages += average;
+    countUEs++;
 
     // Mais pour le total des crédits validés, on ne compte que les UE validées
     if (ueInfo.isValidated) {
@@ -728,13 +744,22 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
   });
 
   const totalSemesterCredits = ensureNumber(student.TOTAL_CREDITS) || 30;
-  const semesterAverage = weightedSum / totalSemesterCredits;
+
+  // Calculer la moyenne selon la configuration
+  let semesterAverage: number;
+  if (config?.ignoreCreditsInAverage) {
+    // Moyenne arithmétique simple (toutes les UEs ont le même poids)
+    semesterAverage = countUEs > 0 ? sumAverages / countUEs : 0;
+  } else {
+    // Moyenne pondérée par les crédits (comportement par défaut)
+    semesterAverage = weightedSum / totalSemesterCredits;
+  }
   const mgp = calculateMGP(semesterAverage);
   const grade = getGradeFromAverage(semesterAverage);
 
   // Un semestre est validé si on obtient au moins 70% des crédits (règle LMD standard)
   // ou selon la règle spécifique de l'institution
-  const isEnoughCredits = totalCreditsValidated >= (totalSemesterCredits * 0.7);
+  const isEnoughCredits = totalCreditsValidated >= (totalSemesterCredits);
   const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
 
   // NOUVEAU: Générer le QR code avec chiffrement compact si activé
@@ -1364,7 +1389,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                                 <td colspan="2" class="summary-value"><strong>${formatFrenchNumber(semesterAverage)}</strong></td>
                                 <td class="summary-value"><strong>${formatFrenchNumber(mgp, 1)}</strong></td>
                                 <td class="summary-value"><strong>${grade}</strong></td>
-                                <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-value ${(isCompositeSemester ? totalCreditsValidated >= (totalSemesterCredits * 0.7) : decision === "SEMESTRE VALIDE") ? "validated" : "not-validated"}"><strong>${isCompositeSemester ? (totalCreditsValidated >= (totalSemesterCredits * 0.7) ? "SEMESTRES VALIDES" : "SEMESTRES NON VALIDES") : decision}</strong></td>
+                                <td colspan="${student.DISPLAY_SESSIONS ? (config?.hideSemesterColumn ? '5' : '4') : (config?.hideSemesterColumn ? '4' : '3')}" class="summary-value ${(isCompositeSemester ? totalCreditsValidated >= (totalSemesterCredits) : decision === "SEMESTRE VALIDE") ? "validated" : "not-validated"}"><strong>${isCompositeSemester ? (totalCreditsValidated >= (totalSemesterCredits) ? "SEMESTRES VALIDES" : "SEMESTRES NON VALIDES") : decision}</strong></td>
                               </tr>
                             `;
                           }

@@ -1035,6 +1035,7 @@ export async function generateAttestationHTML(
             ${theme.showBilingualText ? `
             <div>
                 <em>This certificate is delivered only once, the owner can make certified copies as necessary.</em>
+                <em>This certificate is delivered only once, the owner can make certified copies as necessary.</em>
             </div>
             ` : ''}
             `}

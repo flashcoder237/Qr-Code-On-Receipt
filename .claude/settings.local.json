@@ -11,8 +11,59 @@
       "WebSearch",
       "Bash(nul)",
       "Bash(dir:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:registry.modelcontextprotocol.io)",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:npmjs.com)",
+      "Bash(uv --version:*)",
+      "Bash(pip install:*)",
+      "Bash(python -m uv:*)",
+      "Bash(python:*)",
+      "Bash(cmd /c \"where python\")",
+      "Bash(npx:*)",
+      "Bash(\"C:/Users/tefba/.local/bin/mcp-server-git.exe\" --help)"
     ],
     "deny": []
+  },
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "C:/Users/tefba/Documents/FMSP/DIPLOMATION/src",
+        "C:/Users/tefba/Documents/FMSP/DIPLOMATION/electron",
+        "C:/Users/tefba/Documents/FMSP/DIPLOMATION/public"
+      ],
+      "description": "Accès sécurisé aux fichiers du projet (src, electron, public)"
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
+      },
+      "description": "Interaction avec la base de données Supabase (tables, queries, migrations)"
+    },
+    "git": {
+      "command": "C:/Users/tefba/.local/bin/mcp-server-git.exe",
+      "args": [
+        "--repository",
+        "C:/Users/tefba/Documents/FMSP/DIPLOMATION"
+      ],
+      "description": "Opérations Git (commits, branches, historique)"
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-puppeteer"
+      ],
+      "description": "Automatisation navigateur pour génération PDF et tests"
+    }
   }
 }

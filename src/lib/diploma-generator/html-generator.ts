@@ -349,6 +349,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
       line-height: 1.25;
       margin: 1px 0;
       letter-spacing: 0.1px;
+      font-weight: bold;
     }
 
     .legal-text-en {
@@ -356,6 +357,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
       font-style: italic;
       line-height: 1.15;
       letter-spacing: 0.1px;
+      font-weight: normal;
       display: ${theme.showBilingualText ? 'block' : 'none'};
     }
 
@@ -392,7 +394,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     }
 
     .field-label {
-      font-weight: normal;
+      font-weight: bold;
     }
 
     .field-value {
@@ -508,7 +510,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
       bottom: 0;
       left: 0;
       right: 0;
-      text-align: center;
+      text-align: left;
       font-size: ${theme.footerFontSize}pt;
       line-height: 1.3;
       letter-spacing: 0.2px;
@@ -626,9 +628,9 @@ export async function generateDiplomaHTML(
             <!-- Motif de texte autour -->
             <div class="watermark-grid">
                 ${Array(24).fill(0).map((_, i) => {
-                  const styleClass = `style-${(i % 4) + 1}`;
-                  return `<div class="watermark-item"><div class="watermark-text ${i % 4 === 0 ? '' : styleClass}">FMSP • UDo</div></div>`;
-                }).join('\n')}
+    const styleClass = `style-${(i % 4) + 1}`;
+    return `<div class="watermark-item"><div class="watermark-text ${i % 4 === 0 ? '' : styleClass}">FMSP • UDo</div></div>`;
+  }).join('\n')}
             </div>
         </div>
 
@@ -689,6 +691,9 @@ export async function generateDiplomaHTML(
             <div class="minister-section">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2mm;">
                     <div style="flex: 1;">
+                        <div class="legal-text">LE MINISTRE D'ETAT, MINISTRE DE L'ENSEIGNEMENT SUPERIEUR, CHANCELIER DES ORDRES ACADEMIQUES</div>
+                        <div class="legal-text legal-text-en"><em>THE MINISTER OF STATE, MINISTER OF HIGHER EDUCATION, CHANCELLOR OF ACADEMIC ORDERS</em></div>
+
                         <div class="legal-text">Vu le décret n°93/036 portant organisation administrative de l'Université de Douala</div>
                         <div class="legal-text legal-text-en"><em>Mindful of decree N° 93/036 to organize the administrative and academic structure of the University of Douala</em></div>
 
@@ -720,40 +725,36 @@ export async function generateDiplomaHTML(
             <div class="recipient-section">
                 <div class="recipient-left">
                     <div class="field">
-                        <div class="field-label">Délivre à M./Mlle <br><span style="font-style: italic; font-size: 8.5pt;" class="en-text"><em>Confers on Mr/Ms</em></span></div>
+                        <div class="field-label">Délivre à M./Mlle <br><span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Confers on Mr/Ms</em></span></div>
                         <div class="field-value">${fullName}</div>
                     </div>
 
                     <div class="field">
-                        <div class="field-label">Né(e) le : <br><span style="font-style: italic; font-size: 8.5pt;" class="en-text"><em>Born on</em></span></div>
+                        <div class="field-label">Né(e) le : <br><span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Born on</em></span></div>
                         <div class="field-value">${birthDate} à ${birthPlace} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${birthDate} in ${birthPlace}</em></span></div>
                     </div>
 
                     <div class="field">
-                        <div class="field-label">Option : <br> <span style="font-style: italic; font-size: 8.5pt;" class="en-text"><em>Speciality</em></span></div>
+                        <div class="field-label">Option : <br> <span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Speciality</em></span></div>
                         <div class="field-value">${option}</div>
                     </div>
 
                     <div class="field">
-                        <div class="field-label">Année d'obtention: <br>  <span style="font-style: italic; font-size: 8.5pt;" class="en-text"><em>Year of completion</em></span> </div>
+                        <div class="field-label">Année d'obtention: <br>  <span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Year of completion</em></span> </div>
                         <div class="field-value">${yearObtention}</div>
                     </div>
                 </div>
 
                 <div class="recipient-right">
-                    <div class="degree-box" style="margin-top: 2mm;">
-                        <div class="degree-title"><span class="degree-main">Le ${diplomaTitleFr}</span></div>
-                        <div class="degree-title-en en-text"><em><span class="degree-main-en">The ${diplomaTitleEn}</span></em></div>
-                    </div>
-                    <div class="mention-box">
+                    <div class="mention-box" style="margin-top: 2mm;">
                         <div class="mention-label">Mention :  <br> <span class="mention-en en-text"><em>Grade:</em></span></div>
                         <div class="mention-value">${mentionFr} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${mentionEn}</em></span></div>
                     </div>
 
-                    <div style="margin-top: 6mm; padding-right: 41%;">
+                    <div style="margin-top: 6mm; padding-right: 35%;">
                         <div style="font-size: 9.5pt;">
-                            <div style="font-weight: bold;">Fait à Douala, Le</div>
-                            <div style="font-style: italic; font-size: 8.5pt;" class="en-text"><em>Done in Douala, The</em></div>
+                            <div style="font-weight: bold;">Douala, le</div>
+                            <div style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Douala, in the</em></div>
                         </div>
                     </div>
                 </div>
