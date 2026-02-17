@@ -52,9 +52,9 @@ const Collapsible = React.forwardRef<HTMLDivElement, CollapsibleProps>(
 Collapsible.displayName = "Collapsible"
 
 const CollapsibleTrigger = React.forwardRef<HTMLButtonElement, CollapsibleTriggerProps>(
-  ({ asChild, onClick, ...props }, ref) => {
+  ({ asChild, onClick, children, ...props }, ref) => {
     const context = React.useContext(CollapsibleContext)
-    
+
     if (!context) {
       throw new Error("CollapsibleTrigger must be used within a Collapsible component")
     }
@@ -64,8 +64,8 @@ const CollapsibleTrigger = React.forwardRef<HTMLButtonElement, CollapsibleTrigge
       onClick?.(event)
     }
 
-    if (asChild && React.isValidElement(props.children)) {
-      return React.cloneElement(props.children as React.ReactElement, {
+    if (asChild && React.isValidElement(children)) {
+      return React.cloneElement(children as React.ReactElement, {
         ...props,
         onClick: handleClick,
         ref,
@@ -77,7 +77,9 @@ const CollapsibleTrigger = React.forwardRef<HTMLButtonElement, CollapsibleTrigge
         ref={ref}
         onClick={handleClick}
         {...props}
-      />
+      >
+        {children}
+      </button>
     )
   }
 )

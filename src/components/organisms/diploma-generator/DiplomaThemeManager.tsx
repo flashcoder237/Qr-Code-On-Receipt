@@ -25,6 +25,7 @@ import {
   DiplomaThemeSettingsPayload,
   defaultDiplomaTheme,
   diplomaThemePresets,
+  mergeDiplomaTheme,
 } from '@/lib/form-schemas/diploma-theme-settings';
 import { SavedDiplomaTheme } from '@/lib/diploma-generator/types';
 import { Textarea } from '@/components/ui/textarea';
@@ -109,9 +110,9 @@ export const DiplomaThemeManager: React.FC<DiplomaThemeManagerProps> = ({
     }
   };
 
-  // Charger un thème
-  const handleLoadTheme = (theme: DiplomaThemeSettingsPayload) => {
-    onThemeSelect(theme);
+  // Charger un thème (fusionné avec les valeurs par défaut pour les nouvelles propriétés)
+  const handleLoadTheme = (theme: Partial<DiplomaThemeSettingsPayload>) => {
+    onThemeSelect(mergeDiplomaTheme(theme));
   };
 
   // Éditer un thème existant

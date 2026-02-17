@@ -166,9 +166,9 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     }
 
     .watermark-text {
-      font-size: 20pt;
+      font-size: ${theme.watermarkTextSize}pt;
       font-weight: bold;
-      color: ${theme.primaryColor};
+      color: ${theme.watermarkTextColor};
       font-family: Arial, Helvetica, sans-serif;
       white-space: nowrap;
       letter-spacing: 2px;
@@ -177,14 +177,14 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
 
     .watermark-text.style-1 {
       font-family: 'Times New Roman', Times, serif;
-      font-size: 24pt;
+      font-size: ${theme.watermarkTextSize + 4}pt;
       font-weight: bold;
       letter-spacing: 1px;
     }
 
     .watermark-text.style-2 {
       font-family: Georgia, serif;
-      font-size: 18pt;
+      font-size: ${theme.watermarkTextSize - 2}pt;
       font-style: italic;
       letter-spacing: 4px;
       font-weight: normal;
@@ -192,14 +192,14 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
 
     .watermark-text.style-3 {
       font-family: Arial, Helvetica, sans-serif;
-      font-size: 22pt;
+      font-size: ${theme.watermarkTextSize + 2}pt;
       font-weight: 900;
       letter-spacing: 3px;
     }
 
     .watermark-text.style-4 {
       font-family: 'Courier New', monospace;
-      font-size: 19pt;
+      font-size: ${theme.watermarkTextSize - 1}pt;
       font-weight: bold;
       letter-spacing: 2px;
     }
@@ -212,6 +212,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
       text-align: center;
       margin-bottom: ${theme.sectionSpacing}mm;
       gap: 3mm;
+      ${theme.headerBlockMinHeight > 0 ? `min-height: ${theme.headerBlockMinHeight}px;` : ''}
     }
 
     .header-block {
@@ -228,7 +229,8 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
       align-items: flex-end;
       justify-content: center;
       flex-shrink: 0;
-      padding-left: 50px;
+      padding-left: ${theme.fmspLogoOffsetX}px;
+      margin-top: ${theme.fmspLogoOffsetY}px;
     }
 
     .logo-box img {
@@ -244,6 +246,8 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
       align-items: flex-end;
       justify-content: center;
       flex-shrink: 0;
+      margin-left: ${theme.coatOfArmsOffsetX}px;
+      margin-top: ${theme.coatOfArmsOffsetY}px;
     }
 
     .coat-of-arms img {
@@ -259,7 +263,8 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
       align-items: flex-end;
       justify-content: center;
       flex-shrink: 0;
-      padding-right: 50px;
+      padding-right: ${Math.abs(theme.minesupLogoOffsetX)}px;
+      margin-top: ${theme.minesupLogoOffsetY}px;
     }
 
     .ministry-logo img {
@@ -277,8 +282,9 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     }
 
     .header-text {
+      font-family: ${theme.headerFont};
       font-size: ${theme.headerFontSize}pt;
-      line-height: 1.15;
+      line-height: ${theme.headerLineHeight};
     }
 
     .header-text .country {
@@ -314,7 +320,8 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     /* Section titre */
     .title {
       text-align: center;
-      margin-bottom: ${theme.sectionSpacing}mm;
+      margin-top: ${theme.titleBlockMarginTop}mm;
+      margin-bottom: ${theme.titleBlockMarginBottom}mm;
     }
 
     .title h1 {
@@ -323,11 +330,14 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
       font-family: ${theme.titleFont};
       color: ${theme.primaryColor};
       margin-bottom: 3px;
-      text-shadow: 3px 3px 6px rgba(0, 0, 128, 0.2);
+      line-height: ${theme.titleLineHeight};
+      letter-spacing: ${theme.titleLetterSpacing}px;
+      text-shadow: ${theme.titleTextShadow ? `${theme.titleShadowOffsetX}px ${theme.titleShadowOffsetY}px ${theme.titleShadowBlur}px ${theme.titleShadowColor}40` : 'none'};
       text-transform: uppercase;
     }
 
     .title .subtitle {
+      font-family: ${theme.subtitleFont};
       font-size: ${theme.subtitleFontSize}pt;
       font-style: italic;
       color: ${theme.primaryColor};
@@ -341,10 +351,11 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
 
     /* Section ministre */
     .minister-section {
-      margin-bottom: ${theme.sectionSpacing - 2}mm;
+      margin-bottom: ${theme.ministerBlockMarginBottom}mm;
     }
 
     .legal-text {
+      font-family: ${theme.legalTextFont};
       font-size: ${theme.legalTextFontSize}pt;
       line-height: 1.25;
       margin: 1px 0;
@@ -353,6 +364,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     }
 
     .legal-text-en {
+      font-family: ${theme.legalTextFont};
       font-size: ${theme.legalTextFontSize - 0.7}pt;
       font-style: italic;
       line-height: 1.15;
@@ -361,21 +373,25 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
       display: ${theme.showBilingualText ? 'block' : 'none'};
     }
 
-    /* Section informations destinataire */
+   /* Section informations destinataire */
     .recipient-section {
       display: flex;
       justify-content: space-between;
       gap: 0mm;
+      margin-bottom: ${theme.recipientBlockMarginBottom}mm;
     }
 
     .recipient-left {
-      flex: 1;
+      flex: 2;
+      font-family: ${theme.studentInfoFont};
       font-size: ${theme.contentFontSize}pt;
     }
 
     .recipient-right {
       flex: 1;
-      text-align: right;
+      padding-left: 2mm;
+      text-align: left;
+      font-family: ${theme.studentInfoFont};
       font-size: ${theme.studentInfoFontSize}pt;
     }
 
@@ -398,6 +414,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     }
 
     .field-value {
+      font-family: ${theme.studentNameFont};
       font-weight: bold;
       margin-left: 6px;
       font-size: ${theme.studentNameFontSize}pt;
@@ -430,7 +447,6 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
 
     .mention-box {
       margin-top: 4mm;
-      padding: 2mm;
       display: flex;
       align-items: flex-start;
       text-align: left;
@@ -444,6 +460,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     }
 
     .mention-value {
+      font-family: ${theme.mentionFont};
       margin-left: 4px;
       font-weight: bold;
       font-size: ${theme.contentFontSize + 1.5}pt;
@@ -470,7 +487,8 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
       justify-content: center;
       font-size: 8pt;
       color: ${theme.primaryColor};
-      margin: 2mm 0 2mm auto;
+      margin: 2mm ${theme.qrCodeOffsetX}px 2mm auto;
+      margin-top: ${theme.qrCodeOffsetY}px;
       font-weight: bold;
     }
 
@@ -484,7 +502,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     .signature-section {
       display: flex;
       justify-content: space-between;
-      margin-top: 4mm;
+      margin-top: ${theme.signatureBlockMarginTop}mm;
       font-size: ${theme.studentInfoFontSize}pt;
     }
 
@@ -494,11 +512,13 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     }
 
     .signature-title {
+      font-family: ${theme.signatureFont};
       font-weight: bold;
       line-height: 1.2;
     }
 
     .signature-title-en {
+      font-family: ${theme.signatureFont};
       font-style: italic;
       font-size: ${theme.contentFontSize - 1.5}pt;
       display: ${theme.showBilingualText ? 'block' : 'none'};
@@ -511,12 +531,14 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
       left: 0;
       right: 0;
       text-align: left;
+      font-family: ${theme.footerFont};
       font-size: ${theme.footerFontSize}pt;
       line-height: 1.3;
       letter-spacing: 0.2px;
     }
 
     .footer-en {
+      font-family: ${theme.footerFont};
       font-style: italic;
       font-size: ${theme.footerFontSize - 1}pt;
       letter-spacing: 0.2px;
@@ -706,15 +728,15 @@ export async function generateDiplomaHTML(
                         <div class="legal-text">Vu le Procès-verbal des délibérations du jury, session du <strong>${juryDeliberationDate}</strong></div>
                         <div class="legal-text legal-text-en"><em>Mindful of the minute of deliberations of the promotion jury sitting of ${juryDeliberationDate}</em></div>
                     </div>
-                    <div style="width: 35%; padding-left: 5mm; display: flex; flex-direction: column; align-items: flex-end;">
-                        <div style="margin-top: 3mm; width: 100%;">
-                            <div style="font-weight: bold; font-size: 9pt; text-align: right;">N°______________MINESUP/DCAA/UD/FMSP</div>
+                    <div style="width: 35%; padding-left: 5mm; display: flex; flex-direction: column; align-items: flex-end; font-family: ${theme.referenceFont};">
+                        <div style="margin-top: 3mm; width: 100%; position: relative; top: ${theme.referenceNumberOffsetY}px; right: ${theme.referenceNumberOffsetX}px;">
+                            <div style="font-weight: bold; font-size: ${theme.referenceNumberFontSize}pt; text-align: right;">N°______________MINESUP/DCAA/UD/FMSP</div>
                             <div class="qr-code">
                                 ${qrCodeImage ? `<img src="${qrCodeImage}" alt="QR Code">` : 'QR'}
                             </div>
-                            <div style="margin-top: 2mm; text-align: right;">
-                                <div style="font-weight: bold; font-size: 9pt;">N° Matricule : ${matricule}</div>
-                                <div style="font-style: italic; font-size: 7.5pt; font-weight: normal;" class="en-text"><em>Matriculation N<sup>o</sup> : ${matricule}</em></div>
+                            <div style="margin-top: 2mm; text-align: right; line-height: ${theme.matriculeLineHeight};">
+                                <div style="font-weight: bold; font-size: ${theme.matriculeFontSize}pt;">N° Matricule : ${matricule} </br>  <span style="font-style: italic; font-size: ${theme.matriculeFontSize - 1.5}pt; font-weight: normal;" class="en-text"><em>Matriculation N<sup>o</sup> : ${matricule}</em></span></div>
+
                             </div>
                         </div>
                     </div>
@@ -751,7 +773,7 @@ export async function generateDiplomaHTML(
                         <div class="mention-value">${mentionFr} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${mentionEn}</em></span></div>
                     </div>
 
-                    <div style="margin-top: 6mm; padding-right: 35%;">
+                    <div style="margin-top: 6mm;">
                         <div style="font-size: 9.5pt;">
                             <div style="font-weight: bold;">Douala, le</div>
                             <div style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Douala, in the</em></div>

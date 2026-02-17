@@ -13,6 +13,35 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, RefreshCw, Type, Palette as PaletteIcon, Image as ImageIcon, Settings } from 'lucide-react';
 import { DiplomaThemeSettingsPayload } from '@/lib/form-schemas/diploma-theme-settings';
 
+// Liste des polices disponibles
+const fontOptions = [
+  // Serif classiques
+  { value: "Times New Roman, serif", label: "Times New Roman" },
+  { value: "Georgia, serif", label: "Georgia" },
+  { value: "Garamond, serif", label: "Garamond" },
+  { value: "Palatino, serif", label: "Palatino" },
+  { value: "Cambria, serif", label: "Cambria" },
+  { value: "Baskerville, serif", label: "Baskerville" },
+  { value: "Book Antiqua, serif", label: "Book Antiqua" },
+  { value: "Didot, serif", label: "Didot" },
+  { value: "Bodoni MT, serif", label: "Bodoni MT" },
+  { value: "Constantia, serif", label: "Constantia" },
+  // Sans-serif classiques
+  { value: "Arial, sans-serif", label: "Arial" },
+  { value: "Helvetica, sans-serif", label: "Helvetica" },
+  { value: "Calibri, sans-serif", label: "Calibri" },
+  { value: "Verdana, sans-serif", label: "Verdana" },
+  { value: "Tahoma, sans-serif", label: "Tahoma" },
+  { value: "Trebuchet MS, sans-serif", label: "Trebuchet MS" },
+  { value: "Segoe UI, sans-serif", label: "Segoe UI" },
+  // Sans-serif modernes
+  { value: "Open Sans, sans-serif", label: "Open Sans" },
+  { value: "Roboto, sans-serif", label: "Roboto" },
+  { value: "Lato, sans-serif", label: "Lato" },
+  { value: "Montserrat, sans-serif", label: "Montserrat" },
+  { value: "Source Sans Pro, sans-serif", label: "Source Sans Pro" },
+];
+
 interface DiplomaThemeEditorProps {
   theme: DiplomaThemeSettingsPayload;
   onThemeChange: (theme: DiplomaThemeSettingsPayload) => void;
@@ -71,48 +100,207 @@ export const DiplomaThemeEditor: React.FC<DiplomaThemeEditorProps> = ({
         <TabsContent value="typography" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Polices</CardTitle>
+              <CardTitle>Polices par élément</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label>Police principale</Label>
-                <Select
-                  value={theme.mainFont}
-                  onValueChange={(value) => updateTheme({ mainFont: value as any })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Times New Roman, serif">Times New Roman</SelectItem>
-                    <SelectItem value="Georgia, serif">Georgia</SelectItem>
-                    <SelectItem value="Garamond, serif">Garamond</SelectItem>
-                    <SelectItem value="Palatino, serif">Palatino</SelectItem>
-                    <SelectItem value="Cambria, serif">Cambria</SelectItem>
-                    <SelectItem value="Arial, sans-serif">Arial</SelectItem>
-                    <SelectItem value="Calibri, sans-serif">Calibri</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Police principale (fallback)</Label>
+                  <Select
+                    value={theme.mainFont}
+                    onValueChange={(value) => updateTheme({ mainFont: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fontOptions.map((font) => (
+                        <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Police titre diplôme</Label>
+                  <Select
+                    value={theme.titleFont}
+                    onValueChange={(value) => updateTheme({ titleFont: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fontOptions.map((font) => (
+                        <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Police sous-titre (version EN)</Label>
+                  <Select
+                    value={theme.subtitleFont}
+                    onValueChange={(value) => updateTheme({ subtitleFont: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fontOptions.map((font) => (
+                        <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Police header (République...)</Label>
+                  <Select
+                    value={theme.headerFont}
+                    onValueChange={(value) => updateTheme({ headerFont: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fontOptions.map((font) => (
+                        <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Police texte légal (Vu le décret...)</Label>
+                  <Select
+                    value={theme.legalTextFont}
+                    onValueChange={(value) => updateTheme({ legalTextFont: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fontOptions.map((font) => (
+                        <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Police nom étudiant</Label>
+                  <Select
+                    value={theme.studentNameFont}
+                    onValueChange={(value) => updateTheme({ studentNameFont: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fontOptions.map((font) => (
+                        <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Police infos étudiant (date, lieu...)</Label>
+                  <Select
+                    value={theme.studentInfoFont}
+                    onValueChange={(value) => updateTheme({ studentInfoFont: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fontOptions.map((font) => (
+                        <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Police mention/grade</Label>
+                  <Select
+                    value={theme.mentionFont}
+                    onValueChange={(value) => updateTheme({ mentionFont: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fontOptions.map((font) => (
+                        <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Police signatures</Label>
+                  <Select
+                    value={theme.signatureFont}
+                    onValueChange={(value) => updateTheme({ signatureFont: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fontOptions.map((font) => (
+                        <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Police pied de page</Label>
+                  <Select
+                    value={theme.footerFont}
+                    onValueChange={(value) => updateTheme({ footerFont: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fontOptions.map((font) => (
+                        <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Police N° réf. & matricule</Label>
+                  <Select
+                    value={theme.referenceFont}
+                    onValueChange={(value) => updateTheme({ referenceFont: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fontOptions.map((font) => (
+                        <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div>
-                <Label>Police des titres</Label>
-                <Select
-                  value={theme.titleFont}
-                  onValueChange={(value) => updateTheme({ titleFont: value as any })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Times New Roman, serif">Times New Roman</SelectItem>
-                    <SelectItem value="Georgia, serif">Georgia</SelectItem>
-                    <SelectItem value="Garamond, serif">Garamond</SelectItem>
-                    <SelectItem value="Didot, serif">Didot</SelectItem>
-                    <SelectItem value="Bodoni MT, serif">Bodoni MT</SelectItem>
-                    <SelectItem value="Arial, sans-serif">Arial</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Interligne header: {theme.headerLineHeight}</Label>
+                <Slider
+                  value={[theme.headerLineHeight]}
+                  onValueChange={([value]) => updateTheme({ headerLineHeight: value })}
+                  min={1}
+                  max={2}
+                  step={0.05}
+                />
               </div>
             </CardContent>
           </Card>
@@ -209,6 +397,97 @@ export const DiplomaThemeEditor: React.FC<DiplomaThemeEditorProps> = ({
                   step={0.5}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Titre avancé</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Interligne titre: {theme.titleLineHeight}</Label>
+                <Slider
+                  value={[theme.titleLineHeight]}
+                  onValueChange={([value]) => updateTheme({ titleLineHeight: value })}
+                  min={0.8}
+                  max={2}
+                  step={0.1}
+                />
+              </div>
+
+              <div>
+                <Label>Espacement lettres titre: {theme.titleLetterSpacing}px</Label>
+                <Slider
+                  value={[theme.titleLetterSpacing]}
+                  onValueChange={([value]) => updateTheme({ titleLetterSpacing: value })}
+                  min={-2}
+                  max={10}
+                  step={0.5}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Label>Ombre du titre</Label>
+                <Switch
+                  checked={theme.titleTextShadow}
+                  onCheckedChange={(checked) => updateTheme({ titleTextShadow: checked })}
+                />
+              </div>
+
+              {theme.titleTextShadow && (
+                <div className="pl-4 border-l-2 border-blue-200 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Décalage X: {theme.titleShadowOffsetX}px</Label>
+                      <Slider
+                        value={[theme.titleShadowOffsetX]}
+                        onValueChange={([value]) => updateTheme({ titleShadowOffsetX: value })}
+                        min={0}
+                        max={10}
+                        step={1}
+                      />
+                    </div>
+                    <div>
+                      <Label>Décalage Y: {theme.titleShadowOffsetY}px</Label>
+                      <Slider
+                        value={[theme.titleShadowOffsetY]}
+                        onValueChange={([value]) => updateTheme({ titleShadowOffsetY: value })}
+                        min={0}
+                        max={10}
+                        step={1}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Flou: {theme.titleShadowBlur}px</Label>
+                    <Slider
+                      value={[theme.titleShadowBlur]}
+                      onValueChange={([value]) => updateTheme({ titleShadowBlur: value })}
+                      min={0}
+                      max={20}
+                      step={1}
+                    />
+                  </div>
+                  <div>
+                    <Label>Couleur de l'ombre</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={theme.titleShadowColor}
+                        onChange={(e) => updateTheme({ titleShadowColor: e.target.value })}
+                        className="w-16 h-10"
+                      />
+                      <Input
+                        type="text"
+                        value={theme.titleShadowColor}
+                        onChange={(e) => updateTheme({ titleShadowColor: e.target.value })}
+                        placeholder="#000080"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -421,6 +700,242 @@ export const DiplomaThemeEditor: React.FC<DiplomaThemeEditorProps> = ({
 
           <Card>
             <CardHeader>
+              <CardTitle>Positions des logos (px)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Logo FMSP X: {theme.fmspLogoOffsetX}px</Label>
+                  <Slider
+                    value={[theme.fmspLogoOffsetX]}
+                    onValueChange={([value]) => updateTheme({ fmspLogoOffsetX: value })}
+                    min={-50}
+                    max={100}
+                    step={5}
+                  />
+                </div>
+                <div>
+                  <Label>Logo FMSP Y: {theme.fmspLogoOffsetY}px</Label>
+                  <Slider
+                    value={[theme.fmspLogoOffsetY]}
+                    onValueChange={([value]) => updateTheme({ fmspLogoOffsetY: value })}
+                    min={-30}
+                    max={30}
+                    step={2}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Armoiries X: {theme.coatOfArmsOffsetX}px</Label>
+                  <Slider
+                    value={[theme.coatOfArmsOffsetX]}
+                    onValueChange={([value]) => updateTheme({ coatOfArmsOffsetX: value })}
+                    min={-50}
+                    max={50}
+                    step={5}
+                  />
+                </div>
+                <div>
+                  <Label>Armoiries Y: {theme.coatOfArmsOffsetY}px</Label>
+                  <Slider
+                    value={[theme.coatOfArmsOffsetY]}
+                    onValueChange={([value]) => updateTheme({ coatOfArmsOffsetY: value })}
+                    min={-30}
+                    max={30}
+                    step={2}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Logo MINESUP X: {theme.minesupLogoOffsetX}px</Label>
+                  <Slider
+                    value={[theme.minesupLogoOffsetX]}
+                    onValueChange={([value]) => updateTheme({ minesupLogoOffsetX: value })}
+                    min={-100}
+                    max={50}
+                    step={5}
+                  />
+                </div>
+                <div>
+                  <Label>Logo MINESUP Y: {theme.minesupLogoOffsetY}px</Label>
+                  <Slider
+                    value={[theme.minesupLogoOffsetY]}
+                    onValueChange={([value]) => updateTheme({ minesupLogoOffsetY: value })}
+                    min={-30}
+                    max={30}
+                    step={2}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>QR Code X: {theme.qrCodeOffsetX}px</Label>
+                  <Slider
+                    value={[theme.qrCodeOffsetX]}
+                    onValueChange={([value]) => updateTheme({ qrCodeOffsetX: value })}
+                    min={-100}
+                    max={100}
+                    step={5}
+                  />
+                </div>
+                <div>
+                  <Label>QR Code Y: {theme.qrCodeOffsetY}px</Label>
+                  <Slider
+                    value={[theme.qrCodeOffsetY]}
+                    onValueChange={([value]) => updateTheme({ qrCodeOffsetY: value })}
+                    min={-50}
+                    max={50}
+                    step={5}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>N° Référence et Matricule</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Taille N° référence: {theme.referenceNumberFontSize}pt</Label>
+                <Slider
+                  value={[theme.referenceNumberFontSize]}
+                  onValueChange={([value]) => updateTheme({ referenceNumberFontSize: value })}
+                  min={7}
+                  max={14}
+                  step={0.5}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Position X: {theme.referenceNumberOffsetX}px</Label>
+                  <Slider
+                    value={[theme.referenceNumberOffsetX]}
+                    onValueChange={([value]) => updateTheme({ referenceNumberOffsetX: value })}
+                    min={-50}
+                    max={50}
+                    step={5}
+                  />
+                </div>
+                <div>
+                  <Label>Position Y: {theme.referenceNumberOffsetY}px</Label>
+                  <Slider
+                    value={[theme.referenceNumberOffsetY]}
+                    onValueChange={([value]) => updateTheme({ referenceNumberOffsetY: value })}
+                    min={-20}
+                    max={20}
+                    step={2}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>Taille matricule: {theme.matriculeFontSize}pt</Label>
+                <Slider
+                  value={[theme.matriculeFontSize]}
+                  onValueChange={([value]) => updateTheme({ matriculeFontSize: value })}
+                  min={7}
+                  max={14}
+                  step={0.5}
+                />
+              </div>
+
+              <div>
+                <Label>Interligne matricule: {theme.matriculeLineHeight}</Label>
+                <Slider
+                  value={[theme.matriculeLineHeight]}
+                  onValueChange={([value]) => updateTheme({ matriculeLineHeight: value })}
+                  min={1}
+                  max={2}
+                  step={0.1}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Blocs et espacements</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Hauteur min header: {theme.headerBlockMinHeight === 0 ? 'Auto' : `${theme.headerBlockMinHeight}px`}</Label>
+                <Slider
+                  value={[theme.headerBlockMinHeight]}
+                  onValueChange={([value]) => updateTheme({ headerBlockMinHeight: value })}
+                  min={0}
+                  max={150}
+                  step={5}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Marge titre haut: {theme.titleBlockMarginTop}mm</Label>
+                  <Slider
+                    value={[theme.titleBlockMarginTop]}
+                    onValueChange={([value]) => updateTheme({ titleBlockMarginTop: value })}
+                    min={0}
+                    max={20}
+                    step={1}
+                  />
+                </div>
+                <div>
+                  <Label>Marge titre bas: {theme.titleBlockMarginBottom}mm</Label>
+                  <Slider
+                    value={[theme.titleBlockMarginBottom]}
+                    onValueChange={([value]) => updateTheme({ titleBlockMarginBottom: value })}
+                    min={0}
+                    max={20}
+                    step={1}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>Marge section ministre: {theme.ministerBlockMarginBottom}mm</Label>
+                <Slider
+                  value={[theme.ministerBlockMarginBottom]}
+                  onValueChange={([value]) => updateTheme({ ministerBlockMarginBottom: value })}
+                  min={0}
+                  max={15}
+                  step={1}
+                />
+              </div>
+
+              <div>
+                <Label>Marge section destinataire: {theme.recipientBlockMarginBottom}mm</Label>
+                <Slider
+                  value={[theme.recipientBlockMarginBottom]}
+                  onValueChange={([value]) => updateTheme({ recipientBlockMarginBottom: value })}
+                  min={0}
+                  max={15}
+                  step={1}
+                />
+              </div>
+
+              <div>
+                <Label>Marge section signatures: {theme.signatureBlockMarginTop}mm</Label>
+                <Slider
+                  value={[theme.signatureBlockMarginTop]}
+                  onValueChange={([value]) => updateTheme({ signatureBlockMarginTop: value })}
+                  min={0}
+                  max={15}
+                  step={1}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Marges du document (mm)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -522,7 +1037,7 @@ export const DiplomaThemeEditor: React.FC<DiplomaThemeEditorProps> = ({
               </div>
 
               {theme.showWatermark && (
-                <>
+                <div className="pl-4 border-l-2 border-blue-200 space-y-4">
                   <div>
                     <Label>Opacité logo watermark: {(theme.watermarkOpacity * 100).toFixed(0)}%</Label>
                     <Slider
@@ -544,7 +1059,56 @@ export const DiplomaThemeEditor: React.FC<DiplomaThemeEditorProps> = ({
                       step={0.01}
                     />
                   </div>
-                </>
+
+                  <div>
+                    <Label>Taille texte watermark: {theme.watermarkTextSize}pt</Label>
+                    <Slider
+                      value={[theme.watermarkTextSize]}
+                      onValueChange={([value]) => updateTheme({ watermarkTextSize: value })}
+                      min={12}
+                      max={40}
+                      step={1}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Couleur watermark</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={theme.watermarkColor}
+                          onChange={(e) => updateTheme({ watermarkColor: e.target.value })}
+                          className="w-16 h-10"
+                        />
+                        <Input
+                          type="text"
+                          value={theme.watermarkColor}
+                          onChange={(e) => updateTheme({ watermarkColor: e.target.value })}
+                          placeholder="#000080"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Couleur texte watermark</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={theme.watermarkTextColor}
+                          onChange={(e) => updateTheme({ watermarkTextColor: e.target.value })}
+                          className="w-16 h-10"
+                        />
+                        <Input
+                          type="text"
+                          value={theme.watermarkTextColor}
+                          onChange={(e) => updateTheme({ watermarkTextColor: e.target.value })}
+                          placeholder="#000080"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
 
               <div className="flex items-center justify-between">

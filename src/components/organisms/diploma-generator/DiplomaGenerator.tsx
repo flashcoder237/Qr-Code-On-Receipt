@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useLocalStorage } from 'usehooks-ts';
 import { DiplomaStudentRecord, FAKE_DIPLOMA_DATA } from '@/lib/diploma-generator/types';
-import { defaultDiplomaTheme, DiplomaThemeSettingsPayload } from '@/lib/form-schemas/diploma-theme-settings';
+import { defaultDiplomaTheme, DiplomaThemeSettingsPayload, mergeDiplomaTheme } from '@/lib/form-schemas/diploma-theme-settings';
 import { DiplomaThemeEditor } from './DiplomaThemeEditor';
 import { DiplomaThemeManager } from './DiplomaThemeManager';
 import { ImportReport, ImportStats } from './ImportReport';
@@ -60,11 +60,13 @@ export const DiplomaGenerator: React.FC = () => {
     date: Date;
   } | null>(null);
 
-  // Thème actuel
-  const [diplomaTheme, setDiplomaTheme] = useLocalStorage<DiplomaThemeSettingsPayload>(
+  // Thème actuel (fusionné avec les valeurs par défaut pour les nouvelles propriétés)
+  const [storedTheme, setStoredTheme] = useLocalStorage<Partial<DiplomaThemeSettingsPayload>>(
     'diploma-theme',
     defaultDiplomaTheme
   );
+  const diplomaTheme = mergeDiplomaTheme(storedTheme);
+  const setDiplomaTheme = (theme: DiplomaThemeSettingsPayload) => setStoredTheme(theme);
 
   // Paramètres de l'école
   const [schoolSettings, setSchoolSettings] = useLocalStorage('settings', {
