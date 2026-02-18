@@ -236,6 +236,8 @@ export const AttestationGenerator: React.FC = () => {
           MENTION_EN: row.MENTION_EN,
           // Garder aussi NIVEAU pour les mentions spécialisées
           NIVEAU: row.NIVEAU,
+          DUREE_VALIDE: row.DUREE_VALIDE,
+          DUREE_VALIDE_EN: row.DUREE_VALIDE_EN,
         };
         
         console.log('🔍 Row standardisé avec colonnes EN pour', row.NOM, {

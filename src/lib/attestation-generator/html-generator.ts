@@ -136,6 +136,9 @@ export async function generateAttestationHTML(
   
   
   const cycle = sanitizedStudent.CYCLE;
+  const niveau = sanitizedStudent.NIVEAU;
+  const dureeValide = sanitizedStudent.DUREE_VALIDE;
+  const dureeValideEn = sanitizedStudent.DUREE_VALIDE_EN;
   
   // Récupérer la moyenne numérique d'abord
   const numericAverage = typeof sanitizedStudent.MOYENNE === 'number' ? 
@@ -320,7 +323,10 @@ export async function generateAttestationHTML(
     
   }
 
-  const getCycleTranslateEn = (cycle : string) => {
+  const getCycleTranslateEn = (cycle : string, niveau?: string) => {
+    if (niveau && niveau.trim() !== '' && niveau.trim().toUpperCase() !== 'N/D') {
+      return `OF ${cycle.toUpperCase()} ${niveau.trim()}`;
+    }
     switch (cycle.toUpperCase()) {
       case "DOCTORAT":
         return "OF DOCTORATE";
@@ -337,7 +343,10 @@ export async function generateAttestationHTML(
     }
   };
 
-  const getCycleTranslateFr = (cycle : string) => {
+  const getCycleTranslateFr = (cycle : string, niveau?: string) => {
+    if (niveau && niveau.trim() !== '' && niveau.trim().toUpperCase() !== 'N/D') {
+      return `DE ${cycle.toUpperCase()} ${niveau.trim()}`;
+    }
     switch (cycle.toUpperCase()) {
       case "DOCTORAT":
         return "AU DIPLÔME DE DOCTORAT";
@@ -895,10 +904,10 @@ export async function generateAttestationHTML(
             </div>
             
             <div class="header-row2">
-              <h1 class="main-title">${theme.customTitle || `ATTESTATION DE REUSSITE ${getCycleTranslateFr(cycle)}`}</h1>
-              ${theme.showBilingualText ? `<h2 class="subtitle">${theme.customSubtitle || `ATTESTATION OF COMPLETION ${getCycleTranslateEn(cycle)}`}</h2>` : ''}
+              <h1 class="main-title">${theme.customTitle || `ATTESTATION DE REUSSITE ${getCycleTranslateFr(cycle, niveau)}`}</h1>
+              ${theme.showBilingualText ? `<h2 class="subtitle">${theme.customSubtitle || `ATTESTATION OF COMPLETION ${getCycleTranslateEn(cycle, niveau)}`}</h2>` : ''}
               
-              <p style="margin-top: 6px"><strong>Ref N°............./${currentYear}/UDo/FMSP${settings.establishmentType === "ipes" ? "/VDRC/"+settings.nameAbreviation : "/VDPSAA/VDSSE/VDRC/CDAASR/SSE"}</strong></p>
+              <p style="margin-top: 6px"><strong>Ref N°............./${currentYear-1}/UDo/FMSP${settings.establishmentType === "ipes" ? "/VDRC/"+settings.nameAbreviation : "/VDPSAA/VDSSE/VDRC/CDAASR/SSE"}</strong></p>
             </div>
         </div>
         
@@ -937,8 +946,12 @@ export async function generateAttestationHTML(
                 <p id="to-hidden">Inscrit(e) à <strong>La ${settings.nameFrench}</strong> sous le matricule: <strong>${matricule}</strong><br>
                 ${theme.showBilingualText ? `<em>Registered at the <strong>${settings.nameEnglish}</strong> under the matricule number:</em>` : ''}</p>
 
-                <p id="to-nothidden">A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase()}</strong> en <strong>${course.toUpperCase()}</strong><br>
-                ${theme.showBilingualText ? '<em>Having successfully fufilled the requirements qualifying for the :</em>' : ''}</p>
+                <p id="to-nothidden">${niveau && niveau.trim() !== '' && niveau.trim().toUpperCase() !== 'N/D'
+                  ? `A subi avec succès toutes les épreuves de : <strong>${cycle.toUpperCase()} ${niveau.trim()}</strong> en <strong>${course.toUpperCase()}</strong>`
+                  : `A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase()}</strong> en <strong>${course.toUpperCase()}</strong>`}<br>
+                ${theme.showBilingualText ? (niveau && niveau.trim() !== '' && niveau.trim().toUpperCase() !== 'N/D'
+                  ? `<em>Having successfully passed all examinations for: </em>`
+                  : `<em>Having successfully fulfilled the requirements qualifying for the : </em>`) : ''}</p>
           
             </div>
             
@@ -1023,22 +1036,25 @@ export async function generateAttestationHTML(
         </div>
         
         <div class="disclaimer">
-            ${theme.customFooterText ? `<div>${theme.customFooterText}</div>` : `
             <div>
             ${isDemoMode ? `
             <span style="color: red; font-weight: bold;">
               ⚠️ DOCUMENT GÉNÉRÉ EN MODE DÉMO - NON OFFICIEL ⚠️
             </span><br>
             ` : ''}
-                Il n'est délivré qu'un seul exemplaire d'attestation, le titulaire peut en faire des copies certifiées conformes.
+                ${dureeValide && dureeValide.trim() !== '' && dureeValide.trim().toUpperCase() !== 'N/D'
+                  ? `Cette Attestation ne tient pas lieu de Diplôme et n'est délivrée qu'en un seul exemplaire et d'une validité de ${dureeValide.trim()} à partir de la date de signature. Le Diplôme lui sera délivré ultérieurement.`
+                  : theme.customFooterText
+                    ? theme.customFooterText
+                    : `Il n'est délivré qu'un seul exemplaire d'attestation, le titulaire peut en faire des copies certifiées conformes.`}
             </div>
             ${theme.showBilingualText ? `
             <div>
-                <em>This certificate is delivered only once, the owner can make certified copies as necessary.</em>
-                <em>This certificate is delivered only once, the owner can make certified copies as necessary.</em>
+                ${dureeValide && dureeValide.trim() !== '' && dureeValide.trim().toUpperCase() !== 'N/D'
+                  ? `<em>This Certificate does not serve as a Diploma and is issued in a single copy, valid for ${dureeValideEn && dureeValideEn.trim() !== '' && dureeValideEn.trim().toUpperCase() !== 'N/D' ? dureeValideEn.trim() : dureeValide.trim()} from the date of signature. The Diploma will be issued at a later date.</em>`
+                  : `<em>This certificate is delivered only once, the owner can make certified copies as necessary.</em>`}
             </div>
             ` : ''}
-            `}
         </div>
     </div>
 </body>

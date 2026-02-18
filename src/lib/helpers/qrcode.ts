@@ -35,6 +35,8 @@ export interface StudentExcelRecord {
   "ANNEE D'OBTENTION"?: string;
   "DATE JURY"?: string;
   "NUMERO JURY"?: string | number;
+  DUREE_VALIDE?: string;
+  DUREE_VALIDE_EN?: string;
   // Versions anglaises
   DOMAINE_EN?: string;
   PARCOURS_EN?: string;
@@ -55,7 +57,7 @@ export function sanitizeStudentData(student: StudentExcelRecord): StudentExcelRe
   const fieldsToSanitize = [
     'ETABLISSEMENT', 'NOM', 'PRENOM', 'MATRICULE', 'DATE DE NAISSANCE', 'LIEU DE NAISSANCE',
     'PARCOURS', 'SPECIALITE', 'OPTION', 'GRADE', 'MENTION', 'ANNEE ACADEMIQUE',
-    'NIVEAU', 'SEMESTRE', 'CYCLE', 'FILIERE', 'FINALITE', 'TOTAL CREDIT', 'DOMAINE',
+    'NIVEAU', 'SEMESTRE', 'CYCLE', 'FILIERE', 'FINALITE', 'TOTAL CREDIT', 'DOMAINE', 'DUREE_VALIDE', 'DUREE_VALIDE_EN',
     'ANNEE D\'OBTENTION', 'DATE JURY', 'NUMERO JURY',
     // Versions anglaises
     'DOMAINE_EN', 'PARCOURS_EN', 'SPECIALITE_EN', 'OPTION_EN', 'FINALITE_EN', 'MENTION_EN'

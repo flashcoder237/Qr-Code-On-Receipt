@@ -275,10 +275,17 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
 
     .header-text-block {
       flex: 1;
-      text-align: center;
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    .header-text-block-right{
+      text-align: left;
+    }
+
+    .header-text-block-left{
+      text-align: right;
     }
 
     .header-text {
@@ -665,7 +672,7 @@ export async function generateDiplomaHTML(
                 </div>
 
                 <!-- Bloc 2: Texte gauche -->
-                <div class="header-block header-text-block">
+                <div class="header-block header-text-block header-text-block-right">
                     <div class="header-text">
                         <div class="country">REPUBLIQUE DU CAMEROUN</div>
                         <div class="motto">Paix-Travail-Patrie</div>
@@ -684,7 +691,7 @@ export async function generateDiplomaHTML(
                 </div>
 
                 <!-- Bloc 4: Texte droit -->
-                <div class="header-block header-text-block">
+                <div class="header-block header-text-block header-text-block-left">
                     <div class="header-text">
                         <div class="country">REPUBLIC OF CAMEROON</div>
                         <div class="motto">Peace-Work-Fatherland</div>
@@ -753,7 +760,7 @@ export async function generateDiplomaHTML(
 
                     <div class="field">
                         <div class="field-label">Né(e) le : <br><span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Born on</em></span></div>
-                        <div class="field-value">${birthDate} à ${birthPlace} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${birthDate} in ${birthPlace}</em></span></div>
+                        <div class="field-value">${birthDate} À ${birthPlace} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${birthDate} At ${birthPlace}</em></span></div>
                     </div>
 
                     <div class="field">
