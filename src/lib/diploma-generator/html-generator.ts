@@ -22,7 +22,7 @@ async function generateDiplomaQRCode(student: DiplomaStudentRecord, useCompact: 
     // FORMAT COMPACT (Option 1) - 6 champs essentiels avec clés courtes
     qrData = {
       mat: student.MATRICULE,
-      nom: `${student.NOM} ${student.PRENOM}`,
+      nom: student.PRENOM && student.PRENOM.trim() !== '' && student.PRENOM.trim() !== 'N/D' ? `${student.NOM} ${student.PRENOM}` : student.NOM,
       date: student["DATE DE NAISSANCE"],
       dipl: student["ANNEE OBTENTION"],
       moy: student.MOYENNE,
@@ -204,7 +204,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
       letter-spacing: 2px;
     }
 
-    /* En-tête avec 5 blocs */
+    /* En-tête avec 3 blocs */
     .header {
       display: flex;
       justify-content: space-between;
@@ -218,8 +218,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     .header-block {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
+    
     }
 
     .logo-box {
@@ -276,8 +275,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     .header-text-block {
       flex: 1;
       display: flex;
-      align-items: center;
-      justify-content: center;
+      
     }
 
     .header-text-block-right{
@@ -324,11 +322,19 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
       letter-spacing: 0.3px;
     }
 
-    /* Section titre */
-    .title {
-      text-align: center;
+    /* Section titre avec logos sur les côtés */
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-top: ${theme.titleBlockMarginTop}mm;
       margin-bottom: ${theme.titleBlockMarginBottom}mm;
+      gap: 3mm;
+    }
+
+    .title {
+      text-align: center;
+      flex: 1;
     }
 
     .title h1 {
@@ -617,7 +623,8 @@ export async function generateDiplomaHTML(
   const watermarkLogo = universityLogo || settings.facultyLogo || settings.watermarkLogo;
 
   // Données de l'étudiant
-  const fullName = `${student.NOM} ${student.PRENOM}`;
+  const prenom = student.PRENOM && student.PRENOM.trim() !== '' && student.PRENOM.trim() !== 'N/D' ? student.PRENOM.trim() : '';
+  const fullName = prenom ? `${student.NOM} ${prenom}` : student.NOM;
   const birthDate = student["DATE DE NAISSANCE"];
   const birthPlace = student["LIEU DE NAISSANCE"];
   const matricule = student.MATRICULE;
@@ -664,14 +671,9 @@ export async function generateDiplomaHTML(
         </div>
 
         <div class="content">
-            <!-- En-tête avec 5 blocs -->
+            <!-- En-tête avec 3 blocs -->
             <div class="header">
-                <!-- Bloc 1: Logo Faculté -->
-                <div class="header-block">
-                    ${fmspLogo ? `<div class="logo-box"><img src="${fmspLogo}" alt="Logo Faculté"></div>` : ''}
-                </div>
-
-                <!-- Bloc 2: Texte gauche -->
+                <!-- Bloc 1: Texte gauche -->
                 <div class="header-block header-text-block header-text-block-right">
                     <div class="header-text">
                         <div class="country">REPUBLIQUE DU CAMEROUN</div>
@@ -685,12 +687,12 @@ export async function generateDiplomaHTML(
                     </div>
                 </div>
 
-                <!-- Bloc 3: Armoiries (plus grand) -->
+                <!-- Bloc 2: Armoiries (centre) -->
                 <div class="header-block">
                     ${coatOfArms ? `<div class="coat-of-arms"><img src="${coatOfArms}" alt="Armoiries du Cameroun"></div>` : ''}
                 </div>
 
-                <!-- Bloc 4: Texte droit -->
+                <!-- Bloc 3: Texte droit -->
                 <div class="header-block header-text-block header-text-block-left">
                     <div class="header-text">
                         <div class="country">REPUBLIC OF CAMEROON</div>
@@ -703,17 +705,25 @@ export async function generateDiplomaHTML(
                         <div class="faculty">FACULTY OF MEDICINE AND<br>PHARMACEUTICAL SCIENCES</div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Bloc 5: Logo MINESUP -->
+            <!-- Titre avec logos sur les côtés -->
+            <div class="title-row">
+                <!-- Logo Faculté (gauche) -->
+                <div class="header-block">
+                    ${fmspLogo ? `<div class="logo-box"><img src="${fmspLogo}" alt="Logo Faculté"></div>` : ''}
+                </div>
+
+                <!-- Titre central -->
+                <div class="title">
+                    <h1>${diplomaTitleFr}</h1>
+                    <div class="subtitle en-text">${diplomaTitleEn}</div>
+                </div>
+
+                <!-- Logo MINESUP (droite) -->
                 <div class="header-block">
                     ${ministryLogo ? `<div class="ministry-logo"><img src="${ministryLogo}" alt="Logo MINESUP"></div>` : ''}
                 </div>
-            </div>
-
-            <!-- Titre -->
-            <div class="title">
-                <h1>${diplomaTitleFr}</h1>
-                <div class="subtitle en-text">${diplomaTitleEn}</div>
             </div>
 
             <!-- Section Ministre -->

@@ -21,7 +21,6 @@ export interface DiplomaValidationResult {
  */
 const REQUIRED_FIELDS: Array<keyof DiplomaStudentRecord> = [
   'NOM',
-  'PRENOM',
   'MATRICULE',
   'DATE DE NAISSANCE',
   'LIEU DE NAISSANCE',

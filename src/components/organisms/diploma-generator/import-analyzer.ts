@@ -14,7 +14,6 @@ const FIELD_DEFINITIONS: Array<{
 }> = [
   // Champs obligatoires
   { key: 'NOM', displayName: 'Nom de famille', required: true },
-  { key: 'PRENOM', displayName: 'Prénom', required: true },
   { key: 'MATRICULE', displayName: 'Matricule', required: true },
   { key: 'DATE DE NAISSANCE', displayName: 'Date de naissance', required: true },
   { key: 'LIEU DE NAISSANCE', displayName: 'Lieu de naissance', required: true },
@@ -30,6 +29,7 @@ const FIELD_DEFINITIONS: Array<{
   { key: 'GRADE', displayName: 'Grade', required: true },
 
   // Champs optionnels
+  { key: 'PRENOM', displayName: 'Prénom', required: false },
   { key: 'OPTION', displayName: 'Option (FR)', required: false },
   { key: 'OPTION_EN', displayName: 'Option (EN)', required: false },
   { key: 'MENTION_EN', displayName: 'Mention (EN)', required: false },
