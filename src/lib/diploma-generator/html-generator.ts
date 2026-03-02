@@ -395,7 +395,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     }
 
     .recipient-left {
-      flex: 2;
+      flex: 2.5;
       font-family: ${theme.studentInfoFont};
       font-size: ${theme.contentFontSize}pt;
     }
@@ -634,8 +634,8 @@ export async function generateDiplomaHTML(
   const diplomaTitleEn = student["TITRE DIPLOME EN"];
   const mentionFr = student.MENTION;
   const mentionEn = student.MENTION_EN || student.MENTION;
-  const option = student.OPTION || '/';
-  const optionEn = student.OPTION_EN || student.OPTION || '/';
+  const option = student.OPTION && student.OPTION.trim() !== '' && student.OPTION.trim() !== 'N/D' && student.OPTION.trim() !== '/' ? student.OPTION.trim() : '';
+  const optionEn = option ? (student.OPTION_EN || student.OPTION || '') : '';
   const yearObtention = student["ANNEE OBTENTION"];
   const juryAdmissionDate = student["DATE JURY ADMISSION"];
   const juryDeliberationDate = student["DATE JURY DELIBERATION"];
@@ -770,16 +770,6 @@ export async function generateDiplomaHTML(
                         <div class="field-label">Né(e) le : <br><span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Born on</em></span></div>
                         <div class="field-value">${birthDate} À ${birthPlace} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${birthDate} At ${birthPlace}</em></span></div>
                     </div>
-
-                    <div class="field">
-                        <div class="field-label">Option : <br> <span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Speciality</em></span></div>
-                        <div class="field-value">${option} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${optionEn}</em></span></div>
-                    </div>
-
-                    <div class="field">
-                        <div class="field-label">Année d'obtention: <br>  <span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Year of completion</em></span> </div>
-                        <div class="field-value">${yearObtention}</div>
-                    </div>
                 </div>
 
                 <div class="recipient-right">
@@ -791,12 +781,28 @@ export async function generateDiplomaHTML(
                         <div class="mention-label">Mention :  <br> <span class="mention-en en-text"><em>Grade:</em></span></div>
                         <div class="mention-value">${mentionFr} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${mentionEn}</em></span></div>
                     </div>
+                </div>
+            </div>
 
-                    <div style="margin-top: 4mm;">
-                        <div style="font-size: 9.5pt;">
-                            <div style="font-weight: bold;">Douala, le</div>
-                            <div style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Douala, in the</em></div>
-                        </div>
+            <!-- Ligne titre diplôme + Douala/année -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: ${theme.recipientBlockMarginBottom}mm;">
+                <div style="flex: 2.5; font-family: ${theme.studentInfoFont}; font-size: ${theme.contentFontSize}pt;">
+                    <div class="field" style="justify-content: center; text-align: center;">
+                        <div class="field-value" style="margin-left: 0; font-size: ${theme.contentFontSize + 4}pt;"">Le ${diplomaTitleFr} <br> <span style="font-weight: normal; font-size: 12pt; font-style: italic;" class="en-text"><em>The ${diplomaTitleEn}</em></span></div>
+                    </div>
+                    ${option ? `<div class="field">
+                        <div class="field-label">Option : <br><span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Speciality</em></span></div>
+                        <div class="field-value">${option} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${optionEn}</em></span></div>
+                    </div>` : ''}
+                </div>
+                <div style="flex: 1; padding-left: 4mm; text-align: left; font-family: ${theme.studentInfoFont}; font-size: ${theme.studentInfoFontSize}pt;">
+                    <div style="font-size: 9.5pt;">
+                        <div style="font-weight: bold;">Douala, le</div>
+                        <div style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Douala, in the</em></div>
+                    </div>
+                    <div style="margin-top: 2mm;">
+                        <div style="font-weight: bold; font-size: ${theme.contentFontSize}pt;">Année d'obtention : <span style="color: ${theme.primaryColor};">${yearObtention}</span></div>
+                        <div style="font-style: italic; font-weight: normal; font-size: 8.5pt;" class="en-text"><em>Year of completion : ${yearObtention}</em></div>
                     </div>
                 </div>
             </div>
