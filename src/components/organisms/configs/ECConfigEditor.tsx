@@ -368,6 +368,43 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
     setTimeout(() => setSuccess(null), 4000);
   };
 
+  // Fonction pour activer/désactiver la note éliminatoire pour un semestre
+  const toggleDisableEliminatoryNote = (semesterId: string, disabled: boolean) => {
+    const updatedConfig = { ...config };
+    const semester = updatedConfig.semesters.find(s => s.id === semesterId);
+    if (semester) {
+      semester.disableEliminatoryNote = disabled;
+      onConfigUpdate(updatedConfig);
+      setSuccess(`Note éliminatoire ${disabled ? 'désactivée' : 'activée'} pour ${semester.name}`);
+      setTimeout(() => setSuccess(null), 3000);
+    }
+  };
+
+  // Fonction pour activer/désactiver la lecture de la moyenne UE depuis Excel
+  const toggleUseExcelAverage = (semesterId: string, ueId: string, enabled: boolean) => {
+    const updatedConfig = { ...config };
+    const semester = updatedConfig.semesters.find(s => s.id === semesterId);
+    if (!semester) return;
+
+    const ue = semester.ues.find(u => u.id === ueId);
+    if (!ue) return;
+
+    ue.useExcelAverage = enabled;
+    onConfigUpdate(updatedConfig);
+    setSuccess(`Moyenne Excel ${enabled ? 'activée' : 'désactivée'} pour l'UE ${ue.name}`);
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  // Fonction pour changer le pourcentage du seuil éliminatoire pour un semestre
+  const updateEliminatoryNotePercent = (semesterId: string, percent: number) => {
+    const updatedConfig = { ...config };
+    const semester = updatedConfig.semesters.find(s => s.id === semesterId);
+    if (semester) {
+      semester.eliminatoryNotePercent = percent;
+      onConfigUpdate(updatedConfig);
+    }
+  };
+
   // Fonction pour obtenir le thème global actuel depuis les paramètres
   const getGlobalTheme = () => {
     try {
@@ -1292,6 +1329,56 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
                 )}
               </div>
             )}
+            {/* Note éliminatoire pour ce semestre */}
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Calculator className="h-4 w-4 text-red-600" />
+                <span className="font-medium text-red-900">Note éliminatoire</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium text-red-900">
+                    Désactiver la note éliminatoire
+                  </Label>
+                  <p className="text-xs text-red-700">
+                    Quand activé, aucune note individuelle d'EC ne peut invalider une UE
+                  </p>
+                </div>
+                <Switch
+                  checked={semester.disableEliminatoryNote === true}
+                  onCheckedChange={(disabled) => toggleDisableEliminatoryNote(semester.id, disabled)}
+                />
+              </div>
+
+              {!semester.disableEliminatoryNote && (
+                <div className="flex items-center justify-between bg-white rounded-lg p-3 border">
+                  <Label className="text-sm font-medium">Seuil éliminatoire (% de la base)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={semester.eliminatoryNotePercent ?? 35}
+                      onChange={(e) => updateEliminatoryNotePercent(semester.id, Math.min(100, Math.max(0, Number(e.target.value))))}
+                      className="w-20 h-8 text-center"
+                    />
+                    <span className="text-sm text-gray-500">%</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="text-xs text-red-700">
+                {semester.disableEliminatoryNote ? (
+                  <span>Toutes les UE sont validées si leur moyenne ≥ 10, quelle que soit la note de chaque EC.</span>
+                ) : (
+                  <span>
+                    Une note d'EC {'<'} {((semester.eliminatoryNotePercent ?? 35) / 100 * 20).toFixed(1)}/20 invalide l'UE, même si la moyenne ≥ 10.
+                  </span>
+                )}
+              </div>
+            </div>
+
             {semester.ues.map((ue) => (
               <div key={ue.id} className="border rounded-lg p-4 bg-gray-50">
                 <div className="flex items-center justify-between mb-3">
@@ -1358,6 +1445,13 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
                         min="1"
                       />
                     </div>
+                    <div className="flex items-center gap-1.5 border-l pl-2">
+                      <Label className="text-xs text-gray-600">Moy. Excel</Label>
+                      <Switch
+                        checked={ue.useExcelAverage === true}
+                        onCheckedChange={(enabled) => toggleUseExcelAverage(semester.id, ue.id, enabled)}
+                      />
+                    </div>
                     <Button
                       variant="outline"
                       size="sm"
@@ -1368,6 +1462,15 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
                     </Button>
                   </div>
                 </div>
+
+                {ue.useExcelAverage && (
+                  <Alert className="bg-amber-50 border-amber-200 mb-2">
+                    <Info className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-800 text-xs">
+                      La moyenne de cette UE sera lue directement depuis la colonne <strong>{ue.code}</strong> ou <strong>{ue.name}</strong> du fichier Excel (sans recalcul depuis les ECs).
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 {/* Liste des ECs */}
                 <div className="grid gap-2">

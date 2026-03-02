@@ -787,6 +787,30 @@ const SettingForm: React.FC = () => {
                           />
                         </div>
                       )}
+
+                      {/* Format du numéro de référence (visible pour tous les types) */}
+                      <FormField
+                        control={form.control}
+                        name="transcriptRefFormat"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Format du N° de référence (Relevé de notes)</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                value={field.value || ''}
+                                disabled={!isEditing}
+                                placeholder="{YEAR}/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR/{TYPE}"
+                                className={!isEditing ? "bg-gray-50 text-gray-600" : ""}
+                              />
+                            </FormControl>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Placeholders : <code>{'{YEAR}'}</code> = année, <code>{'{CENTRE}'}</code> = initiales du centre, <code>{'{ABBR}'}</code> = abréviation établissement, <code>{'{TYPE}'}</code> = DIR/SSE/abréviation. Laissez vide pour le format par défaut.
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
                     {/* Section des logos */}
                     <div className="space-y-6">

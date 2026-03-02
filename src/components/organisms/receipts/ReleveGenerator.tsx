@@ -282,6 +282,26 @@ export const ReleveGenerator: React.FC = () => {
 
         semestersToUse.forEach(semester => {
           semester.ues.forEach((ue: any) => {
+            // Si useExcelAverage est activé, lire la moyenne directement depuis Excel
+            if (ue.useExcelAverage) {
+              const excelVal = student[ue.code] !== undefined && student[ue.code] !== null && student[ue.code] !== ''
+                ? parseFloat(student[ue.code])
+                : (student[ue.name] !== undefined && student[ue.name] !== null && student[ue.name] !== ''
+                  ? parseFloat(student[ue.name])
+                  : NaN);
+
+              if (!isNaN(excelVal)) {
+                hasGrades = true;
+                const ueDisplayBase = ue.displayBase || 20;
+                const normalizedGrade = (excelVal * 20) / ueDisplayBase;
+                const ueCredits = ue.credits || 0;
+                totalGrade += normalizedGrade * ueCredits;
+                totalCredits += ueCredits;
+                return; // Skip le calcul EC
+              }
+              // Fallback : continuer le calcul normal si colonne non trouvée
+            }
+
             let ueGradeSum = 0;
             let ueWeightSum = 0;
 
@@ -799,8 +819,24 @@ export const ReleveGenerator: React.FC = () => {
           return;
         }
 
+        // Pré-lire la moyenne Excel si useExcelAverage est activé
+        let excelAverageOverride: number | null = null;
+        if (ue.useExcelAverage) {
+          const excelVal = rawStudent[ue.code] !== undefined && rawStudent[ue.code] !== null && rawStudent[ue.code] !== ''
+            ? parseFloat(rawStudent[ue.code])
+            : (rawStudent[ue.name] !== undefined && rawStudent[ue.name] !== null && rawStudent[ue.name] !== ''
+              ? parseFloat(rawStudent[ue.name])
+              : NaN);
+
+          if (!isNaN(excelVal)) {
+            excelAverageOverride = excelVal;
+          } else {
+            console.warn(`Moyenne Excel non trouvée pour UE ${ue.code}/${ue.name}, fallback sur calcul EC`);
+          }
+        }
+
         const ecData: any[] = [];
-        
+
         ue.ecs.forEach((ec: any) => {
           if (!ec || !ec.id) {
             console.warn("EC incomplet ignoré:", ec);
@@ -887,26 +923,34 @@ export const ReleveGenerator: React.FC = () => {
         });
         
         // NOUVEAU: Calculer la moyenne pondérée de l'UE
-        if (ecData.length > 0) {
-          let totalWeightedPoints = 0;
-          let totalWeights = 0;
-
-          ecData.forEach(ec => {
-            // Normaliser la note vers la base 20 pour le calcul
-            const normalizedGrade = (ec.grade * 20) / ec.noteBase;
-            totalWeightedPoints += normalizedGrade * ec.weight;
-            totalWeights += ec.weight;
-          });
-
-          const ueAverage = totalWeights > 0 ? totalWeightedPoints / totalWeights : 0;
-          
-          // Convertir la moyenne vers la base d'affichage de l'UE
+        if (ecData.length > 0 || excelAverageOverride !== null) {
           const ueDisplayBase = ue.displayBase || 20;
-          const displayAverage = (ueAverage * ueDisplayBase) / 20;
+          let displayAverage: number;
+          let averageOriginal: number;
+
+          if (excelAverageOverride !== null) {
+            // Utiliser la moyenne Excel directement
+            displayAverage = excelAverageOverride;
+            averageOriginal = (excelAverageOverride * 20) / ueDisplayBase;
+          } else {
+            // Calcul normal à partir des ECs
+            let totalWeightedPoints = 0;
+            let totalWeights = 0;
+
+            ecData.forEach(ec => {
+              const normalizedGrade = (ec.grade * 20) / ec.noteBase;
+              totalWeightedPoints += normalizedGrade * ec.weight;
+              totalWeights += ec.weight;
+            });
+
+            const ueAverage = totalWeights > 0 ? totalWeightedPoints / totalWeights : 0;
+            displayAverage = (ueAverage * ueDisplayBase) / 20;
+            averageOriginal = ueAverage;
+          }
 
           ueMap.set(ue.id, {
-            average: displayAverage, // Moyenne pour affichage
-            averageOriginal: ueAverage, // Moyenne normalisée pour calculs
+            average: displayAverage,
+            averageOriginal: averageOriginal,
             credits: ue.credits || 0,
             code: ue.code || `UE ${ue.name}`,
             name: ue.name,
@@ -1092,14 +1136,33 @@ export const ReleveGenerator: React.FC = () => {
             });
 
             if (ueCourses.length > 0) {
-              // Calculer la moyenne de l'UE
-              const totalWeight = ueCourses.reduce((sum, course) => sum + course.WEIGHT, 0);
-              const weightedSum = ueCourses.reduce((sum, course) => {
-                // Convertir la note à la base 20 si nécessaire
-                const normalizedGrade = (course.NOTE / course.NOTE_BASE) * 20;
-                return sum + (normalizedGrade * course.WEIGHT);
-              }, 0);
-              const ueAverage = totalWeight > 0 ? weightedSum / totalWeight : 0;
+              let ueAverage: number;
+
+              // Vérifier si useExcelAverage est activé et la colonne existe
+              let excelAvgOverride: number | null = null;
+              if (ue.useExcelAverage) {
+                const excelVal = studentToPreview[ue.code] !== undefined && studentToPreview[ue.code] !== null && studentToPreview[ue.code] !== ''
+                  ? parseFloat(studentToPreview[ue.code])
+                  : (studentToPreview[ue.name] !== undefined && studentToPreview[ue.name] !== null && studentToPreview[ue.name] !== ''
+                    ? parseFloat(studentToPreview[ue.name])
+                    : NaN);
+                if (!isNaN(excelVal)) {
+                  excelAvgOverride = excelVal;
+                }
+              }
+
+              if (excelAvgOverride !== null) {
+                // Utiliser la moyenne Excel directement
+                ueAverage = excelAvgOverride;
+              } else {
+                // Calculer la moyenne de l'UE normalement
+                const totalWeight = ueCourses.reduce((sum, course) => sum + course.WEIGHT, 0);
+                const weightedSum = ueCourses.reduce((sum, course) => {
+                  const normalizedGrade = (course.NOTE / course.NOTE_BASE) * 20;
+                  return sum + (normalizedGrade * course.WEIGHT);
+                }, 0);
+                ueAverage = totalWeight > 0 ? weightedSum / totalWeight : 0;
+              }
 
               // Appliquer l'UE average à tous les cours de cette UE
               ueCourses.forEach(course => {

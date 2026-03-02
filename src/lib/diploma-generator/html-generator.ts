@@ -402,7 +402,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
 
     .recipient-right {
       flex: 1;
-      padding-left: 2mm;
+      padding-left: 4mm;
       text-align: left;
       font-family: ${theme.studentInfoFont};
       font-size: ${theme.studentInfoFontSize}pt;
@@ -424,6 +424,8 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
 
     .field-label {
       font-weight: bold;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .field-value {
@@ -459,7 +461,7 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     }
 
     .mention-box {
-      margin-top: 4mm;
+      margin-top: 0mm;
       display: flex;
       align-items: flex-start;
       text-align: left;
@@ -751,10 +753,6 @@ export async function generateDiplomaHTML(
                             <div class="qr-code">
                                 ${qrCodeImage ? `<img src="${qrCodeImage}" alt="QR Code">` : 'QR'}
                             </div>
-                            <div style="margin-top: 2mm; text-align: right; line-height: ${theme.matriculeLineHeight};">
-                                <div style="font-weight: bold; font-size: ${theme.matriculeFontSize}pt;">N° Matricule : ${matricule} </br>  <span style="font-style: italic; font-size: ${theme.matriculeFontSize - 1.5}pt; font-weight: normal;" class="en-text"><em>Matriculation N<sup>o</sup> : ${matricule}</em></span></div>
-
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -764,7 +762,7 @@ export async function generateDiplomaHTML(
             <div class="recipient-section">
                 <div class="recipient-left">
                     <div class="field">
-                        <div class="field-label">Délivre à M./Mlle <br><span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Confers on Mr/Ms</em></span></div>
+                        <div class="field-label">Délivre à M./Mlle <br><span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Confers to Mr/Ms</em></span></div>
                         <div class="field-value">${fullName}</div>
                     </div>
 
@@ -775,7 +773,7 @@ export async function generateDiplomaHTML(
 
                     <div class="field">
                         <div class="field-label">Option : <br> <span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Speciality</em></span></div>
-                        <div class="field-value">${option}</div>
+                        <div class="field-value">${option} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${optionEn}</em></span></div>
                     </div>
 
                     <div class="field">
@@ -785,12 +783,16 @@ export async function generateDiplomaHTML(
                 </div>
 
                 <div class="recipient-right">
-                    <div class="mention-box" style="margin-top: 2mm;">
+                    <div class="mention-box">
+                      <div class="mention-label">Matricule :  <br> <span class="mention-en en-text"><em>Registration :</em></span></div>
+                      <div class="mention-value">${matricule} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${matricule}</em></span></div>
+                    </div>
+                    <div class="mention-box" style="margin-top: 4mm;">
                         <div class="mention-label">Mention :  <br> <span class="mention-en en-text"><em>Grade:</em></span></div>
                         <div class="mention-value">${mentionFr} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${mentionEn}</em></span></div>
                     </div>
 
-                    <div style="margin-top: 6mm;">
+                    <div style="margin-top: 4mm;">
                         <div style="font-size: 9.5pt;">
                             <div style="font-weight: bold;">Douala, le</div>
                             <div style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Douala, in the</em></div>
@@ -813,7 +815,7 @@ export async function generateDiplomaHTML(
 
                 <div class="signature-box">
                     <div class="signature-title">Le Ministre d'Etat, Ministre de l'Enseignement Supérieur,<br>Chancelier des Ordres Académiques</div>
-                    <div class="signature-title-en en-text"><em>The Minister of State, Minister of Higher Education,<br>Chancellor of Academics Orders</em></div>
+                    <div class="signature-title-en en-text"><em>The Minister of State, Minister of Higher Education,<br>Chancellor of Academic Orders</em></div>
                 </div>
             </div>
 

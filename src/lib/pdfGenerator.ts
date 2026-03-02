@@ -620,10 +620,29 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
   
   // Le semestre est composite s'il y a un semestre fusionné actif OU si le nom l'indique
   const isCompositeSemester = activeMergedSemester || isCompositeFromName;
-  
-  
-  
-  
+
+  // Résoudre le semestre correspondant dans la configuration pour les paramètres de note éliminatoire
+  const matchingSemester = (() => {
+    if (!config?.semesters?.length) return undefined;
+    if (config.semesters.length === 1) return config.semesters[0];
+    if (student.SEMESTRE) {
+      // Correspondance exacte par nom
+      const byName = config.semesters.find(s => s.name === student.SEMESTRE);
+      if (byName) return byName;
+      // Correspondance par numéro de semestre
+      const numMatch = student.SEMESTRE.match(/\d+/);
+      if (numMatch) {
+        const num = numMatch[0];
+        const byNum = config.semesters.find(s => s.name.includes(num));
+        if (byNum) return byNum;
+      }
+    }
+    return config.semesters[0];
+  })();
+
+  // Paramètres de note éliminatoire du semestre
+  const semDisableEliminatoryNote = matchingSemester?.disableEliminatoryNote === true;
+  const semEliminatoryNotePercent = matchingSemester?.eliminatoryNotePercent ?? 35;
 
   // Calculate semester statistics first
   const uniqueUEs = new Set();
@@ -641,7 +660,9 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
 
 
   const ueAverage = course.UE_AVERAGE || 0;
-  const hasFailingEC = ecNotes.some(ec => ec.NOTE < (ec.NOTE_BASE * 0.35));
+  const hasFailingEC = semDisableEliminatoryNote
+    ? false
+    : ecNotes.some(ec => ec.NOTE < (ec.NOTE_BASE * (semEliminatoryNotePercent / 100)));
   const isUEValidated = ueAverage >= 10 && !hasFailingEC;
 
   // Stocker si l'UE est validée ou non et ses informations
@@ -664,7 +685,9 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
       if (!ueValidatedCreditsLocal.has(ueCode)) {
         const ecNotes = courses.filter(c => c.CODE === ueCode);
         const ueAverage = course.UE_AVERAGE || 0;
-        const hasFailingEC = ecNotes.some(ec => ec.NOTE <= (ec.NOTE_BASE * 0.35));
+        const hasFailingEC = semDisableEliminatoryNote
+          ? false
+          : ecNotes.some(ec => ec.NOTE < (ec.NOTE_BASE * (semEliminatoryNotePercent / 100)));
         const isUEValidated = ueAverage >= 10 && !hasFailingEC;
 
         ueValidatedCreditsLocal.set(ueCode, {
@@ -1014,10 +1037,12 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
           // Utiliser la moyenne UE pré-calculée
           const ueAverage = ueElements[0].ueAverage;
 
-          // Check if any EC has a note of 6 or less
-          const hasFailingEC = ueElements.some(ec => ec.note <= 6);
+          // Check if any EC has an eliminatory note
+          const hasFailingEC = semDisableEliminatoryNote
+            ? false
+            : ueElements.some(ec => ec.note < (20 * (semEliminatoryNotePercent / 100)));
 
-          // Determine if UE is validated (average >= 10 AND no EC with note <= 6)
+          // Determine if UE is validated (average >= 10 AND no eliminatory EC)
           const isUEValidated = ueAverage >= 10 && !hasFailingEC;
 
           // Apply credits only if UE is validated
@@ -1050,10 +1075,12 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
     if (ueElements.length > 0) {
       const ueAverage = ueElements[0].ueAverage;
 
-      // Check if any EC has a note of 6 or less
-      const hasFailingEC = ueElements.some(ec => ec.note <= 6);
+      // Check if any EC has an eliminatory note
+      const hasFailingEC = semDisableEliminatoryNote
+        ? false
+        : ueElements.some(ec => ec.note < (20 * (semEliminatoryNotePercent / 100)));
 
-      // Determine if UE is validated (average >= 10 AND no EC with note <= 6)
+      // Determine if UE is validated (average >= 10 AND no eliminatory EC)
       const isUEValidated = ueAverage >= 10 && !hasFailingEC;
 
       const creditValue = typeof ueCredit === 'number' ? ueCredit :
@@ -1223,7 +1250,20 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
                     <h4 class="header-title"><strong>B.P. 2701. e-mail : <em><a href="mailto:contact@fmsp-udo.cm">contact@fmsp-udo.cm</a></em></strong></h4></h2></span>
                 ` : ''}
                     <h1 class="header-title"><strong>RELEVE DE NOTES</strong> / TRANSCRIPT</h1>
-                    <p><strong>Ref No</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  /${currentYear}/${settings.centre ? (settings.centre.nameFrench.split(' ').map(w => w[0]).join('').toUpperCase()) : 'UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR'}/${settings.centre ? 'DIR' : (settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE")}</p>
+                    <p><strong>Ref No</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  /${(() => {
+                      const centreAbbr = settings.centre ? settings.centre.nameFrench.split(' ').map((w: string) => w[0]).join('').toUpperCase() : '';
+                      const abbr = settings.nameAbreviation || '';
+                      const type = settings.centre ? 'DIR' : (settings.establishmentType === "ipes" ? settings.nameAbreviation : "SSE");
+                      const defaultFormat = settings.centre
+                        ? `{YEAR}/{CENTRE}/{TYPE}`
+                        : `{YEAR}/UDo/FMSP/VDPSAA/VDSSE/VDRC/CDAASSR/{TYPE}`;
+                      const format = settings.transcriptRefFormat || defaultFormat;
+                      return format
+                        .replace(/\{YEAR\}/g, currentYear)
+                        .replace(/\{CENTRE\}/g, centreAbbr)
+                        .replace(/\{ABBR\}/g, abbr)
+                        .replace(/\{TYPE\}/g, type);
+                    })()}</p>
                 </div>
             </div>
         

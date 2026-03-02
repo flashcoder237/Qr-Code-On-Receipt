@@ -26,6 +26,10 @@ export const TranscriptsettingsSchema = z.object({
   userPosition: z.string().optional(),
   userDepartment: z.string().optional(),
 
+  // Format du numéro de référence du relevé de notes
+  // Placeholders: {YEAR}, {CENTRE}, {ABBR}, {TYPE}
+  transcriptRefFormat: z.string().optional(),
+
   // Paramètres de base (pour rétrocompatibilité)
   themeColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "La couleur doit être au format hexadécimal (ex: #000000)"),
   themeFont: z.enum([

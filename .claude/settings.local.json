@@ -22,7 +22,9 @@
       "Bash(python:*)",
       "Bash(cmd /c \"where python\")",
       "Bash(npx:*)",
-      "Bash(\"C:/Users/tefba/.local/bin/mcp-server-git.exe\" --help)"
+      "Bash(\"C:/Users/tefba/.local/bin/mcp-server-git.exe\" --help)",
+      "Bash(find \"C:\\\\Users\\\\tefba\\\\Documents\\\\FMSP\\\\DIPLOMATION\\\\src\" -name \"*.ts\" -o -name \"*.tsx\" | xargs grep -l \"TOTAL_CREDITS\" 2>/dev/null)",
+      "Bash(head:*)"
     ],
     "deny": []
   },

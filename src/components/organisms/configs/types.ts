@@ -17,6 +17,7 @@ export interface UE {
   displayBase?: number; // Sur combien la moyenne de l'UE est affichée (défaut: 20)
   semesterNumber?: number; // Pour les semestres composites: 1, 2, etc. Indique à quel semestre cette UE appartient
   order?: number; // Ordre d'affichage de l'UE dans le semestre (pour tri personnalisé)
+  useExcelAverage?: boolean; // Lire la moyenne UE directement depuis Excel (défaut: false)
 }
 
 export interface Semester {
@@ -28,6 +29,8 @@ export interface Semester {
   compositeEquivalent?: number; // Nombre de semestres équivalents (ex: 2 pour une année complète)
   showSemesterSeparation?: boolean; // Pour les semestres composites: affiche une séparation entre les semestres dans le tableau
   theme?: ThemeSettingsPayload; // NOUVEAU: Thème personnalisé pour ce semestre spécifique
+  disableEliminatoryNote?: boolean; // Désactiver la note éliminatoire pour ce semestre (défaut: false)
+  eliminatoryNotePercent?: number; // Pourcentage du seuil éliminatoire pour ce semestre (défaut: 35)
 }
 
 // Interface pour la configuration des semestres fusionnés
