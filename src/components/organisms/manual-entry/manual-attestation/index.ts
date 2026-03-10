@@ -1,0 +1,1 @@
+export { ManualAttestationEntry } from "./ManualAttestationEntry";

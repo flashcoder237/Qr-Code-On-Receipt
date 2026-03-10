@@ -1,0 +1,83 @@
+Monsieur le Doyen,
+
+En réponse à votre demande concernant les informations contenues dans les QR codes de nos documents académiques, veuillez trouver ci-dessous le détail par type de document.
+
+
+1. RELEVÉ DE NOTES
+-------------------
+
+Sans chiffrement, le QR code contient en clair :
+- Établissement
+- Nom et prénom de l'étudiant
+- Matricule
+- Date de naissance
+- Lieu de naissance
+- Niveau, Semestre, Cycle, Filière
+- Année académique
+- Moyenne exacte
+- Crédits obtenus
+- Grade et Mention
+
+Avec chiffrement activé (AES-256), les données sont séparées en deux catégories :
+
+  Données visibles (en clair) :
+  - Établissement
+  - Nom et prénom
+  - Niveau, Semestre, Cycle, Filière
+  - Année académique
+  - Grade et Mention
+
+  Données protégées (chiffrées, non lisibles directement) :
+  - Matricule
+  - Date de naissance
+  - Lieu de naissance
+  - Moyenne exacte
+  - Crédits obtenus
+
+
+2. ATTESTATION DE RÉUSSITE
+---------------------------
+
+Sans chiffrement, le QR code contient en clair :
+- Établissement
+- Nom et prénom
+- Matricule
+- Date de naissance
+- Lieu de naissance
+- Parcours, Spécialité, Finalité, Domaine
+- Année académique
+- Moyenne
+- Grade et Mention
+
+Avec chiffrement activé (AES-128), les données sont séparées ainsi :
+
+  Données visibles (en clair) :
+  - Établissement
+  - Nom et prénom
+  - Parcours, Spécialité, Finalité, Domaine
+  - Année académique
+  - Grade et Mention
+
+  Données protégées (chiffrées, non lisibles directement) :
+  - Matricule
+  - Date de naissance
+  - Lieu de naissance
+  - Moyenne exacte
+
+
+3. DIPLÔME
+-----------
+
+Le QR code du diplôme ne comporte pas de chiffrement. Toutes les informations sont lisibles directement :
+- Matricule
+- Nom et prénom
+- Date de naissance
+- Lieu de naissance (format complet uniquement)
+- Parcours et Spécialité (format complet uniquement)
+- Année d'obtention
+- Moyenne
+- Grade (format complet uniquement)
+- Mention
+
+
+Cordialement.

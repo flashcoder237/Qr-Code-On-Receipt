@@ -1,0 +1,591 @@
+\documentclass[a4paper,11pt]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tcolorbox}
+\usepackage{amssymb}
+
+\geometry{margin=2.5cm}
+
+% Colors
+\definecolor{publicgreen}{RGB}{34, 139, 34}
+\definecolor{encryptedred}{RGB}{180, 30, 30}
+\definecolor{codebg}{RGB}{245, 245, 245}
+\definecolor{codeframe}{RGB}{200, 200, 200}
+\definecolor{sectionblue}{RGB}{0, 70, 130}
+\definecolor{warningorange}{RGB}{200, 120, 0}
+
+% Hyperref config
+\hypersetup{
+    colorlinks=true,
+    linkcolor=sectionblue,
+    urlcolor=sectionblue
+}
+
+% Section styling
+\titleformat{\section}{\Large\bfseries\color{sectionblue}}{}{0em}{}[\titlerule]
+\titleformat{\subsection}{\large\bfseries\color{sectionblue!80}}{}{0em}{}
+
+% Code listing style
+\lstset{
+    backgroundcolor=\color{codebg},
+    frame=single,
+    rulecolor=\color{codeframe},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red!70!black},
+    commentstyle=\color{green!50!black},
+    showstringspaces=false,
+    tabsize=2
+}
+
+% tcolorbox styles
+\tcbuselibrary{skins, breakable}
+
+% Header/Footer
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{gray}{SGN-Notes -- Documentation QR Code}}
+\fancyhead[R]{\small\textcolor{gray}{\today}}
+\fancyfoot[C]{\thepage}
+
+% ============================================================================
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{3cm}
+{\Huge\bfseries\textcolor{sectionblue}{Syst\`eme de QR Codes}\par}
+\vspace{0.5cm}
+{\LARGE\textcolor{sectionblue!70}{SGN-Notes (DIPLOMATION)}\par}
+\vspace{2cm}
+{\Large Documentation technique compl\`ete\par}
+\vspace{1cm}
+{\large Contenu des QR codes par type de document\par}
+{\large Chiffrement s\'electif et donn\'ees visibles\par}
+\vspace{3cm}
+{\large\today\par}
+\vspace{1cm}
+{\normalsize Application de g\'en\'eration de documents acad\'emiques\\
+IPES et Centres universitaires -- Cameroun\par}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ============================================================================
+\section{Vue d'ensemble du syst\`eme}
+
+L'application SGN-Notes impl\'emente \textbf{deux syst\`emes parall\`eles de chiffrement} pour les QR codes, selon le type de document g\'en\'er\'e. Certains documents utilisent un chiffrement avanc\'e, tandis que d'autres encodent les donn\'ees en clair au format JSON.
+
+\begin{tcolorbox}[colback=blue!5, colframe=sectionblue, title={\textbf{Principe g\'en\'eral}}]
+Chaque QR code contient des informations sur l'\'etudiant et son parcours acad\'emique. Lorsque le chiffrement est activ\'e, les donn\'ees sont s\'epar\'ees en deux cat\'egories :
+\begin{itemize}[noitemsep]
+    \item \textcolor{publicgreen}{\textbf{Donn\'ees publiques}} : visibles directement lors du scan du QR code
+    \item \textcolor{encryptedred}{\textbf{Donn\'ees sensibles}} : chiffr\'ees, n\'ecessitant une cl\'e de d\'echiffrement
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{Types de documents et syst\`emes utilis\'es}
+
+\begin{center}
+\begin{tabular}{llcc}
+\toprule
+\textbf{Type de document} & \textbf{Syst\`eme} & \textbf{Chiffrement} & \textbf{Algorithme} \\
+\midrule
+Relev\'e de notes & S\'electif & Oui & AES-256-CBC \\
+Attestation & Compact & Oui & AES-128-ECB \\
+Dipl\^ome & JSON direct & Non & -- \\
+Attestation centre & JSON direct & Non & -- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ============================================================================
+\section{Relev\'e de notes (Transcript)}
+
+Le relev\'e de notes utilise le \textbf{syst\`eme de chiffrement s\'electif} (version \texttt{2.0\_selective}), le plus complet et s\'ecuris\'e des deux syst\`emes.
+
+\subsection{Donn\'ees publiques (visibles en clair)}
+
+\begin{tcolorbox}[colback=green!5, colframe=publicgreen, title={\textcolor{publicgreen}{\textbf{Champs visibles lors du scan}}}]
+\begin{longtable}{p{4.5cm}p{8cm}}
+\texttt{etablissement} & Nom de l'\'etablissement \\
+\texttt{nom} & Nom de famille de l'\'etudiant \\
+\texttt{prenom} & Pr\'enom de l'\'etudiant \\
+\texttt{niveau} & Niveau acad\'emique (ex: Licence 3) \\
+\texttt{semestre} & Semestre (inclus si \texttt{displaySessions = true}) \\
+\texttt{cycle} & Type de cycle (ex: Licence, Master) \\
+\texttt{filiere} & Fili\`ere / Programme d'\'etudes \\
+\texttt{anneeAcademique} & Ann\'ee acad\'emique (ex: 2024-2025) \\
+\texttt{grade} & Grade calcul\'e (A+, A, B+, B, C+, C, etc.) \\
+\texttt{mention} & Mention obtenue (Excellent, Tr\`es Bien, etc.) \\
+\end{longtable}
+\end{tcolorbox}
+
+\subsection{Donn\'ees sensibles (chiffr\'ees, non visibles)}
+
+\begin{tcolorbox}[colback=red!5, colframe=encryptedred, title={\textcolor{encryptedred}{\textbf{Champs chiffr\'es (AES-256-CBC)}}}]
+\begin{longtable}{p{5cm}p{7.5cm}}
+\texttt{matricule\_complet} & Num\'ero matricule complet de l'\'etudiant \\
+\texttt{date\_naissance\_complete} & Date de naissance (JJ/MM/AAAA) \\
+\texttt{lieu\_naissance\_precis} & Lieu de naissance exact \\
+\texttt{moyenne\_exacte} & Moyenne g\'en\'erale exacte \\
+\texttt{credits\_details} & Nombre total de cr\'edits obtenus \\
+\texttt{timestamp\_generation} & Horodatage Unix de la g\'en\'eration \\
+\end{longtable}
+\end{tcolorbox}
+
+\subsection{Format affich\'e dans le QR code}
+
+\begin{lstlisting}[title={Contenu du QR code -- Relev\'e de notes}]
+INFORMATIONS PUBLIQUES:
+Etablissement: UNIVERSITE DE DOUALA
+Nom: DUPONT
+Prenom: Jean
+
+Niveau: Licence 3
+Semestre: S6
+Cycle: Licence
+Filiere: Informatique
+Annee academique: 2024-2025
+
+Grade: A
+Mention: Tres Bien
+
+DONNEES SECURISEES:
+U2FsdGVkX1+abc123...xyz789==
+
+Verification: a1b2c3d4e5f6g7h8
+Scanner avec l'app mobile pour acceder aux details complets
+\end{lstlisting}
+
+\subsection{Param\`etres techniques du QR code}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Param\`etre} & \textbf{Valeur} \\
+\midrule
+Correction d'erreur & H (High -- 30\%) \\
+Largeur de g\'en\'eration & 800 px \\
+Marge & 2 px \\
+Couleur & Noir sur blanc \\
+Hash de v\'erification & Oui (SHA-256, 16 caract\`eres) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ============================================================================
+\section{Attestation de r\'eussite}
+
+L'attestation utilise le \textbf{syst\`eme de chiffrement compact} (version \texttt{3.0\_compact}), optimis\'e pour produire des QR codes de taille r\'eduite.
+
+\subsection{Donn\'ees publiques (visibles en clair)}
+
+\begin{tcolorbox}[colback=green!5, colframe=publicgreen, title={\textcolor{publicgreen}{\textbf{Champs visibles lors du scan}}}]
+\begin{longtable}{p{4.5cm}p{8cm}}
+\texttt{etablissement} & Nom de l'\'etablissement \\
+\texttt{nom} & Nom de famille de l'\'etudiant \\
+\texttt{prenom} & Pr\'enom de l'\'etudiant \\
+\texttt{parcours} & Parcours acad\'emique \\
+\texttt{specialite} & Sp\'ecialit\'e \\
+\texttt{anneeAcademique} & Ann\'ee acad\'emique \\
+\texttt{finalite} & Finalit\'e du programme \\
+\texttt{domaine} & Domaine d'\'etudes \\
+\texttt{grade} & Grade calcul\'e \\
+\texttt{mention} & Mention obtenue \\
+\end{longtable}
+\end{tcolorbox}
+
+\subsection{Donn\'ees sensibles (chiffr\'ees, non visibles)}
+
+\begin{tcolorbox}[colback=red!5, colframe=encryptedred, title={\textcolor{encryptedred}{\textbf{Champs chiffr\'es (AES-128-ECB)}}}]
+\begin{longtable}{p{3cm}p{4cm}p{5.5cm}}
+\textbf{Cl\'e courte} & \textbf{Champ complet} & \textbf{Description} \\
+\midrule
+\texttt{m} & matricule & Num\'ero matricule \\
+\texttt{d} & date naissance & Date de naissance \\
+\texttt{l} & lieu naissance & Lieu de naissance \\
+\texttt{a} & average & Moyenne g\'en\'erale \\
+\texttt{t} & timestamp & Horodatage de g\'en\'eration \\
+\end{longtable}
+\end{tcolorbox}
+
+\subsection{Format affich\'e dans le QR code}
+
+\begin{lstlisting}[title={Contenu du QR code -- Attestation}]
+INFORMATIONS PUBLIQUES:
+Etablissement: UNIVERSITE DE DOUALA
+Nom: DUPONT
+Prenom: Jean
+
+Parcours: Ingenierie
+Specialite: Informatique
+Annee academique: 2024-2025
+Finalite: Professionnelle
+Domaine: Sciences et Technologies
+
+Grade: A
+Mention: Tres Bien
+
+DONNEES SECURISEES: eyJtIjoiMjAyNElu...
+Scanner avec l'app mobile pour acceder aux details complets.
+\end{lstlisting}
+
+\subsection{Param\`etres techniques du QR code}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Param\`etre} & \textbf{Valeur} \\
+\midrule
+Correction d'erreur & M (Medium -- 15\%) \\
+Largeur de g\'en\'eration & 600 px \\
+Marge & 1 px \\
+Chiffrement par d\'efaut & Activ\'e \\
+Hash de v\'erification & Non \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ============================================================================
+\section{Dipl\^ome}
+
+Le dipl\^ome \textbf{n'utilise pas de chiffrement}. Les donn\'ees sont encod\'ees directement en JSON dans le QR code. Deux formats sont disponibles selon la configuration du th\`eme.
+
+\subsection{Format compact (\texttt{useCompactQR = true})}
+
+\begin{tcolorbox}[colback=blue!5, colframe=sectionblue, title={\textbf{6 champs -- Toutes les donn\'ees visibles en clair}}]
+\begin{lstlisting}
+{
+  "mat": "20241234",
+  "nom": "Jean DUPONT",
+  "date": "15/06/1995",
+  "dipl": "2024",
+  "moy": "15.50",
+  "ment": "Tres Bien"
+}
+\end{lstlisting}
+
+\begin{longtable}{p{3cm}p{9.5cm}}
+\texttt{mat} & Matricule de l'\'etudiant \\
+\texttt{nom} & Pr\'enom et nom complets \\
+\texttt{date} & Date de naissance \\
+\texttt{dipl} & Ann\'ee d'obtention du dipl\^ome \\
+\texttt{moy} & Moyenne g\'en\'erale \\
+\texttt{ment} & Mention obtenue \\
+\end{longtable}
+\end{tcolorbox}
+
+\subsection{Format complet (\texttt{useCompactQR = false})}
+
+\begin{tcolorbox}[colback=blue!5, colframe=sectionblue, title={\textbf{11 champs -- Toutes les donn\'ees visibles en clair}}]
+\begin{lstlisting}
+{
+  "nom": "DUPONT",
+  "prenom": "Jean",
+  "matricule": "20241234",
+  "dateNaissance": "15/06/1995",
+  "lieuNaissance": "Douala",
+  "parcours": "Ingenierie",
+  "specialite": "Informatique",
+  "anneeObtention": "2024",
+  "moyenne": "15.50",
+  "grade": "A",
+  "mention": "Tres Bien"
+}
+\end{lstlisting}
+\end{tcolorbox}
+
+\subsection{Param\`etres techniques du QR code}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Param\`etre} & \textbf{Valeur} \\
+\midrule
+Correction d'erreur & M (Medium -- 15\%) \\
+Largeur de g\'en\'eration & 200 px \\
+Marge & 1 px \\
+Chiffrement & Aucun \\
+Taille affich\'ee & 40--100 px (configurable) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ============================================================================
+\section{Attestation de centre universitaire}
+
+L'attestation de centre \textbf{n'utilise pas de chiffrement}. Les donn\'ees sont encod\'ees en JSON compact directement dans le QR code.
+
+\subsection{Contenu du QR code (toutes donn\'ees visibles)}
+
+\begin{tcolorbox}[colback=blue!5, colframe=sectionblue, title={\textbf{7 champs -- Toutes les donn\'ees visibles en clair}}]
+\begin{lstlisting}
+{
+  "mat": "20241234",
+  "nom": "Jean DUPONT",
+  "date": "15/06/1995",
+  "spec": "Informatique",
+  "sess": "Juin 2024",
+  "moy": "15.50",
+  "ment": "Tres Bien"
+}
+\end{lstlisting}
+
+\begin{longtable}{p{3cm}p{9.5cm}}
+\texttt{mat} & Matricule de l'\'etudiant \\
+\texttt{nom} & Pr\'enom et nom complets \\
+\texttt{date} & Date de naissance \\
+\texttt{spec} & Sp\'ecialit\'e \\
+\texttt{sess} & Session d'examen \\
+\texttt{moy} & Moyenne g\'en\'erale \\
+\texttt{ment} & Mention obtenue \\
+\end{longtable}
+\end{tcolorbox}
+
+\subsection{Param\`etres techniques du QR code}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Param\`etre} & \textbf{Valeur} \\
+\midrule
+Correction d'erreur & M (Medium -- 15\%) \\
+Largeur de g\'en\'eration & 200 px \\
+Marge & 1 px \\
+Chiffrement & Aucun \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ============================================================================
+\section{D\'etails du chiffrement}
+
+\subsection{Syst\`eme s\'electif (AES-256-CBC) -- Relev\'es de notes}
+
+\begin{tcolorbox}[colback=yellow!5, colframe=warningorange, title={\textbf{G\'en\'eration de la cl\'e de chiffrement}}]
+La cl\'e est d\'eriv\'ee \`a partir des donn\'ees publiques de l'\'etudiant, ce qui permet le d\'echiffrement sans cl\'e secr\`ete externe.
+
+\begin{enumerate}[noitemsep]
+    \item \textbf{Nettoyage} : Nom, pr\'enom et \'etablissement convertis en majuscules, caract\`eres non-alphanum\'eriques supprim\'es
+    \item \textbf{Concat\'enation} : \texttt{nom + prenom + etablissement + "FMSP\_UDO\_2024\_SELECTIVE"}
+    \item \textbf{Hachage triple} :
+    \begin{itemize}[noitemsep]
+        \item Hash 1 : SHA-256 de la base $\rightarrow$ 64 caract\`eres
+        \item Hash 2 : MD5 de (base + \texttt{"SELECTIVE\_2024"}) $\rightarrow$ 32 caract\`eres
+        \item Hash 3 : SHA-1 de (base + nom + pr\'enom) $\rightarrow$ 40 caract\`eres
+    \end{itemize}
+    \item \textbf{Cl\'e finale} : Concat\'enation des 3 hashs, premiers 32 caract\`eres = cl\'e 256 bits
+\end{enumerate}
+\end{tcolorbox}
+
+\subsubsection{Structure des donn\'ees chiffr\'ees}
+
+\begin{lstlisting}[title={Donn\'ees sensibles avant chiffrement}]
+{
+  "matricule_complet": "20241234",
+  "date_naissance_complete": "15/06/1995",
+  "lieu_naissance_precis": "Douala",
+  "moyenne_exacte": "15.50",
+  "credits_details": "180",
+  "timestamp_generation": 1709913600,
+  "_version": "2.0_selective",
+  "_type": "sensitive_data_only"
+}
+\end{lstlisting}
+
+\subsubsection{Hash de v\'erification d'int\'egrit\'e}
+
+\begin{tcolorbox}[colback=codebg, colframe=codeframe]
+\begin{enumerate}[noitemsep]
+    \item Cha\^ine source : \texttt{nom\_prenom\_matricule\_timestamp}
+    \item Hash : SHA-256 de cette cha\^ine
+    \item R\'esultat : 16 premiers caract\`eres stock\'es dans le QR code
+    \item \textbf{V\'erification} : lors du d\'echiffrement, le hash est recalcul\'e et compar\'e
+\end{enumerate}
+\end{tcolorbox}
+
+\subsection{Syst\`eme compact (AES-128-ECB) -- Attestations}
+
+\begin{tcolorbox}[colback=yellow!5, colframe=warningorange, title={\textbf{G\'en\'eration de la cl\'e de chiffrement}}]
+Syst\`eme simplifi\'e bas\'e uniquement sur le matricule de l'\'etudiant.
+
+\begin{enumerate}[noitemsep]
+    \item \textbf{Nettoyage} : Matricule converti en majuscules, caract\`eres non-alphanum\'eriques supprim\'es
+    \item \textbf{Concat\'enation} : \texttt{matricule + "FMSP2024"}
+    \item \textbf{Hachage} : SHA-256 de la cha\^ine
+    \item \textbf{Cl\'e finale} : 16 premiers caract\`eres = cl\'e 128 bits
+\end{enumerate}
+
+\textbf{Encodage} : Base64URL (remplacement de \texttt{+} par \texttt{-}, \texttt{/} par \texttt{\_}, suppression du padding \texttt{=})
+\end{tcolorbox}
+
+\subsubsection{Structure des donn\'ees chiffr\'ees}
+
+\begin{lstlisting}[title={Donn\'ees sensibles avant chiffrement (cl\'es abr\'eg\'ees)}]
+{
+  "m": "20241234",
+  "d": "15/06/1995",
+  "l": "Douala",
+  "a": "15.50",
+  "t": 1709913600
+}
+\end{lstlisting}
+
+% ============================================================================
+\section{Tableau r\'ecapitulatif complet}
+
+\begin{center}
+\small
+\begin{longtable}{p{3.5cm}|p{2.8cm}|p{2.8cm}|p{2.5cm}|p{2.5cm}}
+\toprule
+\textbf{Caract\'eristique} & \textbf{Relev\'e} & \textbf{Attestation} & \textbf{Dipl\^ome} & \textbf{Att. Centre} \\
+\midrule
+\endhead
+
+\multicolumn{5}{l}{\textbf{\textcolor{sectionblue}{Chiffrement}}} \\
+\midrule
+Algorithme & AES-256-CBC & AES-128-ECB & Aucun & Aucun \\
+Version & 2.0\_selective & 3.0\_compact & -- & -- \\
+V\'erification & Oui (SHA-256) & Non & Non & Non \\
+\midrule
+
+\multicolumn{5}{l}{\textbf{\textcolor{publicgreen}{Donn\'ees publiques (visibles)}}} \\
+\midrule
+Etablissement & \checkmark & \checkmark & -- & -- \\
+Nom / Pr\'enom & \checkmark & \checkmark & \checkmark & \checkmark \\
+Matricule & -- & -- & \checkmark & \checkmark \\
+Date naissance & -- & -- & \checkmark & \checkmark \\
+Lieu naissance & -- & -- & \checkmark$^*$ & -- \\
+Niveau & \checkmark & -- & -- & -- \\
+Semestre & \checkmark$^{**}$ & -- & -- & -- \\
+Cycle & \checkmark & -- & -- & -- \\
+Fili\`ere & \checkmark & -- & -- & -- \\
+Parcours & -- & \checkmark & \checkmark$^*$ & -- \\
+Sp\'ecialit\'e & -- & \checkmark & \checkmark$^*$ & \checkmark \\
+Finalit\'e & -- & \checkmark & -- & -- \\
+Domaine & -- & \checkmark & -- & -- \\
+Ann\'ee acad. & \checkmark & \checkmark & \checkmark & -- \\
+Session & -- & -- & -- & \checkmark \\
+Moyenne & -- & -- & \checkmark & \checkmark \\
+Grade & \checkmark & \checkmark & \checkmark$^*$ & -- \\
+Mention & \checkmark & \checkmark & \checkmark & \checkmark \\
+Cr\'edits & -- & -- & -- & -- \\
+\midrule
+
+\multicolumn{5}{l}{\textbf{\textcolor{encryptedred}{Donn\'ees chiffr\'ees (non visibles)}}} \\
+\midrule
+Matricule & \checkmark & \checkmark & -- & -- \\
+Date naissance & \checkmark & \checkmark & -- & -- \\
+Lieu naissance & \checkmark & \checkmark & -- & -- \\
+Moyenne exacte & \checkmark & \checkmark & -- & -- \\
+Cr\'edits & \checkmark & -- & -- & -- \\
+Timestamp & \checkmark & \checkmark & -- & -- \\
+\midrule
+
+\multicolumn{5}{l}{\textbf{\textcolor{sectionblue}{Param\`etres QR}}} \\
+\midrule
+Correction erreur & H (30\%) & M (15\%) & M (15\%) & M (15\%) \\
+Largeur g\'en\'eration & 800 px & 600 px & 200 px & 200 px \\
+Marge & 2 px & 1 px & 1 px & 1 px \\
+Format & Texte structur\'e & Texte structur\'e & JSON & JSON \\
+Taille typique & 200+ car. & 150+ car. & Petit & Petit \\
+\bottomrule
+
+\multicolumn{5}{l}{\small $^*$ Format complet uniquement \quad $^{**}$ Si \texttt{displaySessions = true}} \\
+\end{longtable}
+\end{center}
+
+% ============================================================================
+\section{Sanitisation des donn\'ees}
+
+Avant l'encodage dans le QR code, toutes les donn\'ees passent par un processus de nettoyage :
+
+\begin{itemize}[noitemsep]
+    \item Les valeurs \texttt{undefined}, \texttt{null} ou vides sont remplac\'ees par \texttt{"N/D"}
+    \item Le champ \texttt{MOYENNE} est d\'efini \`a \texttt{"0.00"} par d\'efaut
+    \item Le champ \texttt{ETABLISSEMENT} est forc\'e \`a \texttt{"ETABLISSEMENT NON DEFINI"} si absent
+    \item Les num\'eros de s\'erie Excel pour les dates sont convertis au format JJ/MM/AAAA
+\end{itemize}
+
+% ============================================================================
+\section{Configuration et options}
+
+\subsection{Tailles d'affichage configurables}
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Pr\'eset} & \textbf{Documents g\'en\'eraux} & \textbf{Dipl\^omes} \\
+\midrule
+Petit & 80 px & 40 px \\
+Moyen & 100 px & 70 px \\
+Grand & 120 px & 100 px \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Options de configuration par document}
+
+\begin{itemize}[noitemsep]
+    \item \texttt{showQRCode} : Activer/d\'esactiver l'affichage du QR code
+    \item \texttt{useCompactQR} : Utiliser le format compact (dipl\^omes uniquement)
+    \item \texttt{qrCodeSize} : Taille en pixels
+    \item \texttt{qrCodeOffsetX / qrCodeOffsetY} : D\'ecalage de position
+    \item \texttt{encryptionEnabled} : Activer/d\'esactiver le chiffrement
+\end{itemize}
+
+% ============================================================================
+\section{S\'ecurit\'e et consid\'erations}
+
+\begin{tcolorbox}[colback=red!5, colframe=encryptedred, title={\textbf{Points importants}}]
+\begin{enumerate}
+    \item \textbf{D\'erivation de cl\'e publique} : Les cl\'es de chiffrement sont d\'eriv\'ees \`a partir de donn\'ees publiques (nom, pr\'enom, \'etablissement ou matricule). Cela permet le d\'echiffrement par toute personne disposant de ces informations, sans cl\'e secr\`ete partag\'ee.
+
+    \item \textbf{Dipl\^omes et attestations centre} : Ces documents ne prot\`egent aucune donn\'ee par chiffrement. Toutes les informations sont accessibles en clair lors du scan.
+
+    \item \textbf{Mode ECB} : Le syst\`eme compact (attestations) utilise AES-128-ECB, un mode de chiffrement par blocs sans cha\^inage. Ce mode est moins s\'ecuris\'e que CBC mais produit des cha\^ines chiffr\'ees plus courtes, adapt\'ees aux QR codes de petite taille.
+
+    \item \textbf{Objectif} : Le chiffrement vise principalement \`a emp\^echer la lecture directe des donn\'ees sensibles (matricule, date de naissance, moyenne exacte) par un simple scan, tout en permettant la v\'erification par les autorit\'es acad\'emiques.
+\end{enumerate}
+\end{tcolorbox}
+
+% ============================================================================
+\section{Fichiers sources de r\'ef\'erence}
+
+\begin{center}
+\small
+\begin{longtable}{p{7cm}p{6cm}}
+\toprule
+\textbf{Fichier} & \textbf{R\^ole} \\
+\midrule
+\texttt{src/lib/crypto/selective-encryption.ts} & Chiffrement s\'electif AES-256 \\
+\texttt{src/lib/crypto/compact-encryption.ts} & Chiffrement compact AES-128 \\
+\texttt{src/lib/helpers/qrcode-selective.ts} & G\'en\'eration QR s\'electif \\
+\texttt{src/lib/helpers/qrcode.ts} & G\'en\'eration QR compact \\
+\texttt{src/lib/pdfGenerator.ts} & G\'en\'erateur PDF relev\'es \\
+\texttt{src/lib/attestation-generator/html-generator.ts} & G\'en\'erateur HTML attestations \\
+\texttt{src/lib/diploma-generator/html-generator.ts} & G\'en\'erateur HTML dipl\^omes \\
+\texttt{src/lib/centre-attestation-generator/html-generator.ts} & G\'en\'erateur HTML att. centre \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+\end{document}

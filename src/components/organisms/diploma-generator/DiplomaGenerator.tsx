@@ -1,7 +1,7 @@
 // src/components/organisms/diploma-generator/DiplomaGenerator.tsx
 // Générateur principal de diplômes avec gestion des thèmes
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -17,7 +17,8 @@ import {
   Download,
   AlertCircle,
   Loader2,
-  BookOpen
+  BookOpen,
+  XCircle
 } from 'lucide-react';
 import { useLocalStorage } from 'usehooks-ts';
 import { DiplomaStudentRecord, FAKE_DIPLOMA_DATA } from '@/lib/diploma-generator/types';
@@ -33,6 +34,7 @@ import { openDiplomaPreview } from '@/lib/diploma-generator/preview';
 import { generateDiplomaHTML } from '@/lib/diploma-generator/html-generator';
 import { FileUploader } from '../receipts/components/FileUploader';
 import { useDocumentHistory } from '../document-history/DocumentHistoryManager';
+import { StudentSelector } from '../student-selector/StudentSelector';
 
 export const DiplomaGenerator: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"generator" | "theme" | "manager">("generator");
@@ -46,6 +48,10 @@ export const DiplomaGenerator: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
+
+  // Sélection d'étudiants et annulation
+  const [selectedStudentMatricules, setSelectedStudentMatricules] = useState<string[]>([]);
+  const isCancelledRef = useRef<boolean>(false);
 
   // Options d'export
   const [exportFormat, setExportFormat] = useState<string>('zip');
@@ -192,6 +198,29 @@ export const DiplomaGenerator: React.FC = () => {
     }
   };
 
+  // Gestion de la sélection d'étudiants
+  const handleStudentSelectionChange = (matricules: string[]) => {
+    setSelectedStudentMatricules(matricules);
+  };
+
+  // Génération pour les étudiants sélectionnés via StudentSelector
+  const handleGenerateSelected = (students?: DiplomaStudentRecord[]) => {
+    const studentsToGenerate = students && students.length > 0
+      ? students
+      : selectedStudentMatricules.length > 0
+        ? excelData.filter(s => selectedStudentMatricules.includes(s.MATRICULE))
+        : excelData;
+
+    // Valider puis déléguer
+    const validation = validateDiplomaList(studentsToGenerate);
+    handleGenerateDiplomas(validation.valid.map(v => v.student));
+  };
+
+  // Annulation de la génération
+  const cancelGeneration = () => {
+    isCancelledRef.current = true;
+  };
+
   // Génération des diplômes avec validation et filtrage automatique (système IPC)
   const handleGenerateDiplomas = async (validStudents: DiplomaStudentRecord[]) => {
     if (validStudents.length === 0) {
@@ -209,6 +238,7 @@ export const DiplomaGenerator: React.FC = () => {
       setIsLoading(true);
       setError(null);
       setProcessingProgress(0);
+      isCancelledRef.current = false;
 
       // Valider tous les étudiants d'origine pour le rapport
       const fullValidation = validateDiplomaList(excelData);
@@ -270,6 +300,12 @@ export const DiplomaGenerator: React.FC = () => {
         }
 
         setProcessingProgress(((i + 1) / validStudents.length) * 90);
+
+        // Vérifier l'annulation après chaque PDF
+        if (isCancelledRef.current) {
+          console.log(`⚠️ Génération annulée après ${i + 1}/${validStudents.length} diplôme(s)`);
+          break;
+        }
       }
 
       // Télécharger les fichiers selon le format choisi
@@ -464,12 +500,22 @@ export const DiplomaGenerator: React.FC = () => {
               )}
 
               {isLoading && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span>Génération en cours...</span>
                     <span>{Math.round(processingProgress)}%</span>
                   </div>
                   <Progress value={processingProgress} />
+                  <div className="flex justify-center">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={cancelGeneration}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Annuler la génération
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -528,6 +574,11 @@ export const DiplomaGenerator: React.FC = () => {
                   onUseCompressionChange={setUseCompression}
                   onGenerateDiplomas={handleGenerateDiplomas}
                   isLoading={isLoading}
+                  selectedStudents={
+                    selectedStudentMatricules.length > 0
+                      ? excelData.filter(s => selectedStudentMatricules.includes(s.MATRICULE))
+                      : undefined
+                  }
                 />
               )}
 
@@ -543,43 +594,17 @@ export const DiplomaGenerator: React.FC = () => {
                 />
               )}
 
-              {/* Liste des étudiants */}
+              {/* Sélection des étudiants */}
               {excelData.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Diplômés ({excelData.length})</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {excelData.map((student, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 border rounded hover:bg-gray-50"
-                        >
-                          <div>
-                            <div className="font-medium">
-                              {student.NOM} {student.PRENOM}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              {student.MATRICULE} - {student["TITRE DIPLOME FR"]}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {student.MENTION} - Année {student["ANNEE OBTENTION"]}
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handlePreviewStudent(student)}
-                          >
-                            <Eye className="h-3 w-3 mr-1" />
-                            Voir
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                <StudentSelector
+                  students={excelData}
+                  selectedStudents={selectedStudentMatricules}
+                  onSelectionChange={handleStudentSelectionChange}
+                  onPreview={(student) => handlePreviewStudent(student as DiplomaStudentRecord)}
+                  onGenerateSelected={(students) => handleGenerateSelected(students as DiplomaStudentRecord[] | undefined)}
+                  documentType="diplome"
+                  isLoading={isLoading}
+                />
               )}
             </CardContent>
           </Card>

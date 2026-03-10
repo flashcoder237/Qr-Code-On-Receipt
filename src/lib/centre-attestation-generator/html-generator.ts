@@ -284,14 +284,12 @@ function generateCentreAttestationStyles(
       margin: 2mm 0;
       line-height: 1.3;
       display: flex;
-      align-items: flex-start;
+      align-items: baseline;
       margin-bottom: 2%;
     }
 
     .field-label, .field-value {
       display: inline-block;
-      height: 100%;
-      line-height: 90%;
     }
 
     .field-label {

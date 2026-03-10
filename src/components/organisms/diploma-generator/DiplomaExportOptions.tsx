@@ -23,6 +23,7 @@ interface DiplomaExportOptionsProps {
   onUseCompressionChange: (enabled: boolean) => void;
   onGenerateDiplomas: (validStudents: DiplomaStudentRecord[]) => void;
   isLoading: boolean;
+  selectedStudents?: DiplomaStudentRecord[];
 }
 
 export const DiplomaExportOptions: React.FC<DiplomaExportOptionsProps> = ({
@@ -34,12 +35,17 @@ export const DiplomaExportOptions: React.FC<DiplomaExportOptionsProps> = ({
   onExportFormatChange,
   onUseCompressionChange,
   onGenerateDiplomas,
-  isLoading
+  isLoading,
+  selectedStudents
 }) => {
   const [showValidationDetails, setShowValidationDetails] = useState(false);
 
+  // Déterminer la source: étudiants sélectionnés ou tous
+  const hasSelection = selectedStudents && selectedStudents.length > 0;
+  const studentsToValidate = hasSelection ? selectedStudents : students;
+
   // Valider les diplômes
-  const validation = validateDiplomaList(students);
+  const validation = validateDiplomaList(studentsToValidate);
   const { valid, invalid, stats } = validation;
 
   const handleGenerate = () => {
@@ -88,7 +94,7 @@ export const DiplomaExportOptions: React.FC<DiplomaExportOptionsProps> = ({
 
           <div className="flex items-center justify-between text-sm">
             <span className="text-blue-700">
-              {stats.canGenerate} diplôme(s) seront généré(s)
+              {stats.canGenerate} diplôme(s) seront généré(s){hasSelection ? ` (sur ${selectedStudents!.length} sélectionné(s))` : ''}
             </span>
             <Button
               variant="link"
@@ -204,10 +210,10 @@ export const DiplomaExportOptions: React.FC<DiplomaExportOptionsProps> = ({
               <>
                 <Download className="mr-2 h-4 w-4" />
                 {exportFormat === 'pdf'
-                  ? `Générer PDF unique (${stats.canGenerate})`
+                  ? `Générer PDF unique (${stats.canGenerate} ${hasSelection ? 'sélectionné(s)' : 'valide(s)'})`
                   : exportFormat === 'zip'
-                  ? `Générer Archive ZIP (${stats.canGenerate})`
-                  : `Générer Fichiers (${stats.canGenerate})`
+                  ? `Générer Archive ZIP (${stats.canGenerate} ${hasSelection ? 'sélectionné(s)' : 'valide(s)'})`
+                  : `Générer Fichiers (${stats.canGenerate} ${hasSelection ? 'sélectionné(s)' : 'valide(s)'})`
                 }
               </>
             )}

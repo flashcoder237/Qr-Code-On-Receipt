@@ -1,0 +1,1 @@
+export { ManualDiplomaEntry } from "./ManualDiplomaEntry";

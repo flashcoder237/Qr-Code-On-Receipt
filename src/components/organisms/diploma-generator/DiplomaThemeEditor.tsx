@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Eye, RefreshCw, Type, Palette as PaletteIcon, Image as ImageIcon, Settings } from 'lucide-react';
+import { Eye, RefreshCw, Type, Palette as PaletteIcon, Image as ImageIcon, Settings, FileText } from 'lucide-react';
 import { DiplomaThemeSettingsPayload } from '@/lib/form-schemas/diploma-theme-settings';
 
 // Liste des polices disponibles
@@ -77,7 +77,7 @@ export const DiplomaThemeEditor: React.FC<DiplomaThemeEditorProps> = ({
       </div>
 
       <Tabs defaultValue="typography">
-        <TabsList className="grid grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-5 w-full">
           <TabsTrigger value="typography">
             <Type className="h-4 w-4 mr-2" />
             Typographie
@@ -89,6 +89,10 @@ export const DiplomaThemeEditor: React.FC<DiplomaThemeEditorProps> = ({
           <TabsTrigger value="sizes">
             <ImageIcon className="h-4 w-4 mr-2" />
             Tailles
+          </TabsTrigger>
+          <TabsTrigger value="values">
+            <FileText className="h-4 w-4 mr-2" />
+            Valeurs
           </TabsTrigger>
           <TabsTrigger value="options">
             <Settings className="h-4 w-4 mr-2" />
@@ -992,6 +996,425 @@ export const DiplomaThemeEditor: React.FC<DiplomaThemeEditorProps> = ({
                   max={10}
                   step={0.5}
                 />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* VALEURS (styles par champ Excel) */}
+        <TabsContent value="values" className="space-y-6">
+          {/* Nom complet */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Nom complet</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Police (héritée de "Police nom étudiant")</Label>
+                <Select
+                  value={theme.studentNameFont}
+                  onValueChange={(value) => updateTheme({ studentNameFont: value as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fontOptions.map((font) => (
+                      <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Taille (héritée): {theme.studentNameFontSize}pt</Label>
+                <Slider
+                  value={[theme.studentNameFontSize]}
+                  onValueChange={([value]) => updateTheme({ studentNameFontSize: value })}
+                  min={10}
+                  max={20}
+                  step={0.5}
+                />
+              </div>
+              <div>
+                <Label>Couleur</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={theme.fullNameColor}
+                    onChange={(e) => updateTheme({ fullNameColor: e.target.value })}
+                    className="w-16 h-10"
+                  />
+                  <Input
+                    type="text"
+                    value={theme.fullNameColor}
+                    onChange={(e) => updateTheme({ fullNameColor: e.target.value })}
+                    placeholder="#000080"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Date/Lieu de naissance */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Date / Lieu de naissance</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Police</Label>
+                <Select
+                  value={theme.birthInfoFont}
+                  onValueChange={(value) => updateTheme({ birthInfoFont: value as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fontOptions.map((font) => (
+                      <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Taille: {theme.birthInfoFontSize}pt</Label>
+                <Slider
+                  value={[theme.birthInfoFontSize]}
+                  onValueChange={([value]) => updateTheme({ birthInfoFontSize: value })}
+                  min={8}
+                  max={20}
+                  step={0.5}
+                />
+              </div>
+              <div>
+                <Label>Couleur</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={theme.birthInfoColor}
+                    onChange={(e) => updateTheme({ birthInfoColor: e.target.value })}
+                    className="w-16 h-10"
+                  />
+                  <Input
+                    type="text"
+                    value={theme.birthInfoColor}
+                    onChange={(e) => updateTheme({ birthInfoColor: e.target.value })}
+                    placeholder="#000080"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Matricule */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Matricule</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Police</Label>
+                <Select
+                  value={theme.matriculeFont}
+                  onValueChange={(value) => updateTheme({ matriculeFont: value as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fontOptions.map((font) => (
+                      <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Taille: {theme.matriculeFontSize}pt</Label>
+                <Slider
+                  value={[theme.matriculeFontSize]}
+                  onValueChange={([value]) => updateTheme({ matriculeFontSize: value })}
+                  min={8}
+                  max={18}
+                  step={0.5}
+                />
+              </div>
+              <div>
+                <Label>Couleur</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={theme.matriculeColor}
+                    onChange={(e) => updateTheme({ matriculeColor: e.target.value })}
+                    className="w-16 h-10"
+                  />
+                  <Input
+                    type="text"
+                    value={theme.matriculeColor}
+                    onChange={(e) => updateTheme({ matriculeColor: e.target.value })}
+                    placeholder="#000080"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Mention */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Mention</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Police (héritée de "Police mention/grade")</Label>
+                <Select
+                  value={theme.mentionFont}
+                  onValueChange={(value) => updateTheme({ mentionFont: value as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fontOptions.map((font) => (
+                      <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Taille: {theme.mentionFontSize}pt</Label>
+                <Slider
+                  value={[theme.mentionFontSize]}
+                  onValueChange={([value]) => updateTheme({ mentionFontSize: value })}
+                  min={8}
+                  max={18}
+                  step={0.5}
+                />
+              </div>
+              <div>
+                <Label>Couleur</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={theme.mentionColor}
+                    onChange={(e) => updateTheme({ mentionColor: e.target.value })}
+                    className="w-16 h-10"
+                  />
+                  <Input
+                    type="text"
+                    value={theme.mentionColor}
+                    onChange={(e) => updateTheme({ mentionColor: e.target.value })}
+                    placeholder="#000080"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Titre diplôme (valeur) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Titre diplôme (valeur)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Police</Label>
+                <Select
+                  value={theme.diplomaTitleValueFont}
+                  onValueChange={(value) => updateTheme({ diplomaTitleValueFont: value as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fontOptions.map((font) => (
+                      <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Taille: {theme.diplomaTitleValueFontSize}pt</Label>
+                <Slider
+                  value={[theme.diplomaTitleValueFontSize]}
+                  onValueChange={([value]) => updateTheme({ diplomaTitleValueFontSize: value })}
+                  min={10}
+                  max={24}
+                  step={0.5}
+                />
+              </div>
+              <div>
+                <Label>Couleur</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={theme.diplomaTitleValueColor}
+                    onChange={(e) => updateTheme({ diplomaTitleValueColor: e.target.value })}
+                    className="w-16 h-10"
+                  />
+                  <Input
+                    type="text"
+                    value={theme.diplomaTitleValueColor}
+                    onChange={(e) => updateTheme({ diplomaTitleValueColor: e.target.value })}
+                    placeholder="#000080"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Option */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Option / Spécialité</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Police</Label>
+                <Select
+                  value={theme.optionFont}
+                  onValueChange={(value) => updateTheme({ optionFont: value as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fontOptions.map((font) => (
+                      <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Taille: {theme.optionFontSize}pt</Label>
+                <Slider
+                  value={[theme.optionFontSize]}
+                  onValueChange={([value]) => updateTheme({ optionFontSize: value })}
+                  min={8}
+                  max={20}
+                  step={0.5}
+                />
+              </div>
+              <div>
+                <Label>Couleur</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={theme.optionColor}
+                    onChange={(e) => updateTheme({ optionColor: e.target.value })}
+                    className="w-16 h-10"
+                  />
+                  <Input
+                    type="text"
+                    value={theme.optionColor}
+                    onChange={(e) => updateTheme({ optionColor: e.target.value })}
+                    placeholder="#000080"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Année d'obtention */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Année d'obtention</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Police</Label>
+                <Select
+                  value={theme.yearObtentionFont}
+                  onValueChange={(value) => updateTheme({ yearObtentionFont: value as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fontOptions.map((font) => (
+                      <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Taille: {theme.yearObtentionFontSize}pt</Label>
+                <Slider
+                  value={[theme.yearObtentionFontSize]}
+                  onValueChange={([value]) => updateTheme({ yearObtentionFontSize: value })}
+                  min={7}
+                  max={16}
+                  step={0.5}
+                />
+              </div>
+              <div>
+                <Label>Couleur</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={theme.yearObtentionColor}
+                    onChange={(e) => updateTheme({ yearObtentionColor: e.target.value })}
+                    className="w-16 h-10"
+                  />
+                  <Input
+                    type="text"
+                    value={theme.yearObtentionColor}
+                    onChange={(e) => updateTheme({ yearObtentionColor: e.target.value })}
+                    placeholder="#000080"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Dates jury */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Dates jury</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Police</Label>
+                <Select
+                  value={theme.juryDatesFont}
+                  onValueChange={(value) => updateTheme({ juryDatesFont: value as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fontOptions.map((font) => (
+                      <SelectItem key={font.value} value={font.value}>{font.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Taille: {theme.juryDatesFontSize}pt</Label>
+                <Slider
+                  value={[theme.juryDatesFontSize]}
+                  onValueChange={([value]) => updateTheme({ juryDatesFontSize: value })}
+                  min={6}
+                  max={12}
+                  step={0.5}
+                />
+              </div>
+              <div>
+                <Label>Couleur</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={theme.juryDatesColor}
+                    onChange={(e) => updateTheme({ juryDatesColor: e.target.value })}
+                    className="w-16 h-10"
+                  />
+                  <Input
+                    type="text"
+                    value={theme.juryDatesColor}
+                    onChange={(e) => updateTheme({ juryDatesColor: e.target.value })}
+                    placeholder="#000000"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>

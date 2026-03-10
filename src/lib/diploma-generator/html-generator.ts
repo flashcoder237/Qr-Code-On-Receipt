@@ -275,18 +275,19 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     .header-text-block {
       flex: 1;
       display: flex;
-      
     }
 
     .header-text-block-right{
-      text-align: left;
+      align-items: flex-start;
     }
 
     .header-text-block-left{
-      text-align: right;
+      align-items: flex-end;
     }
 
     .header-text {
+      width: max-content;
+      text-align: center;
       font-family: ${theme.headerFont};
       font-size: ${theme.headerFontSize}pt;
       line-height: ${theme.headerLineHeight};
@@ -429,11 +430,32 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     }
 
     .field-value {
-      font-family: ${theme.studentNameFont};
       font-weight: bold;
       margin-left: 6px;
+    }
+
+    .field-value-fullname {
+      font-family: ${theme.studentNameFont};
       font-size: ${theme.studentNameFontSize}pt;
-      color: ${theme.primaryColor};
+      color: ${theme.fullNameColor};
+    }
+
+    .field-value-birthinfo {
+      font-family: ${theme.birthInfoFont};
+      font-size: ${theme.birthInfoFontSize}pt;
+      color: ${theme.birthInfoColor};
+    }
+
+    .field-value-option {
+      font-family: ${theme.optionFont};
+      font-size: ${theme.optionFontSize}pt;
+      color: ${theme.optionColor};
+    }
+
+    .field-value-diploma-title {
+      font-family: ${theme.diplomaTitleValueFont};
+      font-size: ${theme.diplomaTitleValueFontSize}pt;
+      color: ${theme.diplomaTitleValueColor};
     }
 
     .degree-box {
@@ -474,12 +496,20 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
       letter-spacing: 0.3px;
     }
 
+    .matricule-value {
+      font-family: ${theme.matriculeFont};
+      margin-left: 4px;
+      font-weight: bold;
+      font-size: ${theme.matriculeFontSize}pt;
+      color: ${theme.matriculeColor};
+    }
+
     .mention-value {
       font-family: ${theme.mentionFont};
       margin-left: 4px;
       font-weight: bold;
-      font-size: ${theme.contentFontSize + 1.5}pt;
-      color: ${theme.primaryColor};
+      font-size: ${theme.mentionFontSize}pt;
+      color: ${theme.mentionColor};
     }
 
     .degree-main, .degree-main-en {
@@ -489,6 +519,19 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     .mention-en {
       font-style: italic;
       font-size: ${theme.contentFontSize - 1.5}pt;
+    }
+
+    .year-obtention-value {
+      font-family: ${theme.yearObtentionFont};
+      font-size: ${theme.yearObtentionFontSize}pt;
+      color: ${theme.yearObtentionColor};
+      font-weight: bold;
+    }
+
+    .jury-date-value {
+      font-family: ${theme.juryDatesFont};
+      font-size: ${theme.juryDatesFontSize}pt;
+      color: ${theme.juryDatesColor};
     }
 
     /* QR Code */
@@ -524,6 +567,11 @@ function generateDiplomaStyles(theme: DiplomaThemeSettingsPayload, isDemoMode: b
     .signature-box {
       text-align: center;
       width: 30%;
+    }
+
+    .signature-box-minister {
+      text-align: center;
+      width: 36%;
     }
 
     .signature-title {
@@ -741,10 +789,10 @@ export async function generateDiplomaHTML(
                         <div class="legal-text">Vu les textes en vigueur, portant organisation des enseignements et des évaluations à la Faculté de Médecine et des Sciences Pharmaceutiques</div>
                         <div class="legal-text legal-text-en"><em>Mindful of the text in force, of the regulations organizing the courses and examinations at the Faculty of Medicine and Pharmaceutical Sciences</em></div>
 
-                        <div class="legal-text">Vu le Procès-verbal du jury d'admission, session du <strong>${juryAdmissionDate}</strong></div>
+                        <div class="legal-text">Vu le Procès-verbal du jury d'admission, session du <strong class="jury-date-value">${juryAdmissionDate}</strong></div>
                         <div class="legal-text legal-text-en"><em>Mindful of the results sheets of panel admission of ${juryAdmissionDate}</em></div>
 
-                        <div class="legal-text">Vu le Procès-verbal des délibérations du jury, session du <strong>${juryDeliberationDate}</strong></div>
+                        <div class="legal-text">Vu le Procès-verbal des délibérations du jury, session du <strong class="jury-date-value">${juryDeliberationDate}</strong></div>
                         <div class="legal-text legal-text-en"><em>Mindful of the minute of deliberations of the promotion jury sitting of ${juryDeliberationDate}</em></div>
                     </div>
                     <div style="width: 35%; padding-left: 5mm; display: flex; flex-direction: column; align-items: flex-end; font-family: ${theme.referenceFont};">
@@ -763,19 +811,19 @@ export async function generateDiplomaHTML(
                 <div class="recipient-left">
                     <div class="field">
                         <div class="field-label">Délivre à M./Mlle <br><span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Confers to Mr/Ms</em></span></div>
-                        <div class="field-value">${fullName}</div>
+                        <div class="field-value field-value-fullname">${fullName}</div>
                     </div>
 
                     <div class="field">
                         <div class="field-label">Né(e) le : <br><span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Born on</em></span></div>
-                        <div class="field-value">${birthDate} À ${birthPlace} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${birthDate} At ${birthPlace}</em></span></div>
+                        <div class="field-value field-value-birthinfo">${birthDate} À ${birthPlace} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${birthDate} At ${birthPlace}</em></span></div>
                     </div>
                 </div>
 
                 <div class="recipient-right">
                     <div class="mention-box">
                       <div class="mention-label">Matricule :  <br> <span class="mention-en en-text"><em>Registration :</em></span></div>
-                      <div class="mention-value">${matricule} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${matricule}</em></span></div>
+                      <div class="matricule-value">${matricule} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${matricule}</em></span></div>
                     </div>
                     <div class="mention-box" style="margin-top: 4mm;">
                         <div class="mention-label">Mention :  <br> <span class="mention-en en-text"><em>Grade:</em></span></div>
@@ -788,21 +836,21 @@ export async function generateDiplomaHTML(
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: ${theme.recipientBlockMarginBottom}mm;">
                 <div style="flex: 2.5; font-family: ${theme.studentInfoFont}; font-size: ${theme.contentFontSize}pt;">
                     <div class="field" style="justify-content: center; text-align: center;">
-                        <div class="field-value" style="margin-left: 0; font-size: ${theme.contentFontSize + 4}pt;"">Le ${diplomaTitleFr} <br> <span style="font-weight: normal; font-size: 12pt; font-style: italic;" class="en-text"><em>The ${diplomaTitleEn}</em></span></div>
+                        <div class="field-value field-value-diploma-title" style="margin-left: 0;">Le ${diplomaTitleFr} <br> <span style="font-weight: normal; font-size: 12pt; font-style: italic;" class="en-text"><em>The ${diplomaTitleEn}</em></span></div>
                     </div>
                     ${option ? `<div class="field">
                         <div class="field-label">Option : <br><span style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Speciality</em></span></div>
-                        <div class="field-value">${option} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${optionEn}</em></span></div>
+                        <div class="field-value field-value-option">${option} <br> <span style="font-weight: normal; font-size: 10pt; font-style: italic;" class="en-text"><em>${optionEn}</em></span></div>
                     </div>` : ''}
                 </div>
                 <div style="flex: 1; padding-left: 4mm; text-align: left; font-family: ${theme.studentInfoFont}; font-size: ${theme.studentInfoFontSize}pt;">
-                    <div style="font-size: 9.5pt;">
+                    <div>
+                        <div style="font-weight: bold; font-size: ${theme.contentFontSize}pt;">Année d'obtention : <span class="year-obtention-value">${yearObtention}</span></div>
+                        <div style="font-style: italic; font-weight: normal; font-size: 8.5pt;" class="en-text"><em>Year of completion</em></div>
+                    </div>
+                    <div style="margin-top: 2mm; font-size: 9.5pt;">
                         <div style="font-weight: bold;">Douala, le</div>
                         <div style="font-style: italic; font-weight: normal;font-size: 8.5pt;" class="en-text"><em>Douala, in the</em></div>
-                    </div>
-                    <div style="margin-top: 2mm;">
-                        <div style="font-weight: bold; font-size: ${theme.contentFontSize}pt;">Année d'obtention : <span style="color: ${theme.primaryColor};">${yearObtention}</span></div>
-                        <div style="font-style: italic; font-weight: normal; font-size: 8.5pt;" class="en-text"><em>Year of completion : ${yearObtention}</em></div>
                     </div>
                 </div>
             </div>
@@ -819,7 +867,7 @@ export async function generateDiplomaHTML(
                     <div class="signature-title-en en-text"><em>The Rector</em></div>
                 </div>
 
-                <div class="signature-box">
+                <div class="signature-box-minister">
                     <div class="signature-title">Le Ministre d'Etat, Ministre de l'Enseignement Supérieur,<br>Chancelier des Ordres Académiques</div>
                     <div class="signature-title-en en-text"><em>The Minister of State, Minister of Higher Education,<br>Chancellor of Academic Orders</em></div>
                 </div>

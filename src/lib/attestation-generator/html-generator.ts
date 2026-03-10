@@ -948,7 +948,7 @@ export async function generateAttestationHTML(
 
                 <p id="to-nothidden">${niveau && niveau.trim() !== '' && niveau.trim().toUpperCase() !== 'N/D'
                   ? `A subi avec succès toutes les épreuves de : <strong>${cycle.toUpperCase()} ${niveau.trim()}</strong> en <strong>${course.toUpperCase()}</strong>`
-                  : `A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase()}</strong> en <strong>${course.toUpperCase()}</strong>`}<br>
+                  : `A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase() + (settings.establishmentType === "ipes" ? " PROFESSIONNEL" : "")}</strong> en <strong>${course.toUpperCase()}</strong>`}<br>
                 ${theme.showBilingualText ? (niveau && niveau.trim() !== '' && niveau.trim().toUpperCase() !== 'N/D'
                   ? `<em>Having successfully passed all examinations for: </em>`
                   : `<em>Having successfully fulfilled the requirements qualifying for the : </em>`) : ''}</p>

@@ -14,6 +14,9 @@ import { SettingsPage } from '@/components/pages/SettingsPage';
 import { TemplateExportMenu } from '@/components/organisms/template-export';
 import { CentreManager } from '@/components/organisms/centre-manager';
 import { CentreAttestationGenerator } from '@/components/organisms/centre-attestation-generator';
+import { ManualTranscriptEntry } from '@/components/organisms/manual-entry/manual-transcript';
+import { ManualAttestationEntry } from '@/components/organisms/manual-entry/manual-attestation';
+import { ManualDiplomaEntry } from '@/components/organisms/manual-entry/manual-diploma';
 import {
   Download,
   HelpCircle,
@@ -33,7 +36,10 @@ import {
   Building2,
   FileEdit,
   Wrench,
-  Folders
+  Folders,
+  PenLine,
+  FileSignature,
+  FilePen
 } from "lucide-react";
 
 interface MenuItem {
@@ -76,6 +82,25 @@ const menuItems: MenuItem[] = [
     url: "centre-attestations",
     icon: Award,
     component: <CentreAttestationGenerator />,
+  },
+  {
+    title: "Saisie Manuelle Relevé",
+    url: "manual-transcript",
+    icon: PenLine,
+    component: <ManualTranscriptEntry />,
+  },
+  {
+    title: "Saisie Manuelle Attest...",
+    url: "manual-attestation",
+    icon: FileSignature,
+    component: <ManualAttestationEntry />,
+  },
+  {
+    title: "Saisie Manuelle Diplôme",
+    url: "manual-diploma",
+    icon: FilePen,
+    component: <ManualDiplomaEntry />,
+    requiresFaculty: true,
   },
   {
     title: "Config des rele...",
@@ -166,6 +191,25 @@ const menuGroups: MenuGroup[] = [
         url: "centre-attestations",
         icon: Award,
         component: <CentreAttestationGenerator />,
+      },
+      {
+        title: "Saisie Manuelle Relevé",
+        url: "manual-transcript",
+        icon: PenLine,
+        component: <ManualTranscriptEntry />,
+      },
+      {
+        title: "Saisie Manuelle Attest...",
+        url: "manual-attestation",
+        icon: FileSignature,
+        component: <ManualAttestationEntry />,
+      },
+      {
+        title: "Saisie Manuelle Diplôme",
+        url: "manual-diploma",
+        icon: FilePen,
+        component: <ManualDiplomaEntry />,
+        requiresFaculty: true,
       },
     ]
   },

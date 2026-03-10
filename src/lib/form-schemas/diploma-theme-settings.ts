@@ -100,8 +100,45 @@ export const DiplomaThemeSettingsSchema = z.object({
   referenceNumberOffsetY: z.number().min(-20).max(20),
 
   // === MATRICULE ===
-  matriculeFontSize: z.number().min(7).max(14),
+  matriculeFontSize: z.number().min(8).max(18),
   matriculeLineHeight: z.number().min(1).max(2),
+
+  // === STYLES PAR CHAMP EXCEL ===
+  // Nom complet (réutilise studentNameFont & studentNameFontSize)
+  fullNameColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+
+  // Date/Lieu de naissance
+  birthInfoFont: fontEnum,
+  birthInfoFontSize: z.number().min(8).max(20),
+  birthInfoColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+
+  // Matricule (réutilise matriculeFontSize)
+  matriculeFont: fontEnum,
+  matriculeColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+
+  // Mention (réutilise mentionFont)
+  mentionFontSize: z.number().min(8).max(18),
+  mentionColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+
+  // Titre diplôme (valeur)
+  diplomaTitleValueFont: fontEnum,
+  diplomaTitleValueFontSize: z.number().min(10).max(24),
+  diplomaTitleValueColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+
+  // Option
+  optionFont: fontEnum,
+  optionFontSize: z.number().min(8).max(20),
+  optionColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+
+  // Année d'obtention
+  yearObtentionFont: fontEnum,
+  yearObtentionFontSize: z.number().min(7).max(16),
+  yearObtentionColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+
+  // Dates jury
+  juryDatesFont: fontEnum,
+  juryDatesFontSize: z.number().min(6).max(12),
+  juryDatesColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
 
   // === WATERMARK ===
   showWatermark: z.boolean(),
@@ -209,8 +246,37 @@ export const defaultDiplomaTheme: DiplomaThemeSettingsPayload = {
   referenceNumberOffsetY: 0,
 
   // Matricule
-  matriculeFontSize: 9,
+  matriculeFontSize: 11.5,
   matriculeLineHeight: 1.3,
+
+  // Styles par champ Excel
+  fullNameColor: "#000080",
+
+  birthInfoFont: "Times New Roman, serif",
+  birthInfoFontSize: 13,
+  birthInfoColor: "#000080",
+
+  matriculeFont: "Times New Roman, serif",
+  matriculeColor: "#000080",
+
+  mentionFontSize: 11.5,
+  mentionColor: "#000080",
+
+  diplomaTitleValueFont: "Times New Roman, serif",
+  diplomaTitleValueFontSize: 14,
+  diplomaTitleValueColor: "#000080",
+
+  optionFont: "Times New Roman, serif",
+  optionFontSize: 13,
+  optionColor: "#000080",
+
+  yearObtentionFont: "Times New Roman, serif",
+  yearObtentionFontSize: 10,
+  yearObtentionColor: "#000080",
+
+  juryDatesFont: "Times New Roman, serif",
+  juryDatesFontSize: 7.5,
+  juryDatesColor: "#000000",
 
   // Watermark
   showWatermark: true,
@@ -277,6 +343,20 @@ export const diplomaThemePresets: { [key: string]: DiplomaThemeSettingsPayload }
     watermarkTextColor: "#1a1a4d",
     titleShadowColor: "#1a1a4d",
     titleLetterSpacing: 2,
+    // Champs Excel
+    fullNameColor: "#1a1a4d",
+    birthInfoFont: "Garamond, serif",
+    birthInfoColor: "#1a1a4d",
+    matriculeFont: "Garamond, serif",
+    matriculeColor: "#1a1a4d",
+    mentionColor: "#1a1a4d",
+    diplomaTitleValueFont: "Garamond, serif",
+    diplomaTitleValueColor: "#1a1a4d",
+    optionFont: "Garamond, serif",
+    optionColor: "#1a1a4d",
+    yearObtentionFont: "Garamond, serif",
+    yearObtentionColor: "#1a1a4d",
+    juryDatesFont: "Garamond, serif",
   },
 
   modern: {
@@ -302,6 +382,20 @@ export const diplomaThemePresets: { [key: string]: DiplomaThemeSettingsPayload }
     watermarkTextColor: "#004d99",
     titleShadowColor: "#004d99",
     titleTextShadow: false,
+    // Champs Excel
+    fullNameColor: "#004d99",
+    birthInfoFont: "Calibri, sans-serif",
+    birthInfoColor: "#004d99",
+    matriculeFont: "Calibri, sans-serif",
+    matriculeColor: "#004d99",
+    mentionColor: "#004d99",
+    diplomaTitleValueFont: "Calibri, sans-serif",
+    diplomaTitleValueColor: "#004d99",
+    optionFont: "Calibri, sans-serif",
+    optionColor: "#004d99",
+    yearObtentionFont: "Calibri, sans-serif",
+    yearObtentionColor: "#004d99",
+    juryDatesFont: "Calibri, sans-serif",
   },
 
   compact: {
@@ -315,6 +409,14 @@ export const diplomaThemePresets: { [key: string]: DiplomaThemeSettingsPayload }
     studentNameFontSize: 11,
     studentInfoFontSize: 9,
     sectionSpacing: 3,
+    // Champs Excel (tailles réduites)
+    birthInfoFontSize: 11,
+    matriculeFontSize: 10,
+    mentionFontSize: 10,
+    diplomaTitleValueFontSize: 12,
+    optionFontSize: 11,
+    yearObtentionFontSize: 9,
+    juryDatesFontSize: 7,
   },
 
   large: {
@@ -328,6 +430,14 @@ export const diplomaThemePresets: { [key: string]: DiplomaThemeSettingsPayload }
     studentNameFontSize: 16,
     studentInfoFontSize: 12,
     sectionSpacing: 7,
+    // Champs Excel (tailles augmentées)
+    birthInfoFontSize: 15,
+    matriculeFontSize: 13,
+    mentionFontSize: 13,
+    diplomaTitleValueFontSize: 16,
+    optionFontSize: 15,
+    yearObtentionFontSize: 12,
+    juryDatesFontSize: 9,
   },
 };
 
