@@ -1034,16 +1034,17 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
       if (ueCode !== currentUECode) {
         // If we have accumulated elements for a previous UE, output them
         if (ueElements.length > 0) {
-          // Utiliser la moyenne UE pré-calculée
+          // Utiliser la moyenne UE pré-calculée (/20 pour validation)
           const ueAverage = ueElements[0].ueAverage;
+          const ueDisplayAverage = ueElements[0].ueDisplayAverage ?? ueAverage;
 
           // Check if any EC has an eliminatory note
           const hasFailingEC = semDisableEliminatoryNote
             ? false
             : ueElements.some(ec => ec.note < (20 * (semEliminatoryNotePercent / 100)));
 
-          // Determine if UE is validated (average >= 10 AND no eliminatory EC)
-          const isUEValidated = ueAverage >= 10 && !hasFailingEC;
+          // Determine if UE is validated
+          const isUEValidated = ueElements[0].ueForceValidate || (ueAverage >= 10 && !hasFailingEC);
 
           // Apply credits only if UE is validated
           const creditValue = typeof ueCredit === 'number' ? ueCredit :
@@ -1051,7 +1052,7 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
 
           const ueValidatedCredits = isUEValidated ? creditValue : 0;
 
-          html += generateUERowsHTML(currentUECode, ueElements[0].title, ueElements, ueAverage, ueValidatedCredits, isUEValidated);
+          html += generateUERowsHTML(currentUECode, ueElements[0].title, ueElements, ueDisplayAverage, ueValidatedCredits, isUEValidated);
           ueElements = [];
         }
 
@@ -1067,28 +1068,31 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
         name: course.EC_TITRE || '',
         note: course.NOTE || 0,
         ueAverage: course.UE_AVERAGE || 0,
-        session: course.SESSION || 'N/A' // NOUVEAU: Ajouter la session
+        ueDisplayAverage: course.UE_DISPLAY_AVERAGE ?? course.UE_AVERAGE ?? 0,
+        ueForceValidate: course.UE_FORCE_VALIDATE || false,
+        session: course.SESSION || 'N/A'
       });
     });
 
     // Don't forget to output the last UE
     if (ueElements.length > 0) {
-      const ueAverage = ueElements[0].ueAverage;
+      const ueAverage = ueElements[0].ueAverage; // /20 pour validation
+      const ueDisplayAverage = ueElements[0].ueDisplayAverage ?? ueAverage;
 
       // Check if any EC has an eliminatory note
       const hasFailingEC = semDisableEliminatoryNote
         ? false
         : ueElements.some(ec => ec.note < (20 * (semEliminatoryNotePercent / 100)));
 
-      // Determine if UE is validated (average >= 10 AND no eliminatory EC)
-      const isUEValidated = ueAverage >= 10 && !hasFailingEC;
+      // Determine if UE is validated
+      const isUEValidated = ueElements[0].ueForceValidate || (ueAverage >= 10 && !hasFailingEC);
 
       const creditValue = typeof ueCredit === 'number' ? ueCredit :
                          (typeof ueCredit === 'string' ? parseFloat(ueCredit) : 0);
 
       const ueValidatedCredits = isUEValidated ? creditValue : 0;
 
-      html += generateUERowsHTML(currentUECode, ueElements[0].title, ueElements, ueAverage, ueValidatedCredits, isUEValidated);
+      html += generateUERowsHTML(currentUECode, ueElements[0].title, ueElements, ueDisplayAverage, ueValidatedCredits, isUEValidated);
     }
 
     return html;

@@ -1412,7 +1412,7 @@ export const ImportExportExcel: React.FC<ImportExportExcelProps> = ({
               }
             ],
             mergedSemesters: [],
-            displaySessions: true,
+            displaySessions: false,
             sessionDisplayFormat: "short",
             hideSemesterColumn: false
           }

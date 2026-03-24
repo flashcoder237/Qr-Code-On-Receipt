@@ -29,6 +29,7 @@ import {
 } from '@/lib/form-schemas/diploma-theme-settings';
 import { SavedDiplomaTheme } from '@/lib/diploma-generator/types';
 import { Textarea } from '@/components/ui/textarea';
+import { useConfirm } from '@/contexts/ConfirmContext';
 
 interface DiplomaThemeManagerProps {
   currentTheme: DiplomaThemeSettingsPayload;
@@ -41,6 +42,7 @@ export const DiplomaThemeManager: React.FC<DiplomaThemeManagerProps> = ({
   onThemeSelect,
   onPreview,
 }) => {
+  const confirm = useConfirm();
   const [savedThemes, setSavedThemes] = useLocalStorage<SavedDiplomaTheme[]>(
     'diploma-saved-themes',
     []
@@ -104,8 +106,8 @@ export const DiplomaThemeManager: React.FC<DiplomaThemeManagerProps> = ({
   };
 
   // Supprimer un thème
-  const handleDeleteTheme = (themeId: string) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer ce thème ?')) {
+  const handleDeleteTheme = async (themeId: string) => {
+    if (await confirm({ title: "Supprimer le thème", message: "Êtes-vous sûr de vouloir supprimer ce thème ?", variant: "destructive", confirmLabel: "Supprimer" })) {
       setSavedThemes(savedThemes.filter(t => t.id !== themeId));
     }
   };

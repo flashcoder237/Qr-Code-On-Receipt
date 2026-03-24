@@ -152,6 +152,12 @@ export const ATTESTATION_REQUIRED_COLUMNS: ColumnRequirement[] = [
     alternatives: ['date_jury', 'jury_date', 'examination_date', 'jury date', 'date examen']
   },
   {
+    key: 'NUMERO JURY',
+    displayName: 'Numéro du jury',
+    required: false,
+    alternatives: ['numero_jury', 'jury_number', 'no jury', 'n° jury', 'num jury', 'numero jury', 'jury no']
+  },
+  {
     key: 'ANNEE ACADEMIQUE',
     displayName: 'Année académique',
     required: false,

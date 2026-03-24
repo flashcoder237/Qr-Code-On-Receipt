@@ -23,9 +23,12 @@ export interface StudentRecord {
     NOTE: number;
     CREDIT?: number; // Gardé pour compatibilité
     UE_CREDIT?: number; // Crédit de l'UE
-    UE_AVERAGE?: number;
+    UE_AVERAGE?: number;       // Moyenne sur /20 (pour la validation interne)
+    UE_DISPLAY_AVERAGE?: number; // Moyenne sur la base d'affichage (pour le PDF)
+    UE_DISPLAY_BASE?: number;    // Base d'affichage de la moyenne UE (ex: 100)
+    UE_FORCE_VALIDATE?: boolean; // Forcer la validation des crédits (équivalence étrangère)
     UE_ID?: string;
-    SESSION?: string; // NOUVEAU: Ajout du champ session
+    SESSION?: string;
   }
 
   // NOUVEAU: Interface pour les informations de session

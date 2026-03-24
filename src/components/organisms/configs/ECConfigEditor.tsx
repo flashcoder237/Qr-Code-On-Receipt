@@ -569,7 +569,7 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
                 UE_AVERAGE: 0,
                 UE_DISPLAY_BASE: ue.displayBase || 20,
                 SESSION: config.sessionDisplayFormat === 'full' ? 'Normale 2024' : 'N/2024',
-                SHOW_SESSION: config.displaySessions !== false
+                SHOW_SESSION: config.displaySessions === true
               });
             });
           });
@@ -598,7 +598,7 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
             UE_AVERAGE: 0,
             UE_DISPLAY_BASE: ue.displayBase || 20,
             SESSION: config.sessionDisplayFormat === 'full' ? 'Normale 2024' : 'N/2024',
-            SHOW_SESSION: config.displaySessions !== false
+            SHOW_SESSION: config.displaySessions === true
           });
         });
       });
@@ -647,7 +647,7 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
       OPTION: config.option || "",
       COURSES: courses,
       TOTAL_CREDITS: totalCredits,
-      DISPLAY_SESSIONS: config.displaySessions !== false,
+      DISPLAY_SESSIONS: config.displaySessions === true,
       SESSION_FORMAT: config.sessionDisplayFormat || 'short'
     };
   };
@@ -958,7 +958,7 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
               </div>
               <Switch
                 id="session-display-switch"
-                checked={config.displaySessions !== false} // Par défaut true
+                checked={config.displaySessions === true} // Par défaut true
                 onCheckedChange={toggleSessionDisplay}
               />
             </div>
@@ -982,7 +982,7 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
             </div>
 
             {/* Format d'affichage des sessions */}
-            {config.displaySessions !== false && (
+            {config.displaySessions === true && (
               <div className="p-4 bg-white rounded-lg border">
                 <div className="space-y-3">
                   <Label className="text-sm font-medium">Format d'affichage</Label>
@@ -1025,7 +1025,7 @@ export const ECConfigEditor: React.FC<ECConfigEditorProps> = ({
                 <span className="text-sm font-medium text-gray-700">Aperçu d'affichage</span>
               </div>
               <div className="space-y-1 text-xs">
-                {config.displaySessions !== false ? (
+                {config.displaySessions === true ? (
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-gray-600">Session normale :</span>

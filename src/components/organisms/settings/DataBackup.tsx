@@ -19,6 +19,7 @@ import {
   Calendar
 } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
+import { useConfirm } from "@/contexts/ConfirmContext";
 
 interface BackupSettings {
   autoBackupEnabled: boolean;
@@ -32,6 +33,7 @@ const defaultBackupSettings: BackupSettings = {
 };
 
 export const DataBackup: React.FC = () => {
+  const confirm = useConfirm();
   const [backupSettings, setBackupSettings] = useLocalStorage<BackupSettings>(
     "backup-settings",
     defaultBackupSettings
@@ -133,11 +135,12 @@ export const DataBackup: React.FC = () => {
       }
 
       // Demander confirmation avant d'écraser les données
-      const confirmImport = window.confirm(
-        "⚠️ ATTENTION: Cette action remplacera toutes les données actuelles de l'application.\n\n" +
-        "Êtes-vous sûr de vouloir continuer?\n\n" +
-        "Conseil: Exportez d'abord vos données actuelles comme sauvegarde de sécurité."
-      );
+      const confirmImport = await confirm({
+        title: "⚠️ Attention — Remplacement des données",
+        message: "Cette action remplacera toutes les données actuelles de l'application. Êtes-vous sûr de vouloir continuer ? Conseil : exportez d'abord vos données actuelles comme sauvegarde de sécurité.",
+        variant: "destructive",
+        confirmLabel: "Remplacer",
+      });
 
       if (!confirmImport) {
         setImportStatus("idle");

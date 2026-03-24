@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Save, FileDown, Upload, BookmarkPlus, Bookmark, Trash, List, CheckCircle, Clock } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { useNotifications } from "@/components/ui/notification-system";
+import { useConfirm } from "@/contexts/ConfirmContext";
 
 interface EC {
   id: string;
@@ -54,6 +55,7 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
   onAutoMapECs
 }) => {
   const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotifications();
+  const confirm = useConfirm();
 
   // État pour gérer les mappings sauvegardés
   const [savedMappings, setSavedMappings] = useLocalStorage<SavedMapping[]>(
@@ -145,7 +147,7 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
   }, [columnMapping, initialSetupComplete]);
 
   // Fonction pour sauvegarder le mapping actuel
-  const saveCurrentMapping = () => {
+  const saveCurrentMapping = async () => {
     if (!newMappingName.trim()) {
       setError("Veuillez entrer un nom pour ce mapping");
       return;
@@ -164,7 +166,7 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
     );
 
     if (mappingExists) {
-      if (!confirm(`Un mapping avec le nom "${newMappingName}" existe déjà. Voulez-vous le remplacer?`)) {
+      if (!await confirm({ title: "Mapping existant", message: `Un mapping avec le nom "${newMappingName}" existe déjà. Voulez-vous le remplacer ?`, confirmLabel: "Remplacer" })) {
         return;
       }
       
@@ -243,8 +245,8 @@ export const ColumnMappingEditor: React.FC<ColumnMappingEditorProps> = ({
   };
 
   // Fonction pour supprimer un mapping sauvegardé
-  const deleteMapping = (mappingId: string) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer ce mapping?")) {
+  const deleteMapping = async (mappingId: string) => {
+    if (await confirm({ title: "Supprimer le mapping", message: "Êtes-vous sûr de vouloir supprimer ce mapping ?", variant: "destructive", confirmLabel: "Supprimer" })) {
       setSavedMappings(savedMappings.filter(m => m.id !== mappingId));
     }
   };

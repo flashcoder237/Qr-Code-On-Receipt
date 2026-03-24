@@ -881,7 +881,7 @@ export const ReleveGenerator: React.FC = () => {
             
             // NOUVEAU: Formater la session selon la configuration
             let sessionDisplay = 'N/A';
-            if (sessionInfo && currentConfig.displaySessions !== false) {
+            if (sessionInfo && currentConfig.displaySessions === true) {
               const format = currentConfig.sessionDisplayFormat || 'short';
               if (format === 'full') {
                 // Format complet: "Normale 2024", "Rattrapage 2024"
@@ -909,7 +909,7 @@ export const ReleveGenerator: React.FC = () => {
               UE_AVERAGE: 0, // Sera calculé plus tard
               UE_DISPLAY_BASE: ue.displayBase || 20, // NOUVEAU: Base d'affichage de l'UE
               SESSION: sessionDisplay, // NOUVEAU: Session formatée selon la configuration
-              SHOW_SESSION: currentConfig.displaySessions !== false // NOUVEAU: Indicateur pour le template
+              SHOW_SESSION: currentConfig.displaySessions === true // NOUVEAU: Indicateur pour le template
             });
             
             // Stocker les données pour le calcul de moyenne pondérée
@@ -1017,7 +1017,7 @@ export const ReleveGenerator: React.FC = () => {
       COURSES: courses,
       TOTAL_CREDITS: totalCreditsRequired, // NOUVEAU: Utiliser les crédits configurés
       // NOUVEAU: Paramètres d'affichage des sessions
-      DISPLAY_SESSIONS: currentConfig.displaySessions !== false,
+      DISPLAY_SESSIONS: currentConfig.displaySessions === true,
       SESSION_FORMAT: currentConfig.sessionDisplayFormat || 'short'
     };
 
@@ -1096,7 +1096,7 @@ export const ReleveGenerator: React.FC = () => {
             OPTION: currentConfig.option || "",
             COURSES: [],
             TOTAL_CREDITS: semester.creditsRequired || 30,
-            DISPLAY_SESSIONS: currentConfig.displaySessions !== false,
+            DISPLAY_SESSIONS: currentConfig.displaySessions === true,
             SESSION_FORMAT: currentConfig.sessionDisplayFormat || 'short'
           };
 

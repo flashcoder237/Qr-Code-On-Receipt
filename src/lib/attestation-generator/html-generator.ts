@@ -943,12 +943,12 @@ export async function generateAttestationHTML(
                 <p>Né(e) le: <strong>${birthDate}</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;à&nbsp;<strong>${birthPlace}</strong><br>
                 ${theme.showBilingualText ? '<em>Born on: <strong style="opacity:0">' + birthDate + '</strong></em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>at:</em>' : ''}</p>
                 
-                <p id="to-hidden">Inscrit(e) à <strong>La ${settings.nameFrench}</strong> sous le matricule: <strong>${matricule}</strong><br>
+                <p id="to-hidden">Inscrit(e) à <strong> ${settings.nameFrench}</strong> sous le matricule: <strong>${matricule}</strong><br>
                 ${theme.showBilingualText ? `<em>Registered at the <strong>${settings.nameEnglish}</strong> under the matricule number:</em>` : ''}</p>
 
                 <p id="to-nothidden">${niveau && niveau.trim() !== '' && niveau.trim().toUpperCase() !== 'N/D'
                   ? `A subi avec succès toutes les épreuves de : <strong>${cycle.toUpperCase()} ${niveau.trim()}</strong> en <strong>${course.toUpperCase()}</strong>`
-                  : `A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase() + (settings.establishmentType === "ipes" ? " PROFESSIONNEL" : "")}</strong> en <strong>${course.toUpperCase()}</strong>`}<br>
+                  : `A subi avec succès toutes les épreuves du cursus sanctionnant la fin du Cycle de : <strong>${cycle.toUpperCase() + (settings.establishmentType === "ipes" ? (cycle.toLowerCase().includes("licence") ? " PROFESSIONNELLE" : " PROFESSIONNEL") : "")}</strong> en <strong>${course.toUpperCase()}</strong>`}<br>
                 ${theme.showBilingualText ? (niveau && niveau.trim() !== '' && niveau.trim().toUpperCase() !== 'N/D'
                   ? `<em>Having successfully passed all examinations for: </em>`
                   : `<em>Having successfully fulfilled the requirements qualifying for the : </em>`) : ''}</p>

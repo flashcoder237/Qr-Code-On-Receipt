@@ -472,7 +472,7 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
         COURSES: [],
         TOTAL_CREDITS: semester.creditsRequired || 30,
         // IMPORTANT: Utiliser les configurations de la classe
-        DISPLAY_SESSIONS: config.displaySessions !== false, // Par défaut true
+        DISPLAY_SESSIONS: config.displaySessions === true, // Par défaut true
         SESSION_FORMAT: config.sessionDisplayFormat || 'short'
       };
 
@@ -490,7 +490,7 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
 
           // Formater la session selon la configuration de la classe
           let sessionDisplay = '';
-          if (config.displaySessions !== false) {
+          if (config.displaySessions === true) {
             const sessionFormat = config.sessionDisplayFormat || 'short';
             if (sessionFormat === 'full') {
               sessionDisplay = 'Normale 2024';
@@ -513,7 +513,7 @@ export const ClassDetail: React.FC<ClassDetailProps> = ({
             UE_AVERAGE: 0,
             UE_DISPLAY_BASE: ue.displayBase || 20,
             SESSION: sessionDisplay,
-            SHOW_SESSION: config.displaySessions !== false
+            SHOW_SESSION: config.displaySessions === true
           });
         });
 

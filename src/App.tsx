@@ -15,6 +15,7 @@ import { useLicense } from "@/hooks/use-license";
 import { LicenseForm } from "@/components/organisms/license-form/LicenseForm";
 import { Spinner } from "@/components/ui/LoadingSpinner";
 import { NotificationProvider } from "./components/ui/notification-system";
+import { ConfirmProvider } from "./contexts/ConfirmContext";
 import { useAutoBackup } from "@/hooks/useAutoBackup";
 
 // Contexte pour la gestion d'état globale
@@ -178,6 +179,7 @@ const AppContent: React.FC = () => {
   // Interface principale de l'application
   return (
     <AppContext.Provider value={{ isLoading, setIsLoading, refreshData, isDemoMode }}>
+      <ConfirmProvider>
       <NotificationProvider>
         <AppToolbarProvider>
           <SidebarProvider defaultOpen>
@@ -263,6 +265,7 @@ const AppContent: React.FC = () => {
           </SidebarProvider>
         </AppToolbarProvider>
       </NotificationProvider>
+      </ConfirmProvider>
     </AppContext.Provider>
   );
 };

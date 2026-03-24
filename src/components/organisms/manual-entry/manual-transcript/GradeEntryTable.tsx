@@ -22,6 +22,7 @@ import {
   Collapsible,
   CollapsibleContent,
 } from "@/components/ui/collapsible";
+import { Switch } from "@/components/ui/switch";
 import {
   BookOpen,
   Plus,
@@ -33,6 +34,7 @@ import {
 import { Semester } from "@/components/organisms/configs/types";
 import { ManualTranscriptFormValues } from "../shared/manual-entry-schemas";
 import { calculateUEAverage } from "@/lib/helpers/grades";
+import { useConfirm } from "@/contexts/ConfirmContext";
 
 interface GradeEntryTableProps {
   semester: Semester;
@@ -65,6 +67,7 @@ const UEBlock: React.FC<UEBlockProps> = ({
   canRemove,
 }) => {
   const [editOpen, setEditOpen] = useState(false);
+  const confirm = useConfirm();
 
   const ueData = useWatch({
     control,
@@ -105,7 +108,9 @@ const UEBlock: React.FC<UEBlockProps> = ({
     if (!ecsWithNotes || ecsWithNotes.length === 0) return null;
 
     const result = calculateUEAverage(ecsWithNotes);
-    return result.displayAverage;
+    // Convertir la moyenne /20 vers la base d'affichage de l'UE
+    const ueDisplayBase = ueData?.displayBase || 20;
+    return (result.average * ueDisplayBase) / 20;
   }, [ueData]);
 
   const displayBase = ueData?.displayBase || 20;
@@ -138,9 +143,18 @@ const UEBlock: React.FC<UEBlockProps> = ({
           <Badge variant="outline" className="text-xs">
             {ueCredits} credits
           </Badge>
+          {ueData?.forceValidateCredits && (
+            <Badge variant="secondary" className="text-xs">
+              Équiv.
+            </Badge>
+          )}
           {ueAverage !== null && (
             <Badge
-              variant={ueAverage >= displayBase / 2 ? "default" : "destructive"}
+              variant={
+                ueData?.forceValidateCredits || ueAverage >= displayBase / 2
+                  ? "default"
+                  : "destructive"
+              }
               className="text-xs"
             >
               Moy: {ueAverage.toFixed(2)}/{displayBase}
@@ -162,7 +176,15 @@ const UEBlock: React.FC<UEBlockProps> = ({
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-              onClick={onRemoveUE}
+              onClick={async () => {
+                const ok = await confirm({
+                  title: "Supprimer l'UE",
+                  message: `Supprimer "${ueData?.ueName || "cette UE"}" et tous ses ECs ?`,
+                  variant: "destructive",
+                  confirmLabel: "Supprimer",
+                });
+                if (ok) onRemoveUE();
+              }}
               title="Supprimer l'UE"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -210,6 +232,20 @@ const UEBlock: React.FC<UEBlockProps> = ({
                   className="h-8 text-xs"
                   {...register(`ues.${ueIndex}.displayBase`, { valueAsNumber: true })}
                 />
+              </div>
+            </div>
+            <div className="flex items-center gap-3 pt-1">
+              <Switch
+                checked={ueData?.forceValidateCredits === true}
+                onCheckedChange={(v) =>
+                  setValue(`ues.${ueIndex}.forceValidateCredits`, v)
+                }
+              />
+              <div>
+                <Label className="text-xs font-medium">Crédits validés (équivalence / étranger)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Force la validation des crédits quelle que soit la note
+                </p>
               </div>
             </div>
           </div>
@@ -324,6 +360,7 @@ const ECRow: React.FC<ECRowProps> = ({
   onRemove,
 }) => {
   const [expanded, setExpanded] = useState(false);
+  const confirm = useConfirm();
 
   const ecData = useWatch({
     control,
@@ -373,7 +410,15 @@ const ECRow: React.FC<ECRowProps> = ({
             variant="ghost"
             size="sm"
             className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-destructive"
-            onClick={onRemove}
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Supprimer l'EC",
+                message: `Supprimer "${ecData?.ecName || `EC ${ecIndex + 1}`}" ?`,
+                variant: "destructive",
+                confirmLabel: "Supprimer",
+              });
+              if (ok) onRemove();
+            }}
             title="Supprimer l'EC"
           >
             <Trash2 className="h-3 w-3" />
@@ -441,6 +486,7 @@ export const GradeEntryTable: React.FC<GradeEntryTableProps> = ({
       useExcelAverage: false,
       ueAverageManual: undefined,
       displayBase: 20,
+      forceValidateCredits: false,
       ecs: [
         {
           ecId: crypto.randomUUID(),

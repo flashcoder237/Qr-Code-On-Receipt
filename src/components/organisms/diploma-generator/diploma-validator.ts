@@ -49,14 +49,41 @@ function isEmpty(value: any): boolean {
   return false;
 }
 
+const DEFAULT_MIN_MOYENNE = 10;
+
+/**
+ * Lit le seuil minimum de moyenne depuis localStorage (configurable par l'utilisateur)
+ */
+export function getMinMoyenneThreshold(): number {
+  try {
+    const stored = localStorage.getItem('diploma-min-moyenne');
+    if (stored) {
+      const parsed = parseFloat(stored);
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 20) return parsed;
+    }
+  } catch {}
+  return DEFAULT_MIN_MOYENNE;
+}
+
+/**
+ * Sauvegarde le seuil minimum de moyenne dans localStorage
+ */
+export function setMinMoyenneThreshold(value: number) {
+  localStorage.setItem('diploma-min-moyenne', String(value));
+}
+
 /**
  * Valide un diplôme et détermine s'il peut être généré
  *
  * Critères de génération :
  * 1. Tous les champs obligatoires doivent être remplis
- * 2. La moyenne doit être >= 10
+ * 2. La moyenne doit être >= minMoyenne (défaut: 10, configurable)
  */
-export function validateDiploma(student: DiplomaStudentRecord): DiplomaValidationResult {
+export function validateDiploma(
+  student: DiplomaStudentRecord,
+  minMoyenne?: number
+): DiplomaValidationResult {
+  const threshold = minMoyenne ?? getMinMoyenneThreshold();
   const issues: ValidationIssue[] = [];
 
   // Vérifier les champs obligatoires
@@ -82,9 +109,9 @@ export function validateDiploma(student: DiplomaStudentRecord): DiplomaValidatio
   if (issues.length > 0) {
     canGenerate = false;
     reason = `Données incomplètes: ${issues.length} champ(s) manquant(s)`;
-  } else if (isNaN(moyenne) || moyenne < 10) {
+  } else if (isNaN(moyenne) || moyenne < threshold) {
     canGenerate = false;
-    reason = `Moyenne insuffisante: ${moyenne.toFixed(2)} (minimum requis: 10.00)`;
+    reason = `Moyenne insuffisante: ${moyenne.toFixed(2)} (minimum requis: ${threshold.toFixed(2)})`;
   }
 
   return {

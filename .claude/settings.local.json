@@ -25,7 +25,10 @@
       "Bash(\"C:/Users/tefba/.local/bin/mcp-server-git.exe\" --help)",
       "Bash(find \"C:\\\\Users\\\\tefba\\\\Documents\\\\FMSP\\\\DIPLOMATION\\\\src\" -name \"*.ts\" -o -name \"*.tsx\" | xargs grep -l \"TOTAL_CREDITS\" 2>/dev/null)",
       "Bash(head:*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(grep -v \"//.*alert\\(\")",
+      "Bash(echo \"Résultat: $?\")",
+      "Bash(grep -v \"^$\")"
     ],
     "deny": []
   },

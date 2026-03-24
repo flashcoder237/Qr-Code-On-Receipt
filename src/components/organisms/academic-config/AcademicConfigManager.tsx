@@ -19,8 +19,10 @@ import { ClassConfig, Semester, UE, EC } from "@/components/organisms/configs/ty
 import { LOCAL_STORAGE_KEY, getDefaultAcademicYear, isConfigDuplicate } from "@/components/organisms/configs/utils";
 import { ImportExportExcel } from "@/components/organisms/configs/import-export";
 import { motion, AnimatePresence } from "framer-motion";
+import { useConfirm } from "@/contexts/ConfirmContext";
 
 export const AcademicConfigManager: React.FC = () => {
+  const confirm = useConfirm();
   const [configs, setConfigs] = useLocalStorage<ClassConfig[]>(LOCAL_STORAGE_KEY, []);
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -155,8 +157,8 @@ export const AcademicConfigManager: React.FC = () => {
     setTimeout(() => setSuccess(null), 3000);
   };
 
-  const deleteConfig = (id: string) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette configuration ?")) {
+  const deleteConfig = async (id: string) => {
+    if (await confirm({ title: "Supprimer la configuration", message: "Êtes-vous sûr de vouloir supprimer cette configuration ?", variant: "destructive", confirmLabel: "Supprimer" })) {
       setConfigs(configs.filter((cfg) => cfg.id !== id));
       if (selectedConfigId === id) setSelectedConfigId(null);
       setError(null);
@@ -208,9 +210,9 @@ export const AcademicConfigManager: React.FC = () => {
     );
   };
 
-  const deleteSemester = (semesterId: string) => {
+  const deleteSemester = async (semesterId: string) => {
     if (!selectedConfigId) return;
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce semestre ?")) {
+    if (await confirm({ title: "Supprimer le semestre", message: "Êtes-vous sûr de vouloir supprimer ce semestre ?", variant: "destructive", confirmLabel: "Supprimer" })) {
       setConfigs(
         configs.map((cfg) => {
           if (cfg.id !== selectedConfigId) return cfg;
@@ -437,9 +439,9 @@ export const AcademicConfigManager: React.FC = () => {
     );
   };
 
-  const deleteUE = (semesterId: string, ueId: string) => {
+  const deleteUE = async (semesterId: string, ueId: string) => {
     if (!selectedConfigId) return;
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette UE ?")) {
+    if (await confirm({ title: "Supprimer l'UE", message: "Êtes-vous sûr de vouloir supprimer cette UE ?", variant: "destructive", confirmLabel: "Supprimer" })) {
       setConfigs(
         configs.map((cfg) => {
           if (cfg.id !== selectedConfigId) return cfg;
@@ -511,9 +513,9 @@ export const AcademicConfigManager: React.FC = () => {
     );
   };
 
-  const deleteEC = (semesterId: string, ueId: string, ecId: string) => {
+  const deleteEC = async (semesterId: string, ueId: string, ecId: string) => {
     if (!selectedConfigId) return;
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer cet EC ?")) {
+    if (await confirm({ title: "Supprimer l'EC", message: "Êtes-vous sûr de vouloir supprimer cet EC ?", variant: "destructive", confirmLabel: "Supprimer" })) {
       setConfigs(
         configs.map((cfg) => {
           if (cfg.id !== selectedConfigId) return cfg;

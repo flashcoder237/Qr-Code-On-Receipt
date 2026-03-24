@@ -54,7 +54,7 @@ export interface ClassConfig {
   centreId?: string; // NOUVEAU: ID du centre de formation associé (optionnel)
   semesters: Semester[];
   mergedSemesters?: MergedSemesterConfig[]; // Configurations de semestres fusionnés
-  displaySessions?: boolean; // Afficher les sessions sur les relevés (défaut: true)
+  displaySessions?: boolean; // Afficher les sessions sur les relevés (défaut: false)
   sessionDisplayFormat?: 'short' | 'full'; // Format d'affichage des sessions (défaut: 'short')
   hideSemesterColumn?: boolean; // Masquer la colonne semestre dans les décisions (défaut: false)
   ignoreCreditsInAverage?: boolean; // Calculer la moyenne sans pondération par les crédits (défaut: false)

@@ -11,9 +11,11 @@ import { Centre, createNewCentre } from '@/lib/form-schemas/centre-settings';
 import { CentreList } from './CentreList';
 import { CentreDetail } from './CentreDetail';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/contexts/ConfirmContext';
 
 export const CentreManager: React.FC = () => {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [centres, setCentres] = useLocalStorage<Centre[]>('training-centres', []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('list');
@@ -44,11 +46,11 @@ export const CentreManager: React.FC = () => {
   };
 
   // Supprimer un centre
-  const handleDeleteCentre = (id: string) => {
+  const handleDeleteCentre = async (id: string) => {
     const centre = centres.find(c => c.id === id);
     if (!centre) return;
 
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer le centre "${centre.nameFrench}" ?`)) {
+    if (await confirm({ title: "Supprimer le centre", message: `Êtes-vous sûr de vouloir supprimer le centre "${centre.nameFrench}" ?`, variant: "destructive", confirmLabel: "Supprimer" })) {
       setCentres(centres.filter(c => c.id !== id));
 
       if (selectedId === id) {

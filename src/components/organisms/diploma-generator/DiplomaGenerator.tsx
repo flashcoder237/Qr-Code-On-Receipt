@@ -35,8 +35,10 @@ import { generateDiplomaHTML } from '@/lib/diploma-generator/html-generator';
 import { FileUploader } from '../receipts/components/FileUploader';
 import { useDocumentHistory } from '../document-history/DocumentHistoryManager';
 import { StudentSelector } from '../student-selector/StudentSelector';
+import { useConfirm } from '@/contexts/ConfirmContext';
 
 export const DiplomaGenerator: React.FC = () => {
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState<"generator" | "theme" | "manager">("generator");
 
   // Hook pour l'historique des documents
@@ -416,8 +418,8 @@ export const DiplomaGenerator: React.FC = () => {
   };
 
   // Reset du thème
-  const handleResetTheme = () => {
-    if (confirm('Êtes-vous sûr de vouloir réinitialiser le thème au défaut ?')) {
+  const handleResetTheme = async () => {
+    if (await confirm({ title: "Réinitialiser le thème", message: "Êtes-vous sûr de vouloir réinitialiser le thème au défaut ?", confirmLabel: "Réinitialiser" })) {
       setDiplomaTheme(defaultDiplomaTheme);
     }
   };

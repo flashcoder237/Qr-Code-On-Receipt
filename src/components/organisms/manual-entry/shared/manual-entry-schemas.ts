@@ -30,6 +30,7 @@ export const ueGradeSchema = z.object({
   useExcelAverage: z.boolean().optional().default(false),
   ueAverageManual: z.union([z.number(), z.string()]).optional(),
   displayBase: z.number().optional().default(20),
+  forceValidateCredits: z.boolean().optional().default(false),
   ecs: z.array(ecGradeSchema),
   session: z.object({
     type: z.enum(["N", "R"]).default("N"),

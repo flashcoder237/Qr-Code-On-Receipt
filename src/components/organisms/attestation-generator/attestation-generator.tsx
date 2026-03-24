@@ -224,6 +224,7 @@ export const AttestationGenerator: React.FC = () => {
           MENTION: row.MENTION || calculateMention(parseFloat(String(row.MOYENNE)) || 0, row.PARCOURS, row.NIVEAU),
           "ANNEE ACADEMIQUE": row["ANNEE ACADEMIQUE"] || getCurrentAcademicYear(),
           "DATE JURY": row["DATE JURY"] || 'N/D',
+          "NUMERO JURY": row["NUMERO JURY"] || 'N/D',
           "FINALITE": row.FINALITE || 'N/D',
           "TOTAL CREDIT": row["TOTAL CREDIT"] || '60',
           "DOMAINE": row.DOMAINE || 'SCIENCES MEDICO-SANITAIRES',
