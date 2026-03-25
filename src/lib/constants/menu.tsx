@@ -17,6 +17,8 @@ import { CentreAttestationGenerator } from '@/components/organisms/centre-attest
 import { ManualTranscriptEntry } from '@/components/organisms/manual-entry/manual-transcript';
 import { ManualAttestationEntry } from '@/components/organisms/manual-entry/manual-attestation';
 import { ManualDiplomaEntry } from '@/components/organisms/manual-entry/manual-diploma';
+import { GradesManagerImport } from '@/components/organisms/grades-manager-import/GradesManagerImport';
+import { ExtraDocumentParams } from '@/components/organisms/extra-document-params/ExtraDocumentParams';
 import {
   Download,
   HelpCircle,
@@ -39,7 +41,9 @@ import {
   Folders,
   PenLine,
   FileSignature,
-  FilePen
+  FilePen,
+  Link2,
+  SlidersHorizontal
 } from "lucide-react";
 
 interface MenuItem {
@@ -122,6 +126,13 @@ const menuItems: MenuItem[] = [
     description: "Télécharger les modèles d'import Excel"
   },
   {
+    title: "Params Documents",
+    url: "extra-document-params",
+    icon: SlidersHorizontal,
+    component: <ExtraDocumentParams />,
+    description: "Signature, sceau et paramètres locaux",
+  },
+  {
     title: "Configurer les entêtes",
     url: "settings",
     icon: Cog,
@@ -151,6 +162,13 @@ const menuItems: MenuItem[] = [
     url: "help",
     icon: HelpCircle,
     component: <HelpSupport />,
+  },
+  {
+    title: "Import Grades Manager",
+    url: "grades-manager-import",
+    icon: Link2,
+    component: <GradesManagerImport />,
+    description: "Importer les données depuis le système de notes",
   },
   {
     title: "Paramètres",
@@ -211,6 +229,13 @@ const menuGroups: MenuGroup[] = [
         component: <ManualDiplomaEntry />,
         requiresFaculty: true,
       },
+      {
+        title: "Import Grades Manager",
+        url: "grades-manager-import",
+        icon: Link2,
+        component: <GradesManagerImport />,
+        description: "Importer les données depuis le système de notes",
+      },
     ]
   },
   {
@@ -241,6 +266,13 @@ const menuGroups: MenuGroup[] = [
         icon: FileDown,
         component: <TemplateExportMenu />,
         description: "Télécharger les modèles d'import Excel"
+      },
+      {
+        title: "Params Documents",
+        url: "extra-document-params",
+        icon: SlidersHorizontal,
+        component: <ExtraDocumentParams />,
+        description: "Signature, sceau et paramètres locaux pour la génération",
       },
     ]
   },

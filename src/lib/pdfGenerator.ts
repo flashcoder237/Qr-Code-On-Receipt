@@ -660,10 +660,11 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
 
 
   const ueAverage = course.UE_AVERAGE || 0;
+  const ueForceValidate = course.UE_FORCE_VALIDATE || false;
   const hasFailingEC = semDisableEliminatoryNote
     ? false
     : ecNotes.some(ec => ec.NOTE < (ec.NOTE_BASE * (semEliminatoryNotePercent / 100)));
-  const isUEValidated = ueAverage >= 10 && !hasFailingEC;
+  const isUEValidated = ueForceValidate || (ueAverage >= 10 && !hasFailingEC);
 
   // Stocker si l'UE est validée ou non et ses informations
   ueValidatedCredits.set(ueCode, {
@@ -685,10 +686,11 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
       if (!ueValidatedCreditsLocal.has(ueCode)) {
         const ecNotes = courses.filter(c => c.CODE === ueCode);
         const ueAverage = course.UE_AVERAGE || 0;
+        const ueForceValidateLocal = course.UE_FORCE_VALIDATE || false;
         const hasFailingEC = semDisableEliminatoryNote
           ? false
           : ecNotes.some(ec => ec.NOTE < (ec.NOTE_BASE * (semEliminatoryNotePercent / 100)));
-        const isUEValidated = ueAverage >= 10 && !hasFailingEC;
+        const isUEValidated = ueForceValidateLocal || (ueAverage >= 10 && !hasFailingEC);
 
         ueValidatedCreditsLocal.set(ueCode, {
           isValidated: isUEValidated,
@@ -730,7 +732,8 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
     }
     const mgp = calculateMGP(semesterAverage);
     const grade = getGradeFromAverage(semesterAverage);
-    const isEnoughCredits = totalCreditsValidated >= totalCredits;
+    const isEnoughCredits = semesterAverage >= 10;
+    if (isEnoughCredits) totalCreditsValidated = totalCredits;
     const decision = isEnoughCredits ? "VALIDÉ" : "NON VALIDÉ";
 
     return {
@@ -780,9 +783,10 @@ async function createTranscriptHTML({ student, settings, config }: GeneratePDFPa
   const mgp = calculateMGP(semesterAverage);
   const grade = getGradeFromAverage(semesterAverage);
 
-  // Un semestre est validé si on obtient au moins 70% des crédits (règle LMD standard)
-  // ou selon la règle spécifique de l'institution
-  const isEnoughCredits = totalCreditsValidated >= (totalSemesterCredits);
+  // Système de compensation LMD : si la moyenne >= 10, le semestre est validé
+  // et TOUS les crédits du semestre sont acquis (compensation des UE sous la moyenne)
+  const isEnoughCredits = semesterAverage >= 10;
+  if (isEnoughCredits) totalCreditsValidated = totalSemesterCredits;
   const decision = isEnoughCredits ? "SEMESTRE VALIDE" : "SEMESTRE NON VALIDE";
 
   // NOUVEAU: Générer le QR code avec chiffrement compact si activé

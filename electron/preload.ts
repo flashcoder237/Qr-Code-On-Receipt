@@ -84,6 +84,37 @@ contextBridge.exposeInMainWorld('fs', {
   }
 });
 
+// Grades Manager integration
+contextBridge.exposeInMainWorld('gradesManager', {
+  saveConfig: (config: any) => ipcRenderer.invoke('grades-manager:save-config', config),
+  getConfig: () => ipcRenderer.invoke('grades-manager:get-config'),
+  savePDF: (outputPath: string, pdfBuffer: Uint8Array) =>
+    ipcRenderer.invoke('grades-manager:save-pdf', { outputPath, pdfBuffer }),
+  saveManifest: (manifestPath: string, manifest: any) =>
+    ipcRenderer.invoke('grades-manager:save-manifest', { manifestPath, manifest }),
+  saveAcademicConfigs: (configs: any[]) =>
+    ipcRenderer.invoke('grades-manager:save-academic-configs', configs),
+  browseFile: (options: { filters?: Array<{ name: string; extensions: string[] }> }) =>
+    ipcRenderer.invoke('grades-manager:browse-file', options),
+  browseDirectory: () => ipcRenderer.invoke('grades-manager:browse-directory'),
+  getLocalIPs: () => ipcRenderer.invoke('grades-manager:get-local-ips'),
+  onDeliberationSigned: (callback: (payload: any) => void) => {
+    const handler = (_event: any, payload: any) => callback(payload);
+    ipcRenderer.on('grades-manager:deliberation-signed', handler);
+    return () => ipcRenderer.removeListener('grades-manager:deliberation-signed', handler);
+  },
+  onSemesterLocked: (callback: (payload: any) => void) => {
+    const handler = (_event: any, payload: any) => callback(payload);
+    ipcRenderer.on('grades-manager:semester-locked', handler);
+    return () => ipcRenderer.removeListener('grades-manager:semester-locked', handler);
+  },
+  onAutoGenerationProgress: (callback: (data: { type: string; current: number; total: number; studentName: string }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('grades-manager:auto-generation-progress', handler);
+    return () => ipcRenderer.removeListener('grades-manager:auto-generation-progress', handler);
+  },
+});
+
 // Extension pour le rendu de l'historique des documents en PDF
 contextBridge.exposeInMainWorld('electron', {
   async renderHistoryPDF(htmlContent: string) {

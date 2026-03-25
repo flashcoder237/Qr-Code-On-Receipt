@@ -6,6 +6,8 @@ import fs from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { setupPDFGenerationHandlers } from "../src/lib/pdfGenerator";
 import os from "node:os";
+import { startWebhookListener } from "./webhook-listener";
+import Store from "electron-store";
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -52,6 +54,9 @@ function createWindow() {
 
   // Setup basic file system handlers
   setupFileSystemHandlers();
+
+  // Setup grades-manager IPC handlers
+  setupGradesManagerHandlers();
 
   // Test active push message to Renderer-process.
   win.webContents.on("did-finish-load", () => {
@@ -122,6 +127,72 @@ function setupFileSystemHandlers() {
       console.error('Erreur lors de la lecture du fichier:', error);
       throw error;
     }
+  });
+}
+
+// Setup grades-manager IPC handlers
+function setupGradesManagerHandlers() {
+  ipcMain.handle('grades-manager:save-config', async (_, config: any) => {
+    const store = new Store();
+    store.set('gradesManagerConfig', config);
+    return { ok: true };
+  });
+
+  ipcMain.handle('grades-manager:get-config', async () => {
+    const store = new Store();
+    return store.get('gradesManagerConfig') ?? null;
+  });
+
+  ipcMain.handle('grades-manager:save-pdf', async (_, { outputPath, pdfBuffer }: { outputPath: string; pdfBuffer: Uint8Array }) => {
+    const dir = path.dirname(outputPath);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(outputPath, Buffer.from(pdfBuffer));
+    return { ok: true, path: outputPath };
+  });
+
+  ipcMain.handle('grades-manager:save-manifest', async (_, { manifestPath, manifest }: { manifestPath: string; manifest: any }) => {
+    const dir = path.dirname(manifestPath);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
+    return { ok: true };
+  });
+
+  ipcMain.handle('grades-manager:save-academic-configs', async (_, configs: any[]) => {
+    const store = new Store();
+    const existing: any[] = (store.get('academicConfigs') as any[]) ?? [];
+    // Upsert by id — keep manual ones, overwrite _source=grades-manager
+    const manual = existing.filter((c: any) => c._source !== 'grades-manager');
+    store.set('academicConfigs', [...manual, ...configs]);
+    return { ok: true };
+  });
+
+  ipcMain.handle('grades-manager:browse-file', async (_, options: { filters?: any[] }) => {
+    const { dialog } = await import('electron');
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: options?.filters,
+    });
+    return result.canceled ? null : result.filePaths[0];
+  });
+
+  ipcMain.handle('grades-manager:browse-directory', async () => {
+    const { dialog } = await import('electron');
+    const result = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] });
+    return result.canceled ? null : result.filePaths[0];
+  });
+
+  ipcMain.handle('grades-manager:get-local-ips', async () => {
+    const interfaces = os.networkInterfaces();
+    const ips: string[] = [];
+    for (const iface of Object.values(interfaces)) {
+      if (!iface) continue;
+      for (const addr of iface) {
+        if (addr.family === 'IPv4' && !addr.internal) {
+          ips.push(addr.address);
+        }
+      }
+    }
+    return ips;
   });
 }
 
@@ -465,9 +536,18 @@ app.whenReady().then(async () => {
 
     // Créer la fenêtre principale
     createWindow();
-    
-    
-    
+
+    // Start webhook listener if configured
+    const store = new Store();
+    const gradesManagerConfig = store.get('gradesManagerConfig') as any;
+    if (gradesManagerConfig?.webhookListenPort && gradesManagerConfig?.apiKey && win) {
+      startWebhookListener(
+        gradesManagerConfig.webhookListenPort,
+        gradesManagerConfig.webhookSecret ?? "",
+        win,
+      );
+    }
+
   } catch (error) {
     console.error('❌ Erreur lors de l\'initialisation:', error);
     app.quit();

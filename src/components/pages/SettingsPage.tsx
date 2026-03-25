@@ -12,11 +12,13 @@ import {
   Key,
   Building,
   Palette,
-  Database
+  Database,
+  Link2
 } from 'lucide-react';
 import { DemoModeManager } from '@/components/organisms/demo-mode-manager/DemoModeManager';
 import { UserProfile } from '@/components/organisms/settings/UserProfile';
 import { DataBackup } from '@/components/organisms/settings/DataBackup';
+import { GradesManagerSettings } from '@/components/organisms/grades-manager-settings/GradesManagerSettings';
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('profile');
@@ -52,6 +54,12 @@ export const SettingsPage: React.FC = () => {
       label: 'Sécurité',
       icon: Shield,
       available: !isDemoMode // Désactivé en mode démo
+    },
+    {
+      id: 'grades-manager',
+      label: 'Grades Manager',
+      icon: Link2,
+      available: true
     }
   ].filter(tab => tab.available);
 
@@ -93,7 +101,7 @@ export const SettingsPage: React.FC = () => {
 
       {/* Interface des paramètres */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5">
           {tabs.map((tab) => (
             <TabsTrigger 
               key={tab.id} 
@@ -260,6 +268,21 @@ export const SettingsPage: React.FC = () => {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        {/* Onglet Grades Manager */}
+        <TabsContent value="grades-manager" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Link2 className="h-5 w-5" />
+                Connexion Grades Manager
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <GradesManagerSettings />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Onglet Sécurité (uniquement si pas en mode démo) */}

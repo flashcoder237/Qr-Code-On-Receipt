@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { useNotifications } from "@/components/ui/notification-system";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalStorage } from "usehooks-ts";
 import { Button } from "@/components/ui/button";
@@ -166,7 +166,6 @@ export const ManualTranscriptEntry: React.FC = () => {
   const {
     register,
     handleSubmit,
-    watch,
     setValue,
     reset,
     control,
@@ -225,7 +224,7 @@ export const ManualTranscriptEntry: React.FC = () => {
     setValue("ues", ueDefaults);
   }, [currentSemester, setValue, skipNextUeReset, freeMode]);
 
-  const watchedUes = watch("ues");
+  const watchedUes = useWatch({ control, name: "ues" });
 
   // Calculate semester statistics in real-time
   const semesterStats = useMemo(() => {
@@ -300,21 +299,27 @@ export const ManualTranscriptEntry: React.FC = () => {
         )
       : null;
 
-    // Crédits obtenus : par UE (forcé OU moyenne >= 10)
-    const creditsObtained = ueResults.reduce((sum, r) => {
-      return sum + (r.forced || r.average >= 10 ? r.credits : 0);
-    }, 0);
+    if (!stats) return null;
 
-    const average = stats?.average ?? 0;
-    const isValidated = creditsObtained >= creditsRequired && average >= 10;
+    // Crédits forcés sans note (équivalences étrangères) - à ajouter au total
+    const forcedOnlyCredits = ueResults
+      .filter(r => r.forced && r.average === 0)
+      .reduce((s, r) => s + r.credits, 0);
+    const totalRegistered = stats.totalCredits + forcedOnlyCredits;
+
+    // Compensation : si la moyenne >= 10, TOUS les crédits enregistrés sont obtenus
+    const creditsObtained = stats.average >= 10
+      ? totalRegistered
+      : ueResults.reduce((sum, r) => sum + (r.forced || r.average >= 10 ? r.credits : 0), 0);
+    const isValidated = creditsObtained >= creditsRequired && stats.average >= 10;
 
     return {
-      totalCredits: ueResults.reduce((s, r) => s + r.credits, 0),
+      totalCredits: totalRegistered,
       creditsRequired,
       creditsObtained,
-      average,
-      grade: stats?.grade ?? "F",
-      mgp: stats?.mgp ?? 0,
+      average: stats.average,
+      grade: stats.grade,
+      mgp: stats.mgp,
       isValidated,
     };
   }, [watchedUes, currentSemester, currentConfig, freeMode, freeConfig.creditsRequired]);
